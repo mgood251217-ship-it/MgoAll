@@ -1,3 +1,37 @@
+# Dependency
+node_modules/
+
+# Environment
 .env
 .env.local
 .env.*
+
+# Upload user
+uploads/
+storage/
+tmp/
+
+# Cache
+cache/
+logs/
+*.log
+
+# Editor
+.vscode/
+.idea/
+
+# Sistem
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
+
+# Vendor (jika ingin install ulang)
+vendor/
+
+# File pribadi
+config.local.php
+config.php
+default.php
