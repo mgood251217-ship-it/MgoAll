@@ -1,0 +1,12 @@
+RewriteEngine On
+
+<FilesMatch "^(connect|config|database)\.php$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}\.php -f
+RewriteRule ^(.*)$ $1.php [L]
+
+Options -Indexes

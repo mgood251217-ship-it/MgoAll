@@ -1,0 +1,9 @@
+RewriteEngine On
+RewriteBase /
+
+# Jangan arahkan jika file atau folder asli memang ada (seperti css/js)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Arahkan sisanya ke index.php
+RewriteRule ^(.*)$ index.php?page=$1 [L,QSA]
