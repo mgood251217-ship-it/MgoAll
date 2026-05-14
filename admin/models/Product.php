@@ -21,6 +21,13 @@ class Product{
         return $stmt->get_result();
     }
 
+    public function getPrice ($product_id){
+        $stmt = $this->koneksi->prepare("SELECT price FROM products WHERE product_id = ?");
+        $stmt->bind_param('i', $product_id);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc();
+    }
+
     public function deleteProductByIdAndStoreId($product_id, $store_id){
         $stmt = $this->koneksi->prepare("DELETE FROM products WHERE product_id = ? AND store_id =?");
         return $stmt->execute();
