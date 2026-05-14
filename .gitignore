@@ -1,11 +1,6 @@
 # Dependency
 node_modules/
 
-# Environment
-.env
-.env.local
-.env.*
-
 # Upload user
 uploads/
 storage/
@@ -31,7 +26,18 @@ build/
 # Vendor (jika ingin install ulang)
 vendor/
 
-# File pribadi
-config.local.php
+# ENV
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Config sensitif
+connect.php
 config.php
 default.php
+
+# Di subfolder mana pun
+**/connect.php
+**/config.php
+**/default.php
