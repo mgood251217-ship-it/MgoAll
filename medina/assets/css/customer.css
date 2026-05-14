@@ -1,0 +1,69 @@
+html, body{
+    scroll-behavior: auto !important;
+}
+
+.table th,
+.table td {
+    text-align: center;
+    vertical-align: middle;
+    cursor: default !important;
+}
+
+.table-smaller th,
+.table-smaller td {
+    padding: 4px 6px !important;
+    font-size: 15px;
+    vertical-align: middle;
+}
+
+.btn-group-row .btn {
+    padding: 2px 6px !important;
+    font-size: 10px;
+    margin: 0 1px;
+}
+
+.btn-group-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 2px;
+    justify-content: center;
+}
+.table-black{
+    background-color: black !important;
+}
+.table-responsive {
+    margin: 0 auto;
+    padding: 10px;
+}
+
+.table {
+    margin-bottom: 0.5rem;
+}
+.dark-mode .table-prim{
+    font-family: serif;
+}
+.dark-mode .table-primary tr th {
+    background-color:rgb(1, 32, 63) !important;
+}
+.dark-mode .table-danger tr th {
+    background-color:rgb(105, 4, 16) !important;
+}
+.dark-mode .table-prim > tbody > .order-row:nth-child(even) > td{
+    background-color: rgb(16, 46, 77) !important;
+}
+.dark-mode .table-prim > tbody > .order-row:nth-child(odd) > td{
+    background-color: rgb(27, 49, 71) !important;
+}
+.dark-mode .table-dan > tbody > .order-row:nth-child(even) > td{
+    background-color: rgb(112, 21, 31) !important;
+}
+.dark-mode .table-dan > tbody > .order-row:nth-child(odd) > td{
+    background-color: rgb(125, 32, 43) !important;
+}
+.order-row.row-selected > td {
+    background-color: rgb(145, 224, 255) !important;
+}
+.dark-mode .table-prim > tbody > .order-row.row-selected > td,
+.dark-mode .table-dan > tbody > .order-row.row-selected > td {
+    background-color: black !important;
+}

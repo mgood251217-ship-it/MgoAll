@@ -1,0 +1,141 @@
+/* ========== PINK MODE TERANG (CLASS: .dark-mode) ========== */
+.dark-mode {
+  background-color: #ffd1e7 !important; /* soft pink background */
+  color: #4a0030 !important; /* teks gelap untuk kontras */
+}
+
+/* ========== TABEL ========== */
+.dark-mode .table,
+.dark-mode .table-bordered,
+.dark-mode .table-striped,
+.dark-mode .table-hover,
+.dark-mode .table-primary {
+  background-color: #ffd6e8 !important;
+  color: #4a0030 !important;
+}
+
+.dark-mode .table th,
+.dark-mode .table td {
+  background-color: #ffeaf3 !important;
+  color: #4a0030 !important;
+  border-color: #f5b6cf !important;
+}
+
+.dark-mode .table-striped > tbody > tr:nth-of-type(odd) > * {
+  background-color: #ffe0ee !important;
+}
+
+.dark-mode .table-primary {
+  background-color: #ffcce5 !important;
+  color: #4a0030 !important;
+}
+
+.dark {
+  background-color: #ffd6e8 !important;
+  color: #4a0030 !important;
+}
+
+.dark-mode .table-primary th {
+  background-color: #ffb3db !important;
+  color: #4a0030 !important;
+}
+
+/* ========== FORM DAN INPUT ========== */
+.dark-mode .form-control,
+.dark-mode .form-select {
+  background-color: #fff0f7 !important;
+  color: #4a0030 !important;
+  border-color: #f5b6cf !important;
+}
+
+.dark-mode .form-control::placeholder {
+  color: #b06b8c !important;
+}
+
+.dark-mode .form-control-plaintext {
+  color: #4a0030 !important;
+}
+
+/* ========== BUTTON ========== */
+.dark-mode .btn-primary {
+  background-color: #ff69b4 !important;
+  border-color: #ff69b4 !important;
+  color: white !important;
+}
+
+.dark-mode .btn-secondary {
+  background-color: #ffb3db !important;
+  border-color: #ff99cc !important;
+  color: #4a0030 !important;
+}
+
+/* ========== MODAL ========== */
+.dark-mode .modal-content {
+  background-color: #fff0f7 !important;
+  color: #4a0030 !important;
+  border: 1px solid #f5b6cf !important;
+}
+
+.dark-mode .modal-header,
+.dark-mode .modal-footer {
+  background-color: #ffe6f2 !important;
+  border-color: #f5b6cf !important;
+}
+
+.dark-mode .modal-title {
+  color: #4a0030 !important;
+}
+
+.dark-mode .modal-body {
+  background-color: #fff0f7 !important;
+  color: #4a0030 !important;
+}
+
+.dark-mode .modal-content .form-control,
+.dark-mode .modal-content .form-select {
+  background-color: #fff7fa !important;
+  color: #4a0030 !important;
+  border: 1px solid #f5b6cf !important;
+}
+
+.dark-mode .modal-content .btn-primary {
+  background-color: #ff69b4 !important;
+  border-color: #ff69b4 !important;
+  color: white !important;
+}
+
+.dark-mode .modal-content .btn-secondary {
+  background-color: #ffb3db !important;
+  border-color: #ff99cc !important;
+  color: #4a0030 !important;
+}
+
+/* ========== CLOSE ICON (X) ========== */
+.dark-mode .btn-close {
+  filter: invert(0) hue-rotate(330deg) brightness(0.5) !important;
+}
+
+/* ========== BACKDROP DAN WRAPPER MODAL ========== */
+.dark-mode .modal {
+  background-color: rgba(255, 192, 224, 0.6) !important;
+}
+
+.dark-mode .modal-backdrop.show {
+  background-color: rgba(255, 182, 210, 0.7) !important;
+}
+
+body.dark-mode .modal-content {
+  background-color: #fff0f7 !important;
+  color: #4a0030 !important;
+  border: 1px solid #f5b6cf !important;
+}
+
+/* ========== TAMBAHAN ========== */
+.riwayat {
+  background-color: #ffe6f2 !important;
+}
+
+.select2-results__option.dark-mode-select:hover {
+  background-color: #ffb3db !important;
+  color: #4a0030 !important;
+}

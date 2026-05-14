@@ -1,5 +1,6 @@
 # Dependency
 node_modules/
+vendor/
 
 # Upload user
 uploads/
@@ -23,21 +24,30 @@ Thumbs.db
 dist/
 build/
 
-# Vendor (jika ingin install ulang)
-vendor/
-
-# ENV
+# Environment
 .env
 .env.*
-**/.env
-**/.env.*
+!.env.example
 
-# Config sensitif
-connect.php
-config.php
-default.php
+# Root sensitif
+/connect.php
+/default.php
 
-# Di subfolder mana pun
-**/connect.php
-**/config.php
-**/default.php
+# Admin
+/admin/connect.php
+/admin/config.php
+/admin/.env
+
+# Administrator
+/admin/administrator/connect.php
+/admin/administrator/config.php
+
+# Shopee
+/shopee/connect.php
+
+# Optik
+/optik/connect.php
+/config/database.php
+
+# Medina
+/medina/connect.php
