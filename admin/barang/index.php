@@ -52,8 +52,6 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
         </div>
       </div>
 
-
-      
       <!-- Tabel Data Barang -->
       <?php if (empty($products)): ?>
         <div class="alert alert-warning">Tidak ada data barang untuk toko ini.</div>
@@ -102,9 +100,18 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
                       data-failed="<?= $p['failed_price'] ?>">
                       <svg style="width: 16px; height: 16px; stroke-width: 2; stroke: white; fill: none;" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     </button>
-                    <a href="delete_product.php?id=<?= $p['product_id'] ?>" class="btn btn-danger btn-sm" style="line-height: 0;" onclick="return confirm('Yakin ingin menghapus barang ini?')">
-                      <svg style="width: 16px; height: 16px; stroke-width: 2; stroke: white; fill: none; gap:0;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                    </a>
+                      <form action="product_action.php" method="POST" style="display: inline;" onsubmit="return confirm('Yakin ingin menghapus barang ini?')">
+                        <input type="hidden" name="product" value="delete_product">
+                        <input type="hidden" name="product_id" value="<?= $p['product_id'] ?>">
+                        <button type="submit" class="btn btn-danger btn-sm" style="line-height: 0; padding: .25rem .5rem;">
+                          <svg style="width: 16px; height: 16px; stroke-width: 2; stroke: white; fill: none;" viewBox="0 0 24 24">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                          </svg>
+                        </button>
+                      </form>
                   </td>
                   <th><input class="form-check-input check-barang" data-id="<?= htmlspecialchars($p['product_id']) ?>" type="checkbox" value="" id="flexCheckDefault"></th>
                   <?php } ?>
@@ -119,7 +126,8 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
       <div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
-            <form method="POST" action="edit_product.php">
+            <form method="POST" action="product_action.php">
+              <input type="hidden" name="product" value="update_product">
               <div class="modal-header bg-warning">
                 <h5 class="modal-title" id="editProductModalLabel">Edit Barang</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
@@ -176,7 +184,8 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
     <div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
-          <form action="add_product.php" method="POST" class="row g-3">
+          <form action="product_action.php" method="POST" class="row g-3">
+            <input type="hidden" name="product" value="add_product">
             <div class="modal-header bg-success text-white">
               <h5 class="modal-title" id="addProductModalLabel">Tambah Barang Baru</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
@@ -198,6 +207,14 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
               <div class="col-md-2">
                 <label for="add_price" class="form-label">Harga</label>
                 <input type="number" name="price" id="add_price" class="form-control" required>
+              </div>
+              <div class="col-md-2">
+                <label for="add_reasonable_price" class="form-label">Harga Maklun</label>
+                <input type="number" name="reasonable_price" id="add_reasonable_price" class="form-control" required>
+              </div>
+              <div class="col-md-2">
+                <label for="add_failed_price" class="form-label">Harga Kegagalan</label>
+                <input type="number" name="failed_price" id="add_failed_price" class="form-control" required>
               </div>
               <div class="col-md-2">
                 <label for="add_unit_type" class="form-label">Satuan</label>

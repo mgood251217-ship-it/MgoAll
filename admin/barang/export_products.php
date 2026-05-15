@@ -2,12 +2,6 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 
-if (!isset($_SESSION['user'])) {
-    header("Location: " . BASE_URL . "/login");
-    exit;
-}
-
-
 $barangIds = $_POST['barangIds'] ?? [];
 
 if (empty($barangIds)) {
