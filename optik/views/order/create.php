@@ -452,6 +452,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
             });
         }
 
+        total = Math.round(total / 500) * 500;
+
         cartSubtotal.innerText = formatRupiah(total);
         cartTotal.innerText = formatRupiah(total);
         cartContainer.scrollTop = cartContainer.scrollHeight;

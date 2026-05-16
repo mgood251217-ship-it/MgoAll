@@ -1,33 +1,15 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/models/Stock.php';
 
-// Ambil semua produk milik store dan tampilkan stok (termasuk 0)
-$query = "
-    SELECT 
-        p.product_id, 
-        p.type, 
-        p.name, 
-        p.unit_type, 
-        COALESCE(s.quantity, 0) AS quantity
-    FROM products p
-    LEFT JOIN stock s ON p.product_id = s.product_id AND s.store_id = ?
-    WHERE p.store_id = ?
-    AND name != 'KISS CUT'
-    AND name != 'DIE CUT'
-    AND unit_type != '~'
-";
-
-$stmt = $koneksi->prepare($query);
-$stmt->bind_param("ii", $store_id, $store_id);
-$stmt->execute();
-$result = $stmt->get_result();
-
+$stockModel = new Stock($koneksi);
+$result = $stockModel->getAllStock($store_id);
 $stocks = [];
 while ($row = $result->fetch_assoc()) {
     $stocks[] = $row;
 }
-$stmt->close();
+$result->close();
 ?>
 
 <!DOCTYPE html>
@@ -92,14 +74,16 @@ $stmt->close();
                   <?php
                   if ($role == 'ADMIN' || $role == 'MANAGER') { ?>
                   <td class="text-nowrap">
-                    <form method="POST" action="update_stock.php" class="d-inline-flex me-1">
+                    <form method="POST" action="stock_action.php" class="d-inline-flex me-1">
+                      <input type="hidden" name="stock" value="add_stock">
                       <input type="hidden" name="product_id" value="<?= $s['product_id'] ?>">
-                      <input type="number" name="add_quantity" step="0.01" class="form-control form-control-sm me-1" placeholder="+Qty" style="width: 70px;" required>
+                      <input type="number" name="quantity" step="0.01" class="form-control form-control-sm me-1" placeholder="+Qty" style="width: 70px;" required>
                       <button type="submit" class="btn btn-success btn-sm">Tambah</button>
                     </form>
-                    <form method="POST" action="edit_stock.php" class="d-inline-flex">
+                    <form method="POST" action="stock_action.php" class="d-inline-flex">
+                      <input type="hidden" name="stock" value="update_stock">
                       <input type="hidden" name="product_id" value="<?= $s['product_id'] ?>">
-                      <input type="number" name="new_quantity" step="0.01" value="<?= $s['quantity'] ?>" class="form-control form-control-sm me-1" style="width: 70px;" required>
+                      <input type="number" name="quantity" step="0.01" value="<?= $s['quantity'] ?>" class="form-control form-control-sm me-1" style="width: 70px;" required>
                       <button type="submit" class="btn btn-primary btn-sm">Edit</button>
                     </form>
                   </td>

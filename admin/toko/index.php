@@ -1,22 +1,20 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
-
+require_once BASE_PATH . '/models/User.php';
 require BASE_PATH . '/access_rights.php';
+
+$userModel = new User($koneksi);
 
 $success = $_SESSION['flash_success'] ?? '';
 $errors = $_SESSION['flash_errors'] ?? [];
 unset($_SESSION['flash_success'], $_SESSION['flash_errors']);
 
-$stmt = $koneksi->prepare("SELECT * FROM users WHERE store_id = ?");
-$stmt->bind_param("i", $store_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$users = [];
+$result = $userModel->getUserByStoreId($store_id);
 while ($row = $result->fetch_assoc()) {
     $users[] = $row;
 }
-$stmt->close();
+$result->close();
 ?>
 
 <!DOCTYPE html>
@@ -79,7 +77,8 @@ $stmt->close();
                 </td>
                 <td>
                   <button class="btn btn-sm btn-warning btn-edit me-1" data-user='<?= json_encode($u) ?>'>Edit</button>
-                  <form method="POST" action="delete_user.php" class="d-inline delete-user-form">
+                  <form method="POST" action="store_action.php" class="d-inline delete-user-form">
+                    <input type="hidden" name="store" value="delete_user">
                     <input type="hidden" name="user_id" value="<?= $u['user_id'] ?>">
                     <input type="hidden" name="picture" value="<?= $u['picture'] ?>">
                     <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
@@ -98,7 +97,8 @@ $stmt->close();
   <!-- === MODAL TAMBAH USER === -->
   <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-      <form method="POST" action="add_user.php" enctype="multipart/form-data" class="modal-content" autocomplete="off">
+      <form method="POST" action="store_action.php" enctype="multipart/form-data" class="modal-content" autocomplete="off">
+        <input type="hidden" name="store" value="add_user">
         <div class="modal-header bg-success text-white">
           <h5 class="modal-title" id="addUserLabel">Tambah User Baru</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
@@ -156,12 +156,10 @@ $stmt->close();
     </div>
   </div>
 
-
-
-
   <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserLabel" aria-hidden="true">
     <div class="modal-dialog">
-      <form method="POST" action="edit_user.php" enctype="multipart/form-data" class="modal-content">
+      <form method="POST" action="store_action.php" enctype="multipart/form-data" class="modal-content">
+        <input type="hidden" name="store" value="update_user">
         <div class="modal-header">
           <h5 class="modal-title" id="editUserLabel">Edit User</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>

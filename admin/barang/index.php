@@ -11,7 +11,7 @@ $result = $productModel->getProductByStoreId($store_id);
 while ($row = $result->fetch_assoc()) {
     $products[] = $row;
 }
-$stmt->close();
+$result->close();
 
 $jenisList = ['OUTDOOR', 'FINISHING OUTDOOR','INDOOR','FINISHING INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','FINISHING LASER A3','SUBLIM','FINISHING SUBLIM','DTF','STAMP', 'MERCENDISE', 'MERCENDISE AKRILIK', 'JERSEY', 'FINISHING JERSEY', 'AKRILIK', 'FINISHING AKRILIK', 'KARTU NAMA', 'CETAKAN', 'FINISHING CETAKAN', 'JASA'];
 $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];

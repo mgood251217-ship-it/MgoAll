@@ -49,7 +49,7 @@ if ($result->num_rows > 0) {
     }
 
                 
-    $storeName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $store['name'] ?? 'Toko');
+    $storeNameUpload = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName);
     $query = "SELECT transfer_id, img FROM transfers WHERE order_id = ?";
     $stmt = $koneksi->prepare($query);
     $stmt->bind_param("i", $order_id);
@@ -63,7 +63,7 @@ if ($result->num_rows > 0) {
     $stmt->close();
     if (!empty($fotos)) {
     foreach ($fotos as $f) {
-        $imgUrl = BASE_URL . '/assets/img/buktitf/'. $storeName. "/" . $f['img'];
+        $imgUrl = BASE_URL . '/assets/img/buktitf/'. $storeNameUpload. "/" . $f['img'];
 ?>
                   <div class="conimg position-relative d-inline-block me-2 mb-2" id="img-<?= $f['transfer_id'] ?>">
                     <img 

@@ -120,14 +120,6 @@ if (!empty($allFinishingIds)) {
     }
 }
 
-// Ambil nama dan alamat toko dari tabel stores
-$stmtStore = $koneksi->prepare("SELECT name, address FROM stores WHERE store_id = ?");
-$stmtStore->bind_param("i", $store_id);
-$stmtStore->execute();
-$resultStore = $stmtStore->get_result();
-$store = $resultStore->fetch_assoc();
-$storeName = $store['name'] ?? 'Nama Toko';
-$storeAddress = $store['address'] ?? 'Alamat belum tersedia';
 ?>
 
 
@@ -428,7 +420,7 @@ $storeAddress = $store['address'] ?? 'Alamat belum tersedia';
               
                 <?php 
                   $noproff = false;
-                  $storeName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $store['name'] ?? 'Toko');
+                  $storeNameUpload = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName);
                   $query = "SELECT transfer_id, img FROM transfers WHERE order_id = ?";
                   $stmt = $koneksi->prepare($query);
                   $stmt->bind_param("i", $order['order_id']);
@@ -442,7 +434,7 @@ $storeAddress = $store['address'] ?? 'Alamat belum tersedia';
                   $stmt->close();
                   if (!empty($fotos)) {
                     foreach ($fotos as $f) {
-                      $imgUrl = BASE_URL . '/assets/img/buktitf/'. $storeName. "/" . $f['img'];
+                      $imgUrl = BASE_URL . '/assets/img/buktitf/'. $storeNameUpload . "/" . $f['img'];
                     ?>
                     <div class="conimg position-relative d-inline-block me-2 mb-2" id="img-<?= $f['transfer_id'] ?>">
                       <img 

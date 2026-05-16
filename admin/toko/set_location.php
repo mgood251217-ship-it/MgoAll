@@ -3,7 +3,7 @@ require_once '../connect.php';
 session_start();
 
 error_reporting(E_ALL);
-ini_set('display_errors', 0); // Jangan tampilkan error ke user, cukup ke log
+ini_set('display_errors', 1);
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/set_location_errors.log'); // File log error di folder sama
 
