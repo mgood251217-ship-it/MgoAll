@@ -770,7 +770,7 @@ document.querySelectorAll('.btn-edit').forEach(button => {
       const rawDate = data.date;
       const formattedDate = rawDate.replace(' ', 'T').slice(0, 16);
       document.getElementById('edit-date').value = formattedDate;
-      document.getElementById('edit-user_id').value = data.userid;
+      document.getElementById('edit-user_id').value = data.user_id;
       document.getElementById('edit-sistem').value = data.system;
 
 

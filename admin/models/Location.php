@@ -20,7 +20,7 @@ class Location{
         return $this->koneksi->query("SELECT * FROM locations");
     }
 
-    public function addLocation($data){
+    public function createLocation($data){
         $stmt = $this->koneksi->prepare("INSERT INTO locations (store_id, name, latitude, longitude) VALUES (?, ?, ?, ?)");
         $stmt->bind_param("isss", $data->store_id, $data->store_name, $data->latitude, $data->longitude);
         $success = $stmt->execute();

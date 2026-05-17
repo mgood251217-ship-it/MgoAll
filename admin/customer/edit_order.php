@@ -51,17 +51,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 ?>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  const cut = document.getElementById('finishingCut');
-  const die = document.getElementById('finishingDie');
-  if (cut && die) {
-    cut.addEventListener('change', function() {
-      if (this.checked) die.checked = false;
-    });
-    die.addEventListener('change', function() {
-      if (this.checked) cut.checked = false;
-    });
-  }
-});
-</script>

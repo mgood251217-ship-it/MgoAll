@@ -1,12 +1,12 @@
 <?php
 require_once '../connect.php';
+require_once BASE_PATH . '/models/Order.php';
 
-$order_id = (int)($_GET['order_id'] ?? 0);
+$orderModel = new Order($koneksi);
 
-$stmt = $koneksi->prepare("SELECT nomorator, customer_name, nomor, system, deadline, date, user_id AS userid FROM orders WHERE order_id = ?");
-$stmt->bind_param("i", $order_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$noted = $result->fetch_assoc();
+$id = (int)($_GET['order_id'] ?? 0);
 
-echo json_encode($noted);
+$result = $orderModel->getOrderById($id);
+$order = $result->fetch_assoc();
+
+echo json_encode($order);

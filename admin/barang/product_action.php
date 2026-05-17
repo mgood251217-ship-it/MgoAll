@@ -7,9 +7,9 @@ $productModel = new Product($koneksi);
 $action = $_POST['product'] ?? '';
 
 $methods = [
-    'add_product'    => 'addProduct',
+    'create_product'    => 'createProduct',
     'update_product' => 'updateProduct',
-    'delete_product' => 'deleteProductByIdAndStoreId'
+    'delete_product' => 'deleteProductById'
 ];
 
 if (array_key_exists($action, $methods)) {

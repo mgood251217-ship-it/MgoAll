@@ -12,12 +12,12 @@ $stock = $_POST['stock'] ?? '';
 
 if ($stockModel->checkStock($data)) {
     if ($stock == 'add_stock') {
-        $stockModel->addUpdateStock($data);
+        $stockModel->createUpdateStock($data);
     }else if ($stock == 'update_stock'){
         $stockModel->updateStock($data);
     }
 } else {
-    $stockModel->addStock($data);
+    $stockModel->createStock($data);
 }
 
 header("Location: index");

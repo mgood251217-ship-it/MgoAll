@@ -7,7 +7,7 @@ class User{
         $this->koneksi = $koneksi;
     }
 
-    public function addUser($data) {
+    public function createUser($data) {
         $passwordHash = password_hash($data->password, PASSWORD_DEFAULT);
         $stmt = $this->koneksi->prepare("INSERT INTO users (name, username, password, role, initial, picture, store_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param('ssssssi', $data->name, $data->username, $passwordHash, $data->role, $data->initial, $data->picture, $data->store_id);
@@ -44,6 +44,14 @@ class User{
         return $stmt->get_result();
     }
 
+    public function getRoleById($id){
+        $stmt = $this->koneksi->prepare("SELECT role FROM users WHERE user_id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        return $result ? $result['role'] : '';
+    }
+
     public function checkUser ($username) {
         $stmt = $this->koneksi->prepare("SELECT 1 FROM users WHERE username = ?");
         $stmt->bind_param("s", $username);
@@ -75,7 +83,7 @@ class User{
     }
 
     public function deleteUserById($id){
-        $stmt = $this->koneksi->prepare("DELETE FROM users WHERE user_id = ?");
+        $stmt = $this->koneksi->prepare("DELETE FROM users WHERE user_id = ? LIMIT 1");
         $stmt->bind_param("i", $id);
         $success = $stmt->execute();
         $stmt->close();

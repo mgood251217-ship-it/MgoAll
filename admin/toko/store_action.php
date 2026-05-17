@@ -76,7 +76,7 @@ if ($store === 'update_user') {
     if (!empty($errors)) {
         $_SESSION['flash_errors'] = $errors;
     } else {
-        if ($userModel->addUser($data)) {
+        if ($userModel->createUser($data)) {
             $_SESSION['flash_success'] = "User berhasil ditambahkan.";
         } else {
             $_SESSION['flash_errors'] = ["Gagal menambahkan user."];
@@ -102,7 +102,7 @@ if ($store === 'update_user') {
     if ($locationModel->checkLocation($data->store_id)) {
         $locationModel->updateLocation($data);
     } else {
-        $locationModel->addLocation($data);
+        $locationModel->createLocation($data);
     }
 }
 

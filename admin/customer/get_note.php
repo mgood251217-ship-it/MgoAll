@@ -1,12 +1,15 @@
 <?php
 require_once '../connect.php';
+require_once BASE_PATH . '/models/Order.php';
 
-$order_id = (int)($_GET['order_id'] ?? 0);
+$orderModel = new Order($koneksi);
 
-$stmt = $koneksi->prepare("SELECT note FROM note_orders WHERE order_id = ? AND note_for = 'CTM' ORDER BY note_order_id DESC LIMIT 1");
-$stmt->bind_param("i", $order_id);
-$stmt->execute();
-$result = $stmt->get_result();
+$order_id = $_GET['order_id'] ?? 0;
+$data = new stdClass();
+$data->order_id = $_GET['order_id'] ?? 0;
+$data->note_for = 'CTM';
+
+$result = $orderModel->getNoteOrder($data);
 $noted = $result->fetch_assoc();
 
 if ($noted && !empty($noted['note'])) {

@@ -180,7 +180,7 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <form action="product_action.php" method="POST" class="row g-3">
-            <input type="hidden" name="product" value="add_product">
+            <input type="hidden" name="product" value="create_product">
             <div class="modal-header bg-success text-white">
               <h5 class="modal-title" id="addProductModalLabel">Tambah Barang Baru</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>

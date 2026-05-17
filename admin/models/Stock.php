@@ -28,7 +28,7 @@ class Stock{
         return $stmt->get_result();
     }
 
-    public function addStock($data){
+    public function createStock($data){
         $stmt = $this->koneksi->prepare("INSERT INTO stock (product_id, store_id, quantity) VALUES (?, ?, ?)");
         $stmt->bind_param("iid", $data->id, $data->store_id, $data->quantity);
         $success = $stmt->execute();
@@ -36,7 +36,7 @@ class Stock{
         return $success;
     }
 
-    public function addUpdateStock($data) {
+    public function createUpdateStock($data) {
         $stmt = $this->koneksi->prepare("UPDATE stock SET quantity = quantity + ? WHERE product_id = ? AND store_id = ?");
         $stmt->bind_param("dii", $data->quantity, $data->id, $data->store_id);
         $success = $stmt->execute();
@@ -53,7 +53,7 @@ class Stock{
     }
 
     public function checkStock ($data){
-        $stmt = $this->koneksi->prepare("SELECT quantity FROM stock WHERE product_id = ? AND store_id = ?");
+        $stmt = $this->koneksi->prepare("SELECT 1 FROM stock WHERE product_id = ? AND store_id = ?");
         $stmt->bind_param("ii", $data->id, $data->store_id);
         $stmt->execute();
         $stmt->store_result();
