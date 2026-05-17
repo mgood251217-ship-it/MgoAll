@@ -56,15 +56,6 @@ while ($row = $result->fetch_assoc()) {
     $row['finishing_names'] = implode(', ', $finishingNames);
     $produkData[$row['judul']][] = $row;
 }
-
-// Ambil nama dan alamat toko dari tabel stores
-$stmtStore = $koneksi->prepare("SELECT name, address FROM stores WHERE store_id = ?");
-$stmtStore->bind_param("i", $store_id);
-$stmtStore->execute();
-$resultStore = $stmtStore->get_result();
-$store = $resultStore->fetch_assoc();
-$storeName = $store['name'] ?? 'Nama Toko';
-$storeAddress = $store['address'] ?? 'Alamat belum tersedia';
 ?>
 
 <!DOCTYPE html>
@@ -100,8 +91,6 @@ $storeAddress = $store['address'] ?? 'Alamat belum tersedia';
       border-radius: 3px;
     }
   </style>
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dark_mode.css">
 </head>
 <body>
 <div id="main-wrapper" <?= (isset($mode) && $mode === 1) ? 'class="dark-mode"' : '' ?>>

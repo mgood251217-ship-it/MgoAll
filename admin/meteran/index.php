@@ -20,6 +20,7 @@ $end_date_only   = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
   <meta charset="UTF-8" />
   <title>Data Meteran</title>
   <?php include BASE_PATH . '/header.php'; ?>
+  <?php include BASE_PATH . '/export_libraries.php'; ?>
   <style>
     .excel-container {
       display: flex;
@@ -51,14 +52,6 @@ $end_date_only   = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
       color: #ffffff;
     }
   </style>
-  
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dark_mode.css">
-    <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-    <?php if (isset($username) && ($username == 'zannia' || $username == 'vikialvian')) { ?>
-      <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/pink_mode.css">
-    <?php } ?>
 </head>
 <body>
   <div id="main-wrapper" <?= ($mode === 1) ? 'class="dark-mode"' : '' ?>>

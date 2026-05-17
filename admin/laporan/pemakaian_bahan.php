@@ -34,9 +34,6 @@ $end_date   = $end_input . ' 23:59:59';
   <title>Pemakaian Bahan Harian</title>
   <?php include BASE_PATH . '/header.php'; ?>
   <?php include BASE_PATH . '/export_libraries.php'; ?>
-  
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dark_mode.css">
 </head>
 <body>
 <div id="main-wrapper" <?= ($mode === 1) ? 'class="dark-mode"' : '' ?>>

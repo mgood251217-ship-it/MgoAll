@@ -134,14 +134,7 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
 <head>
     <meta charset="UTF-8">
     <title>Global Stock</title>
-
     <?php include BASE_PATH . '/header.php'; ?>
-
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dark_mode.css">
-    <?php if (isset($username) && ($username == 'zannia' || $username == 'vikialvian')) { ?>
-        <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/pink_mode.css">
-    <?php } ?>
 
     <style>
         .table-excel th, .table-excel td {

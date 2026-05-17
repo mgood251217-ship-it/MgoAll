@@ -242,9 +242,6 @@ $dataPemasukan = $dataPemasukan->get_result();
   <title>Keuangan</title>
   <?php include BASE_PATH . '/header.php'; ?>
   <?php include BASE_PATH . '/export_libraries.php'; ?>
-  
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dark_mode.css">
 <style>
 .img-thumb:hover {
   opacity: 0.5;

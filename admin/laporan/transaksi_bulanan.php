@@ -104,15 +104,6 @@ while ($row = $result2->fetch_assoc()) {
 // Ubah ke array numerik (biar bisa di-foreach)
 $data_per_tanggal = array_values($data_per_tanggal);
 
-
-// Ambil nama dan alamat toko dari tabel stores
-$stmtStore = $koneksi->prepare("SELECT name, address FROM stores WHERE store_id = ?");
-$stmtStore->bind_param("i", $store_id);
-$stmtStore->execute();
-$resultStore = $stmtStore->get_result();
-$store = $resultStore->fetch_assoc();
-$storeName = $store['name'] ?? 'Nama Toko';
-$storeAddress = $store['address'] ?? 'Alamat belum tersedia';
 ?>
 
 
@@ -123,9 +114,6 @@ $storeAddress = $store['address'] ?? 'Alamat belum tersedia';
     <title>Transaksi Bulanan</title>
     <?php include BASE_PATH . '/header.php'; ?>
     <?php include BASE_PATH . '/export_libraries.php'; ?>
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dark_mode.css">
-
 </head>
 <body>
 <div id="main-wrapper" <?= ($mode === 1) ? 'class="dark-mode"' : '' ?>>

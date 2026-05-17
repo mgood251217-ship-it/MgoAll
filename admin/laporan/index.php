@@ -8,7 +8,6 @@ $today       = date('Y-m-d');
 
 require BASE_PATH . '/access_rights.php';
 
-// Inisialisasi variabel laporan
 $cashTotal = $tfTotal = $jumlahPaymentHarian = $jumlahPaymentBulanan = 0;
 $pendapatanHarian = $pendapatanBulanan = $total_qty_all_products = 0;
 $max_qty = $totalOmsetSemuaProduk = $topSalesOmset = 0;
@@ -35,8 +34,6 @@ while ($stmt->fetch()) {
     if (strtoupper($method) === 'TF')   $tfTotal  = (int)$total;
 }
 $stmt->close();
-
-// Set timezone dan tanggal hari ini
 
 $today = date('Y-m-d');
 $startMonth = date('Y-m-01');
@@ -217,7 +214,6 @@ $stmt->close();
   <meta charset="UTF-8">
   <title>Laporan</title>
   <?php include BASE_PATH . '/header.php'; ?>
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
     <style>
     .laporan-grid {
         display: flex;

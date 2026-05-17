@@ -130,9 +130,6 @@ $stmt->close();
     <title>Statistik Karyawan</title>
     <?php include BASE_PATH . '/header.php'; ?>
     <?php include BASE_PATH . '/export_libraries.php'; ?>
-
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dark_mode.css">
 </head>
 <body>
 <div id="main-wrapper" <?= ($mode ?? 0) === 1 ? 'class="dark-mode"' : '' ?>>

@@ -6,8 +6,10 @@ require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/global_functions.php';
 require_once BASE_PATH . '/models/User.php';
+require_once BASE_PATH . '/models/Location.php';
 
 $userModel = new User($koneksi);
+$locationModel = new Location($koneksi);
 $errors = [];
 
 $store = $_POST['store'] ?? '';
@@ -23,6 +25,9 @@ $data->initial = strtoupper(trim($_POST['initial'] ?? ''));
 $data->role = strtoupper(trim($_POST['role'] ?? ''));
 $data->store_id = $store_id;
 $data->picture = $old_picture;
+$data->store_name = $storeName;
+$data->latitude = $_POST['latitude'];
+$data->longitude = $_POST['longitude'];
 
 if ($store === 'update_user') {
     if (!empty($_FILES['picture']['name']) && $_FILES['picture']['error'] === 0) {
@@ -32,7 +37,6 @@ if ($store === 'update_user') {
             $errors[] = $result['error'];
         } else {
             $data->picture = $result['file'];
-            // Hapus gambar lama jika gambar baru berhasil di-upload
             if (!empty($old_picture) && file_exists($uploadDir . $old_picture)) {
                 unlink($uploadDir . $old_picture);
             }
@@ -93,6 +97,12 @@ if ($store === 'update_user') {
         } else {
             $_SESSION['flash_error'] = "Gagal menghapus user.";
         }
+    }
+}elseif ($store === 'set_location'){
+    if ($locationModel->checkLocation($data->store_id)) {
+        $locationModel->updateLocation($data);
+    } else {
+        $locationModel->addLocation($data);
     }
 }
 

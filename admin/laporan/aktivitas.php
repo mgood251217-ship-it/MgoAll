@@ -2,12 +2,7 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 
-// Ambil semua produk milik store dan tampilkan stok (termasuk 0)
-$query = "
-    SELECT activity_id, title, message, information, order_id, date, done FROM activity WHERE store_id = ?
-";
-
-$stmt = $koneksi->prepare($query);
+$stmt = $koneksi->prepare("SELECT activity_id, title, message, information, order_id, date, done FROM activity WHERE store_id = ?");
 $stmt->bind_param("i", $store_id);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -25,8 +20,6 @@ $stmt->close();
   <meta charset="UTF-8">
   <title>Aktivitas</title>
   <?php include BASE_PATH . '/header.php'; ?>
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dark_mode.css">
   <style>
     .checkbox-cell {
       text-align: center;

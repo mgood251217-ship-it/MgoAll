@@ -1,12 +1,6 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-
 session_start();
 require_once "connect.php";
-require_once "key.php";
 require_once BASE_PATH . '/functions/enkripsi.php';
 require_once BASE_PATH . '/functions/setInfo.php';
 require_once BASE_PATH . '/functions/Otp.php';
@@ -94,7 +88,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt->bind_param("s", $username_input);
             $stmt->execute();
             $resultCek = $stmt->get_result();
-            $stmt->close();
+            $stmt->close(); 
 
             if ($resultCek->fetch_assoc()['total'] > 0) {
                 

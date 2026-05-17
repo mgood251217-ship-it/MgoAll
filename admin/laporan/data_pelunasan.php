@@ -5,13 +5,9 @@ require_once BASE_PATH . '/session.php';
 $start_input = $_GET['start_date'] ?? date('Y-m-d');
 $end_input = $_GET['end_date'] ?? date('Y-m-d');
 
-// Versi lengkap (Y-m-d H:i:s) untuk query
 $filter_start_date = $start_input . ' 00:00:00';
 $filter_end_date = $end_input . ' 23:59:59';
 
-
-
-// --- Query data transaksi ---
 $queryTransaksi = "
     SELECT 
         p.order_id,
@@ -53,17 +49,6 @@ while ($row = $result->fetch_assoc()) {
     $dataTransaksi[] = $row;
 }
 
-
-
-// Ambil nama dan alamat toko dari tabel stores
-$stmtStore = $koneksi->prepare("SELECT name, address FROM stores WHERE store_id = ?");
-$stmtStore->bind_param("i", $store_id);
-$stmtStore->execute();
-$resultStore = $stmtStore->get_result();
-$store = $resultStore->fetch_assoc();
-$storeName = $store['name'] ?? 'Nama Toko';
-$storeAddress = $store['address'] ?? 'Alamat belum tersedia';
-
 ?>
 
 <!DOCTYPE html>
@@ -73,9 +58,6 @@ $storeAddress = $store['address'] ?? 'Alamat belum tersedia';
     <title>Transaksi Harian</title>
     <?php include BASE_PATH . '/header.php'; ?>
     <?php include BASE_PATH . '/export_libraries.php'; ?>
-
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dark_mode.css">
 </head>
 <body>
 <div id="main-wrapper" <?= ($mode ?? 0) === 1 ? 'class="dark-mode"' : '' ?>>

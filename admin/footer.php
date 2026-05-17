@@ -17,7 +17,6 @@ footer.dark-mode {
 </style>
 <footer class="<?= (isset($mode) && $mode === 1) ? 'dark-mode' : 'light-mode' ?>">
   <small>&copy; <?= date('Y') ?> Mgo. All rights reserved.</small>
-  
 </footer>
 
 

@@ -1,12 +1,6 @@
 <?php
-
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
-
-
 
 if (isset($_GET['scrl_id'])) {
   $scrl_id = $_GET['scrl_id'];
@@ -130,7 +124,6 @@ if (!empty($allFinishingIds)) {
   <title>Transaksi Detil</title>
   <?php include BASE_PATH . '/header.php'; ?>
   <?php include BASE_PATH . '/export_libraries.php'; ?>
-  
   <style>
     .nota-block { margin-bottom: 40px; border: 1px solid #ccc; padding: 20px; border-radius: 10px; }
     .nota-header { display: flex; justify-content: space-between; flex-wrap: wrap; }
@@ -209,25 +202,7 @@ if (!empty($allFinishingIds)) {
     .btn-paste {
       white-space: nowrap;
     }
-
-    /* ::-webkit-scrollbar {
-      width: 10px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: #f1f1f1; 
-    }
-    
-    ::-webkit-scrollbar-thumb {
-      background: #888; 
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: #555; 
-    } */
   </style>
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dark_mode.css">
     <script>
       function showImageModal(src) {
         document.getElementById('modalImage').src = src;

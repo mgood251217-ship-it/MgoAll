@@ -9,14 +9,7 @@ require_once BASE_PATH . '/session.php';
   <meta charset="UTF-8">
   <title>Daftar Piutang</title>
   <?php include BASE_PATH . '/header.php'; ?>
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dark_mode.css">
-
-    <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.1/pizzip.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/docx@7.2.0/build/index.min.js"></script>
+  <?php include BASE_PATH . '/export_libraries.php'; ?>
 </head>
 
 <body>

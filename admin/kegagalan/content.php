@@ -31,8 +31,6 @@ require_once BASE_PATH . '/session.php';
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <title>Nota Order #<?= htmlspecialchars($order_id) ?></title>
       <?php include BASE_PATH . '/header.php'; ?>
-      <!-- Bootstrap CSS -->
-      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
       <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
       <!-- Select2 -->
       <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -42,8 +40,6 @@ require_once BASE_PATH . '/session.php';
           // Kirim nilai store_id dari PHP ke JS
           const store_id = <?= (int) $store_id ?>;
       </script>
-          <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
-          <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dark_mode.css">
 
   </head>
   <body class="<?= ($mode === 1) ? 'dark-mode' : '' ?>">

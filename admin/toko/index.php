@@ -2,19 +2,27 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/models/User.php';
+require_once BASE_PATH . '/models/Location.php';
 require BASE_PATH . '/access_rights.php';
 
 $userModel = new User($koneksi);
-
-$success = $_SESSION['flash_success'] ?? '';
-$errors = $_SESSION['flash_errors'] ?? [];
-unset($_SESSION['flash_success'], $_SESSION['flash_errors']);
 
 $result = $userModel->getUserByStoreId($store_id);
 while ($row = $result->fetch_assoc()) {
     $users[] = $row;
 }
 $result->close();
+
+$locationModel = new Location($koneksi);
+$result = $locationModel->getAllLocation();
+while ($row = $result->fetch_assoc()) {
+    $locations[] = $row;
+}
+$result->close();
+
+$success = $_SESSION['flash_success'] ?? '';
+$errors = $_SESSION['flash_errors'] ?? '';
+unset($_SESSION['flash_success'], $_SESSION['flash_errors']);
 ?>
 
 <!DOCTYPE html>
@@ -24,8 +32,6 @@ $result->close();
   <title>Manajemen User</title>
   <?php include BASE_PATH . '/header.php'; ?>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dark_mode.css">
 </head>
 <body>
 <div id="main-wrapper" <?= ($mode === 1) ? 'class="dark-mode"' : '' ?>>
@@ -263,20 +269,18 @@ let userMarker;
 let tempMarker;
 
 window.addEventListener('DOMContentLoaded', async () => {
-  const response = await fetch('get_locations.php');
-  const locations = await response.json();
+  const locations = <?= json_encode($locations) ?>;
 
   const firstLoc = locations.length > 0
-    ? [locations[0].latitude, locations[0].longitude]
-    : [-6.2, 106.8]; // Default Jakarta
+      ? [locations[0].latitude, locations[0].longitude]
+      : [-6.9175, 107.6191];
 
   map = L.map('map').setView(firstLoc, 13);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: 'Maxprint'
+    attribution: 'Mgo'
   }).addTo(map);
 
-  // Tampilkan marker lokasi yang sudah tersimpan
   locations.forEach(loc => {
     L.marker([loc.latitude, loc.longitude])
       .addTo(map)
@@ -287,7 +291,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('setLocationBtn').addEventListener('click', () => {
     alert('Klik di peta untuk memilih lokasi toko.');
 
-    map.off('click'); // bersihkan event sebelumnya
+    map.off('click');
 
     map.on('click', function (e) {
       const { lat, lng } = e.latlng;
@@ -307,14 +311,9 @@ window.addEventListener('DOMContentLoaded', async () => {
         const formData = new FormData();
         formData.append('latitude', pos.lat);
         formData.append('longitude', pos.lng);
+        formData.append('store', 'set_location');
 
-        const storeId = <?= (int)$store_id ?>;
-        const storeName = "<?= $storeName ?>";
-
-        formData.append('store_id', storeId);
-        formData.append('store_name', storeName);
-
-        const res = await fetch('set_location.php', {
+        const res = await fetch('store_action.php', {
           method: 'POST',
           body: formData
         });
@@ -322,11 +321,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
           if (res.ok) {
             alert('Lokasi berhasil disimpan!');
-            map.setView([pos.lat, pos.lng], 15);
-            if (userMarker) userMarker.remove();
-            userMarker = L.marker([pos.lat, pos.lng], { title: "Lokasi Toko" }).addTo(map);
-            tempMarker.remove();
-            map.off('click');
+            window.location.reload()
           } else {
             const text = await res.text();
             alert('Gagal menyimpan lokasi! Server response:\n' + text);

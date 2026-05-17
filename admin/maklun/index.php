@@ -185,32 +185,15 @@ function getFinishingNames($finishing, mysqli $koneksi){
     return '-';
   }
 }
-
-$stmtStore = $koneksi->prepare("SELECT name, address FROM stores WHERE store_id = ?");
-$stmtStore->bind_param("i", $store_id);
-$stmtStore->execute();
-$store = $stmtStore->get_result()->fetch_assoc();
-
-$storeName    = $store['name'] ?? 'Nama Toko';
-$storeAddress = $store['address'] ?? 'Alamat belum tersedia';
-
-
-
 ?>
 
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<title>Maklun</title>
-<?php include BASE_PATH . '/header.php'; ?>
-
-<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
-<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dark_mode.css">
-
-<script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/docx@7.2.0/build/index.min.js"></script>
+  <meta charset="UTF-8">
+  <title>Maklun</title>
+  <?php include BASE_PATH . '/header.php'; ?>
+  <?php include BASE_PATH . '/export_libraries.php'; ?>
 </head>
 
 <body>

@@ -1,6 +1,5 @@
 <?php
 require_once '../connect.php';
-session_start();
 require_once BASE_PATH . '/session.php';
 
   $order_id = isset($_POST['order_id']) ? (int)$_POST['order_id'] : 0;
@@ -52,20 +51,13 @@ require_once BASE_PATH . '/session.php';
       <title>Nota Order #<?= htmlspecialchars($order_id) ?></title>
       <?php include BASE_PATH . '/header.php'; ?>
       <script src="<?= BASE_URL ?>/assets/js/jquery-3.7.1.min.js"></script>
-      <!-- Select2 -->
        <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/select2.min.css">
       <script src="<?= BASE_URL ?>/assets/js/select2.min.js"></script>
       
       <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/select2-bootstrap4.min.css">
       <script>
-          // Kirim nilai store_id dari PHP ke JS
           const store_id = <?= (int) $store_id ?>;
       </script>
-          <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
-          <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dark_mode.css">
-    <?php if (isset($username) && ($username == 'zannia' || $username == 'vikialvian')) { ?>
-      <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/pink_mode.css">
-    <?php } ?>
   <style>
     .dark-mode-select{
       background-color: #1e1e1e !important;
