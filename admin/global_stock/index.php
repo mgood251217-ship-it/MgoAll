@@ -247,23 +247,23 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
             </div>
 
             <?php 
-            $color_index = 0;
-            if (empty($grouped_stocks)): 
+                $color_index = 0;
+                if (empty($grouped_stocks)): 
             ?>
                 <div class="alert alert-info text-center">Tidak ada data stock</div>
             <?php 
-            else:
-                foreach ($grouped_stocks as $cat_name => $items_group): 
-                    $current_theme = $theme_colors[$color_index % count($theme_colors)];
-                    $color_index++;
-                    
-                    $cat_id_for_edit = 0;
-                    foreach ($categories as $c) {
-                        if ($c['name'] === $cat_name) {
-                            $cat_id_for_edit = $c['id'];
-                            break;
+                else:
+                    foreach ($grouped_stocks as $cat_name => $items_group): 
+                        $current_theme = $theme_colors[$color_index % count($theme_colors)];
+                        $color_index++;
+                        
+                        $cat_id_for_edit = 0;
+                        foreach ($categories as $c) {
+                            if ($c['name'] === $cat_name) {
+                                $cat_id_for_edit = $c['id'];
+                                break;
+                            }
                         }
-                    }
             ?>
                 <div class="d-flex align-items-center hover-container">
                     <h4 class="category-title text-<?= $current_theme ?> mb-2">KATEGORI: <?= htmlspecialchars($cat_name) ?></h4>
@@ -374,7 +374,7 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
                 </div>
             <?php 
                 endforeach; 
-            endif; 
+                endif; 
             ?>
 
         </div>

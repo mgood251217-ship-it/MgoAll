@@ -7,40 +7,30 @@ class Order {
         $this->pdo = $pdo;
     }
 
-    public function createTransaction($customer_name, $inv_no, $nomor_konsumen, $total_harga, $items) {
+    public function createTransaction($customer_name, $inv_no, $nomor_konsumen, $items) {
         try {
             $this->pdo->beginTransaction();
-
             $current_time = date('Y-m-d H:i:s');
-            
-            // 1. Kalkulasi Ulang Total & Harga Diskon secara Aman di Backend
             $real_grand_total = 0;
             $processed_items = [];
 
             foreach ($items as $item) {
-                // Tangkap persen diskon
                 $diskon_persen = isset($item['discount']) ? (float)$item['discount'] : 0;
-                
-                // Kalkulasi harga
                 $potongan_harga = $item['price'] * ($diskon_persen / 100);
-                $harga_final    = $item['price'] - $potongan_harga; // <-- Harga setelah diskon
-                $total_amount   = $harga_final * $item['quantity']; // <-- Price x Quantity
-
-                // Jumlahkan ke total keseluruhan untuk tabel orders
+                $harga_final    = $item['price'] - $potongan_harga;
+                $total_amount   = $harga_final * $item['quantity'];
                 $real_grand_total += $total_amount;
 
-                // Simpan sementara ke array agar mudah di-insert nanti
                 $processed_items[] = [
                     'name'       => $item['name'],
                     'product_id' => $item['product_id'],
                     'quantity'   => $item['quantity'],
-                    'price'      => $harga_final,     // Menyimpan harga yang SUDAH DIDISKON
+                    'price'      => $harga_final,
                     'diskon'     => $diskon_persen,
-                    'amount'     => $total_amount     // Harga final x Quantity
+                    'amount'     => $total_amount
                 ];
             }
 
-            // 2. Insert ke tabel `orders` menggunakan Total Harga yang Valid
             $sqlOrder = "INSERT INTO orders (store_id, customer_name, inv_no, nomor, total, create_at) 
                          VALUES (:store_id, :customer_name, :inv_no, :nomor, :total, :create_at)";
             $stmtOrder = $this->pdo->prepare($sqlOrder);
@@ -50,13 +40,12 @@ class Order {
                 'customer_name' => $customer_name,
                 'inv_no'        => $inv_no,
                 'nomor'         => $nomor_konsumen,
-                'total'         => $real_grand_total, // <-- Terisi total yang sudah terpotong diskon
+                'total'         =>  floor($real_grand_total / 500) * 500,
                 'create_at'     => $current_time
             ]);
 
             $order_id = $this->pdo->lastInsertId();
 
-            // 3. Insert ke tabel `order_items` menggunakan data hasil kalkulasi
             $sqlItem = "INSERT INTO order_items (order_id, name, product_id, quantity, price, diskon, amount) 
                         VALUES (:order_id, :name, :product_id, :quantity, :price, :diskon, :amount)";
             $stmtItem = $this->pdo->prepare($sqlItem);
@@ -135,6 +124,29 @@ class Order {
                 'create_at' => $current_time
             ]);
         } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    public function deleteOrder($id){
+        try {
+            $queries = [
+                    "DELETE FROM order_items WHERE order_id = :id",
+                    "DELETE FROM payments WHERE order_id = :id",
+                    "DELETE FROM orders WHERE id = :id"
+                ];
+
+            foreach ($queries as $query) {
+                $stmt = $this->pdo->prepare($query);
+                $stmt->execute([
+                    ':id' => $id
+                ]);
+            }
+            $this->pdo->commit();
+            return true;
+
+        } catch (PDOException $e) {
+            $this->pdo->rollBack();
             return false;
         }
     }

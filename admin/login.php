@@ -194,7 +194,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <style>
         body {
             min-height: 100vh;
-            background: url('https://mgood.my.id/assets/img/background.webp') no-repeat center center fixed;
+            background: url('https://mgood.my.id/admin/assets/img/background.webp') no-repeat center center fixed;
             background-size: cover;
             position: relative;
         }

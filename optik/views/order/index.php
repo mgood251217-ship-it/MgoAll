@@ -54,6 +54,7 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
     .btn-pdf { background: #ef4444; } .btn-pdf:hover { background: #dc2626; }
     .btn-print { background: #f59e0b; } .btn-print:hover { background: #d97706; }
     .btn-disabled { background: #cbd5e1; color: #94a3b8; cursor: not-allowed; }
+    .btn-delete { background: #9e1010; color: #d3dae4; } .btn-delete:hover { background: #5f0505; color: #e4e9f0; }
 
     .btn-wa { background: #22c55e; color: #fff; border: none; } 
 
@@ -154,7 +155,6 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
                             <td><?= date('d M Y, H:i', strtotime($order['create_at'])) ?></td>
                             <td>
                                 <?php 
-                                    // Logika konversi nomor HP ke format Internasional (+62)
                                     $wa_number = isset($order['nomor']) ? $order['nomor'] : ''; 
                                     $wa_number = preg_replace('/[^0-9]/', '', $wa_number);
                                     
@@ -162,16 +162,13 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
                                         $wa_number = '62' . substr($wa_number, 1);
                                     }
                                 ?>
-                                <div class="action-group">
-                                    
-                                    <?php if(!empty($wa_number)): ?>
+                                <div class="action-group">  
                                     <a href="https://wa.me/<?= $wa_number ?>" target="_blank" class="btn-icon btn-wa" title="Chat WhatsApp Pelanggan">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M3 21l1.65 -3.8a9 9 0 1 1 3.4 2.9l-5.05 .9"></path>
                                             <path d="M9 10a.5 .5 0 0 0 1 0v-1a.5 .5 0 0 0 -1 0v1a5 5 0 0 0 5 5h1a.5 .5 0 0 0 0 -1h-1a.5 .5 0 0 0 0 1"></path>
                                         </svg>
                                     </a>
-                                    <?php endif; ?>
 
                                     <button class="btn-icon btn-detail" title="Detail Pesanan" onclick="openDetail(<?= $order['id'] ?>, '<?= $order['inv_no'] ?>')">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
@@ -193,6 +190,9 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
 
                                     <button class="btn-icon btn-print" title="Print Thermal Fisik" onclick="printThermal(<?= $order['id'] ?>)">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                                    </button>
+                                    <button class="btn-icon btn-delete" title="Hapus Order" onclick="deleteOrder(<?= $order['id'] ?>, '<?= $order['inv_no'] ?>')">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path<path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
                                     </button>
                                 </div>
                             </td>
@@ -349,6 +349,23 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
                 alert("Gagal menyimpan: " + data.message);
             }
         }).catch(err => alert("Terjadi kesalahan sistem."));
+    }
+
+    function deleteOrder(id){
+        if(!confirm("Yakin ingin menghapus order ini?")){
+            return;
+        }
+        fetch('/order/api_delete?id=' + id)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            }else{
+                alert("Gagal hapus Order");
+            }
+        }).catch(err => {
+            console.log(err);
+        });
     }
 
     function printThermal(id) {

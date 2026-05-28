@@ -22,7 +22,7 @@ try {
 
     $orderModel = new Order($pdo);
     
-    $order_id = $orderModel->createTransaction($customer_name, $inv_no, $nomor_konsumen, $total_harga, $items);
+    $order_id = $orderModel->createTransaction($customer_name, $inv_no, $nomor_konsumen, $items);
 
     echo json_encode([
         'status' => 'success',

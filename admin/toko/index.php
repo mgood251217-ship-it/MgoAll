@@ -1,24 +1,16 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
-require_once BASE_PATH . '/models/User.php';
+require_once BASE_PATH . '/controllers/UserController.php';
 require_once BASE_PATH . '/models/Location.php';
 require BASE_PATH . '/access_rights.php';
 
-$userModel = new User($koneksi);
+$userController = new UserController($koneksi);
 
-$result = $userModel->getUserByStoreId($store_id);
-while ($row = $result->fetch_assoc()) {
-    $users[] = $row;
-}
-$result->close();
+$users = $userController->getByStore($store_id);
 
 $locationModel = new Location($koneksi);
-$result = $locationModel->getAllLocation();
-while ($row = $result->fetch_assoc()) {
-    $locations[] = $row;
-}
-$result->close();
+$locations = $locationModel->getAllLocation();
 
 $success = $_SESSION['flash_success'] ?? '';
 $errors = $_SESSION['flash_errors'] ?? '';

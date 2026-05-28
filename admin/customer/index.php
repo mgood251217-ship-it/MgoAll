@@ -22,12 +22,6 @@ $start_input = $_GET['start_date'] ?? date('Y-m-d');
 $end_input = $_GET['end_date'] ?? date('Y-m-d');
 $search_text = trim($_GET['search'] ?? '');
 
-$start_dt = DateTime::createFromFormat('Y-m-d', $start_input);
-$end_dt = DateTime::createFromFormat('Y-m-d', $end_input);
-
-if (!$start_dt) $start_input = date('Y-m-d');
-if (!$end_dt) $end_input = date('Y-m-d');
-
 $start_date = $start_input . ' 00:00:00';
 $end_date = $end_input . ' 23:59:59';
 
@@ -189,7 +183,7 @@ if (isset($_SESSION['users'])) {
       <div id="page-content-wrapper">
         <div class="row align-items-end mb-4">
           <div class="col-md-auto">
-            <h1 class="mb-0" style="font-size:1.7rem;">Data Customer / Order</h1>
+            <h1 class="mb-0" style="font-size:1.7rem;">Data Order</h1>
           </div>
           <div class="col">
             <form method="post" action="toggle_preview_print.php" style="display:inline;">
@@ -241,7 +235,6 @@ if (isset($_SESSION['users'])) {
                 id="start_date"
                 class="form-control"
                 value="<?= htmlspecialchars($_GET['start_date'] ?? date('Y-m-d')) ?>"
-                onchange="this.form.submit()"
               >
             </div>
             <div class="col-auto">
@@ -252,7 +245,6 @@ if (isset($_SESSION['users'])) {
                 id="end_date"
                 class="form-control"
                 value="<?= htmlspecialchars($_GET['end_date'] ?? date('Y-m-d')) ?>"
-                onchange="this.form.submit()"
               >
             </div>
             <div class="col-auto">
@@ -264,8 +256,10 @@ if (isset($_SESSION['users'])) {
                 value="<?= htmlspecialchars($_GET['search'] ?? '') ?>"
                 class="form-control"
                 placeholder="Nama / Nomorator"
-                oninput="debouncedSubmit()"
               >
+            </div>
+            <div class="col-auto">
+              <input type="submit" value="Filter" class="btn btn-primary">
             </div>
           </form>
           </div>
@@ -296,7 +290,7 @@ if (isset($_SESSION['users'])) {
         <!-- Modal Tambah Order Baru -->
         <div class="modal fade" id="addOrderModal" tabindex="-1" aria-hidden="true">
           <div class="modal-dialog">
-            <form action="add_order.php" method="post" class="modal-content">
+            <form class="modal-content" id="addOrderForm">
               <div class="modal-header">
                 <h5 class="modal-title">Tambah Order Baru</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -304,15 +298,7 @@ if (isset($_SESSION['users'])) {
               <div class="modal-body">
                 <div class="mb-3 position-relative">
                   <label class="form-label">Nama Customer</label>
-                  <input 
-                    type="text" 
-                    name="customer_name" 
-                    id="customerNameInput" 
-                    class="form-control" 
-                    required 
-                    autocomplete="off"
-                    style="text-transform:uppercase"
-                    oninput="this.value = this.value.toUpperCase();" 
+                  <input type="text" name="customer_name" id="customerNameInput"  class="form-control" required  autocomplete="off" style="text-transform:uppercase" oninput="this.value = this.value.toUpperCase();" 
                   >
 
                   <div id="customerDropdown" 
@@ -328,24 +314,16 @@ if (isset($_SESSION['users'])) {
 
                 <div class="mb-3">
                   <label class="form-label">Deadline</label>
-                <?php
-                // Jam sekarang dibulatkan ke atas, menit 00
-                $value = date('Y-m-d\TH:00', strtotime('+1 hour'));
-                ?>
-                <input
-                  type="datetime-local"
-                  name="deadline"
-                  class="form-control"
-                  required
-                  step="60"
-                  value="<?= $value ?>"
-                >
+                  <?php
+                  $value = date('Y-m-d\TH:00', strtotime('+1 hour'));
+                  ?>
+                <input type="datetime-local" name="deadline" class="form-control" required step="60" value="<?= $value ?>">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Operator</label>
                   <?php if ($role === 'ONLINE'): ?>
                     <input type="hidden" name="user_id" value="<?= $user_id ?>">
-                    <input type="text" class="form-control" value="<?= htmlspecialchars($user['initial']) ?>" readonly>
+                    <input type="text" class="form-control" value="<?= htmlspecialchars($users[$user_id]) ?>" readonly>
                   <?php else: ?>
                     <select name="user_id" class="form-select" required>
                       <option value="">-- Pilih Operator --</option>
@@ -417,6 +395,7 @@ if (isset($_SESSION['users'])) {
             </form>
           </div>
         </div>
+
         <!-- Modal Payment -->
         <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
           <div class="modal-dialog modal-dialog-centered">
@@ -503,35 +482,35 @@ if (isset($_SESSION['users'])) {
           </div>
         </div>
 
-      <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-              <h5 class="modal-title" id="confirmDeleteLabel">Konfirmasi Hapus Orderan</h5>
-              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
-            </div>
-            <div class="modal-body">
-              Apakah Anda yakin ingin menghapus Orderan ini?
-              <br>
-              <div class="mb-1">
-                <label class="form-label">Keterangan</label>
-                <textarea type="text" class="form-control" name="keterangan_hapus" placeholder="Keterangan" require></textarea>
+        <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="confirmDeleteLabel">Konfirmasi Hapus Orderan</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
               </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-              <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Hapus</button>
+              <div class="modal-body">
+                Apakah Anda yakin ingin menghapus Orderan ini?
+                <br>
+                <div class="mb-1">
+                  <label class="form-label">Keterangan</label>
+                  <textarea type="text" class="form-control" name="keterangan_hapus" placeholder="Keterangan" require></textarea>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Hapus</button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div id="global-loading" class="global-loading d-none">
-        <div class="loading-content">
-          <div class="spinner-border text-light" role="status"></div>
-          <div class="mt-2">Loading...</div>
+        <div id="global-loading" class="global-loading d-none">
+          <div class="loading-content">
+            <div class="spinner-border text-light" role="status"></div>
+            <div class="mt-2">Loading...</div>
+          </div>
         </div>
-      </div>
 
 
       </div>
@@ -685,45 +664,45 @@ document.querySelectorAll('.order-row').forEach(row => {
   });
 });
 
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Delete' && window.selectedRow) {
-      let access = '<?= $access ?>';
-      if (access == 'all') {
-        
-        const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
-        modal.show();
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Delete' && window.selectedRow) {
+    let access = '<?= $access ?>';
+    if (access == 'all') {
+      
+      const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+      modal.show();
 
-      }else{
-        Swal.fire({
-          icon: "error",
-          title: "Tidak ada akses, Hubungi Administrator",
-          theme: '<?= ($mode === 1) ? 'dark' : '' ?>'
-        });
-      }
+    }else{
+      Swal.fire({
+        icon: "error",
+        title: "Tidak ada akses, Hubungi Administrator",
+        theme: '<?= ($mode === 1) ? 'dark' : '' ?>'
+      });
     }
-  });
+  }
+});
 
-  document.getElementById('confirmDeleteBtn').addEventListener('click', function () {
-    const orderId = window.selectedRow.dataset.orderId;
-    let keteranganHapus = document.querySelector("[name='keterangan_hapus']").value;
-    fetch('delete_order.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `order_id=${encodeURIComponent(orderId)}&keterangan_hapus=${keteranganHapus}`
-    }).then(res => res.json()).then(data => {
-      if (data.success) {
-        window.selectedRow.remove();
-        window.selectedRow = null;
-        const modalEl = document.getElementById('confirmDeleteModal');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        modal.hide();
-      } else {
-        alert('Gagal menghapus order: ' + data.message);
-      }
-    }).catch(err => {
-      alert('Terjadi kesalahan: ' + err);
-    });
+document.getElementById('confirmDeleteBtn').addEventListener('click', function () {
+  const orderId = window.selectedRow.dataset.orderId;
+  let keteranganHapus = document.querySelector("[name='keterangan_hapus']").value;
+  fetch('delete_order.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `order_id=${encodeURIComponent(orderId)}&keterangan_hapus=${keteranganHapus}`
+  }).then(res => res.json()).then(data => {
+    if (data.success) {
+      window.selectedRow.remove();
+      window.selectedRow = null;
+      const modalEl = document.getElementById('confirmDeleteModal');
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      modal.hide();
+    } else {
+      alert('Gagal menghapus order: ' + data.message);
+    }
+  }).catch(err => {
+    alert('Terjadi kesalahan: ' + err);
   });
+});
 
 document.getElementById('btnShowAddOrderModal')?.addEventListener('click', () => {
   const modalEl = document.getElementById('addOrderModal');
@@ -735,9 +714,54 @@ document.getElementById('btnShowAddOrderModal')?.addEventListener('click', () =>
     document.getElementById('customerNameInput')?.focus();
   }, { once: true });
 });
-document.getElementById("addOrderBtn")?.addEventListener('click', () => {
-  showGlobalLoading();
-})
+
+const addOrderForm = document.getElementById("addOrderForm");
+const addOrderBtn = document.getElementById("addOrderBtn");
+
+addOrderBtn.addEventListener('click', (e) => {
+    if (!addOrderForm.checkValidity()) {
+        addOrderForm.reportValidity();
+        return;
+    }
+    
+    e.preventDefault();
+    showGlobalLoading();
+    
+    const formData = new FormData(addOrderForm);
+    
+    fetch('add_order.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'nota';
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'order_id';
+            input.value = data.order_id;
+            
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        } else {
+            if (typeof hideGlobalLoading === 'function') {
+                hideGlobalLoading();
+            }
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        if (typeof hideGlobalLoading === 'function') {
+            hideGlobalLoading();
+        }
+        alert('Terjadi kesalahan sistem.');
+    });
+});
 
 function printStruk(order_id, store_id) {
   const url = `print_struk?order_id=${order_id}&store_id=${store_id}`;
@@ -747,14 +771,6 @@ function printStrukPDF(order_id, store_id) {
   const url = `print_struk_pdf?order_id=${order_id}&store_id=${store_id}`;
   window.open(url, "_blank");
 }
-
-const searchInput = document.getElementById('search');
-const filterForm = document.getElementById('filterForm');
-let searchTimeout;
-searchInput?.addEventListener('input', function () {
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(() => filterForm.submit(), 500);
-});
 
 document.querySelectorAll('.btn-edit').forEach(button => {
   button.addEventListener('click', function () {
@@ -773,8 +789,6 @@ document.querySelectorAll('.btn-edit').forEach(button => {
       document.getElementById('edit-user_id').value = data.user_id;
       document.getElementById('edit-sistem').value = data.system;
 
-
-      
       new bootstrap.Modal(document.getElementById('editOrderModal')).show();
     })
 
@@ -807,7 +821,6 @@ document.getElementById('btn-proses-massal').addEventListener('click', function 
   document.getElementById('customStatusWrapperMassal').classList.add('d-none');
   document.getElementById('customStatusMassal').value = '';
 
-  // Tampilkan modal
   new bootstrap.Modal(document.getElementById('modalProsesMassal')).show();
 });
 
@@ -828,7 +841,6 @@ document.querySelectorAll('.status-btn').forEach(btn => {
     statusInput.value = status;
     submitBtn.disabled = false;
 
-    // Toggle input status manual jika 'LAINNYA'
     if (status === 'LAINNYA') {
       customStatusWrapper.classList.remove('d-none');
       customStatusInput.focus();
@@ -851,7 +863,6 @@ document.querySelectorAll('.status-btn').forEach(btn => {
     btn.classList.remove('btn-outline-primary');
     btn.classList.add('btn-primary');
 
-    // Handle user select jika status DIAMBIL
     userSelect.innerHTML = '';
     if (status === 'DIAMBIL') {
       const keys = Object.keys(userList);
@@ -875,41 +886,40 @@ document.querySelectorAll('.status-btn').forEach(btn => {
   });
 });
 
-  const paymentForm = document.getElementById('paymentForm');
-  const nominalInput = document.getElementById('payment-nominal');
-  const nominalRaw = document.getElementById('payment-nominal-raw');
-  const feedback = document.getElementById('paymentFeedback');
+const paymentForm = document.getElementById('paymentForm');
+const nominalInput = document.getElementById('payment-nominal');
+const nominalRaw = document.getElementById('payment-nominal-raw');
+const feedback = document.getElementById('paymentFeedback');
 
-  // Format rupiah function (sama dengan yang kamu punya)
-  function formatRupiah(angka) {
-    let numberString = angka.replace(/[^,\d]/g, '').toString();
-    let split = numberString.split(',');
-    let sisa = split[0].length % 3;
-    let rupiah = split[0].substr(0, sisa);
-    let ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+function formatRupiah(angka) {
+  let numberString = angka.replace(/[^,\d]/g, '').toString();
+  let split = numberString.split(',');
+  let sisa = split[0].length % 3;
+  let rupiah = split[0].substr(0, sisa);
+  let ribuan = split[0].substr(sisa).match(/\d{3}/gi);
 
-    if (ribuan) {
-      let separator = sisa ? '.' : '';
-      rupiah += separator + ribuan.join('.');
-    }
-
-    rupiah = split[1] !== undefined ? rupiah + ',' + split[1] : rupiah;
-    return rupiah ? 'Rp ' + rupiah : '';
+  if (ribuan) {
+    let separator = sisa ? '.' : '';
+    rupiah += separator + ribuan.join('.');
   }
 
-  nominalInput.addEventListener('input', function(e) {
-    let cursorPos = nominalInput.selectionStart;
-    let originalLength = nominalInput.value.length;
+  rupiah = split[1] !== undefined ? rupiah + ',' + split[1] : rupiah;
+  return rupiah ? 'Rp ' + rupiah : '';
+}
 
-    let numericValue = nominalInput.value.replace(/[^,\d]/g, '');
-    nominalRaw.value = numericValue.replace(/\./g, '');
+nominalInput.addEventListener('input', function(e) {
+  let cursorPos = nominalInput.selectionStart;
+  let originalLength = nominalInput.value.length;
 
-    nominalInput.value = formatRupiah(numericValue);
+  let numericValue = nominalInput.value.replace(/[^,\d]/g, '');
+  nominalRaw.value = numericValue.replace(/\./g, '');
 
-    let updatedLength = nominalInput.value.length;
-    cursorPos = cursorPos + (updatedLength - originalLength);
-    nominalInput.setSelectionRange(cursorPos, cursorPos);
-  });
+  nominalInput.value = formatRupiah(numericValue);
+
+  let updatedLength = nominalInput.value.length;
+  cursorPos = cursorPos + (updatedLength - originalLength);
+  nominalInput.setSelectionRange(cursorPos, cursorPos);
+});
 
   // Submit via AJAX
   paymentForm.querySelectorAll('button[data-method]').forEach(btn => {
@@ -1090,26 +1100,26 @@ document.addEventListener('DOMContentLoaded', () => {
   toggleButton();
 });
 
-  document.addEventListener('DOMContentLoaded', function () {
-    const nominalInput = document.getElementById('payment-nominal');
-    const lunasButtons = document.querySelectorAll('[data-lunas="true"]');
-    const modal = document.getElementById('paymentModal');
+document.addEventListener('DOMContentLoaded', function () {
+  const nominalInput = document.getElementById('payment-nominal');
+  const lunasButtons = document.querySelectorAll('[data-lunas="true"]');
+  const modal = document.getElementById('paymentModal');
 
-    function updateLunasButtonState() {
-      const rawValue = nominalInput.value.replace(/[^\d]/g, '');
-      const isPartial = rawValue && parseInt(rawValue) > 0;
+  function updateLunasButtonState() {
+    const rawValue = nominalInput.value.replace(/[^\d]/g, '');
+    const isPartial = rawValue && parseInt(rawValue) > 0;
 
-      lunasButtons.forEach(button => {
-        button.disabled = isPartial;
-      });
-    }
-
-    modal.addEventListener('shown.bs.modal', function () {
-      updateLunasButtonState();
+    lunasButtons.forEach(button => {
+      button.disabled = isPartial;
     });
+  }
 
-    nominalInput.addEventListener('input', updateLunasButtonState);
+  modal.addEventListener('shown.bs.modal', function () {
+    updateLunasButtonState();
   });
+
+  nominalInput.addEventListener('input', updateLunasButtonState);
+});
 
 
 <?php

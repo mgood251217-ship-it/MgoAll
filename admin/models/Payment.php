@@ -23,11 +23,11 @@ class Payment {
     }
     
     public function getPaidByOrderId($id){
-        $stmt = $this->koneksi->prepare("SELECT COALESCE(SUM(nominal), 0) FROM payment WHERE order_id = ?");
+        $stmt = $this->koneksi->prepare("SELECT COALESCE(SUM(nominal), 0) AS total_nominal FROM payment WHERE order_id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
-        return $result ? $result['nominal'] : 0;
+        return $result ? $result['total_nominal'] : 0;
     }
 
     public function addTfImage ($data){

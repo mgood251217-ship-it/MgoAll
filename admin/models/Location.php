@@ -17,7 +17,8 @@ class Location{
     }
 
     public function getAllLocation(){
-        return $this->koneksi->query("SELECT * FROM locations");
+        $result = $this->koneksi->query("SELECT * FROM locations");
+        return $result->fetch_all(MYSQLI_ASSOC);
     }
 
     public function createLocation($data){

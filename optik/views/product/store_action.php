@@ -71,7 +71,7 @@ if ($type == 'delete_product') {
     $product = $stmtInfo->fetch();
 
     if ($product) {
-        if ($product['img'] && $product['img'] !== 'no-image.png' && file_exists('assets/products/' . $product['img'])) {
+        if ($product['img'] && $product['img'] !== 'default.png' && file_exists('assets/products/' . $product['img'])) {
             unlink('assets/products/' . $product['img']);
         }
         $stmtDel = $pdo->prepare("DELETE FROM products WHERE id = :id AND store_id = :store_id");
@@ -121,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $is_exists = $productModel->checkProductCodeExists($new_code, $store_id);
         } while ($is_exists == true);
 
-        $img_name = 'no-image.png';
+        $img_name = 'default.png';
         if (!empty($_FILES['img']['name'])) {
             $img_name = time() . '_' . $_FILES['img']['name'];
             compressAndResizeImage($_FILES['img']['tmp_name'], 'assets/products/' . $img_name, 800, 80);

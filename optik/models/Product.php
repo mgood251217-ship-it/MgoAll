@@ -47,7 +47,7 @@ class Product {
         } catch (PDOException $e) {
             die("<div style='padding:20px; background:#fee2e2; color:#991b1b;'><b>Error Count DB:</b> " . $e->getMessage() . "</div>");
         }
-    }
+    } 
 
     public function getProductsByStorePaginated($store_id, $brand_id = '', $search = '', $limit = 14, $offset = 0) {
         try {

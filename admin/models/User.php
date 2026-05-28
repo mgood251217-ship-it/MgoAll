@@ -37,15 +37,17 @@ class User{
         return $stmt->get_result();
     }
 
-    public function getUserByStoreId($id){
+    public function getUsersByStoreId($id){
         $stmt = $this->koneksi->prepare("SELECT * FROM users WHERE store_id = ?");
-        $stmt->bind_param('i', $id);
+        $stmt->bind_param("i", $id);
         $stmt->execute();
-        return $stmt->get_result();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $result;
     }
 
     public function getRoleById($id){
-        $stmt = $this->koneksi->prepare("SELECT role FROM users WHERE user_id = ?");
+        $stmt = $this->koneksi->prepare("SELECT `role` FROM users WHERE user_id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();

@@ -37,7 +37,7 @@ if (!isset($_SESSION['user_logged_in'])) {
     exit();
 }
 
-$ajax_routes = ['store', 'api_detail', 'api_pay', 'print'];
+$ajax_routes = ['store', 'api_detail', 'api_pay', 'api_delete', 'print'];
 
 if ($module === 'order' && in_array($action, $ajax_routes)) {
     include "views/order/" . $action . ".php";

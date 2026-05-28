@@ -8,12 +8,12 @@
   <link rel="icon" href="/assets/img/title_icon.webp" type="image/png">
   
   <!-- Bootstrap -->
-  <link href="/assets/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/admin/assets/css/bootstrap.min.css" rel="stylesheet">
   <style>
 
     body {
         min-height: 100vh;
-        background: url('https://mgood.my.id/assets/img/background.webp') no-repeat center center fixed;
+        background: url('https://mgood.my.id/admin/assets/img/background.webp') no-repeat center center fixed;
         background-size: cover;
       display: flex;
       justify-content: center;
@@ -108,7 +108,7 @@
 
 <div class="container">
   <!-- Logo Gambar -->
-  <img src="/assets/img/icon_web.webp" class="logo">
+  <img src="/admin/assets/img/icon_web.webp" class="logo">
 
   <h1>M G O</h1>
   <p>High Data Management Solutions</p>

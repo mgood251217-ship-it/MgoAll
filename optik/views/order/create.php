@@ -22,7 +22,6 @@ $productModel = new Product($pdo);
 $store_id = $_SESSION['store_id'] ?? 0;
 
 $limit  = 14; 
-// PERUBAHAN: Gunakan $_GET['hal'] untuk paginasi agar tidak bentrok dengan routing $_GET['page']
 $hal    = isset($_GET['hal']) ? (int)$_GET['hal'] : 1;
 if ($hal < 1) { $hal = 1; }
 $offset = ($hal - 1) * $limit;
@@ -38,9 +37,6 @@ $produk_db      = $productModel->getProductsByStorePaginated($store_id, $brand_i
 if (!is_array($brands)) $brands = [];
 if (!is_array($produk_db)) $produk_db = [];
 
-// ==============================================================
-// BLOK AJAX: Mengirim data JSON ke Javascript tanpa mereload HTML
-// ==============================================================
 $mapped_products = array_map(function($p) {
     return [
         'id' => $p['id'],
@@ -54,7 +50,6 @@ $mapped_products = array_map(function($p) {
 }, $produk_db);
 
 if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
-    // Bersihkan HTML dari layout (header/sidebar) yang mungkin sudah ter-print
     while (ob_get_level()) { ob_end_clean(); }
     header('Content-Type: application/json');
     echo json_encode([
@@ -71,10 +66,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
 <style>
     .pos-container { display: flex; width: 100%; height: calc(100vh - 70px); }
     
-    /* Tambahan overflow-x: hidden agar tidak menabrak ke kanan */
     .main-content { flex: 1; padding: 20px 30px; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; background: #f8fafc; }
     
-    /* Tambahan flex-shrink: 0 agar tidak tertutup/menyusut oleh produk */
     .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0; }
     .brand-filter-wrapper { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; scrollbar-width: none; flex-shrink: 0; }
     .brand-filter-wrapper::-webkit-scrollbar { display: none; }
@@ -100,7 +93,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
     .stock-badge { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); color: white; font-size: 10px; padding: 2px 6px; border-radius: 8px; font-weight: bold; backdrop-filter: blur(4px); transition: 0.3s; }
     .stock-badge.empty { background: #ef4444; }
 
-    /* Tambahan flex-wrap: wrap, flex-shrink: 0, dan margin-top: auto */
     .pagination { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 15px; padding-bottom: 15px; border-top: 1px solid #e2e8f0; flex-shrink: 0; }
     .page-link { padding: 8px 14px; border-radius: 8px; background: white; border: 1px solid #e2e8f0; color: #475569; text-decoration: none; font-size: 13px; font-weight: 600; cursor: pointer; }
     .page-link.active { background: #2b6cb0; color: white; border-color: #2b6cb0; }
@@ -254,21 +246,16 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
     let cart = []; 
     let html5QrcodeScanner = null;
 
-    // Simpan filter saat ini ke variabel Javascript
     let currentBrand = '<?= htmlspecialchars($brand_id) ?>';
     let currentSearch = '<?= htmlspecialchars($search) ?>';
     let currentHal = <?= $hal ?>;
 
-    // Data produk saat ini
     let globalProducts = <?= json_encode($mapped_products) ?>;
 
     function formatRupiah(angka) {
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
     }
 
-    // =====================================================================
-    // FUNGSI AJAX
-    // =====================================================================
     function loadData(brand, search, hal = 1) {
         currentBrand = brand;
         currentSearch = search;
@@ -305,9 +292,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
             });
     }
 
-    // =====================================================================
-    // FUNGSI RENDER HTML
-    // =====================================================================
     function renderGrid(products) {
         const grid = document.getElementById('product-grid-container');
         grid.innerHTML = '';
@@ -350,9 +334,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
         }
     }
 
-    // =====================================================================
-    // FUNGSI KERANJANG BELANJA & DISKON
-    // =====================================================================
     function addToCart(id) {
         let product = globalProducts.find(p => p.id === id);
         if(!product) return;
@@ -364,7 +345,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
             if (existingItem) {
                 existingItem.quantity += 1;
             } else {
-                // TAMBAHAN: Set diskon default = 0
                 cart.push({ 
                     product_id: product.id, 
                     name: product.name, 
@@ -416,7 +396,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
             cartContainer.innerHTML = '<p style="text-align:center; color:#888; font-size:13px; margin-top:50px;">Keranjang masih kosong</p>';
         } else {
             cart.forEach((item, index) => {
-                // Perhitungan Harga Setelah Diskon (Persen)
                 let discountAmount = item.price * (item.discount / 100);
                 let finalPrice = item.price - discountAmount;
                 let amount = finalPrice * item.quantity;
@@ -452,7 +431,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
             });
         }
 
-        total = Math.round(total / 500) * 500;
+        total = Math.floor(total / 500) * 500;
 
         cartSubtotal.innerText = formatRupiah(total);
         cartTotal.innerText = formatRupiah(total);
@@ -485,14 +464,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
         updateCartUI();
     }
 
-    // =====================================================================
-    // FUNGSI SCANNER
-    // =====================================================================
     let barcodeBuffer = '';
     let barcodeTimeout = null;
 
     document.addEventListener('keydown', function(e) {
-        // Jangan ganggu jika user sedang mengetik manual di kolom pencarian
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
         if (e.key === 'Enter') {
@@ -514,15 +489,13 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
 
     function processScannedCode(code) {
         if (!code || code.trim() === '') return;
-        if (isFetchingBarcode) return; // Mencegah scan bertumpuk yang bikin error
+        if (isFetchingBarcode) return;
 
-        // 1. Cari di halaman saat ini dulu
         let matchedProduct = globalProducts.find(p => p.code === code);
         
         if (matchedProduct) {
             addToCart(matchedProduct.id);
         } else {
-            // 2. Jika tidak ada, cari ke database
             isFetchingBarcode = true;
             document.getElementById('search-input').value = code;
             
@@ -545,14 +518,11 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                     
                     if (fetchedProduct) {
                         addToCart(fetchedProduct.id);
-                        // Bersihkan pencarian dan kembalikan grid seperti semula
                         document.getElementById('search-input').value = '';
                         setTimeout(() => loadData('', ''), 500);
                     } else {
-                        // JIKA BARANG TIDAK DITEMUKAN SAMA SEKALI
                         alert("Barcode '" + code + "' tidak terdaftar di database!");
                         document.getElementById('search-input').value = '';
-                        // KUNCI: Kembalikan grid ke semula agar tidak stuck di layar kosong
                         loadData('', ''); 
                     }
                     syncStockUI(); 
@@ -617,9 +587,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
     }
     function onScanFailure(error) {  }
 
-    // =====================================================================
-    // FUNGSI CHECKOUT
-    // =====================================================================
     const checkoutModal = document.getElementById('checkoutModal');
     
     document.getElementById('btn-proses').addEventListener('click', () => {

@@ -4,20 +4,56 @@ $productModel = new Product($pdo);
 
 $store_id = $_SESSION['store_id'];
 
-// Tangkap ID brand dari URL (jika ada)
-$active_brand = isset($_GET['brand']) ? $_GET['brand'] : '';
+$limit  = 14; 
+$hal    = isset($_GET['hal']) ? (int)$_GET['hal'] : 1;
+if ($hal < 1) { $hal = 1; }
+$offset = ($hal - 1) * $limit;
+$brand_id = isset($_GET['brand']) ? $_GET['brand'] : '';
+$search = isset($_GET['search']) ? $_GET['search'] : '';
 
-// Gunakan fungsi baru: Ambil produk sesuai brand, atau semua jika string kosong
-$products = $productModel->getProductsByBrand($store_id, $active_brand);
+// $products = $productModel->getProductsByBrand($store_id, $brand_id);
+$products = $productModel->getProductsByStorePaginated($store_id, $brand_id, $search, $limit, $offset);
 
 $brands   = $productModel->getBrandsByStore($store_id);
+$total_products = $productModel->countProductsByStore($store_id, $brand_id, $search);
+$total_pages    = ceil($total_products / $limit);
 $cats     = $productModel->getCategoriesGlobal();
+
+$mapped_products = array_map(function($p) {
+    return [
+        'id' => $p['id'],
+        'code' => $p['product_code'] ?? '',
+        'name' => $p['name'] ?? '',
+        'price' => $p['price'] ?? 0,
+        'maxStock' => $p['stock'] ?? 0,
+        'img' => $p['img'] ?? '',
+        'info' => $p['info'] ?? ''
+    ];
+}, $products);
+
+if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
+    while (ob_get_level()) { ob_end_clean(); }
+    header('Content-Type: application/json');
+    echo json_encode([
+        'products' => $mapped_products,
+        'total_pages' => $total_pages,
+        'current_page' => $hal
+    ]);
+    exit;
+}
 ?>
 
 <style>
     .product-container { padding: 30px; }
     .header-action { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; gap: 15px; }
-    
+
+    .search-box{ position: relative; min-width: 280px; }
+    .search-box input{ width: 100%; padding: 12px 16px 12px 42px; border-radius: 14px; border: 1px solid #e2e8f0; outline: none; font-size: 14px; background: white; transition: 0.2s; }
+    .search-box input:focus{ border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.1);}
+    .search-box svg{ position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #94a3b8;}
+    .btn-search {position: absolute;right: 5px;top: 50%;transform: translateY(-50%);height: calc(100% - 10px);padding: 0 16px;border: none;background: #3b82f6;color: white;font-size: 13px;font-weight: 600;cursor: pointer;border-radius: 10px;transition: 0.2s;z-index: 2;}
+    .btn-search:hover{ background: #2563eb; }
+
     .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
     .btn-primary { background: #2b6cb0; color: white; padding: 10px 20px; border-radius: 12px; border: none; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(43, 108, 176, 0.2); }
     .btn-primary:hover { background: #1e4e8c; transform: translateY(-1px); box-shadow: 0 6px 12px rgba(43, 108, 176, 0.3); }
@@ -124,6 +160,10 @@ $cats     = $productModel->getCategoriesGlobal();
     .form-group label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 5px; }
     .form-group input, .input-select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0; outline: none; font-size: 14px; }
 
+    .pagination { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 15px; padding-bottom: 15px; border-top: 1px solid #e2e8f0; flex-shrink: 0; }
+    .page-link { padding: 8px 14px; border-radius: 8px; background: white; border: 1px solid #e2e8f0; color: #475569; text-decoration: none; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .page-link.active { background: #2b6cb0; color: white; border-color: #2b6cb0; }
+
     @media (max-width: 768px) {
         .header-action { flex-direction: column; align-items: stretch; }
         .product-container { padding: 15px; }
@@ -154,19 +194,25 @@ $cats     = $productModel->getCategoriesGlobal();
             <p style="color: #64748b; font-size: 14px;">Total: <?= count($products) ?> Produk terdaftar</p>
         </div>
         <div class="btn-group">
+        <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="searchProduct" placeholder="Cari produk...">
+            <button class="btn-search" onclick="loadData(currentBrand, document.getElementById('searchProduct').value)">Cari</button>
+        </div>
             <button class="btn-primary" onclick="openModal('modalCat')" style="background:#10b981;">+ Kategori</button>
             <button class="btn-primary" onclick="openModal('modalBrand')" style="background:#8b5cf6;">+ Brand</button>
             <button class="btn-primary" onclick="openModal('modalProduct')">+ Produk Baru</button>
         </div>
     </div>
 
-    <?php $active_brand = isset($_GET['brand']) ? $_GET['brand'] : ''; ?>
-
     <div class="brand-section">
     <h3 class="brand-section-title">Daftar Brand Tersedia</h3>
     <div class="brand-flex">
         
-        <a href="?" class="brand-card <?= ($active_brand === '') ? 'active' : '' ?>">
+        <a href="?" class="brand-card <?= ($brand_id === '') ? 'active' : '' ?>">
             <div style="font-size:28px; color:#94a3b8; height:65px; display:flex; align-items:center; justify-content:center; margin-bottom:12px;">❖</div>
             <span>Semua Brand</span>
             <small style="color:transparent;">-</small>
@@ -174,7 +220,7 @@ $cats     = $productModel->getCategoriesGlobal();
 
         <?php if(!empty($brands)): ?>
             <?php foreach($brands as $b): ?>
-                <a href="?brand=<?= $b['id'] ?>" class="brand-card <?= ($active_brand == $b['id']) ? 'active' : '' ?>" data-brandcode="<?= htmlspecialchars($b['brand_code'] ?? '') ?>">
+                <a onclick="loadData('<?= $b['id'] ?>', document.getElementById('searchProduct').value)" class="brand-card <?= ($brand_id == $b['id']) ? 'active' : '' ?>" data-brandcode="<?= htmlspecialchars($b['brand_code'] ?? '') ?>">
                     
                     <div class="brand-actions">
                         <button type="button" class="btn-edit-brand" title="Edit Brand" onclick="event.preventDefault(); openEditBrand(<?= $b['id'] ?>, '<?= htmlspecialchars($b['name']) ?>', '<?= htmlspecialchars($b['brand_code'] ?? '') ?>')">
@@ -283,6 +329,16 @@ $cats     = $productModel->getCategoriesGlobal();
                 <?php endif; ?>
             </tbody>
         </table>
+    </div>
+
+    <div class="pagination" id="pagination-container">
+        <?php if($total_pages > 1): ?>
+            <?php for($i = 1; $i <= $total_pages; $i++): ?>
+                <button type="button" onclick="loadData(currentBrand, document.getElementById('searchProduct').value, <?= $i ?>)" class="page-link <?= ($hal == $i) ? 'active' : '' ?>">
+                    <?= $i ?>
+                </button>
+            <?php endfor; ?>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -495,6 +551,19 @@ $cats     = $productModel->getCategoriesGlobal();
 </div>
 
 <script>
+
+    let currentBrand = '<?= htmlspecialchars($brand_id) ?>';
+    let currentSearch = '<?= htmlspecialchars($search) ?>';
+    let currentHal = <?= $hal ?>;
+
+    function loadData(brand, search, hal = 1){
+        let currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('hal', hal);
+        currentUrl.searchParams.set('brand', brand);
+        currentUrl.searchParams.set('search', search);
+
+        window.location.href = currentUrl.toString();
+    }
     function openEditBrand(id, name, code) {
         document.getElementById('edit_brand_id_val').value = id;
         document.getElementById('edit_brand_name_val').value = name;
@@ -516,10 +585,7 @@ $cats     = $productModel->getCategoriesGlobal();
                 document.getElementById('edit_product_code').value = data.product_code;
                 document.getElementById('edit_name').value = data.name;
                 document.getElementById('edit_info').value = data.info;
-                
-                // Tambahan baris ini agar data Tahun (year) ikut dimuat ke dalam Modal Edit
                 document.getElementById('edit_year').value = data.year; 
-                
                 document.getElementById('edit_color').value = data.color;
                 document.getElementById('edit_price').value = data.price;
                 document.getElementById('edit_brand_id').value = data.brand_id;
@@ -566,32 +632,23 @@ $cats     = $productModel->getCategoriesGlobal();
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             
-            // Ukuran 40x30 mm
             canvas.width = 472;
             canvas.height = 354; 
 
-            // Warnai background putih
             ctx.fillStyle = '#FFFFFF';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Garis Kotak Luar
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 1;
             ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
 
-            // ========================================================
-            // BAGIAN 1: AREA ATAS (DIPUTAR 180 DERAJAT)
-            // ========================================================
-            ctx.save(); // Simpan state canvas normal
+            ctx.save();
             
-            // Pindahkan titik pusat rotasi ke tengah-tengah AREA ATAS (X: 236, Y: 88.5)
             ctx.translate(236, 88.5);
-            ctx.rotate(Math.PI); // Putar 180 derajat
-            ctx.translate(-236, -88.5); // Kembalikan titik pusat
+            ctx.rotate(Math.PI);
+            ctx.translate(-236, -88.5);
 
             ctx.fillStyle = '#000000';
-            
-            // 1. Nama dan Info (Akan otomatis tergambar terbalik dekat garis lipatan)
             ctx.font = 'bold 30px Calibri';
             ctx.textAlign = 'left';
             ctx.fillText(data.name || '-', 15, 38, 200); 
@@ -600,20 +657,13 @@ $cats     = $productModel->getCategoriesGlobal();
             ctx.textAlign = 'right';
             ctx.fillText((data.info || '-').substring(0, 20), 457, 38, 200); 
 
-            // 2. Harga 
             ctx.font = 'bold 45px Courier New';
             ctx.textAlign = 'center';
             ctx.fillText("Rp " + formatRp(data.price), 236, 126, 300);
 
-            ctx.restore(); // Kembalikan canvas ke posisi normal (tidak terputar)
-            // ========================================================
-
-            // ========================================================
-            // BAGIAN 2: AREA BAWAH (NORMAL / TIDAK DIPUTAR)
-            // ========================================================
+            ctx.restore();
             ctx.fillStyle = '#000000';
 
-            // 3. Barcode (Di area bawah, Y=225)
             let barcodeCanvas = document.createElement("canvas");
             JsBarcode(barcodeCanvas, data.product_code, {
                 format: "CODE128",
@@ -625,7 +675,6 @@ $cats     = $productModel->getCategoriesGlobal();
             });
             ctx.drawImage(barcodeCanvas, 180, 225, 275, 100);
 
-            // 4. QR Code Kotak (Di area bawah, Y=225)
             let qrCanvas = document.createElement('canvas');
             let qrData = data.brand_code ? data.brand_code : 'NO';
             
@@ -637,14 +686,12 @@ $cats     = $productModel->getCategoriesGlobal();
             });
             ctx.drawImage(qrCanvas, 40, 225, 80, 80);
 
-            // 5. Teks di bawah QR (Di area bawah, Y=332)
             let shortYear = data.year ? String(data.year).slice(-2) : '00';
             let brandText = qrData + ' ' + shortYear;
             
             ctx.font = 'bold 18px Calibri';
             ctx.textAlign = 'center';
             ctx.fillText(brandText, 80, 332, 140);
-            // ========================================================
 
             let imgURL = canvas.toDataURL("image/jpeg", 1.0);
             let link = document.createElement('a');
@@ -665,32 +712,24 @@ $cats     = $productModel->getCategoriesGlobal();
             document.getElementById('loadingPrint').style.display = 'none';
         });
     }
-</script>
-<script>
-    // ==========================================
-    // PENANGKAP BARCODE/QR SCANNER GLOBAL
-    // ==========================================
+
     let barcodeBuffer = '';
     let barcodeTimeout = null;
 
     document.addEventListener('keydown', function(e) {
-        // Jangan tangkap ketikan jika Anda sedang mengetik di dalam Form (seperti cari/edit produk)
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
             return;
         }
 
         if (e.key === 'Enter') {
             if (barcodeBuffer.length > 0) {
-                // Saat scanner menekan Enter otomatis, proses kode yang ditangkap
                 processBrandScan(barcodeBuffer.trim());
                 barcodeBuffer = '';
             }
         } else {
-            // Tangkap huruf/angka biasa
             if (e.key.length === 1) { 
                 barcodeBuffer += e.key;
                 clearTimeout(barcodeTimeout);
-                // Reset buffer jika ketikan terlalu lambat (Scanner biasanya mengetik 1 string utuh dalam < 50ms)
                 barcodeTimeout = setTimeout(() => { barcodeBuffer = ''; }, 100); 
             }
         }
@@ -700,7 +739,6 @@ $cats     = $productModel->getCategoriesGlobal();
         let cards = document.querySelectorAll('.brand-card');
         let foundUrl = null;
 
-        // Cari kartu brand yang 'data-brandcode'-nya cocok dengan hasil scan QR
         cards.forEach(card => {
             let code = card.getAttribute('data-brandcode');
             if (code && code.toLowerCase() === scannedCode.toLowerCase()) {
@@ -708,7 +746,6 @@ $cats     = $productModel->getCategoriesGlobal();
             }
         });
 
-        // Jika cocok, alihkan (redirect) halaman ke brand tersebut
         if (foundUrl) {
             window.location.href = foundUrl;
         } else {

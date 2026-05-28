@@ -12,7 +12,7 @@ if (isset($_SESSION['user']['user_id']) &&
     isset($_SESSION['user']['store_name']) &&
     isset($_SESSION['user']['store_address']) &&
     isset($_SESSION['user']['store_logo']) 
-    // isset($_SESSION['user']['mode'])
+    // isset($_SESSION['user']['mode']) 
 ) {
     $user_id = startEnk('dek', $_SESSION['user']['user_id']);
     $store_id = startEnk('dek', $_SESSION['user']['store_id']);

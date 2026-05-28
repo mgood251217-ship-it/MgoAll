@@ -254,5 +254,7 @@ function refreshFinance($store_id, $date) {
     $stmt->execute();
     $stmt->close();
 }
-
+function rupiah($angka) {
+    return 'Rp ' . number_format($angka, 0, ',', '.');
+}
 ?>

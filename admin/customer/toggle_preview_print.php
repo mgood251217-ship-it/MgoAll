@@ -27,12 +27,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_preview_print'
         $insert->close();
     }
 
-    // Redirect balik ke halaman sebelumnya (referrer) atau ke default halaman
     $redirect_url = $_SERVER['HTTP_REFERER'] ?? 'index.php';
     header("Location: $redirect_url");
     exit;
 }
 
-// Jika bukan POST, langsung redirect saja
 header("Location: customer.php");
 exit;

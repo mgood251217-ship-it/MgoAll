@@ -44,10 +44,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $stmt->close();
-    header("Location: customer.php");
+    header("Location: index");
     exit;
 } else {
-    header("Location: customer.php");
+    header("Location: index");
     exit;
 }
 ?>
