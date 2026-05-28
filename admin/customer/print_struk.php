@@ -3,7 +3,6 @@ require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 
 $order_id = (int)($_GET['order_id'] ?? 0);
-$store_id = (int)($_GET['store_id'] ?? 0);
 
 // Ambil info toko
 $stmt = $koneksi->prepare("SELECT name, address, nomor, logo, logo_print, branch FROM stores WHERE store_id = ?");

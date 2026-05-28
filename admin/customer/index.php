@@ -764,11 +764,11 @@ addOrderBtn.addEventListener('click', (e) => {
 });
 
 function printStruk(order_id, store_id) {
-  const url = `print_struk?order_id=${order_id}&store_id=${store_id}`;
+  const url = `print_struk?order_id=${order_id}`;
   window.open(url, "_blank");
 }
 function printStrukPDF(order_id, store_id) {
-  const url = `print_struk_pdf?order_id=${order_id}&store_id=${store_id}`;
+  const url = `print_struk_pdf?order_id=${order_id}`;
   window.open(url, "_blank");
 }
 
