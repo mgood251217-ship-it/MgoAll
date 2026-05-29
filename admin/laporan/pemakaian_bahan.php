@@ -44,35 +44,8 @@ $end_date   = $end_input . ' 23:59:59';
     <div id="page-content-wrapper">
         <?php require 'summary_cards.php'; ?>
         <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="mb-0">Pemakaian Bahan Harian</h1>
-        <form method="get" class="row g-2 align-items-end justify-content-end flex-nowrap" id="filterForm" style="margin-bottom:0;">
-          <div class="col-auto">
-            <label for="start_date" class="form-label">Dari</label>
-            <input
-              type="date"
-              name="start_date"
-              id="start_date"
-              class="form-control"
-              value="<?= htmlspecialchars($start_input) ?>"
-              onchange="this.form.submit()"
-            />
-          </div>
-          <div class="col-auto">
-            <label for="end_date" class="form-label">Sampai</label>
-            <input
-              type="date"
-              name="end_date"
-              id="end_date"
-              class="form-control"
-              value="<?= htmlspecialchars($end_input) ?>"
-              onchange="this.form.submit()"
-            />
-          </div>
-          <div class="col-auto align-self-end d-flex gap-2 flex-wrap">
-            <button type="button" class="btn btn-success" id="btnExportExcel">Export Excel</button>
-            <button type="button" class="btn btn-primary" id="btnExportWord">Export Word</button>
-          </div>
-        </form>
+            <h1 class="mb-0">Pemakaian Bahan Harian</h1>
+            <?php $showExport = true; include BASE_PATH . '/interval_date.php'; ?>
         </div>
 
 

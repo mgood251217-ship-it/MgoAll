@@ -113,7 +113,18 @@ if (isset($_SESSION['users'])) {
   $_SESSION['users'] = $users ;
 }
 
+$preview_print = 0;
 
+if ($user_id) {
+    $stmt = $koneksi->prepare("SELECT preview_print FROM user_setting WHERE user_id = ? LIMIT 1");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $stmt->bind_result($pp);
+    if ($stmt->fetch()) {
+        $preview_print = (int)$pp;
+    }
+    $stmt->close();
+}
 ?>
 
 
@@ -226,42 +237,9 @@ if (isset($_SESSION['users'])) {
           </form>
           </div>
           <div class="col">
-          <form method="get" class="row g-2 align-items-end justify-content-end flex-nowrap" id="filterForm" style="margin-bottom:0;">
-            <div class="col-auto">
-              <label for="start_date" class="form-label">Dari</label>
-              <input
-                type="date"
-                name="start_date"
-                id="start_date"
-                class="form-control"
-                value="<?= htmlspecialchars($_GET['start_date'] ?? date('Y-m-d')) ?>"
-              >
-            </div>
-            <div class="col-auto">
-              <label for="end_date" class="form-label">Sampai</label>
-              <input
-                type="date"
-                name="end_date"
-                id="end_date"
-                class="form-control"
-                value="<?= htmlspecialchars($_GET['end_date'] ?? date('Y-m-d')) ?>"
-              >
-            </div>
-            <div class="col-auto">
-              <label for="search" class="form-label">Cari</label>
-              <input
-                type="text"
-                name="search"
-                id="search"
-                value="<?= htmlspecialchars($_GET['search'] ?? '') ?>"
-                class="form-control"
-                placeholder="Nama / Nomorator"
-              >
-            </div>
-            <div class="col-auto">
-              <input type="submit" value="Filter" class="btn btn-primary">
-            </div>
-          </form>
+            <?php
+            $showSearch = true;
+            include BASE_PATH . '/interval_date.php'; ?>
           </div>
         </div>
 
@@ -538,6 +516,7 @@ if (isset($_SESSION['users'])) {
 <?php } ?>
 
 <script src="<?= BASE_URL ?>/assets/js/customer.js"></script>
+<iframe id="cetak-loader" style="position: absolute; width: 0; height: 0; border: none; left: -9999px;"></iframe>
 <script>
 function showGlobalLoading() {
   document.getElementById('global-loading').classList.remove('d-none');
@@ -762,14 +741,19 @@ addOrderBtn.addEventListener('click', (e) => {
         alert('Terjadi kesalahan sistem.');
     });
 });
-
+const previewPrintSetting = <?= $preview_print ?>;
 function printStruk(order_id, store_id) {
   const url = `print_struk?order_id=${order_id}`;
   window.open(url, "_blank");
 }
 function printStrukPDF(order_id, store_id) {
   const url = `print_struk_pdf?order_id=${order_id}`;
-  window.open(url, "_blank");
+  
+  if (previewPrintSetting === 0) {
+    document.getElementById('cetak-loader').src = url;
+  } else {
+    window.open(url, "_blank");
+  }
 }
 
 document.querySelectorAll('.btn-edit').forEach(button => {

@@ -263,46 +263,12 @@ $dataPemasukan = $dataPemasukan->get_result();
       <?php require 'summary_cards.php'; ?>
 
       <div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-3">
-        <!-- Judul di kiri atas -->
         <h1 class="mb-3 mb-md-0">Keuangan</h1>
-
-        <!-- Form dan tombol export di kanan -->
         <div class="d-flex flex-wrap justify-content-end align-items-end gap-2">
-          <form method="get" class="d-flex flex-wrap align-items-end gap-2" id="formTanggal">
-            <div>
-              <label class="form-label mb-1">Dari Tanggal</label>
-              <input 
-                type="date" 
-                name="start_date" 
-                value="<?= $start_date ?>" 
-                class="form-control form-control-sm"
-                onchange="document.getElementById('formTanggal').submit();"
-              >
-            </div>
-            <div>
-              <label class="form-label mb-1">Sampai Tanggal</label>
-              <input 
-                type="date" 
-                name="end_date" 
-                value="<?= $end_date ?>" 
-                class="form-control form-control-sm"
-                onchange="document.getElementById('formTanggal').submit();"
-              >
-
-            </div>
-          </form>
-
-          <div>
-            <label class="form-label mb-1 d-block invisible">Export</label>
-            <button id="btnExportExcel" class="btn btn-success btn-sm me-1">Export Excel</button>
-            <button id="btnExportWord" class="btn btn-primary btn-sm">Export Word</button>
-          </div>
+          <?php $showExport = true; include BASE_PATH . '/interval_date.php'; ?>
         </div>
       </div>
 
-
-
-      <!-- Card Data Keuangan -->
       <div class="card mb-4" <?= ($mode === 1) ? 'style="background-color: #333 !important; color: #e0e0e0 !important;"' : '' ?>>
         <div class="card-header bg-primary text-white">
           Keuangan Terkini (<?= date('d-m-Y', strtotime($start_date)) ?> s.d <?= date('d-m-Y', strtotime($end_date)) ?>)

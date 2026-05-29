@@ -34,35 +34,7 @@ $end_date   = $end_date_f . ' 23:59:59';
 
         <!-- Form dan tombol export di kanan -->
         <div class="d-flex flex-wrap justify-content-end align-items-end gap-2">
-          <form method="get" class="d-flex flex-wrap align-items-end gap-2" id="formTanggal">
-            <div>
-              <label class="form-label mb-1">Dari Tanggal</label>
-              <input 
-                type="date" 
-                name="start_date" 
-                value="<?= $start_date_f ?>" 
-                class="form-control form-control-sm"
-                onchange="document.getElementById('formTanggal').submit();"
-              >
-            </div>
-            <div>
-              <label class="form-label mb-1">Sampai Tanggal</label>
-              <input 
-                type="date" 
-                name="end_date" 
-                value="<?= $end_date_f ?>" 
-                class="form-control form-control-sm"
-                onchange="document.getElementById('formTanggal').submit();"
-              >
-
-            </div>
-          </form>
-
-          <div>
-            <label class="form-label mb-1 d-block invisible">Export</label>
-            <button id="btnExportExcel" class="btn btn-success btn-sm me-1">Export Excel</button>
-            <button id="btnExportWord" class="btn btn-primary btn-sm">Export Word</button>
-          </div>
+          <?php $showExport = true; include BASE_PATH . '/interval_date.php'; ?>
         </div>
       </div>
       <div class="table-responsive">

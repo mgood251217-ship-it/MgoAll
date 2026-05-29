@@ -25,7 +25,10 @@ class Stock{
         ");
         $stmt->bind_param("ii", $store_id, $store_id);
         $stmt->execute();
-        return $stmt->get_result();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $data;
     }
 
     public function createStock($data){
@@ -63,4 +66,4 @@ class Stock{
     }
     
 }
-?>
+?> 

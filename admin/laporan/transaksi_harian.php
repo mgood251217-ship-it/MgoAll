@@ -74,21 +74,13 @@ while ($row = $result->fetch_assoc()) {
 
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                 <h1 class="mb-0">Transaksi Harian</h1>
-                <form method="get" class="row g-2 align-items-end justify-content-end" id="filterForm" style="margin-bottom:0;">
-                    <div class="col-auto">
-                        <label for="start_date" class="form-label mb-0">Dari</label>
-                        <input type="date" class="form-control" name="start_date" id="start_date" value="<?= htmlspecialchars($start_input) ?>">
-                    </div>
-                    <div class="col-auto">
-                        <label for="end_date" class="form-label mb-0">Sampai</label>
-                        <input type="date" class="form-control" name="end_date" id="end_date" value="<?= htmlspecialchars($end_input) ?>">
-                    </div>
-                    <div class="col-auto align-self-end d-flex gap-2 flex-wrap">
-                        <!-- tombol Tampilkan dihilangkan -->
-                        <button type="button" class="btn btn-success" id="btnExportExcel">Export Excel</button>
-                        <button type="button" class="btn btn-primary" id="btnExportWord">Export Word</button>
-                    </div>
-                </form>
+                <div class="row g-2 align-items-end justify-content-end flex-nowrap" style="margin-bottom:0;">
+                <?php $showSearch = false; include BASE_PATH . '/interval_date.php'; ?>
+                <div class="col-auto align-self-end d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-success" id="btnExportExcel">Export Excel</button>
+                    <button type="button" class="btn btn-primary" id="btnExportWord">Export Word</button>
+                </div>
+                </div>
             </div>
             <div class="table-responsive">
                 <table class="table table-bordered table-striped" id="tableTransaksi">
@@ -177,14 +169,6 @@ while ($row = $result->fetch_assoc()) {
     </div>
     <?php include BASE_PATH . '/footer.php'; ?>
 </div>
-<script>
-document.getElementById('start_date').addEventListener('change', function() {
-    document.getElementById('filterForm').submit();
-});
-document.getElementById('end_date').addEventListener('change', function() {
-    document.getElementById('filterForm').submit();
-});
-</script>
 <script>
 // Export Excel
 document.getElementById('btnExportExcel').addEventListener('click', async function () {

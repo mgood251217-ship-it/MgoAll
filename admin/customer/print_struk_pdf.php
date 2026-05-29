@@ -374,7 +374,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const previewPrint = <?= $preview_print ?>;
     const filename = "<?= $filename ?>";
 
-    function generatePDF(shouldClose) {
+    function generatePDF() {
         html2canvas(element, {
             useCORS: true,
             scale: 3,
@@ -392,22 +392,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
             doc.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
             doc.save(filename);
-
-            if (shouldClose) {
-                setTimeout(() => {
-                    window.close();
-                }, 500);
-            }
         });
     }
 
     if (previewPrint === 0) {
-        generatePDF(true);
+        generatePDF();
     } else {
         const downloadBtn = document.getElementById('downloadBtn');
         if (downloadBtn) {
             downloadBtn.addEventListener('click', () => {
-                generatePDF(false);
+                generatePDF();
             });
         }
     }

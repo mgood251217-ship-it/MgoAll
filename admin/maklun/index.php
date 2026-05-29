@@ -210,23 +210,7 @@ function getFinishingNames($finishing, mysqli $koneksi){
       <h1>Maklun</h1>
 
       <div class="d-flex gap-2 align-items-end">
-        <form method="get" id="formTanggal" class="d-flex gap-2">
-          <div>
-            <label class="form-label">Dari</label>
-            <input type="date" name="start_date" value="<?= $start_date_f ?>" class="form-control form-control-sm"
-              onchange="this.form.submit()">
-          </div>
-          <div>
-            <label class="form-label">Sampai</label>
-            <input type="date" name="end_date" value="<?= $end_date_f ?>" class="form-control form-control-sm"
-              onchange="this.form.submit()">
-          </div>
-        </form>
-
-        <div>
-          <button id="btnExportExcel" class="btn btn-success btn-sm">Export Excel</button>
-          <button id="btnExportWord" class="btn btn-primary btn-sm">Export Word</button>
-        </div>
+        <?php $showExport = true; include BASE_PATH . '/interval_date.php'; ?>
       </div>
     </div>
 

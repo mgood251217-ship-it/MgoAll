@@ -1,12 +1,12 @@
 <?php
-class Location{
+class Location {
     private $koneksi;
 
-    public function __construct($koneksi){
+    public function __construct($koneksi) {
         $this->koneksi = $koneksi;
     }
 
-    public function checkLocation($id){
+    public function checkLocation($id) {
         $stmt = $this->koneksi->prepare("SELECT 1 FROM locations WHERE store_id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
@@ -16,31 +16,33 @@ class Location{
         return $exists;
     }
 
-    public function getAllLocation(){
-        $result = $this->koneksi->query("SELECT * FROM locations");
+    public function getAllLocation() {
+        $result = $this->koneksi->query("SELECT l.*, s.name FROM locations l JOIN stores s ON l.store_id = s.store_id");
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function createLocation($data){
-        $stmt = $this->koneksi->prepare("INSERT INTO locations (store_id, name, latitude, longitude) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("isss", $data->store_id, $data->store_name, $data->latitude, $data->longitude);
+    public function createLocation($data) {
+        $stmt = $this->koneksi->prepare("INSERT INTO locations (store_id, latitude, longitude) VALUES (?, ?, ?)");
+        $stmt->bind_param("iss", $data->store_id, $data->latitude, $data->longitude);
         $success = $stmt->execute();
         $stmt->close();
         return $success;
     }
 
-    public function updateLocation($data){
-        $stmt = $this->koneksi->prepare("UPDATE locations SET name = ?, latitude = ?, longitude = ? WHERE store_id = ?");
-        $stmt->bind_param("sssi", $data->name, $data->latitude, $data->longitude, $data->store_id);
+    public function updateLocation($data) {
+        $stmt = $this->koneksi->prepare("UPDATE locations SET latitude = ?, longitude = ? WHERE store_id = ?");
+        $stmt->bind_param("ssi", $data->latitude, $data->longitude, $data->store_id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;
     }
 
-    public function deleteLocation($id){
-        
+    public function deleteLocation($id) {
+        $stmt = $this->koneksi->prepare("DELETE FROM locations WHERE store_id = ?");
+        $stmt->bind_param("i", $id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
     }
-
 }
-
 ?>

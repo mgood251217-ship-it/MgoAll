@@ -1,8 +1,4 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 $limit = isset($_POST['limit']) ? (int)$_POST['limit'] : 0;

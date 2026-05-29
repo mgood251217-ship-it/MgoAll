@@ -1,25 +1,17 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
-require_once BASE_PATH . '/models/Stock.php';
+require_once BASE_PATH . '/controllers/StockController.php';
 
-$stockModel = new Stock($koneksi);
-$data = new stdClass();
-$data->id = $_POST['product_id'] ?? 0;
-$data->store_id = $store_id;
-$data->quantity = $_POST['quantity'] ?? 0;
-$stock = $_POST['stock'] ?? '';
+$stockController = new StockController($koneksi);
+$action = $_POST['stock'] ?? '';
 
-if ($stockModel->checkStock($data)) {
-    if ($stock == 'add_stock') {
-        $stockModel->createUpdateStock($data);
-    }else if ($stock == 'update_stock'){
-        $stockModel->updateStock($data);
-    }
+if ($action === 'add_stock') {
+    $stockController->addStock();
+} elseif ($action === 'update_stock') {
+    $stockController->updateStock();
 } else {
-    $stockModel->createStock($data);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'errors' => ['Aksi tidak valid.']]);
+    exit;
 }
-
-header("Location: index");
-exit;
-?>

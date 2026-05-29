@@ -1,15 +1,10 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
-require_once BASE_PATH . '/models/Stock.php';
+require_once BASE_PATH . '/controllers/StockController.php';
 
-$stockModel = new Stock($koneksi);
-$result = $stockModel->getAllStock($store_id);
-$stocks = [];
-while ($row = $result->fetch_assoc()) {
-    $stocks[] = $row;
-}
-$result->close();
+$stockController = new StockController($koneksi);
+$stocks = $stockController->index();
 ?>
 
 <!DOCTYPE html>
@@ -18,6 +13,7 @@ $result->close();
   <meta charset="UTF-8">
   <title>Stok Barang</title>
   <?php include BASE_PATH . '/header.php'; ?>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body>
@@ -44,8 +40,7 @@ $result->close();
                 <th>Nama Barang</th>
                 <th>Jumlah Stok</th>
                 <th>Satuan</th>
-                <?php
-                if ($role == 'ADMIN' || $role == 'MANAGER') { ?>
+                <?php if ($role == 'ADMIN' || $role == 'MANAGER') { ?>
                 <th class="text-nowrap" style="width: 180px;">Aksi</th>
                 <?php } ?>
               </tr>
@@ -66,16 +61,15 @@ $result->close();
                     ?>
                   </td>
                   <td><?= htmlspecialchars($s['unit_type'] ?? '-') ?></td>
-                  <?php
-                  if ($role == 'ADMIN' || $role == 'MANAGER') { ?>
+                  <?php if ($role == 'ADMIN' || $role == 'MANAGER') { ?>
                   <td class="text-nowrap">
-                    <form method="POST" action="stock_action.php" class="d-inline-flex me-1">
+                    <form method="POST" action="stock_action.php" class="d-inline-flex me-1 stock-form">
                       <input type="hidden" name="stock" value="add_stock">
                       <input type="hidden" name="product_id" value="<?= $s['product_id'] ?>">
                       <input type="number" name="quantity" step="0.01" class="form-control form-control-sm me-1" placeholder="+Qty" style="width: 70px;" required>
                       <button type="submit" class="btn btn-success btn-sm">Tambah</button>
                     </form>
-                    <form method="POST" action="stock_action.php" class="d-inline-flex">
+                    <form method="POST" action="stock_action.php" class="d-inline-flex stock-form">
                       <input type="hidden" name="stock" value="update_stock">
                       <input type="hidden" name="product_id" value="<?= $s['product_id'] ?>">
                       <input type="number" name="quantity" step="0.01" value="<?= $s['quantity'] ?>" class="form-control form-control-sm me-1" style="width: 70px;" required>
@@ -103,6 +97,41 @@ document.getElementById('searchInput').addEventListener('keyup', function () {
   rows.forEach(row => {
     const namaBarang = row.children[2]?.textContent.toLowerCase();
     row.style.display = namaBarang && namaBarang.includes(keyword) ? '' : 'none';
+  });
+});
+
+document.querySelectorAll('.stock-form').forEach(form => {
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    try {
+      const response = await fetch('stock_action.php', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const responseText = await response.text();
+      let data;
+      
+      try {
+        data = JSON.parse(responseText);
+      } catch (jsonError) {
+        console.error('Response server bukan JSON:', responseText);
+        Swal.fire({ icon: 'error', title: 'Format Error', text: 'Server tidak mengembalikan format JSON yang valid.' });
+        return;
+      }
+
+      if (data.success) {
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: data.message }).then(() => {
+          window.location.reload();
+        });
+      } else {
+        Swal.fire({ icon: 'error', title: 'Gagal', html: data.errors.join('<br>') });
+      }
+    } catch (error) {
+      console.error(error);
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan sistem.' });
+    }
   });
 });
 </script>

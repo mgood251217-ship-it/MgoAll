@@ -6,15 +6,10 @@ require_once BASE_PATH . '/models/Location.php';
 require BASE_PATH . '/access_rights.php';
 
 $userController = new UserController($koneksi);
-
 $users = $userController->getByStore($store_id);
 
 $locationModel = new Location($koneksi);
 $locations = $locationModel->getAllLocation();
-
-$success = $_SESSION['flash_success'] ?? '';
-$errors = $_SESSION['flash_errors'] ?? '';
-unset($_SESSION['flash_success'], $_SESSION['flash_errors']);
 ?>
 
 <!DOCTYPE html>
@@ -43,7 +38,6 @@ unset($_SESSION['flash_success'], $_SESSION['flash_errors']);
         </button>
       </div>
 
-      <!-- === DAFTAR USER === -->
       <?php if (empty($users)): ?>
         <div class="alert alert-warning">Belum ada user terdaftar.</div>
       <?php else: ?>
@@ -92,10 +86,10 @@ unset($_SESSION['flash_success'], $_SESSION['flash_errors']);
     <?php include BASE_PATH . '/footer.php'; ?>
   </div>
   <br>
-  <!-- === MODAL TAMBAH USER === -->
+
   <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-      <form method="POST" action="store_action.php" enctype="multipart/form-data" class="modal-content" autocomplete="off">
+      <form id="addUserForm" method="POST" action="store_action.php" enctype="multipart/form-data" class="modal-content" autocomplete="off">
         <input type="hidden" name="store" value="add_user">
         <div class="modal-header bg-success text-white">
           <h5 class="modal-title" id="addUserLabel">Tambah User Baru</h5>
@@ -125,7 +119,7 @@ unset($_SESSION['flash_success'], $_SESSION['flash_errors']);
             <div class="col-md-9">
               <select name="role" class="form-select" required>
                 <option value="">--Pilih--</option>
-                <option value="ADMIN">MANAGER</option>
+                <option value="MANAGER">MANAGER</option>
                 <option value="ADMIN">ADMIN</option>
                 <option value="SETTING">SETTING</option>
                 <option value="ONLINE">ONLINE</option>
@@ -156,7 +150,7 @@ unset($_SESSION['flash_success'], $_SESSION['flash_errors']);
 
   <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserLabel" aria-hidden="true">
     <div class="modal-dialog">
-      <form method="POST" action="store_action.php" enctype="multipart/form-data" class="modal-content">
+      <form id="editUserForm" method="POST" action="store_action.php" enctype="multipart/form-data" class="modal-content">
         <input type="hidden" name="store" value="update_user">
         <div class="modal-header">
           <h5 class="modal-title" id="editUserLabel">Edit User</h5>
@@ -182,6 +176,7 @@ unset($_SESSION['flash_success'], $_SESSION['flash_errors']);
             <label>Role</label>
             <select name="role" id="edit_role" class="form-select" required>
               <option value="">--Pilih--</option>
+              <option value="MANAGER">MANAGER</option>
               <option value="ADMIN">ADMIN</option>
               <option value="SETTING">SETTING</option>
               <option value="ONLINE">ONLINE</option>
@@ -204,11 +199,43 @@ unset($_SESSION['flash_success'], $_SESSION['flash_errors']);
       </form>
     </div>
   </div>
-
-  
 </div>
 
 <script>
+  async function sendFormData(formElement, modalId = null) {
+    const formData = new FormData(formElement);
+    try {
+      const response = await fetch('store_action.php', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        if (modalId) {
+          bootstrap.Modal.getInstance(document.getElementById(modalId))?.hide();
+        }
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: data.message }).then(() => {
+          window.location.reload();
+        });
+      } else {
+        Swal.fire({ icon: 'error', title: 'Gagal', html: data.errors.join('<br>') });
+      }
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan sistem.' });
+    }
+  }
+
+  document.getElementById('addUserForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    sendFormData(this, 'addUserModal');
+  });
+
+  document.getElementById('editUserForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    sendFormData(this, 'editUserModal');
+  });
+
   document.querySelectorAll('.delete-user-form').forEach(form => {
     form.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -223,18 +250,10 @@ unset($_SESSION['flash_success'], $_SESSION['flash_errors']);
         cancelButtonText: 'Batal'
       }).then((result) => {
         if (result.isConfirmed) {
-          form.submit();
+          sendFormData(form);
         }
       });
     });
-  });
-
-  document.addEventListener("DOMContentLoaded", function () {
-    <?php if (!empty($success)): ?>
-      Swal.fire({ icon: 'success', title: 'Berhasil', text: '<?= addslashes($success) ?>' });
-    <?php elseif (!empty($errors)): ?>
-      Swal.fire({ icon: 'error', title: 'Gagal', html: `<?= implode('<br>', array_map('htmlspecialchars', $errors)) ?>` });
-    <?php endif; ?>
   });
 
   document.querySelectorAll('.btn-edit').forEach(btn => {
@@ -250,11 +269,10 @@ unset($_SESSION['flash_success'], $_SESSION['flash_errors']);
     });
   });
 </script>
-<!-- Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
-<!-- Leaflet JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 <script>
 let map;
 let userMarker;
@@ -279,9 +297,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       .bindPopup(loc.name);
   });
 
-  // Saat klik tombol "Set Lokasi"
   document.getElementById('setLocationBtn').addEventListener('click', () => {
-    alert('Klik di peta untuk memilih lokasi toko.');
+    Swal.fire({ icon: 'info', title: 'Pilih Lokasi', text: 'Klik di peta untuk memilih lokasi toko.' });
 
     map.off('click');
 
@@ -299,26 +316,29 @@ window.addEventListener('DOMContentLoaded', async () => {
 
       setTimeout(() => {
         document.getElementById('saveLocationBtn')?.addEventListener('click', async () => {
-        const pos = tempMarker.getLatLng();
-        const formData = new FormData();
-        formData.append('latitude', pos.lat);
-        formData.append('longitude', pos.lng);
-        formData.append('store', 'set_location');
+          const pos = tempMarker.getLatLng();
+          const formData = new FormData();
+          formData.append('latitude', pos.lat);
+          formData.append('longitude', pos.lng);
+          formData.append('store', 'set_location');
 
-        const res = await fetch('store_action.php', {
-          method: 'POST',
-          body: formData
-        });
+          try {
+            const res = await fetch('store_action.php', {
+              method: 'POST',
+              body: formData
+            });
+            const data = await res.json();
 
-
-          if (res.ok) {
-            alert('Lokasi berhasil disimpan!');
-            window.location.reload()
-          } else {
-            const text = await res.text();
-            alert('Gagal menyimpan lokasi! Server response:\n' + text);
+            if (data.success) {
+              Swal.fire({ icon: 'success', title: 'Berhasil', text: data.message }).then(() => {
+                window.location.reload();
+              });
+            } else {
+              Swal.fire({ icon: 'error', title: 'Gagal', text: data.errors.join('<br>') });
+            }
+          } catch (error) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan sistem saat menyimpan lokasi.' });
           }
-
         });
       }, 300);
     });

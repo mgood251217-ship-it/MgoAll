@@ -1,5 +1,4 @@
 <?php
-// Product.php
 class Product{
     private $koneksi;
 
@@ -27,25 +26,34 @@ class Product{
         $stmt = $this->koneksi->prepare("SELECT * FROM products WHERE store_id = ?");
         $stmt->bind_param('i', $store_id);
         $stmt->execute();
-        return $stmt->get_result();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $data;
     }
 
     public function getProductById ($product_id){
         $stmt = $this->koneksi->prepare("SELECT * FROM products WHERE product_id = ? LIMIT 1");
         $stmt->bind_param('i', $product_id);
         $stmt->execute();
-        return $stmt->get_result();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $data;
     }
-
+ 
     public function getPrice ($product_id){
         $stmt = $this->koneksi->prepare("SELECT price FROM products WHERE product_id = ? LIMIT 1");
         $stmt->bind_param('i', $product_id);
         $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $data;
     }
 
     public function deleteProductById($data){
-        $stmt = $this->koneksi->prepare("DELETE FROM products WHERE product_id = ? AND LIMIT 1");
+        $stmt = $this->koneksi->prepare("DELETE FROM products WHERE product_id = ? LIMIT 1");
         $stmt->bind_param('i', $data->id);
         $success = $stmt->execute();
         $stmt->close();

@@ -228,34 +228,9 @@ if (!empty($allFinishingIds)) {
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <h1 class="mb-0">Transaksi Detil</h1>
 
-        <form method="get" class="row g-2 align-items-end justify-content-end flex-nowrap" id="filterForm" style="margin-bottom:0;">
-          <div class="col-auto">
-            <label for="start_date" class="form-label">Dari</label>
-            <input
-              type="date"
-              name="start_date"
-              id="start_date"
-              class="form-control"
-              value="<?= htmlspecialchars($_GET['start_date'] ?? date('Y-m-d')) ?>"
-              onchange="this.form.submit()"
-            >
-          </div>
-          <div class="col-auto">
-            <label for="end_date" class="form-label">Sampai</label>
-            <input
-              type="date"
-              name="end_date"
-              id="end_date"
-              class="form-control"
-              value="<?= htmlspecialchars($_GET['end_date'] ?? date('Y-m-d')) ?>"
-              onchange="this.form.submit()"
-            >
-          </div>
-          <div class="col-auto align-self-end d-flex gap-2 flex-wrap">
-            <button type="button" class="btn btn-success" id="btnExportExcel">Export Excel</button>
-            <button type="button" class="btn btn-primary" id="btnExportWord">Export Word</button>
-          </div>
-        </form>
+        <div class="row g-2 align-items-end justify-content-end flex-nowrap" style="margin-bottom:0;">
+          <?php $showExport = true; include BASE_PATH . '/interval_date.php'; ?>
+        </div>
       </div>
 
       <div class="table-responsive">
