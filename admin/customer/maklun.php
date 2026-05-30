@@ -1,16 +1,19 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/models/Order.php';
 
-$order_item_id = (int)$_POST['order_item_id'];
-$store_id_maklun = (int)$_POST['store_id_maklun'];
+$orderModel = new Order($koneksi);
 
-$stmtUpdate = $koneksi->prepare("UPDATE order_items SET maklun = ? WHERE order_item_id = ?");
-$stmtUpdate->bind_param("ii", $store_id_maklun, $order_item_id);
-if ($stmtUpdate->execute()) {
+$data = new stdClass();
+$data->store_id_maklun = $_POST['store_id_maklun'];
+$data->order_item_id = $_POST['order_item_id'];
+$update = $orderModel->updateMaklun($data);
+
+if ($update) {
     echo json_encode(['success' => true]);
 } else {
     echo json_encode(['success' => false]);
 }
 
-?>
+?>  

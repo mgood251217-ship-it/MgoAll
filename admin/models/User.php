@@ -64,6 +64,16 @@ class User{
         return $exists;
     }
 
+    public function checkValidOperator($user_id, $store_id) {
+        $stmt = $this->koneksi->prepare("SELECT user_id FROM users WHERE user_id = ? AND store_id = ?");
+        $stmt->bind_param("ii", $user_id, $store_id);
+        $stmt->execute();
+        $stmt->store_result();
+        $isValid = $stmt->num_rows > 0;
+        $stmt->close();
+        return $isValid;
+    }
+
     public function checkDuplicateUser ($data) {
         $stmt = $this->koneksi->prepare("SELECT 1 FROM users WHERE username = ? AND user_id != ?");
         $stmt->bind_param("si", $data->username, $data->user_id);

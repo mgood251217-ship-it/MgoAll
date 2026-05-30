@@ -24,6 +24,11 @@ class ProductController {
         return $data;
     }
 
+    public function index() {
+        global $store_id;
+        return $this->productModel->getProductByStoreId($store_id);
+    }
+
     public function createProduct() {
         header('Content-Type: application/json');
         $data = $this->requestData();

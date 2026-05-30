@@ -15,11 +15,29 @@ class Payment {
         return $success;
     }
 
+    public function deletePaymentByOrderId($id) {
+        $stmt = $this->koneksi->prepare("DELETE FROM payment WHERE order_id = ?");
+        $stmt->bind_param("i", $id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
     public function getPaymentById($id){
-        $stmt = $this->koneksi->prepare("SELECT * FROM payments WHERE payment_id = ? LIMIT 1");
+        $stmt = $this->koneksi->prepare("SELECT * FROM payment WHERE payment_id = ? LIMIT 1");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         return $stmt->get_result();
+    }
+
+    public function getPaymentByOrderId($id){
+        $stmt = $this->koneksi->prepare("SELECT * FROM payment WHERE order_id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $data;
     }
     
     public function getPaidByOrderId($id){

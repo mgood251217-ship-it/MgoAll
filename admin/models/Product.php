@@ -41,6 +41,18 @@ class Product{
         $stmt->close();
         return $data;
     }
+
+    public function getProductByTypeAndStoreId($data){
+        $stmt = $this->koneksi->prepare("SELECT * FROM products WHERE type = ? AND store_id = ?");
+        // 's' untuk string (type), 'i' untuk integer (store_id)
+        $stmt->bind_param('si', $data->type, $data->store_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $products = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        return $products;
+    }
  
     public function getPrice ($product_id){
         $stmt = $this->koneksi->prepare("SELECT price FROM products WHERE product_id = ? LIMIT 1");

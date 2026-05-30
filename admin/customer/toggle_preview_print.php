@@ -3,7 +3,6 @@ require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_preview_print'])) {
-    // Cek data lama
     $stmt = $koneksi->prepare("SELECT preview_print FROM user_setting WHERE user_id = ? LIMIT 1");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();

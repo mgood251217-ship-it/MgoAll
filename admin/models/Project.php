@@ -22,6 +22,14 @@ class Project{
         return $success;
     }
 
+    public function deleteProjectByOrderId($id) {
+        $stmt = $this->koneksi->prepare("DELETE FROM projects WHERE order_id = ?");
+        $stmt->bind_param("i", $id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
     public function getLastProjectProcessByOrderId($id){
         $stmt = $this->koneksi->prepare("SELECT process FROM projects WHERE order_id = ? ORDER BY date DESC LIMIT 1");
         $stmt->bind_param("i", $id);

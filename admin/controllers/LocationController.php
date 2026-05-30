@@ -19,6 +19,10 @@ class LocationController {
         return $data;
     }
 
+    public function index() {
+        return $this->locationModel->getAllLocation();
+    }
+
     public function setLocation() {
         header('Content-Type: application/json');
         $data = $this->requestData();

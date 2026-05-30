@@ -4,7 +4,6 @@ require_once BASE_PATH . '/session.php';
 
 $order_id = (int)$_GET['order_id'];
 
-// Ambil data order_items dengan product_id dan finishing
 $sql = "
     SELECT 
         oi.order_item_id,

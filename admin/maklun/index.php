@@ -163,18 +163,11 @@ function getFinishingNames($finishing, mysqli $koneksi){
           $stmtF->execute();
           $resF = $stmtF->get_result();
           $all_names = [];
-          $utama_names = [];
-          $kissdie_names = [];
+
 
           while ($rF = $resF->fetch_assoc()) {
               $name = $rF['name'];
               $all_names[] = $name;
-
-              if (stripos($name, 'KISS CUT') !== false || stripos($name, 'DIE CUT') !== false) {
-                  $kissdie_names[] = $name;
-              } else {
-                  $utama_names[] = $name;
-              }
           }
           $stmtF->close();
 
@@ -204,20 +197,15 @@ function getFinishingNames($finishing, mysqli $koneksi){
 <?php include BASE_PATH . '/sidebar.php'; ?>
 
   <div id="page-content-wrapper">
-
-    <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-end mb-4">
       <h1>Maklun</h1>
-
       <div class="d-flex gap-2 align-items-end">
         <?php $showExport = true; include BASE_PATH . '/interval_date.php'; ?>
       </div>
     </div>
 
-    <!-- TABLES 50% : 50% -->
     <div class="row">
 
-      <!-- MAKLUNAN -->
       <div class="col-md-6">
         <h4>Data Maklun Masuk</h4>
         <div class="table-responsive">
@@ -282,7 +270,6 @@ function getFinishingNames($finishing, mysqli $koneksi){
         </div>
       </div>
 
-      <!-- NGEMAKLUN -->
       <div class="col-md-6">
         <h4>Data Maklun Keluar</h4>
         <div class="table-responsive">

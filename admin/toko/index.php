@@ -2,14 +2,14 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/controllers/UserController.php';
-require_once BASE_PATH . '/models/Location.php';
+require_once BASE_PATH . '/controllers/LocationController.php';
 require BASE_PATH . '/access_rights.php';
 
 $userController = new UserController($koneksi);
-$users = $userController->getByStore($store_id);
+$users = $userController->index();
 
-$locationModel = new Location($koneksi);
-$locations = $locationModel->getAllLocation();
+$locationController = new LocationController($koneksi);
+$locations = $locationController->index();
 ?>
 
 <!DOCTYPE html>

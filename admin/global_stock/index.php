@@ -233,6 +233,10 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
                 </div>
 
                 <div class="d-flex gap-2">
+                    <button class="btn btn-warning btn-sm text-dark fw-bold" id="btnExportExcel">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="vertical-align: sub;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM15 15H9v-2h6v2zm-2 4H9v-2h4v2z"/></svg> 
+                        Export Excel
+                    </button>
                     <button class="btn btn-secondary btn-sm text-white" data-bs-toggle="modal" data-bs-target="#historyDeliveryModal">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="vertical-align: sub;"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"/><path d="M13 7h-2v6h6v-2h-4z"/></svg>
                         Riwayat
@@ -650,10 +654,237 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
     </div>
 </div>
 
+<script src="<?= BASE_URL ?>/assets/js/exceljs.min.js"></script>
+<script src="<?= BASE_URL ?>/assets/js/FileSaver.min.js"></script>
+
 <script>
 const otherStoresStocks = <?= json_encode($other_stores_stocks) ?>;
+const groupedStocks = <?= json_encode($grouped_stocks, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+const daysInMonth = <?= $days_in_month ?>;
+const selectedMonthStr = '<?= $selected_month ?>';
 
-// JS Untuk Otomatisasi Dropdown Barang Tujuan di Form Kirim Barang
+// Data Toko Diambil dari PHP agar kop Excel Dinamis
+const toko = "<?= addslashes($storeName) ?>";
+const alamat = "<?= addslashes($storeAddress) ?>";
+
+document.getElementById('btnExportExcel').addEventListener('click', async () => {
+    if (typeof ExcelJS === 'undefined') {
+        alert('Library ExcelJS belum termuat sempurna.');
+        return;
+    }
+
+    const loading = document.getElementById('global-loading');
+    loading.classList.remove('d-none');
+
+    try {
+        const workbook = new ExcelJS.Workbook();
+        
+        // Atur landscape karena jumlah kolom mencapai 60+ (tanggal 1-31 SM & SK)
+        const sheet = workbook.addWorksheet('Stok ' + selectedMonthStr, {
+            pageSetup: { paperSize: 9, orientation: 'landscape' }
+        });
+
+        // Hitung total Max Kolom Excel (No, Nama, UK, Awal + Tanggal*2 + Total*2 + Akhir)
+        const maxCols = 4 + (daysInMonth * 2) + 3;
+        
+        // Judul toko (merge dan center)
+        sheet.mergeCells(1, 1, 1, maxCols);
+        const cellToko = sheet.getCell(1, 1);
+        cellToko.value = toko;
+        cellToko.font = { bold: true, size: 16 };
+        cellToko.alignment = { horizontal: "center", vertical: "middle" };
+        sheet.getRow(1).height = 25;
+
+        // Alamat toko (merge dan center)
+        sheet.mergeCells(2, 1, 2, maxCols);
+        const cellAlamat = sheet.getCell(2, 1);
+        cellAlamat.value = alamat;
+        cellAlamat.alignment = { horizontal: "center", vertical: "middle" };
+
+        sheet.addRow([]);
+
+        // Judul laporan
+        sheet.mergeCells(4, 1, 4, maxCols);
+        const cellJudul = sheet.getCell(4, 1);
+        cellJudul.value = "LAPORAN STOK BAHAN GLOBAL - " + selectedMonthStr;
+        cellJudul.font = { bold: true, size: 14 };
+        cellJudul.alignment = { horizontal: "center", vertical: "middle" };
+
+        sheet.addRow([]);
+
+        let currentRow = 6; 
+        const borderStyle = {
+            top: {style:'thin'}, left: {style:'thin'}, 
+            bottom: {style:'thin'}, right: {style:'thin'}
+        };
+        const alignCenter = { horizontal: 'center', vertical: 'middle' };
+
+        for (const catName in groupedStocks) {
+            const itemsGroup = groupedStocks[catName];
+
+            // Tulis Nama Kategori (Tanpa Background)
+            sheet.mergeCells(currentRow, 1, currentRow, maxCols);
+            const titleCell = sheet.getCell(currentRow, 1);
+            titleCell.value = 'KATEGORI: ' + catName.toUpperCase();
+            titleCell.font = { bold: true, size: 12 };
+            currentRow++;
+
+            // Render Header Kolom Tabel (Row 1 dan Row 2)
+            const h1 = sheet.getRow(currentRow);
+            const h2 = sheet.getRow(currentRow + 1);
+
+            h1.getCell(1).value = 'No'; sheet.mergeCells(currentRow, 1, currentRow + 1, 1);
+            h1.getCell(2).value = 'Jenis Bahan'; sheet.mergeCells(currentRow, 2, currentRow + 1, 2);
+            h1.getCell(3).value = 'UK'; sheet.mergeCells(currentRow, 3, currentRow + 1, 3);
+            h1.getCell(4).value = 'SA (Awal)'; sheet.mergeCells(currentRow, 4, currentRow + 1, 4);
+
+            let colIndex = 5;
+            for (let d = 1; d <= daysInMonth; d++) {
+                h1.getCell(colIndex).value = d;
+                sheet.mergeCells(currentRow, colIndex, currentRow, colIndex + 1);
+                
+                h2.getCell(colIndex).value = 'SM';
+                h2.getCell(colIndex + 1).value = 'SK';
+                colIndex += 2;
+            }
+
+            h1.getCell(colIndex).value = 'Total';
+            sheet.mergeCells(currentRow, colIndex, currentRow, colIndex + 1);
+            h2.getCell(colIndex).value = 'SM';
+            h2.getCell(colIndex + 1).value = 'SK';
+            colIndex += 2;
+
+            h1.getCell(colIndex).value = 'SA (Akhir)';
+            sheet.mergeCells(currentRow, colIndex, currentRow + 1, colIndex);
+
+            // Terapkan Styling Header Biru (Format Sama Persis Seperti Permintaan Anda)
+            for(let rowNum = currentRow; rowNum <= currentRow+1; rowNum++){
+                const hr = sheet.getRow(rowNum);
+                for(let c = 1; c <= maxCols; c++){
+                    const cell = hr.getCell(c);
+                    cell.border = borderStyle;
+                    cell.alignment = alignCenter;
+                    cell.font = { bold: true };
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFCCE5FF' } // Biru Muda
+                    };
+                }
+            }
+
+            currentRow += 2; 
+
+            let no = 1;
+            for (const itemName in itemsGroup) {
+                const sizes = itemsGroup[itemName];
+                const rowSpanCount = Object.keys(sizes).length;
+                const startRow = currentRow;
+
+                for (const id in sizes) {
+                    const s = sizes[id];
+                    const r = sheet.getRow(currentRow);
+
+                    if (currentRow === startRow) {
+                        r.getCell(1).value = no++;
+                        r.getCell(2).value = itemName;
+                    }
+
+                    r.getCell(3).value = s.size;
+                    r.getCell(4).value = parseFloat(s.sa_awal) || 0;
+                    
+                    // Format Angka Rata Kanan (Seperti di Laporan Piutang)
+                    r.getCell(4).numFmt = '#,##0';
+
+                    let cIdx = 5;
+                    let totalSm = 0;
+                    let totalSk = 0;
+
+                    for (let d = 1; d <= daysInMonth; d++) {
+                        const sm = parseFloat(s.daily[d].sm);
+                        const sk = parseFloat(s.daily[d].sk);
+                        
+                        const cellSm = r.getCell(cIdx);
+                        const cellSk = r.getCell(cIdx + 1);
+                        
+                        cellSm.value = sm > 0 ? sm : '';
+                        cellSk.value = sk > 0 ? sk : '';
+                        
+                        cellSm.numFmt = '#,##0';
+                        cellSk.numFmt = '#,##0';
+                        
+                        totalSm += sm || 0;
+                        totalSk += sk || 0;
+                        cIdx += 2;
+                    }
+
+                    const cellTotalSm = r.getCell(cIdx);
+                    const cellTotalSk = r.getCell(cIdx + 1);
+                    const cellSaAkhir = r.getCell(cIdx + 2);
+
+                    cellTotalSm.value = totalSm > 0 ? totalSm : '';
+                    cellTotalSk.value = totalSk > 0 ? totalSk : '';
+                    cellSaAkhir.value = parseFloat(s.sa_akhir) || 0;
+
+                    cellTotalSm.numFmt = '#,##0';
+                    cellTotalSk.numFmt = '#,##0';
+                    cellSaAkhir.numFmt = '#,##0';
+
+                    // Beri Border ke Seluruh Kolom & Atur Posisi Text
+                    for(let c = 1; c <= maxCols; c++){
+                        const cell = r.getCell(c);
+                        cell.border = borderStyle;
+                        if(c === 1 || c === 3) {
+                            cell.alignment = alignCenter; // No & UK di tengah
+                        } else if (c === 2) {
+                            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+                        } else {
+                            // Seluruh cell angka ke rata kanan seperti di laporan piutang
+                            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+                        }
+                    }
+
+                    currentRow++;
+                }
+
+                if (rowSpanCount > 1) {
+                    sheet.mergeCells(startRow, 1, currentRow - 1, 1);
+                    sheet.mergeCells(startRow, 2, currentRow - 1, 2);
+                }
+            }
+
+            currentRow += 2; 
+        }
+
+        // Atur Lebar Kolom yang Nyaman Dibaca
+        sheet.getColumn(1).width = 6;
+        sheet.getColumn(2).width = 30;
+        sheet.getColumn(3).width = 12;
+        sheet.getColumn(4).width = 12; // SA Awal
+
+        // Lebar kolom tanggal
+        for (let i = 5; i <= maxCols; i++) {
+             sheet.getColumn(i).width = 6;
+        }
+        
+        // Perlebar kolom Total dan Akhir
+        sheet.getColumn(maxCols - 2).width = 10;
+        sheet.getColumn(maxCols - 1).width = 10;
+        sheet.getColumn(maxCols).width = 12;
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const today = new Date().toISOString().slice(0, 10);
+        saveAs(new Blob([buffer]), `Laporan_Stok_Bahan_${today}.xlsx`);
+
+    } catch (error) {
+        console.error(error);
+        alert('Gagal mengekspor file Excel.');
+    } finally {
+        loading.classList.add('d-none');
+    }
+});
+
+
 document.getElementById('to_store_select').addEventListener('change', function() {
     const selectedStoreId = this.value;
     const targetSelect = document.getElementById('to_global_stock_select');
@@ -676,8 +907,6 @@ document.getElementById('to_store_select').addEventListener('change', function()
     }
 });
 
-
-// FUNGSI UNTUK MEMBUKA MODAL EDIT KATEGORI & BARANG
 function openEditCategory(id, name) {
     document.getElementById('edit_category_id').value = id;
     document.getElementById('edit_category_name').value = name;
@@ -692,13 +921,12 @@ function openEditStock(id, name, size, cat_id) {
     new bootstrap.Modal(document.getElementById('editStockModal')).show();
 }
 
-// ASYNC FETCH & EFEK LOADING UNTUK SEMUA FORM
 document.querySelectorAll('.async-form').forEach(form => {
     form.addEventListener('submit', async function(e) {
         e.preventDefault(); 
         
         const loading = document.getElementById('global-loading');
-        loading.classList.remove('d-none'); // Munculkan Animasi Loading
+        loading.classList.remove('d-none');
 
         const formData = new FormData(this);
 
@@ -714,16 +942,15 @@ document.querySelectorAll('.async-form').forEach(form => {
                 window.location.reload(); 
             } else {
                 alert(result.message || 'Terjadi kesalahan pada saat menyimpan data.');
-                loading.classList.add('d-none'); // Sembunyikan Loading jika error
+                loading.classList.add('d-none');
             }
         } catch (error) {
             alert('Terjadi kesalahan pada koneksi server.');
-            loading.classList.add('d-none'); // Sembunyikan Loading jika error
+            loading.classList.add('d-none');
         }
     });
 });
 
-// LOGIKA KLIK CELL HARIAN
 document.addEventListener('DOMContentLoaded', function () {
     const updateCells = document.querySelectorAll('.update-cell');
     const dailyModalElement = document.getElementById('dailyModal');

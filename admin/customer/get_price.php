@@ -36,7 +36,6 @@ $product_price = getProductPrice($product_id, $store_id, $koneksi);
 $finishing_price = 0;
 $finishing_ids = [];
 
-// Fungsi bantu untuk menambah finishing berdasarkan nama, jika belum ada di list
 function addUniqueFinishing($name, $store_id, $product_type, $koneksi, &$finishing_ids, &$finishing_price, $panjang, $lebar) {
     $finishing_type = ($product_type === 'INDOOR') ? 'FINISHING INDOOR' : 'FINISHING LASER A3';
     $extra_price = 0;
@@ -49,7 +48,6 @@ function addUniqueFinishing($name, $store_id, $product_type, $koneksi, &$finishi
     }
 }
 
-// Proses finishing dari select input (id atau nama)
 if ($finishing !== '-' && !empty($finishing)) {
     $parts = array_map('trim', explode(',', $finishing));
     foreach ($parts as $part) {
@@ -64,20 +62,16 @@ if ($finishing !== '-' && !empty($finishing)) {
     }
 }
 
-// Proses finishing tambahan khusus (kiss_cut atau die_cut)
 if ($finishing_tambahan !== '-' && !empty($finishing_tambahan)) {
     if (in_array($finishing_tambahan, ['kiss_cut', 'die_cut'])) {
         addUniqueFinishing($finishing_tambahan, $store_id, $product_type, $koneksi, $finishing_ids, $finishing_price, $panjang, $lebar);
     }
 }
 
-// Bersihkan finishing_ids agar unik dan numeric
 $finishing_ids = array_values(array_unique(array_filter($finishing_ids, 'is_numeric')));
 
-// Hitung harga satuan produk + finishing
 $unit_price = $product_price - $diskon + $finishing_price;
 
-// Hitung berdasarkan satuan
 if ($unit_type === 'M2') {
     $unit_price *= ($product_type === 'DTF') ? $panjang : $panjang * $lebar;
 } elseif ($unit_type === 'CM2') {
@@ -116,7 +110,6 @@ if (!empty($ukuran_jersey)) {
     }
 }
 
-// Hitung total harga akhir
 $total_price = $unit_price * $quantity;
 
 echo json_encode([

@@ -6,7 +6,6 @@ $orderModel = new Order($koneksi);
 
 $id = (int)($_GET['order_id'] ?? 0);
 
-$result = $orderModel->getOrderById($id);
-$order = $result->fetch_assoc();
+$order = $orderModel->getOrderById($id);
 
 echo json_encode($order);

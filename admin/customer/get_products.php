@@ -1,7 +1,11 @@
 <?php
-session_start();
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/models/Product.php'; 
+
+$productModel = new Product($koneksi);
+
+header('Content-Type: application/json');
 
 $type = $_GET['type'] ?? '';
 
@@ -10,22 +14,10 @@ if (!$store_id || !$type) {
     exit;
 }
 
-$sql = "SELECT product_id, name, price, unit_type FROM products WHERE store_id = ? AND type = ? AND name != 'KISS CUT' AND name != 'DIE CUT'";
-$stmt = $koneksi->prepare($sql);
-$stmt->bind_param("is", $store_id, $type);
-$stmt->execute();
-$result = $stmt->get_result();
+$data = new stdClass();
+$data->type = $type;
+$data->store_id = $store_id;
 
-$products = [];
-while ($row = $result->fetch_assoc()) {
-        $products[] = [
-            'product_id' => $row['product_id'],
-            'name' => $row['name'],
-            'price' => (float)$row['price'],
-            'unit_type' => trim($row['unit_type']),
-        ];
-}
-$stmt->close();
+$products = $productModel->getProductByTypeAndStoreId($data);
 
-header('Content-Type: application/json');
 echo json_encode($products);

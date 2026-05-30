@@ -1,10 +1,10 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
-require_once BASE_PATH . '/models/Product.php';
+require_once BASE_PATH . '/controllers/ProductController.php';
 
-$productModel = new Product($koneksi);
-$products = $productModel->getProductByStoreId($store_id);
+$productController = new ProductController($koneksi);
+$products = $productController->index();
 
 $jenisList = ['OUTDOOR', 'FINISHING OUTDOOR','INDOOR','FINISHING INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','FINISHING LASER A3','SUBLIM','FINISHING SUBLIM','DTF','STAMP', 'MERCENDISE', 'MERCENDISE AKRILIK', 'JERSEY', 'FINISHING JERSEY', 'AKRILIK', 'FINISHING AKRILIK', 'KARTU NAMA', 'CETAKAN', 'FINISHING CETAKAN', 'JASA'];
 $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];

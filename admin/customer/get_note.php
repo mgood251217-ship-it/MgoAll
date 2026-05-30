@@ -9,8 +9,7 @@ $data = new stdClass();
 $data->order_id = $_GET['order_id'] ?? 0;
 $data->note_for = 'CTM';
 
-$result = $orderModel->getNoteOrder($data);
-$noted = $result->fetch_assoc();
+$noted = $orderModel->getNoteOrder($data); 
 
 if ($noted && !empty($noted['note'])) {
   echo '<div class="alert alert-danger" role="alert">' . htmlspecialchars($noted['note']) . '</div>';

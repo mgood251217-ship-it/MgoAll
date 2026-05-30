@@ -1,15 +1,17 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/models/Store.php';
+require_once BASE_PATH . '/models/Order.php';
+require_once BASE_PATH . '/models/Payment.php';
 
-$order_id = (int)($_GET['order_id'] ?? 0);
+$storeModel = new Store($koneksi);
+$orderModel = new Order($koneksi);
+$paymentModel = new Payment($koneksi);
 
-// Ambil info toko
-$stmt = $koneksi->prepare("SELECT name, address, nomor, logo, logo_print, branch FROM stores WHERE store_id = ?");
-$stmt->bind_param("i", $store_id);
-$stmt->execute();
-$store = $stmt->get_result()->fetch_assoc();
-$stmt->close();
+$order_id = ($_GET['order_id'] ?? 0);
+
+$store = $storeModel->getStoreById($store_id);
 
 // Ambil nama operator
 $stmt = $koneksi->prepare("
@@ -23,12 +25,7 @@ $stmt->execute();
 $operator = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
-// Ambil info order
-$stmt = $koneksi->prepare("SELECT customer_name, nomorator, deadline, total, date FROM orders WHERE order_id = ? AND store_id = ?");
-$stmt->bind_param("ii", $order_id, $store_id);
-$stmt->execute();
-$order = $stmt->get_result()->fetch_assoc();
-$stmt->close();
+$order = $orderModel->getOrderById($order_id);
 
 function formatTanggalIndo($tanggal) {
     $bulan = [
@@ -44,7 +41,6 @@ function formatTanggalIndo($tanggal) {
     return $tgl . ' ' . $bulan[$bln - 1] . ' ' . $thn;
 }
 
-// Ambil semua order_items + join produk dan diskon
 $stmt = $koneksi->prepare("
     SELECT 
         oi.*,
@@ -62,7 +58,6 @@ $stmt->execute();
 $result = $stmt->get_result();
 $order_items_raw = [];
 while ($row = $result->fetch_assoc()) {
-    // Tangani multiple finishing
     $finishing_ids = array_filter(explode(',', $row['finishing']));
     $finishing_names = [];
 
@@ -84,7 +79,6 @@ while ($row = $result->fetch_assoc()) {
 }
 $stmt->close();
 
-// Kelompokkan OUTDOOR
 $grouped_outdoor = [];
 foreach ($order_items_raw as $item) {
     $type = strtoupper($item['type'] ?? '');
@@ -99,7 +93,6 @@ foreach ($order_items_raw as $item) {
             ];
         }
 
-        // Hitung luas
         if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $item['size'], $m)) {
             $luas = floatval($m[1]) * floatval($m[2]);
         } else {
@@ -109,7 +102,6 @@ foreach ($order_items_raw as $item) {
         $grouped_outdoor[$product_id]['items'][] = $item;
         $grouped_outdoor[$product_id]['total_luas'] += $luas * $item['quantity'];
 
-        // Hitung harga - diskon
         $price = isset($item['price']) ? (int)$item['price'] : 0;
         $diskon = isset($item['diskon']) ? (int)$item['diskon'] : 0;
         $price_after_diskon = max($price - $diskon, 0);
@@ -123,7 +115,6 @@ foreach ($order_items_raw as $item) {
     }
 }
 
-// Simpan produk OUTDOOR yang total luas < 1
 $luas_kurang_dari_satu = [];
 foreach ($grouped_outdoor as $product_id => $group) {
     if ($group['total_luas'] < 1) {
@@ -131,15 +122,9 @@ foreach ($grouped_outdoor as $product_id => $group) {
     }
 }
 
-// Inisialisasi array penanda harga telah dicetak
 $printed_price_for = [];
 
-// Ambil semua pembayaran
-$stmt = $koneksi->prepare("SELECT nominal, status, date FROM payment WHERE order_id = ?");
-$stmt->bind_param("i", $order_id);
-$stmt->execute();
-$payments = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$payments = $paymentModel->getPaymentByOrderId($order_id);
 
 $uang_muka = 0;
 $total_bayar = 0;
@@ -164,16 +149,20 @@ foreach ($payments as $pay) {
 
 $sisa = $order['total'] - $total_bayar;
 
-  $stmt = $koneksi->prepare("SELECT note FROM note_orders WHERE order_id = ? AND note_for = 'CTM' ORDER BY note_order_id DESC LIMIT 1");
-  $stmt->bind_param("i", $order_id);
-  $stmt->execute();
-  $note = $stmt->get_result();
-  $noted = $note->fetch_assoc();
+  // $stmt = $koneksi->prepare("SELECT note FROM note_orders WHERE order_id = ? AND note_for = 'CTM' ORDER BY note_order_id DESC LIMIT 1");
+  // $stmt->bind_param("i", $order_id);
+  // $stmt->execute();
+  // $note = $stmt->get_result();
+  // $noted = $note->fetch_assoc();
+$data = new stdClass();
+$data->order_id = $order_id;
+$data->note_for = 'CTM';
 
-$preview_print = 0; // default
+$noted = $orderModel->getNoteOrder($data);
+
+$preview_print = 0;
 
 if ($user_id) {
-    // Prepare statement untuk menghindari SQL Injection
     $stmt = $koneksi->prepare("SELECT preview_print FROM user_setting WHERE user_id = ? LIMIT 1");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
@@ -190,7 +179,6 @@ if ($user_id) {
   <meta charset="UTF-8">
   <title>Cetak Struk</title>
   <style>
-    /* Reset & Box Sizing agar padding tidak menambah lebar elemen */
     * {
       box-sizing: border-box;
     }
@@ -200,7 +188,7 @@ if ($user_id) {
       }
       body {
         margin: 0;
-        padding: 2mm 0; /* Jarak aman atas bawah */
+        padding: 2mm 0;
       }
     }
     body {
@@ -217,11 +205,11 @@ if ($user_id) {
     .line {
       border-top: 1px dashed #000;
       margin: 4px auto;
-      width: 92%; /* Mengikuti lebar tabel */
+      width: 92%;
     }
     table {
-      width: 92%; /* Membuat tabel tidak full 100% agar ada jarak aman di kiri & kanan */
-      margin: 0 auto; /* Otomatis menempatkan tabel di tengah halaman */
+      width: 92%;
+      margin: 0 auto;
       border-collapse: collapse;
       table-layout: fixed; 
       word-wrap: break-word; 
@@ -232,7 +220,7 @@ if ($user_id) {
     }
     .text-end {
       text-align: right;
-      padding-right: 6px; /* Memberikan bantalan ekstra khusus untuk sisi kanan nominal */
+      padding-right: 6px;
     }
     .lunas-stamp {
       position: absolute;
@@ -320,7 +308,6 @@ if ($user_id) {
         }
     }
 
-    // Gunakan order_items.judul sebagai prioritas, fallback ke judul_bahan dari produk
     $judul_bahan = $item['judul'] ?: ($item['judul_bahan'] ?? '-');
   ?>
     <tr style="border-top: 0.5px solid #000;">

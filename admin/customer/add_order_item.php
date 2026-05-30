@@ -22,8 +22,6 @@ $finishing_die = isset($_POST['finishing_die']) && $_POST['finishing_die'] == '1
 $finishing_jersey = $_POST['finishing_jersey'] ?? [];
 $kiloan    = isset($_POST['kiloan']) ? (float)$_POST['kiloan'] : 0;
 
-
-
 if ($panjang > 0 && $lebar > 0) {
     $size = "{$panjang}x{$lebar}";
 }
@@ -35,10 +33,8 @@ $unit_type    = $info['unit_type'];
 $stok_butuh   = $info['stok_butuh'];
 $product_name = $info['name'];
 
-// Ambil jenis produk dulu
 $jenis = strtoupper($product_type);
 
-// Hanya cari ulang jika product_id belum valid (misalnya 0)
 if ($jenis !== 'PAKET INDOOR OUTDOOR' && (int)$product_id === 0) {
     $newProductId = getAvailableProductIdByPrefix($koneksi, $store_id, $judul);
     if ($newProductId !== null) {
@@ -49,7 +45,6 @@ if ($jenis !== 'PAKET INDOOR OUTDOOR' && (int)$product_id === 0) {
 $product_price = getProductPrice($product_id, $store_id, $koneksi);
 $finishing_price = getFinishingPrice($finishing, $store_id, $koneksi);
 
-// Hitung harga satuan produk + finishing utama
 $unit = $product_price - $diskon + $finishing_price;
 
 
@@ -74,8 +69,6 @@ if ($finishing_die) {
 }
 
 $finishing_price += $finishing_additional_price;
-
-
 
 if ($unit_type === 'M2') {
     if ($product_type === 'DTF') {
@@ -110,10 +103,8 @@ if ($finishing !== '-' && is_numeric($finishing)) {
     $finishing_ids[] = (int)$finishing;
 }
 
-// Tambahkan harga finishing tambahan (CUT, DIE)
 $unit += $finishing_additional_price;
 
-// Cek jika type adalah JERSEY
 if ($product_type === 'JERSEY') {
     if ($size === '5XL') {
         $unit += 50000;
@@ -142,14 +133,12 @@ if ($product_name == 'PRINT UV' && $product_type == 'AKRILIK') {
 }
 $finishing_str = count($finishing_ids) ? implode(',', $finishing_ids) : '-';
 
-// Cek apakah sudah ada order_items dengan judul, finishing, size sama di order_id & store_id yang sama
 $stmtCheck = $koneksi->prepare("SELECT order_item_id, quantity, unit, amount FROM order_items WHERE store_id = ? AND order_id = ? AND judul = ? AND finishing = ? AND size = ?");
 $stmtCheck->bind_param("iisss", $store_id, $order_id, $judul, $finishing_str, $size);
 $stmtCheck->execute();
 $resultCheck = $stmtCheck->get_result();
 
 if ($rowExist = $resultCheck->fetch_assoc()) {
-    // Jika ada, update quantity, unit, dan amount
     $new_quantity = $rowExist['quantity'] + $quantity;
     $new_amount = $unit * $new_quantity;
 
@@ -159,7 +148,6 @@ if ($rowExist = $resultCheck->fetch_assoc()) {
     $stmtUpdate->close();
 
     if ($success) {
-        // Kalau unit_type bukan "~", baru kurangi stok
         if ($unit_type !== '~') {
             $stok_untuk_dikurangi = $stok_butuh;
             $stmtUpdateStok = $koneksi->prepare("UPDATE stock SET quantity = quantity - ? WHERE product_id = ? AND store_id = ?");
@@ -175,7 +163,6 @@ if ($rowExist = $resultCheck->fetch_assoc()) {
     }
 
 } else {
-    // Insert baru
     $stmtInsert = $koneksi->prepare("INSERT INTO order_items 
         (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -190,7 +177,6 @@ if ($rowExist = $resultCheck->fetch_assoc()) {
         $store_id, $order_id, $product_id, $judul, $size, $quantity, $unit, $amount, $finishing_str);
 
     if ($stmtInsert->execute()) {
-        // Kalau unit_type bukan "~", baru kurangi stok
         if ($unit_type !== '~') {
             $stmtUpdate = $koneksi->prepare("UPDATE stock SET quantity = quantity - ? WHERE product_id = ? AND store_id = ?");
             $stmtUpdate->bind_param("dii", $stok_butuh, $product_id, $store_id);

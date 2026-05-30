@@ -1,13 +1,12 @@
 <?php
-// Stock.php
-class Stock{
+class Stock {
     private $koneksi;
 
     public function __construct($koneksi) {
         $this->koneksi = $koneksi;
     }
 
-    public function getAllStock ($store_id) {
+    public function getAllStock($store_id) {
         $stmt = $this->koneksi->prepare("
             SELECT 
                 p.product_id, 
@@ -31,7 +30,7 @@ class Stock{
         return $data;
     }
 
-    public function createStock($data){
+    public function createStock($data) {
         $stmt = $this->koneksi->prepare("INSERT INTO stock (product_id, store_id, quantity) VALUES (?, ?, ?)");
         $stmt->bind_param("iid", $data->id, $data->store_id, $data->quantity);
         $success = $stmt->execute();
@@ -55,7 +54,7 @@ class Stock{
         return $success;
     }
 
-    public function checkStock ($data){
+    public function checkStock($data) {
         $stmt = $this->koneksi->prepare("SELECT 1 FROM stock WHERE product_id = ? AND store_id = ?");
         $stmt->bind_param("ii", $data->id, $data->store_id);
         $stmt->execute();
@@ -64,6 +63,5 @@ class Stock{
         $stmt->close();
         return $exists;
     }
-    
 }
-?> 
+?>

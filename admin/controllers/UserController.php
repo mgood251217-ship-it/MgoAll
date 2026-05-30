@@ -8,8 +8,9 @@ class UserController {
         $this->userModel = new User($koneksi);
     }
 
-    public function getByStore($id) {
-        return $this->userModel->getUsersByStoreId($id);
+    public function index() {
+        global $store_id;
+        return $this->userModel->getUsersByStoreId($store_id);
     }
 
     private function requestData() {
