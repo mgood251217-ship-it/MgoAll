@@ -1,5 +1,5 @@
 <?php
 
-echo "test server 2";
+echo "lanjut test";
 
 ?>
