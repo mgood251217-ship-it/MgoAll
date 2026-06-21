@@ -30,7 +30,7 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-<div id="main-wrapper" <?= ($mode === 1) ? 'class="dark-mode"' : '' ?>>
+<div id="main-wrapper">
   <?php include BASE_PATH . '/navbar.php'; ?>
   <div id="main-content" <?= (isset($mode) && $mode === 1) ? 'class="dark-mode"' : '' ?>>
     <?php include BASE_PATH . '/sidebar.php'; ?>

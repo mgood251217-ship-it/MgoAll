@@ -745,6 +745,20 @@ class OrderController {
             exit;
         }
 
+        if ($product['type'] === 'PAKET INDOOR OUTDOOR') {
+            $nama_pencarian = trim($judul . ' ' . $size);
+            $produk_baru = $this->productModel->getProductByNameAndStore($nama_pencarian, $store_id);
+            
+            if ($produk_baru) {
+                $product_id = $produk_baru['id'] ?? $produk_baru['product_id'];
+                $product = $produk_baru;
+            } else {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => "Produk paket ($nama_pencarian) tidak ditemukan"]);
+                exit;
+            }
+        }
+
         $stok_butuh = 0;
         if ($product['type'] === 'DTF' && $panjang > 0) {
             $stok_butuh = $panjang * $quantity;
@@ -796,7 +810,7 @@ class OrderController {
         $data_item = (object)[
             'store_id' => $store_id,
             'order_id' => $order_id,
-            'product_id' => $product_id,
+            'product_id' => $product_id, // Sekarang akan menggunakan product_id yang baru jika itu produk PAKET
             'judul' => $judul,
             'size' => $size,
             'quantity' => $quantity,

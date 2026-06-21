@@ -50,7 +50,7 @@ $end_date_only   = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
   </style>
 </head>
 <body>
-  <div id="main-wrapper" <?= ($mode === 1) ? 'class="dark-mode"' : '' ?>>
+  <div id="main-wrapper">
     <?php include '../navbar.php'; ?>
 
     <div id="main-content" <?= ($mode === 1) ? 'class="dark-mode"' : '' ?>>

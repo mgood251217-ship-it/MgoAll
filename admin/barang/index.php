@@ -23,7 +23,7 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
   <script>showLoading();</script>
 </head>
 <body>
-<div id="main-wrapper" <?= ($mode === 1) ? 'class="dark-mode"' : '' ?>>
+<div id="main-wrapper">
   <?php include '../navbar.php'; ?>
   <div id="main-content" <?= (isset($mode) && $mode === 1) ? 'class="dark-mode"' : '' ?>>
     <?php include '../sidebar.php'; ?>

@@ -4,7 +4,6 @@ require_once 'global_functions.php';
 $order_id = $_GET['id'] ?? 0;
 date_default_timezone_set('Asia/Jakarta');
 
-// Ambil detail order + operator
 $stmt = $koneksi->prepare(" 
     SELECT o.*, u.initial AS operator_initial 
     FROM orders o
@@ -16,7 +15,6 @@ $stmt->execute();
 $order = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
-// Ambil nama dan alamat toko berdasarkan store_id dari order
 $store_id = $order['store_id'];
 $stmt = $koneksi->prepare("SELECT name, address FROM stores WHERE store_id = ?");
 $stmt->bind_param("i", $store_id);

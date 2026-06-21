@@ -116,7 +116,7 @@ $data_per_tanggal = array_values($data_per_tanggal);
     <?php include BASE_PATH . '/export_libraries.php'; ?>
 </head>
 <body>
-<div id="main-wrapper" <?= ($mode === 1) ? 'class="dark-mode"' : '' ?>>
+<div id="main-wrapper">
     <?php include BASE_PATH . '/navbar.php'; ?>
     <div id="main-content" <?= (isset($mode) && $mode === 1) ? 'class="dark-mode"' : '' ?>>
         <?php include BASE_PATH . '/sidebar.php'; ?>
@@ -137,7 +137,7 @@ $data_per_tanggal = array_values($data_per_tanggal);
                 $end_year    = $_GET['end_year'] ?? $currentYear;
 
                 $filter_start = $start_month . "-" . $start_year;
-                $filter_end = $start_end . "-" . $end_year;
+                $filter_end = $start_year . "-" . $end_year;
                 ?>
 
                 <form method="get" class="row g-2 align-items-end justify-content-end" id="filterForm" style="margin-bottom:0;">

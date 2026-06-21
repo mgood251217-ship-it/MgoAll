@@ -13,7 +13,7 @@ require_once BASE_PATH . '/session.php';
 </head>
 
 <body>
-<div id="main-wrapper" <?= ($mode === 1) ? 'class="dark-mode"' : '' ?>>
+<div id="main-wrapper">
   <?php include BASE_PATH . '/navbar.php'; ?>
 
   <div id="main-content" <?= (isset($mode) && $mode === 1) ? 'class="dark-mode"' : '' ?>>

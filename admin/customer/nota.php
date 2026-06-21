@@ -73,7 +73,7 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
 
 </style>
 </head>
-<body class="<?= ($mode === 1) ? 'dark-mode' : '' ?>">
+<body>
   <div id="main-wrapper">
     <?php include BASE_PATH . '/navbar.php'; ?>
 

@@ -236,7 +236,7 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
     </div>
 </div>
 
-<div id="main-wrapper" <?= ($mode === 1) ? 'class="dark-mode"' : '' ?>>
+<div id="main-wrapper">
     <?php include '../navbar.php'; ?>
     
     <div id="main-content" <?= ($mode === 1) ? 'class="dark-mode"' : '' ?>>

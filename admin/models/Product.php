@@ -44,7 +44,6 @@ class Product{
 
     public function getProductByTypeAndStoreId($data){
         $stmt = $this->koneksi->prepare("SELECT * FROM products WHERE type = ? AND store_id = ?");
-        // 's' untuk string (type), 'i' untuk integer (store_id)
         $stmt->bind_param('si', $data->type, $data->store_id);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -52,6 +51,15 @@ class Product{
         $stmt->close();
         
         return $products;
+    }
+
+    public function getProductByNameAndStore($name, $store_id) {
+        $stmt = $this->koneksi->prepare("SELECT * FROM products WHERE name = ? AND store_id = ? LIMIT 1");
+        $stmt->bind_param("si", $name, $store_id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $result;
     }
 
     public function getOneValue($id, $column){

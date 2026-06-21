@@ -133,7 +133,7 @@ $jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DT
     #detailLogBody { overflow-y: auto; max-height: calc(80vh - 100px); }
   </style>
 </head>
-<body class="<?= ($mode === 1) ? 'dark-mode' : '' ?>">
+<body>
   <div id="main-wrapper">
     <?php include '../navbar.php'; ?>
     <div id="main-content" <?= (isset($mode) && $mode === 1) ? 'class="dark-mode"' : '' ?>>

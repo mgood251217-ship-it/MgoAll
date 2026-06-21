@@ -51,129 +51,129 @@ $pesan_error = '';
 date_default_timezone_set('Asia/Jakarta');
 $date = date("Y-m-d H:i:s");
 
-
 $site_key   = "6LegPm0sAAAAACMlVF_Q0hQmj2cRMXNl2Pj8pldB";
 $secret_key = "6LegPm0sAAAAAD028ehVM8ZVd1yn_cXLN2rNEkDA";
 
+// --- TAMBAHAN BARU: Cek apakah berjalan di localhost ---
+$is_localhost = in_array($_SERVER['HTTP_HOST'], ['localhost', '127.0.0.1', '::1']);
+// --- AKHIR TAMBAHAN BARU ---
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $username_input = strtolower(trim($_POST['usernames']));
     $password = $_POST['password'];
-    $recaptcha_response = $_POST['g-recaptcha-response'];
+    $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
     $address = getClientIP();
 
-    
-    if (empty($recaptcha_response)) {
-        $pesan_error = "reCAPTCHA tidak valid!";
-    } else {
-
-        $verify_url = "https://www.google.com/recaptcha/api/siteverify";
-        $response = file_get_contents(
-            $verify_url . "?secret=" . $secret_key . "&response=" . $recaptcha_response
-        );
-        $response_keys = json_decode($response, true);
-
-
-        if (
-            !$response_keys['success'] ||
-            $response_keys['score'] < 0.5 ||
-            $response_keys['action'] !== 'login'
-        ) {
-            $pesan_error = "Aktivitas mencurigakan terdeteksi!";
+    // --- PENYESUAIAN: Hanya validasi reCAPTCHA jika BUKAN localhost ---
+    if (!$is_localhost) {
+        if (empty($recaptcha_response)) {
+            $pesan_error = "reCAPTCHA tidak valid!";
         } else {
-            $sql = "SELECT COUNT(*) as total
+            $verify_url = "https://www.google.com/recaptcha/api/siteverify";
+            $response = file_get_contents(
+                $verify_url . "?secret=" . $secret_key . "&response=" . $recaptcha_response
+            );
+            $response_keys = json_decode($response, true);
+
+            if (
+                !$response_keys['success'] ||
+                $response_keys['score'] < 0.5 ||
+                $response_keys['action'] !== 'login'
+            ) {
+                $pesan_error = "Aktivitas mencurigakan terdeteksi!";
+            }
+        }
+    }
+
+    // Eksekusi Login jika tidak ada error dari reCAPTCHA (atau di-bypass oleh localhost)
+    if (empty($pesan_error)) {
+        $sql = "SELECT COUNT(*) as total
+                FROM users WHERE LOWER(username) = ?";
+        $stmt = $koneksi->prepare($sql);
+        $stmt->bind_param("s", $username_input);
+        $stmt->execute();
+        $resultCek = $stmt->get_result();
+        $stmt->close(); 
+
+        if ($resultCek->fetch_assoc()['total'] > 0) {
+            
+            $sql = "SELECT password, store_id
                     FROM users WHERE LOWER(username) = ?";
             $stmt = $koneksi->prepare($sql);
             $stmt->bind_param("s", $username_input);
             $stmt->execute();
             $resultCek = $stmt->get_result();
-            $stmt->close(); 
+            $user = $resultCek->fetch_assoc();
+            $stmt->close();
 
-            if ($resultCek->fetch_assoc()['total'] > 0) {
-                
-                $sql = "SELECT password, store_id
+            $dataStore = dataStore($user['store_id']);
+            $storeEmail = $dataStore['email'];
+
+            if (password_verify($password, $user['password'])) {
+
+                unset($user['password']);
+
+                $sql = "SELECT user_id, username, name, store_id, initial, role, picture
                         FROM users WHERE LOWER(username) = ?";
                 $stmt = $koneksi->prepare($sql);
                 $stmt->bind_param("s", $username_input);
                 $stmt->execute();
-                $resultCek = $stmt->get_result();
-                $user = $resultCek->fetch_assoc();
+                $result = $stmt->get_result();
+                $user = $result->fetch_assoc();
                 $stmt->close();
 
-                $dataStore = dataStore($user['store_id']);
-                $storeEmail = $dataStore['email'];
+                // // 🔥 CEK TRUSTED DEVICE (BYPASS OTP)
+                // $stmt = $koneksi->prepare("
+                //     SELECT last_used, status 
+                //     FROM otp_verifications 
+                //     WHERE LOWER(username) = ? AND address = ?
+                //     LIMIT 1
+                // ");
+                // $stmt->bind_param("ss", $username_input, $address);
+                // $stmt->execute();
+                // $resultOtp = $stmt->get_result();
 
-                if (password_verify($password, $user['password'])) {
+                // if ($resultOtp->num_rows > 0) {
+                //     $otpData = $resultOtp->fetch_assoc();
 
-                    unset($user['password']);
+                //     if (
+                //         $otpData['status'] == 1 &&
+                //         time() <= (strtotime($otpData['last_used']) + (5 * 24 * 60 * 60))
+                //     ) {
+                //         // ✅ LOGIN LANGSUNG (BYPASS OTP)
+                //         setInfo($user, $dataStore);
+                //         insertActivity($user['user_id'], $address, $date);
 
-                    $sql = "SELECT user_id, username, name, store_id, initial, role, picture
-                            FROM users WHERE LOWER(username) = ?";
-                    $stmt = $koneksi->prepare($sql);
-                    $stmt->bind_param("s", $username_input);
-                    $stmt->execute();
-                    $result = $stmt->get_result();
-                    $user = $result->fetch_assoc();
-                    $stmt->close();
+                //         header("Location: customer");
+                //         exit;
+                //     }
+                // }
 
-                    // // 🔥 CEK TRUSTED DEVICE (BYPASS OTP)
-                    // $stmt = $koneksi->prepare("
-                    //     SELECT last_used, status 
-                    //     FROM otp_verifications 
-                    //     WHERE LOWER(username) = ? AND address = ?
-                    //     LIMIT 1
-                    // ");
-                    // $stmt->bind_param("ss", $username_input, $address);
-                    // $stmt->execute();
-                    // $resultOtp = $stmt->get_result();
+                // if (isset($_GET['u']) && $_GET['u'] == 'medina') {
+                //     setOtp($username_input, $address, 'umifaruq@gmail.com');
+                //     exit;
+                // } elseif (isset($_GET['u']) && $_GET['u'] == 'demo') {
+                //     setOtp($username_input, $address, 'mgood251217@gmail.com');
+                //     exit;
+                // }else {
+                //     setOtp($username_input, $address, $storeEmail);
+                // }
 
-                    // if ($resultOtp->num_rows > 0) {
-                    //     $otpData = $resultOtp->fetch_assoc();
-
-                    //     if (
-                    //         $otpData['status'] == 1 &&
-                    //         time() <= (strtotime($otpData['last_used']) + (5 * 24 * 60 * 60))
-                    //     ) {
-                    //         // ✅ LOGIN LANGSUNG (BYPASS OTP)
-                    //         setInfo($user, $dataStore);
-                    //         insertActivity($user['user_id'], $address, $date);
-
-                    //         header("Location: customer");
-                    //         exit;
-                    //     }
-                    // }
-
-                    // if (isset($_GET['u']) && $_GET['u'] == 'medina') {
-                    //     setOtp($username_input, $address, 'umifaruq@gmail.com');
-                    //     exit;
-                    // } elseif (isset($_GET['u']) && $_GET['u'] == 'demo') {
-                    //     setOtp($username_input, $address, 'mgood251217@gmail.com');
-                    //     exit;
-                    // }else {
-                    //     setOtp($username_input, $address, $storeEmail);
-                    // }
-
-                    // ❌ kalau tidak lolos → kirim OTP
-                    
-
-                    setInfo($user, $dataStore);
-                    insertActivity($user['user_id'], $address, $date);
-
-                    header("Location: customer");
-                    exit;
-
-        
-
-                } else {
-                    $pesan_error = "Username atau password salah!";
-                }
-
-
+                // ❌ kalau tidak lolos → kirim OTP
                 
+                setInfo($user, $dataStore);
+                insertActivity($user['user_id'], $address, $date);
+
+                header("Location: customer");
+                exit;
+
             } else {
                 $pesan_error = "Username atau password salah!";
             }
+            
+        } else {
+            $pesan_error = "Username atau password salah!";
         }
     }
 }
@@ -189,7 +189,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <link href="<?= BASE_URL ?>/assets/css/bootstrap.min.css" rel="stylesheet">
     <script src="<?= BASE_URL ?>/assets/js/sweetalert2@11.js"></script>
 
+    <?php if (!$is_localhost): ?>
     <script src="https://www.google.com/recaptcha/api.js?render=<?= $site_key ?>"></script>
+    <?php endif; ?>
 
     <style>
         body {
@@ -456,7 +458,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             <input type="password" name="password"  required autocomplete="off">
                         </div>
 
+                        <?php if (!$is_localhost): ?>
                         <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response">
+                        <?php endif; ?>
 
                         <button type="submit" >Login</button>
                     </form>
@@ -482,6 +486,8 @@ document.getElementById('loginForm').addEventListener('submit', function() {
   showGlobalLoading();
 });
 </script>
+
+<?php if (!$is_localhost): ?>
 <script>
 grecaptcha.ready(function () {
     grecaptcha.execute('<?= $site_key ?>', {action: 'login'})
@@ -491,6 +497,7 @@ grecaptcha.ready(function () {
         });
 });
 </script>
+<?php endif; ?>
 
 <?php if ($pesan_error): ?>
 <script>

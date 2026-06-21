@@ -48,7 +48,12 @@ while ($row = $result->fetch_assoc()) {
     }
     $dataTransaksi[] = $row;
 }
-
+$no = 1;
+$tf = 0;
+$cash = 0;
+$total_harian = 0;
+$Pelunasan_Cash = 0;
+$Pelunasan_TF = 0;
 ?>
 
 <!DOCTYPE html>
@@ -60,7 +65,7 @@ while ($row = $result->fetch_assoc()) {
     <?php include BASE_PATH . '/export_libraries.php'; ?>
 </head>
 <body>
-<div id="main-wrapper" <?= ($mode ?? 0) === 1 ? 'class="dark-mode"' : '' ?>>
+<div id="main-wrapper">
     <?php include BASE_PATH . '/navbar.php'; ?>
     <div id="main-content" <?= ($mode ?? 0) === 1 ? 'class="dark-mode"' : '' ?>>
         <?php include BASE_PATH . '/sidebar.php'; ?>
@@ -90,12 +95,6 @@ while ($row = $result->fetch_assoc()) {
                     </thead>
                     <tbody>
                         <?php if (count($dataTransaksi) > 0): 
-                            $no = 1;
-                            $tf = 0;
-                            $cash = 0;
-                            $total_harian = 0;
-                            $Pelunasan_Cash = 0;
-                            $Pelunasan_TF = 0;
                             foreach ($dataTransaksi as $row): 
                                 $date = $row['date'];
                                 $status = strtoupper($row['status']);
