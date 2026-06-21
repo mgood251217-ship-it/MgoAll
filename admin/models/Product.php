@@ -1,0 +1,78 @@
+<?php
+class Product{
+    private $koneksi;
+
+    public function __construct($koneksi) {
+        $this->koneksi = $koneksi;
+    }
+
+    public function createProduct ($data) {
+        $stmt = $this->koneksi->prepare("INSERT INTO products (store_id, type, name, price, unit_type, reasonable_price, failed_price) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("issssss", $data->store_id, $data->type, $data->name, $data->price, $data->unit, $data->reasonable_price, $data->failed_price);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+ 
+    public function updateProduct ($data) {
+        $stmt = $this->koneksi->prepare("UPDATE products SET type = ?, name = ?, price = ?, unit_type = ?, reasonable_price = ?, failed_price = ? WHERE product_id = ? LIMIT 1");
+        $stmt->bind_param("ssssssi", $data->type, $data->name, $data->price, $data->unit, $data->reasonable_price, $data->failed_price, $data->id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function getProductByStoreId ($store_id){
+        $stmt = $this->koneksi->prepare("SELECT * FROM products WHERE store_id = ?");
+        $stmt->bind_param('i', $store_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $data;
+    }
+
+    public function getProductById ($id){
+        $stmt = $this->koneksi->prepare("SELECT * FROM products WHERE product_id = ? LIMIT 1");
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_assoc();
+        $stmt->close();
+        return $data;
+    }
+
+    public function getProductByTypeAndStoreId($data){
+        $stmt = $this->koneksi->prepare("SELECT * FROM products WHERE type = ? AND store_id = ?");
+        // 's' untuk string (type), 'i' untuk integer (store_id)
+        $stmt->bind_param('si', $data->type, $data->store_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $products = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        return $products;
+    }
+
+    public function getOneValue($id, $column){
+        $columnName = ['price', 'reasonable_price', 'failed_price', 'type', 'name', 'store_id'];
+        if (!in_array($column, $columnName)) {
+            return ''; 
+        }
+        $stmt = $this->koneksi->prepare("SELECT `{$column}` FROM orders WHERE order_id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        return $result ? $result[$column] : '';
+    }
+
+    public function deleteProductById($data){
+        $stmt = $this->koneksi->prepare("DELETE FROM products WHERE product_id = ? LIMIT 1");
+        $stmt->bind_param('i', $data->id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+    
+}
+?>

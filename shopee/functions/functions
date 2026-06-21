@@ -1,0 +1,25 @@
+<?php
+require_once '../connect.php';
+
+function updateTotalMeteran($product_id, $date) {
+    global $koneksi;
+    $stmtSum = $koneksi->prepare("
+        SELECT SUM(value) AS total_value
+        FROM list_meters lm
+        JOIN meters m ON lm.meter_id = m.meter_id
+        WHERE m.product_id = ? AND m.date = ?");
+    $stmtSum->bind_param("is", $product_id, $date);
+    $stmtSum->execute();
+    $resultSum = $stmtSum->get_result()->fetch_assoc();
+    $totalValue = $resultSum['total_value'] ?? 0;
+
+    $stmtUpdateTotal = $koneksi->prepare("
+        UPDATE meters
+        SET total = ?
+        WHERE product_id = ? AND date = ?");
+    $stmtUpdateTotal->bind_param("dis", $totalValue, $product_id, $date);
+    $stmtUpdateTotal->execute();
+    $stmtUpdateTotal->close();
+}
+
+?>

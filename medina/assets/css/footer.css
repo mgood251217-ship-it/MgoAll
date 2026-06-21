@@ -1,0 +1,22 @@
+footer.light-mode {
+  padding: 0.5rem 1rem;
+  font-size: 13px;
+  text-align: center;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+}
+footer.dark-mode {
+  background-color: #232323 !important;
+  color: #e0e0e0 !important;
+  padding: 0.5rem 1rem;
+  font-size: 13px;
+  text-align: center;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+}

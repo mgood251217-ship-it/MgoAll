@@ -1,0 +1,160 @@
+  #sidebar-wrapper {
+    width: 60px;
+    min-height: 100vh;
+    overflow-x: hidden;
+    transition: width 0.3s ease;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    z-index: 1030;
+  }
+  #sidebar-wrapper.hovered {
+    width: 250px;
+    overflow-x: visible;
+  }
+
+  /* Mode Light/Dark Background */
+  #sidebar-wrapper.light-mode {
+    background-color: #f8f9fa;
+    color: #0f172a;
+  }
+  #sidebar-wrapper.dark-mode {
+    background-color: #1e293b;
+    color: #cbd5e1;
+  }
+ 
+  /* HEADER USER BAGIAN KECIL */
+  #sidebar-wrapper .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 5px;
+    flex-direction: column;
+    text-align: center;
+  }
+  #sidebar-wrapper .sidebar-header img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 3px solid #38bdf8;
+    object-fit: cover;
+  }
+  #sidebar-wrapper .sidebar-header .user-shortname {
+    margin-top: 5px;
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* HEADER USER BAGIAN LENGKAP */
+  #sidebar-wrapper.hovered .sidebar-header {
+    padding: 1rem;
+    flex-direction: row;
+    justify-content: flex-start;
+    background-color: #00b7ff;
+    color: #0f172a;
+    text-align: left;
+    gap: 15px;
+  }
+  #sidebar-wrapper.hovered.dark-mode .sidebar-header {
+    background-color: #0f172a;
+    color: #cbd5e1;
+  }
+  #sidebar-wrapper.hovered .sidebar-header img {
+    width: 80px;
+    height: 80px;
+  }
+  #sidebar-wrapper.hovered .sidebar-header .user-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  #sidebar-wrapper.hovered .sidebar-header h5,
+  #sidebar-wrapper.hovered .sidebar-header h6 {
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  /* HIDE SHORTNAME saat hovered */
+  #sidebar-wrapper.hovered .sidebar-header .user-shortname {
+    display: none;
+  }
+  /* SHOW user-info saat hovered */
+  #sidebar-wrapper .sidebar-header .user-info {
+    display: none;
+  }
+  #sidebar-wrapper.hovered .sidebar-header .user-info {
+    display: flex;
+  }
+
+  /* MENU LIST */
+  #sidebar-wrapper .list-group {
+    margin-top: 15px;
+    padding-left: 0;
+  }
+
+  #sidebar-wrapper .list-group-item {
+    background: transparent;
+    border: none;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 6px;
+    margin: 3px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    color: inherit;
+    white-space: nowrap;
+  }
+
+  #sidebar-wrapper .list-group-item i {
+    font-size: 18px;
+    width: 20px;
+    text-align: center;
+  }
+
+  /* Saat sidebar kecil (default) hanya show icon, sembunyikan text */
+  #sidebar-wrapper:not(.hovered) .list-group-item span.menu-text {
+    display: none;
+  }
+
+  #sidebar-wrapper:hover .list-group-item span.menu-text {
+    display: inline;
+  }
+
+  #sidebar-wrapper .list-group-item:hover {
+    transform: translateX(5px);
+  }
+
+  #sidebar-wrapper .list-group-item.active {
+    background-color: #38bdf8;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  /* Colors for light mode */
+  #sidebar-wrapper.light-mode .list-group-item {
+    color: #0f172a;
+  }
+  #sidebar-wrapper.light-mode .list-group-item:hover {
+    background-color: #e2e6ea;
+    color: #000;
+  }
+  #sidebar-wrapper.light-mode .list-group-item.active {
+    color: #fff;
+  }
+
+  /* Colors for dark mode */
+  #sidebar-wrapper.dark-mode .list-group-item {
+    color: #cbd5e1;
+  }
+  #sidebar-wrapper.dark-mode .list-group-item:hover {
+    background-color: #334155;
+    color: #f8fafc;
+  }
+  #sidebar-wrapper.dark-mode .list-group-item.active {
+    background-color: #38bdf8;
+    color:rgb(20, 40, 86);
+  }

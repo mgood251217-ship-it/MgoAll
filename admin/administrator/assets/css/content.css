@@ -1,0 +1,60 @@
+    body {
+      margin: 0;
+      padding-top: 56px;
+    }
+    #mainWrapper {
+      display: flex;
+      width: 100%;
+    }
+    #contentWrapper {
+      flex-grow: 1;
+      margin-left: 70px;
+      transition: margin-left 0.3s ease;
+      padding: 20px;
+    }
+    #sidebar:hover ~ #contentWrapper {
+      margin-left: 240px;
+    }
+    footer {
+      position: fixed;
+      bottom: 0;
+      left: 70px;
+      right: 0;
+      background: #f8f9fa;
+      padding: 10px;
+      border-top: 1px solid #ddd;
+      transition: left 0.3s ease;
+    }
+    #sidebar:hover ~ #contentWrapper footer {
+      left: 240px;
+    }
+    .table-modern {
+      border-collapse: separate;
+      border-spacing: 0 8px;
+    }
+    .table-modern th {
+      background-color: #1E90FF;
+      color: white;
+      border: 1px solid white;
+    }
+    .table-modern td {
+      background: #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      border: none;
+    }
+    .btn-add-store {
+      margin-bottom: 1rem;
+    }
+    .form-label {
+      min-width: 120px;
+      margin-bottom: 0;
+    }
+    .form-group-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .form-group-row input,
+    .form-group-row textarea {
+      flex: 1;
+    }

@@ -1,0 +1,41 @@
+    :root {
+        --logo-color: #002952;
+        --logo-color-2: #ff6400;
+        --primary-color: #3498db;
+        --secondary-color: #2ecc71;
+        --background-color: #ecf0f1;
+        --text-color: #1c0d71;
+        --color1: #2196f3;
+        --color2: #ff9800;
+        --color3: #4caf50;
+        --color4: #f44336;
+        --color5: #673ab7;
+        --color6: #e91e63;
+        --color7: #009688;
+        --color8: rgb(0, 33, 180);
+        --color9: rgb(147, 0, 0);
+        --color10: rgb(248, 141, 230);
+        --color11: rgba(0, 74, 28, 1);
+    }
+    .bg1 { background-color: var(--color1); }
+    .bg2 { background-color: var(--color2); }
+    .bg3 { background-color: var(--color3); }
+    .bg4 { background-color: var(--color4); }
+    .bg5 { background-color: var(--color5); }
+    .bg6 { background-color: var(--color6); }
+    .bg7 { background-color: var(--color7); }
+    .bg8 { background-color: var(--color8); }
+    .bg9 { background-color: var(--color9); }
+    .bg10 { background-color: var(--color10); }
+    .bg11 { background-color: var(--color11); }
+    .c1{ color: var(--color1); }
+    .c2{ color: var(--color2); }
+    .c3{ color: var(--color3); }
+    .c4{ color: var(--color4); }
+    .c5{ color: var(--color5); }
+    .c6{ color: var(--color6); }
+    .c7{ color: var(--color7); }
+    .c8{ color: var(--color8); }
+    .c9{ color: var(--color9); }
+    .c10{ color: var(--color10); }
+    .c11{ color: var(--color11); }

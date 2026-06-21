@@ -1,0 +1,53 @@
+# Dependency
+node_modules/
+vendor/
+
+# Upload user
+uploads/
+storage/
+tmp/
+
+# Cache
+cache/
+logs/
+*.log
+
+# Editor
+.vscode/
+.idea/
+
+# Sistem
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Root sensitif
+/connect.php
+/default.php
+
+# Admin
+/admin/connect.php
+/admin/config.php
+/admin/.env
+
+# Administrator
+/admin/administrator/connect.php
+/admin/administrator/config.php
+
+# Shopee
+/shopee/connect.php
+
+# Optik
+/optik/connect.php
+/config/database.php
+
+# Medina
+/medina/connect.php

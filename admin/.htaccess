@@ -1,0 +1,25 @@
+RewriteEngine On
+
+<FilesMatch "\.(env|json|ini|log|md)$">
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+</FilesMatch>
+
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+<FilesMatch "^(connect|config|database)\.php$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+RewriteRule ^(models|controllers|views|helpers)/(.*)$ - [F,L]
+
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}\.php -f
+RewriteRule ^(.*)$ $1.php [L]
+
+Options -Indexes
