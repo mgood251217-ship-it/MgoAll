@@ -51,6 +51,13 @@ class Store{
         $stmt->close();
         return $result;
     }
+
+    public function createMachine($data){
+        $stmt = $this->koneksi->prepare("INSERT INTO machine (store_id, name, type) VALUES (?, ?, ?)");
+        $stmt->bind_param("iss", $data->store_id, $data->name, $data->type);
+        $result = $stmt->execute();
+        return $result;
+    }
     
 }
 

@@ -646,103 +646,25 @@ class OrderController {
         $this->paymentModel->updateLastStatusPayment($order_id, $status_bayar);
         return true;
     }
-
-    public function fullPrice(){
-        global $store_id;
-
-        $input = json_decode(file_get_contents('php://input'), true);
-        $data = $input ?: $_POST;
-
-        $product_id = (int)($data['product_id'] ?? 0);
-
-        if ($product_id === 0) {
-            echo json_encode(['total_price' => 0]);
-            exit;
-        }
-
-        $product = $this->productModel->getProductById($product_id);
-        if (!$product) {
-            echo json_encode(['total_price' => 0]);
-            exit;
-        }
-
-        $order_id    = (int)($data['order_id'] ?? 0);
-        $diskonInput = isset($data['diskon']) ? (int)$data['diskon'] : 0;
-        $diskon      = $this->discount($order_id, $product_id, $diskonInput);
-        
-        $quantity = (int)($data['quantity'] ?? 1);
-        if ($quantity < 1) $quantity = 1;
-
-        $size       = trim($data['size'] ?? '-');
-        $finishing  = trim($data['finishing'] ?? '-');
-        $panjang    = (float)($data['panjang'] ?? 0);
-        $lebar      = (float)($data['lebar'] ?? 0);
-        $waktu      = (float)($data['waktu'] ?? 0);
-        
-        $finishing_cut    = ($data['finishing_cut'] ?? '') == '1';
-        $finishing_die    = ($data['finishing_die'] ?? '') == '1';
-        $finishing_jersey = $data['finishingJersey'] ?? $data['finishing_jersey'] ?? [];
-        $kiloan           = (float)($data['kiloan'] ?? 0);
-
-        if ($panjang > 0 && $lebar > 0) {
-            $size = "{$panjang}x{$lebar}";
-        }
-
-        $product_type = $product['type'] ?? '';
-
-        $fData = $this->finishingData($finishing, $finishing_jersey, $finishing_cut, $finishing_die, $product_type, $panjang, $lebar);
-        $finishing_price = $fData['price'] ?? 0;
-
-        $base_unit_price = $product['price'] - $diskon;
-        $pricing = $this->calculatePricingDetails($product, $base_unit_price, $finishing_price, $quantity, $panjang, $lebar, $waktu, $kiloan, $size);
-
-        if (is_array($pricing)) {
-            $total_price = $pricing['amount'] ?? 0;
-        } else {
-            $total_price = $pricing->amount ?? 0;
-        }
-
-        echo json_encode([
-            'success' => true,
-            'total' => $total_price
-        ]); 
-
-    }
-
-    public function createItem() {
-        global $store_id;
-
-        $input = json_decode(file_get_contents('php://input'), true);
-        $data = $input ?: $_POST;
-
+    
+    private function _prepareItemData($data, $store_id) {
         $order_id = (int)($data['order_id'] ?? 0);
         $product_id = (int)($data['product_id'] ?? 0);
-        $diskonInput = (int)($data['diskon'] ?? 0);
-        $diskon = $this->discount($order_id, $product_id, $diskonInput);
         $judul = trim($data['judul'] ?? '');
         $size = trim($data['size'] ?? '-');
         $quantity = (int)($data['quantity'] ?? 1);
 
         if ($quantity < 1) $quantity = 1;
 
-        $finishing = trim($data['finishing'] ?? '-');
         $panjang = (float)($data['panjang'] ?? 0);
         $lebar = (float)($data['lebar'] ?? 0);
-        $waktu = (float)($data['waktu'] ?? 0);
-        $finishing_cut = ($data['finishing_cut'] ?? '') == '1';
-        $finishing_die = ($data['finishing_die'] ?? '') == '1';
-        $finishing_jersey = $data['finishingJersey'] ?? $data['finishing_jersey'] ?? [];
-        $kiloan = (float)($data['kiloan'] ?? 0);
-
         if ($panjang > 0 && $lebar > 0) {
             $size = "{$panjang}x{$lebar}";
         }
 
         $product = $this->productModel->getProductById($product_id);
         if (!$product) {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'message' => 'Produk tidak ditemukan']);
-            exit;
+            return ['error' => 'Produk tidak ditemukan', 'status' => 404];
         }
 
         if ($product['type'] === 'PAKET INDOOR OUTDOOR') {
@@ -753,11 +675,19 @@ class OrderController {
                 $product_id = $produk_baru['id'] ?? $produk_baru['product_id'];
                 $product = $produk_baru;
             } else {
-                http_response_code(404);
-                echo json_encode(['success' => false, 'message' => "Produk paket ($nama_pencarian) tidak ditemukan"]);
-                exit;
+                return ['error' => "Produk paket ($nama_pencarian) tidak ditemukan", 'status' => 404];
             }
         }
+
+        $diskonInput = (int)($data['diskon'] ?? 0);
+        $diskon = $this->discount($order_id, $product_id, $diskonInput);
+
+        $finishing = trim($data['finishing'] ?? '-');
+        $waktu = (float)($data['waktu'] ?? 0);
+        $finishing_cut = ($data['finishing_cut'] ?? '') == '1';
+        $finishing_die = ($data['finishing_die'] ?? '') == '1';
+        $finishing_jersey = $data['finishingJersey'] ?? $data['finishing_jersey'] ?? [];
+        $kiloan = (float)($data['kiloan'] ?? 0);
 
         $stok_butuh = 0;
         if ($product['type'] === 'DTF' && $panjang > 0) {
@@ -771,71 +701,131 @@ class OrderController {
         }
 
         $fData = $this->finishingData($finishing, $finishing_jersey, $finishing_cut, $finishing_die, $product['type'], $panjang, $lebar);
-        $finishing_ids = $fData['ids'];
-        $finishing_price = $fData['price'];
+        $finishing_ids = $fData['ids'] ?? [];
+        $finishing_price = $fData['price'] ?? 0;
         $finishing_str = count($finishing_ids) ? implode(',', $finishing_ids) : '-';
 
-        $existing_stock = $this->stockModel->getStockById($product_id);
+        $finishing_to_reduce = [];
+        if (!empty($fData['stocks'])) {
+            foreach ($fData['stocks'] as $f_stock) {
+                $finishing_to_reduce[] = [
+                    'product_id' => $f_stock['product_id'],
+                    'qty' => (float)$f_stock['qty'] * $quantity
+                ];
+            }
+        }
+
+        $base_unit_price = $product['price'] - $diskon;
+        $pricing = $this->calculatePricingDetails($product, $base_unit_price, $finishing_price, $quantity, $panjang, $lebar, $waktu, $kiloan, $size);
+
+        $unit = is_array($pricing) ? ($pricing['unit'] ?? 0) : ($pricing->unit ?? 0);
+        $amount = is_array($pricing) ? ($pricing['amount'] ?? 0) : ($pricing->amount ?? 0);
+        $final_size = is_array($pricing) ? ($pricing['size'] ?? $size) : ($pricing->size ?? $size);
+
+        return [
+            'success' => true,
+            'order_id' => $order_id,
+            'product_id' => $product_id,
+            'product' => $product,
+            'judul' => $judul,
+            'size' => $final_size,
+            'quantity' => $quantity,
+            'stok_butuh' => $stok_butuh,
+            'finishing_str' => $finishing_str,
+            'finishing_to_reduce' => $finishing_to_reduce,
+            'unit' => $unit,
+            'amount' => $amount
+        ];
+    }
+
+    public function fullPrice() {
+        global $store_id;
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $data = $input ?: $_POST;
+
+        if (empty($data['product_id'])) {
+            echo json_encode(['total_price' => 0]);
+            exit;
+        }
+
+        $itemData = $this->_prepareItemData($data, $store_id);
+
+        if (isset($itemData['error'])) {
+            echo json_encode(['total_price' => 0]);
+            exit;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'total' => $itemData['amount']
+        ]); 
+        exit;
+    }
+
+    public function createItem() {
+        global $store_id;
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $data = $input ?: $_POST;
+
+        $itemData = $this->_prepareItemData($data, $store_id);
+
+        if (isset($itemData['error'])) {
+            http_response_code($itemData['status']);
+            echo json_encode(['success' => false, 'message' => $itemData['error']]);
+            exit;
+        }
+
+        $product = $itemData['product'];
+        $stok_butuh = $itemData['stok_butuh'];
+
+        // Cek Stok Barang Utama
+        $existing_stock = $this->stockModel->getStockById($itemData['product_id']);
         if ($product['unit_type'] !== '~' && $existing_stock < $stok_butuh) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Stock Barang Utama tidak mencukupi']);
             exit;
         }
 
-        $finishing_to_reduce = [];
-        foreach ($fData['stocks'] as $f_stock) {
-            $f_pid = $f_stock['product_id'];
-            $f_butuh = (float)$f_stock['qty'] * $quantity; 
-            
-            $f_existing = $this->stockModel->getStockById($f_pid);
-            if ($f_existing < $f_butuh) {
+        foreach ($itemData['finishing_to_reduce'] as $f_reduce) {
+            $f_existing = $this->stockModel->getStockById($f_reduce['product_id']);
+            if ($f_existing < $f_reduce['qty']) {
                 // http_response_code(400);
                 // echo json_encode(['success' => false, 'message' => 'Stock Finishing tidak mencukupi']);
                 // exit;
             }
-            
-            $finishing_to_reduce[] = [
-                'product_id' => $f_pid,
-                'qty' => $f_butuh
-            ];
         }
-
-        $base_unit_price = $product['price'] - $diskon;
-        $pricing = $this->calculatePricingDetails($product, $base_unit_price, $finishing_price, $quantity, $panjang, $lebar, $waktu, $kiloan, $size);
-
-        $unit = $pricing->unit;
-        $size = $pricing->size;
-        $amount = $pricing->amount;
 
         $data_item = (object)[
             'store_id' => $store_id,
-            'order_id' => $order_id,
-            'product_id' => $product_id, // Sekarang akan menggunakan product_id yang baru jika itu produk PAKET
-            'judul' => $judul,
-            'size' => $size,
-            'quantity' => $quantity,
-            'unit' => $unit,
-            'amount' => $amount,
-            'finishing_str' => $finishing_str
+            'order_id' => $itemData['order_id'],
+            'product_id' => $itemData['product_id'], 
+            'judul' => $itemData['judul'],
+            'size' => $itemData['size'],
+            'quantity' => $itemData['quantity'],
+            'unit' => $itemData['unit'],
+            'amount' => $itemData['amount'],
+            'finishing_str' => $itemData['finishing_str']
         ];
 
-        $rowExist = $this->orderModel->cekOrderItem($order_id, $judul, $finishing_str, $size);
+        $rowExist = $this->orderModel->cekOrderItem($itemData['order_id'], $itemData['judul'], $itemData['finishing_str'], $itemData['size']);
         
         if ($rowExist) {
-            $data_item->quantity = $rowExist['quantity'] + $quantity;
-            $data_item->amount = $unit * $data_item->quantity;
+            $data_item->quantity = $rowExist['quantity'] + $itemData['quantity'];
+            $data_item->amount = $itemData['unit'] * $data_item->quantity;
             $data_item->id = $rowExist['order_item_id'];
 
             if ($this->orderModel->updateOrderItem($data_item)) {
                 if ($product['unit_type'] !== '~') {
-                    $this->stockModel->reduceStock($stok_butuh, $product_id);
+                    $this->stockModel->reduceStock($stok_butuh, $itemData['product_id']);
                 }
-                foreach ($finishing_to_reduce as $f_reduce) {
+                foreach ($itemData['finishing_to_reduce'] as $f_reduce) {
                     $this->stockModel->reduceStock($f_reduce['qty'], $f_reduce['product_id']);
                 }
 
-                $this->orderTotal($order_id);
-                $this->paymentStatus($order_id);
+                $this->orderTotal($itemData['order_id']);
+                $this->paymentStatus($itemData['order_id']);
                 
                 echo json_encode(['success' => true, 'message' => 'Item berhasil diperbarui.']);
                 exit;
@@ -847,14 +837,14 @@ class OrderController {
         } else {
             if ($this->orderModel->createOrderItem($data_item)) {
                 if ($product['unit_type'] !== '~') {
-                    $this->stockModel->reduceStock($stok_butuh, $product_id);
+                    $this->stockModel->reduceStock($stok_butuh, $itemData['product_id']);
                 }
-                foreach ($finishing_to_reduce as $f_reduce) {
+                foreach ($itemData['finishing_to_reduce'] as $f_reduce) {
                     $this->stockModel->reduceStock($f_reduce['qty'], $f_reduce['product_id']);
                 }
 
-                $this->orderTotal($order_id);
-                $this->paymentStatus($order_id);
+                $this->orderTotal($itemData['order_id']);
+                $this->paymentStatus($itemData['order_id']);
                 
                 echo json_encode(['success' => true, 'message' => 'Item berhasil ditambahkan.']);
                 exit;

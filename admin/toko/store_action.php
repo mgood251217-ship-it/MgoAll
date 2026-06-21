@@ -4,21 +4,25 @@ require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/global_functions.php';
 require_once BASE_PATH . '/controllers/UserController.php';
 require_once BASE_PATH . '/controllers/LocationController.php';
+require_once BASE_PATH . '/controllers/StoreController.php';
 
-$store = $_POST['store'] ?? '';
+$action = $_GET['action'] ?? '';
 
-if ($store === 'update_user') {
+if ($action === 'update_user') {
     $userController = new UserController($koneksi);
     $userController->updateUser();
-} elseif ($store === 'add_user') {
+} elseif ($action === 'create_user') {
     $userController = new UserController($koneksi);
     $userController->addUser();
-} elseif ($store === 'delete_user') {
+} elseif ($action === 'delete_user') {
     $userController = new UserController($koneksi);
     $userController->deleteUser();
-} elseif ($store === 'set_location') {
+} elseif ($action === 'set_location') {
     $locationController = new LocationController($koneksi);
     $locationController->setLocation();
+} elseif ($action === 'create_machine') {
+    $storeController = new StoreController($koneksi);
+    $storeController->createMachine();
 } else {
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'errors' => ["Aksi tidak valid."]]);

@@ -75,8 +75,7 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
                 </td>
                 <td>
                   <button class="btn btn-sm btn-warning btn-edit me-1" data-user='<?= json_encode($u) ?>'>Edit</button>
-                  <form method="POST" action="store_action.php" class="d-inline delete-user-form">
-                    <input type="hidden" name="store" value="delete_user">
+                  <form method="POST" action="store_action.php?action=delete_user" class="d-inline delete-user-form">
                     <input type="hidden" name="user_id" value="<?= $u['user_id'] ?>">
                     <input type="hidden" name="picture" value="<?= $u['picture'] ?>">
                     <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
@@ -158,11 +157,6 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
       'layout'       => 'horizontal',
       'inputs'       => [
           [
-              'type'  => 'hidden',
-              'name'  => 'store',
-              'value' => 'add_user'
-          ],
-          [
               'type'        => 'text',
               'name'        => 'name',
               'label'       => 'Nama',
@@ -212,11 +206,6 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
       'btn_text' => 'Simpan Perubahan',
       'inputs'   => [
           [
-              'type'  => 'hidden',
-              'name'  => 'store',
-              'value' => 'update_user'
-          ],
-          [
               'type' => 'hidden',
               'name' => 'user_id',
               'id'   => 'edit_user_id'
@@ -265,6 +254,7 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
           [
               'type'        => 'file',
               'name'        => 'picture',
+              'id'          => 'edit_picture',
               'label'       => 'Ganti Foto (Opsional)',
               'custom_attr' => 'accept="image/*"'
           ]
@@ -312,7 +302,7 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
             e.preventDefault();
             const formData = new FormData(this);
 
-            fetch('add_machine.php', {
+            fetch('store_action.php?action=create_machine', {
                 method: 'POST',
                 body: formData
             })
@@ -343,10 +333,11 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
         });
     }
 
-  async function sendFormData(formElement, modalId = null) {
+  // Fungsi sendFormData diperbarui agar menerima parameter target URL aksi secara dinamis
+  async function sendFormData(formElement, targetUrl, modalId = null) {
     const formData = new FormData(formElement);
     try {
-      const response = await fetch('store_action.php', {
+      const response = await fetch(targetUrl, {
         method: 'POST',
         body: formData
       });
@@ -367,16 +358,19 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
     }
   }
 
+  // Submit Tambah User diarahkan ke store_action.php?action=create_user
   document.getElementById('addUserForm').addEventListener('submit', function (e) {
     e.preventDefault();
-    sendFormData(this, 'addUserModal');
+    sendFormData(this, 'store_action.php?action=create_user', 'addUserModal');
   });
 
+  // Submit Edit User diarahkan ke store_action.php?action=update_user
   document.getElementById('editUserForm').addEventListener('submit', function (e) {
     e.preventDefault();
-    sendFormData(this, 'editUserModal');
+    sendFormData(this, 'store_action.php?action=update_user', 'editUserModal');
   });
 
+  // Hapus User menggunakan URL dinamis berdasarkan atribut 'action' dari tag form HTML
   document.querySelectorAll('.delete-user-form').forEach(form => {
     form.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -391,7 +385,8 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
         cancelButtonText: 'Batal'
       }).then((result) => {
         if (result.isConfirmed) {
-          sendFormData(form);
+          const actionUrl = form.getAttribute('action');
+          sendFormData(form, actionUrl);
         }
       });
     });
@@ -464,7 +459,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           formData.append('store', 'set_location');
 
           try {
-            const res = await fetch('store_action.php', {
+            const res = await fetch('store_action.php?action=set_location', {
               method: 'POST',
               body: formData
             });
