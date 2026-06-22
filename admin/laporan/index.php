@@ -1,12 +1,11 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
+require BASE_PATH . '/access_rights.php';
+
 $startMonth  = date('Y-m-01 00:00:00');
 $endMonth    = date('Y-m-t 23:59:59');
-
 $today       = date('Y-m-d');
-
-require BASE_PATH . '/access_rights.php';
 
 $cashTotal = $tfTotal = $jumlahPaymentHarian = $jumlahPaymentBulanan = 0;
 $pendapatanHarian = $pendapatanBulanan = $total_qty_all_products = 0;
@@ -18,137 +17,82 @@ $top_product_name = $topSalesName = $topUserName = $topKonsumenName = '-';
 $digunakan_short = [];
 $tidak_short = [];
 
-// Cash & Transfer bulan ini
 $stmt = $koneksi->prepare("
-    SELECT payment_method, SUM(nominal)
-    FROM payment p
-    JOIN orders o ON p.order_id = o.order_id
-    WHERE o.store_id=? AND p.date BETWEEN ? AND ?
-    GROUP BY payment_method
-");
-$stmt->bind_param("iss", $store_id, $startMonth, $endMonth);
-$stmt->execute();
-$stmt->bind_result($method, $total);
-while ($stmt->fetch()) {
-    if (strtoupper($method) === 'CASH') $cashTotal = (int)$total;
-    if (strtoupper($method) === 'TF')   $tfTotal  = (int)$total;
-}
-$stmt->close();
-
-$today = date('Y-m-d');
-$startMonth = date('Y-m-01');
-$endMonth   = date('Y-m-t');
-
-// --- HARIAN --- //
-$query = "
-    SELECT COUNT(p.payment_id), IFNULL(SUM(p.nominal),0)
-    FROM payment p
-    JOIN orders o ON p.order_id = o.order_id
-    WHERE o.store_id = ? AND DATE(p.date) = ?
-";
-$stmt = $koneksi->prepare($query);
-$stmt->bind_param("is", $store_id, $today);
-$stmt->execute();
-$stmt->bind_result($jumlahPaymentHarian, $pendapatanHarian);
-$stmt->fetch();
-$stmt->close();
-
-// --- BULANAN --- //
-$query = "
-    SELECT COUNT(p.payment_id), IFNULL(SUM(p.nominal),0)
+    SELECT 
+        SUM(CASE WHEN DATE(p.date) = ? THEN 1 ELSE 0 END) AS jml_harian,
+        SUM(CASE WHEN DATE(p.date) = ? THEN p.nominal ELSE 0 END) AS nom_harian,
+        COUNT(p.payment_id) AS jml_bulanan,
+        SUM(p.nominal) AS nom_bulanan,
+        SUM(CASE WHEN UPPER(p.payment_method) = 'CASH' THEN p.nominal ELSE 0 END) AS cash_total,
+        SUM(CASE WHEN UPPER(p.payment_method) IN ('TF', 'TRANSFER') THEN p.nominal ELSE 0 END) AS tf_total
     FROM payment p
     JOIN orders o ON p.order_id = o.order_id
     WHERE o.store_id = ? AND p.date BETWEEN ? AND ?
-";
-$stmt = $koneksi->prepare($query);
-$stmt->bind_param("iss", $store_id, $startMonth, $endMonth);
+");
+$stmt->bind_param("ssiss", $today, $today, $store_id, $startMonth, $endMonth);
 $stmt->execute();
-$stmt->bind_result($jumlahPaymentBulanan, $pendapatanBulanan); 
+$stmt->bind_result($jumlahPaymentHarian, $pendapatanHarian, $jumlahPaymentBulanan, $pendapatanBulanan, $cashTotal, $tfTotal);
 $stmt->fetch();
 $stmt->close();
 
-// Produk terjual bulan ini
+$pendapatanHarian = (int)$pendapatanHarian;
+$pendapatanBulanan = (int)$pendapatanBulanan;
+$cashTotal = (int)$cashTotal;
+$tfTotal = (int)$tfTotal;
+
+$product_ids = [];
 $stmt = $koneksi->prepare("
-    SELECT p.name, SUM(oi.quantity) 
-    FROM order_items oi 
+    SELECT 
+        p.product_id,
+        p.name, 
+        SUM(oi.quantity) AS total_qty,
+        SUM(CASE WHEN p.unit_type <> '~' THEN oi.amount ELSE 0 END) AS total_omset
+    FROM order_items oi
     JOIN orders o ON oi.order_id = o.order_id
     JOIN products p ON p.product_id = oi.product_id
-    WHERE o.store_id=? AND o.date BETWEEN ? AND ?
-    GROUP BY oi.product_id
-    ORDER BY SUM(oi.quantity) DESC
+    WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
+    GROUP BY p.product_id, p.name
 ");
 $stmt->bind_param("iss", $store_id, $startMonth, $endMonth);
 $stmt->execute();
-$stmt->bind_result($prod_name, $qty);
+$stmt->bind_result($pid, $prod_name, $qty, $omset);
+
 while ($stmt->fetch()) {
+    $product_ids[] = $pid;
+    
+    if (count($digunakan_short) < 3) {
+        $digunakan_short[] = $prod_name;
+    }
+
     $total_qty_all_products += (int)$qty;
-    if ($qty > $max_qty) {
+    if ((int)$qty > $max_qty) {
         $max_qty = (int)$qty;
         $top_product_name = $prod_name;
     }
-}
-$stmt->close();
 
-// Omset per produk
-$stmt = $koneksi->prepare("
-    SELECT p.name, SUM(oi.amount)
-    FROM order_items oi
-    JOIN orders o ON oi.order_id = o.order_id
-    JOIN products p ON p.product_id = oi.product_id
-    WHERE o.store_id=? AND o.date BETWEEN ? AND ? AND p.unit_type <> '~'
-    GROUP BY oi.product_id
-    ORDER BY SUM(oi.amount) DESC
-");
-$stmt->bind_param("iss", $store_id, $startMonth, $endMonth);
-$stmt->execute();
-$stmt->bind_result($prod_name, $omset);
-while ($stmt->fetch()) {
     $totalOmsetSemuaProduk += (int)$omset;
-    if ($topSalesName === '-') {
-        $topSalesName = $prod_name;
+    if ((int)$omset > $topSalesOmset) {
         $topSalesOmset = (int)$omset;
+        $topSalesName = $prod_name;
     }
 }
 $stmt->close();
 
-// Pemakaian bahan
-$product_ids = [];
-$stmt = $koneksi->prepare("
-    SELECT DISTINCT oi.product_id
-    FROM order_items oi
-    JOIN orders o ON oi.order_id=o.order_id
-    WHERE o.store_id=? AND o.date BETWEEN ? AND ?
-");
-$stmt->bind_param("iss", $store_id, $startMonth, $endMonth);
-$stmt->execute();
-$stmt->bind_result($pid);
-while ($stmt->fetch()) $product_ids[] = $pid;
-$stmt->close();
-
-if ($product_ids) {
-    $in = implode(',', $product_ids);
-    $q = "SELECT name FROM products WHERE store_id=$store_id AND product_id IN ($in)";
-    $r = $koneksi->query($q);
-    $names = [];
-    while ($d = $r->fetch_assoc()) $names[] = $d['name'];
-    $digunakan_short = array_slice($names, 0, 3);
+$not_in = !empty($product_ids) ? implode(',', array_map('intval', $product_ids)) : '0';
+$q = "SELECT name FROM products WHERE store_id = $store_id AND product_id NOT IN ($not_in) LIMIT 3";
+$r = $koneksi->query($q);
+while ($d = $r->fetch_assoc()) {
+    $tidak_short[] = $d['name'];
 }
 
-// Bahan tidak digunakan
-$not_in = $product_ids ? implode(',', $product_ids) : '0';
-$q = "SELECT name FROM products WHERE store_id=$store_id AND product_id NOT IN ($not_in)";
-$r = $koneksi->query($q);
-$names = [];
-while ($d = $r->fetch_assoc()) $names[] = $d['name'];
-$tidak_short = array_slice($names, 0, 3);
-
-
-// Piutang pelanggan
 $stmt = $koneksi->prepare("
-    SELECT o.total, IFNULL(p.total_dp,0), IFNULL(p.lunas,0)
+    SELECT 
+        COUNT(CASE WHEN IFNULL(p.lunas, 0) = 0 AND o.total > IFNULL(p.total_dp, 0) THEN 1 END),
+        SUM(CASE WHEN IFNULL(p.lunas, 0) = 0 AND o.total > IFNULL(p.total_dp, 0) THEN (o.total - IFNULL(p.total_dp, 0)) ELSE 0 END)
     FROM orders o
     LEFT JOIN (
-        SELECT order_id, SUM(CASE WHEN status='DP' THEN nominal ELSE 0 END) AS total_dp,
+        SELECT order_id, 
+               SUM(CASE WHEN status='DP' THEN nominal ELSE 0 END) AS total_dp,
                MAX(CASE WHEN status='LUNAS' THEN 1 ELSE 0 END) AS lunas
         FROM payment GROUP BY order_id
     ) p ON p.order_id = o.order_id
@@ -156,16 +100,13 @@ $stmt = $koneksi->prepare("
 ");
 $stmt->bind_param("i", $store_id);
 $stmt->execute();
-$stmt->bind_result($order_total, $total_dp, $is_lunas);
-while ($stmt->fetch()) {
-    if ($is_lunas == 0 && $order_total > $total_dp) {
-        $jumlah_pelanggan_belum_bayar++;
-        $total_hutang += ($order_total - $total_dp);
-    }
-}
+$stmt->bind_result($jumlah_pelanggan_belum_bayar, $total_hutang);
+$stmt->fetch();
 $stmt->close();
 
-// Omset keuangan manual
+$jumlah_pelanggan_belum_bayar = (int)$jumlah_pelanggan_belum_bayar;
+$total_hutang = (int)$total_hutang;
+
 $stmt = $koneksi->prepare("SELECT omset_offline, omset_online FROM finance WHERE store_id=? ORDER BY date DESC LIMIT 1");
 $stmt->bind_param("i", $store_id);
 $stmt->execute();
@@ -173,7 +114,6 @@ $stmt->bind_result($omset_offline, $omset_online);
 $stmt->fetch();
 $stmt->close();
 
-// Statistik Karyawan
 $stmt = $koneksi->prepare("
     SELECT u.name FROM projects p
     JOIN users u ON p.user_id = u.user_id
@@ -183,14 +123,11 @@ $stmt = $koneksi->prepare("
 ");
 $stmt->bind_param("iss", $store_id, $startMonth, $endMonth);
 $stmt->execute();
-$stmt->store_result();
-if ($stmt->num_rows > 0) {
-    $stmt->bind_result($topUserName);
-    $stmt->fetch();
+if ($stmt->fetch()) {
+    $topUserName = $stmt->bind_result($name) ? $name : $topUserName;
 }
 $stmt->close();
 
-// Konsumen Terbanyak
 $stmt = $koneksi->prepare("
     SELECT u.name FROM orders o
     JOIN users u ON o.user_id=u.user_id
@@ -200,10 +137,8 @@ $stmt = $koneksi->prepare("
 ");
 $stmt->bind_param("iss", $store_id, $startMonth, $endMonth);
 $stmt->execute();
-$stmt->store_result();
-if ($stmt->num_rows > 0) {
-    $stmt->bind_result($topKonsumenName);
-    $stmt->fetch();
+if ($stmt->fetch()) {
+    $topKonsumenName = $stmt->bind_result($name) ? $name : $topKonsumenName;
 }
 $stmt->close();
 ?>

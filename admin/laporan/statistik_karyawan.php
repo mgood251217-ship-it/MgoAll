@@ -12,132 +12,164 @@ $filter_end_date   = $end_input . ' 23:59:59';
 $stmtUsers = $koneksi->prepare("SELECT user_id, initial, name FROM users WHERE store_id = ?");
 $stmtUsers->bind_param("i", $store_id);
 $stmtUsers->execute();
-$resultUsers = $stmtUsers->get_result();
+$resultUsers = $stmtUsers->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmtUsers->close();
+
 $users = [];
 $usernames = [];
-while ($row = $resultUsers->fetch_assoc()) {
+foreach ($resultUsers as $row) {
     $users[$row['user_id']]     = $row['initial'];
     $usernames[$row['user_id']] = $row['name'];
 }
-$stmtUsers->close();
 
-$receiverCounts = array_fill_keys(array_keys($users), 0);
-$stmtOrders = $koneksi->prepare("
-    SELECT o.user_id 
-    FROM orders o
-    JOIN users u ON o.user_id = u.user_id
-    WHERE DATE(o.date) BETWEEN ? AND ?
-");
-$stmtOrders->bind_param("ss", $filter_start_date, $filter_end_date);
-$stmtOrders->execute();
-$resultOrders = $stmtOrders->get_result();
-while ($row = $resultOrders->fetch_assoc()) {
-    $uid = $row['user_id'];
-    if (isset($receiverCounts[$uid])) {
-        $receiverCounts[$uid]++;
+$receiverCounts = [];
+$pickupCounts   = [];
+$settingCounts  = [];
+$omsetPerUser   = [];
+
+if (!empty($users)) {
+
+    $stmtOrders = $koneksi->prepare("
+        SELECT o.user_id, COUNT(*) as total 
+        FROM orders o
+        WHERE o.store_id = ? AND DATE(o.date) BETWEEN ? AND ?
+        GROUP BY o.user_id
+    ");
+    $stmtOrders->bind_param("iss", $store_id, $filter_start_date, $filter_end_date);
+    $stmtOrders->execute();
+    $resOrders = $stmtOrders->get_result()->fetch_all(MYSQLI_ASSOC);
+    foreach ($resOrders as $row) {
+        if (isset($users[$row['user_id']])) {
+            $receiverCounts[$row['user_id']] = (int)$row['total'];
+        }
     }
-}
-$stmtOrders->close();
+    $stmtOrders->close();
 
-$pickupCounts = array_fill_keys(array_keys($users), 0);
-$stmtHitung = $koneksi->prepare("
-    SELECT p.user_id 
-    FROM projects p
-    JOIN users u ON p.user_id = u.user_id
-    WHERE DATE(p.date) BETWEEN ? AND ? 
-      AND p.process = 'DIAMBIL'
-");
-$stmtHitung->bind_param("ss", $filter_start_date, $filter_end_date);
-$stmtHitung->execute();
-$resultHitung = $stmtHitung->get_result();
-while ($row = $resultHitung->fetch_assoc()) {
-    $uid = $row['user_id'];
-    if (isset($pickupCounts[$uid])) {
-        $pickupCounts[$uid]++;
+    $stmtHitung = $koneksi->prepare("
+        SELECT p.user_id, COUNT(*) as total 
+        FROM projects p
+        JOIN users u ON p.user_id = u.user_id
+        WHERE u.store_id = ? AND DATE(p.date) BETWEEN ? AND ? AND p.process = 'DIAMBIL'
+        GROUP BY p.user_id
+    ");
+    $stmtHitung->bind_param("iss", $store_id, $filter_start_date, $filter_end_date);
+    $stmtHitung->execute();
+    $resHitung = $stmtHitung->get_result()->fetch_all(MYSQLI_ASSOC);
+    foreach ($resHitung as $row) {
+        if (isset($users[$row['user_id']])) {
+            $pickupCounts[$row['user_id']] = (int)$row['total'];
+        }
     }
-}
-$stmtHitung->close();
+    $stmtHitung->close();
 
-$settingCounts = array_fill_keys(array_keys($users), 0);
-$stmt = $koneksi->prepare("
-    SELECT o.order_id, o.user_id 
-    FROM orders o
-    WHERE DATE(o.date) BETWEEN ? AND ?
-");
-$stmt->bind_param("ss", $filter_start_date, $filter_end_date);
-$stmt->execute();
-$result = $stmt->get_result();
-
-$stmtCheck = $koneksi->prepare("SELECT 1 FROM order_items WHERE order_id = ? AND UPPER(judul) = 'SETTING' LIMIT 1");
-while ($row = $result->fetch_assoc()) {
-    $order_id = $row['order_id'];
-    $user_id  = $row['user_id'];
-
-    $stmtCheck->bind_param("i", $order_id);
-    $stmtCheck->execute();
-    $resultCheck = $stmtCheck->get_result();
-
-    if ($resultCheck->num_rows > 0 && isset($settingCounts[$user_id])) {
-        $settingCounts[$user_id]++;
+    $stmtSetting = $koneksi->prepare("
+        SELECT o.user_id, COUNT(*) as total
+        FROM orders o
+        WHERE o.store_id = ? 
+          AND DATE(o.date) BETWEEN ? AND ?
+          AND EXISTS (
+              SELECT 1 FROM order_items oi 
+              WHERE oi.order_id = o.order_id AND UPPER(oi.judul) = 'SETTING'
+          )
+        GROUP BY o.user_id
+    ");
+    $stmtSetting->bind_param("iss", $store_id, $filter_start_date, $filter_end_date);
+    $stmtSetting->execute();
+    $resSetting = $stmtSetting->get_result()->fetch_all(MYSQLI_ASSOC);
+    foreach ($resSetting as $row) {
+        if (isset($users[$row['user_id']])) {
+            $settingCounts[$row['user_id']] = (int)$row['total'];
+        }
     }
-}
-$stmtCheck->close();
-$stmt->close();
+    $stmtSetting->close();
 
-$omsetPerUser = array_fill_keys(array_keys($users), 0);
-$sql = "SELECT nominal, order_id FROM payment WHERE date BETWEEN ? AND ?";
-$stmt = $koneksi->prepare($sql);
-$stmt->bind_param("ss", $filter_start_date, $filter_end_date);
-$stmt->execute();
-$result = $stmt->get_result();
+    $stmtPayment = $koneksi->prepare("SELECT nominal, order_id FROM payment WHERE date BETWEEN ? AND ?");
+    $stmtPayment->bind_param("ss", $filter_start_date, $filter_end_date);
+    $stmtPayment->execute();
+    $resPayments = $stmtPayment->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmtPayment->close();
 
-while ($row = $result->fetch_assoc()) {
-    $orderIds = explode(',', $row['order_id']);
-    $nominalPerOrder = $row['nominal'] / count($orderIds); 
+    if (!empty($resPayments)) {
+        $allOrderIds = [];
+        foreach ($resPayments as $pay) {
+            foreach (explode(',', $pay['order_id']) as $oid) {
+                $oid = trim($oid);
+                if ($oid !== '') {
+                    $allOrderIds[$oid] = true;
+                }
+            }
+        }
 
-    foreach ($orderIds as $oid) {
-        $oid = trim($oid);
-        $orderRes = $koneksi->query("SELECT user_id, store_id FROM orders WHERE order_id = '$oid'");
-        if ($orderRes && $ord = $orderRes->fetch_assoc()) {
-            if ((int)$ord['store_id'] === (int)$store_id) {
-                $uid = $ord['user_id'];
-                if (isset($omsetPerUser[$uid])) {
-                    $omsetPerUser[$uid] += $nominalPerOrder;
+        $orderMap = [];
+        if (!empty($allOrderIds)) {
+            $idsKeys = array_keys($allOrderIds);
+            $clause  = implode(',', array_fill(0, count($idsKeys), '?'));
+            $types   = str_repeat('s', count($idsKeys));
+            
+            $stmtMap = $koneksi->prepare("SELECT order_id, user_id, store_id FROM orders WHERE order_id IN ($clause)");
+            $stmtMap->bind_param($types, ...$idsKeys);
+            $stmtMap->execute();
+            $resMap = $stmtMap->get_result()->fetch_all(MYSQLI_ASSOC);
+            foreach ($resMap as $om) {
+                $orderMap[$om['order_id']] = [
+                    'user_id'  => $om['user_id'],
+                    'store_id' => (int)$om['store_id']
+                ];
+            }
+            $stmtMap->close();
+        }
+
+        foreach ($resPayments as $pay) {
+            $orderIds = array_map('trim', explode(',', $pay['order_id']));
+            $orderIds = array_filter($orderIds);
+            if (empty($orderIds)) continue;
+
+            $nominalPerOrder = $pay['nominal'] / count($orderIds);
+
+            foreach ($orderIds as $oid) {
+                if (isset($orderMap[$oid]) && $orderMap[$oid]['store_id'] === (int)$store_id) {
+                    $uid = $orderMap[$oid]['user_id'];
+                    if (isset($users[$uid])) {
+                        // Jika key omset belum ada, buat baru bernilai 0 terlebih dahulu
+                        if (!isset($omsetPerUser[$uid])) {
+                            $omsetPerUser[$uid] = 0;
+                        }
+                        $omsetPerUser[$uid] += $nominalPerOrder;
+                    }
                 }
             }
         }
     }
 }
-$stmt->close();
 
 $dataStatistik = [];
 
-$max1 = max($pickupCounts);
-$maxId1 = array_search($max1, $pickupCounts);
+$getWinner = function($countsArray, $usernames) {
+    if (empty($countsArray)) return '-';
+    $maxValue = max($countsArray);
+    if ($maxValue <= 0) return '-';
+    $maxId = array_search($maxValue, $countsArray);
+    return $usernames[$maxId] ?? '-';
+};
+
 $row1 = ['no' => 1, 'keterangan' => 'PENGAMBILAN BARANG TERBANYAK', 'is_currency' => false];
-foreach ($users as $id => $initial) { $row1['op_'.$id] = $pickupCounts[$id]; }
-$row1['hasil'] = ($max1 > 0 && isset($usernames[$maxId1])) ? $usernames[$maxId1] : '-';
+foreach ($users as $id => $initial) { $row1['op_'.$id] = $pickupCounts[$id] ?? 0; }
+$row1['hasil'] = $getWinner($pickupCounts, $usernames);
 $dataStatistik[] = $row1;
 
-$max2 = max($receiverCounts);
-$maxId2 = array_search($max2, $receiverCounts);
 $row2 = ['no' => 2, 'keterangan' => 'PALING BANYAK NERIMA KONSUMEN', 'is_currency' => false];
-foreach ($users as $id => $initial) { $row2['op_'.$id] = $receiverCounts[$id]; }
-$row2['hasil'] = ($max2 > 0 && isset($usernames[$maxId2])) ? $usernames[$maxId2] : '-';
+foreach ($users as $id => $initial) { $row2['op_'.$id] = $receiverCounts[$id] ?? 0; }
+$row2['hasil'] = $getWinner($receiverCounts, $usernames);
 $dataStatistik[] = $row2;
 
-$max3 = max($settingCounts);
-$maxId3 = array_search($max3, $settingCounts);
 $row3 = ['no' => 3, 'keterangan' => 'PALING BANYAK SETTING', 'is_currency' => false];
-foreach ($users as $id => $initial) { $row3['op_'.$id] = $settingCounts[$id]; }
-$row3['hasil'] = ($max3 > 0 && isset($usernames[$maxId3])) ? $usernames[$maxId3] : '-';
+foreach ($users as $id => $initial) { $row3['op_'.$id] = $settingCounts[$id] ?? 0; }
+$row3['hasil'] = $getWinner($settingCounts, $usernames);
 $dataStatistik[] = $row3;
 
-$max4 = max($omsetPerUser);
-$maxId4 = array_search($max4, $omsetPerUser);
 $row4 = ['no' => 4, 'keterangan' => 'OMSET TERBANYAK', 'is_currency' => true];
-foreach ($users as $id => $initial) { $row4['op_'.$id] = $omsetPerUser[$id]; }
-$row4['hasil'] = ($max4 > 0 && isset($usernames[$maxId4])) ? $usernames[$maxId4] : '-';
+foreach ($users as $id => $initial) { $row4['op_'.$id] = $omsetPerUser[$id] ?? 0; }
+$row4['hasil'] = $getWinner($omsetPerUser, $usernames);
 $dataStatistik[] = $row4;
 
 $columns = [
@@ -148,7 +180,7 @@ foreach ($users as $id => $initial) {
     $columns[] = [
         'header' => htmlspecialchars($initial),
         'render' => function($row) use ($id) {
-            $val = $row['op_'.$id];
+            $val = $row['op_'.$id] ?? 0;
             return $row['is_currency'] ? number_format($val, 0, ',', '.') : $val;
         }
     ];

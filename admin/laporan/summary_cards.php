@@ -1,7 +1,7 @@
  <style>
   .summary-cards {
     display: flex;
-    flex-wrap: nowrap; /* tetap satu baris */
+    flex-wrap: nowrap;
     gap: 8px;
     overflow: hidden;
     margin-bottom: 20px;

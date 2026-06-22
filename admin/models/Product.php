@@ -81,6 +81,50 @@ class Product{
         $stmt->close();
         return $success;
     }
+
+    public function getMaterialUsageByIntervalDate($store_id, $start_date, $end_date){
+        $stmt = $this->koneksi->prepare("
+            SELECT 
+                p.product_id,
+                p.name AS nama_barang,
+                p.unit_type AS satuan,
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN p.unit_type = 'M2' AND oi.size LIKE '%x%' THEN 
+                                oi.quantity * CAST(SUBSTRING_INDEX(oi.size, 'x', 1) AS DECIMAL(10,4)) * CAST(SUBSTRING_INDEX(oi.size, 'x', -1) AS DECIMAL(10,4))
+                            WHEN p.unit_type = 'M2' THEN 
+                                oi.quantity
+                            ELSE 
+                                oi.quantity
+                        END
+                    ), 0
+                ) AS total_pemakaian
+            FROM products p
+            LEFT JOIN order_items oi ON oi.product_id = p.product_id AND oi.store_id = ?
+            LEFT JOIN orders o ON o.order_id = oi.order_id AND o.store_id = ?
+            WHERE p.store_id = ?
+            AND NOT p.unit_type = '~'
+            AND (o.order_id IS NULL OR (DATE(o.date) BETWEEN ? AND ?))
+            GROUP BY p.product_id
+            ORDER BY p.type DESC
+        ");
+        $stmt->bind_param("issss", $store_id, $store_id, $store_id, $start_date, $end_date);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $result ?? [];
+    }
+
+    public function getProductByPlaceholders($placeholders, $ids){
+        $stmt = $this->koneksi->prepare("SELECT product_id, name FROM products WHERE product_id IN ($placeholders)");
+        $types = str_repeat('i', count($ids));
+        $stmt->bind_param($types, ...$ids);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $result ?? [];
+    }
     
 }
 ?>

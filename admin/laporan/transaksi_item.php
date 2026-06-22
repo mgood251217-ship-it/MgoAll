@@ -6,13 +6,6 @@ require_once BASE_PATH . '/components/Table.php';
 $start_input = $_GET['start_date'] ?? date('Y-m-d');
 $end_input = $_GET['end_date'] ?? date('Y-m-d');
 
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $start_input)) {
-    $start_input = date('Y-m-d');
-}
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $end_input)) {
-    $end_input = date('Y-m-d');
-}
-
 $filter_start_date = $start_input . ' 00:00:00';
 $filter_end_date = $end_input . ' 23:59:59';
 

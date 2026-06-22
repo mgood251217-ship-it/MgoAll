@@ -32,7 +32,6 @@ if ($payment_id <= 0 || $order_id <= 0 || $nominal <= 0 || empty($method) || emp
 
 $tanggal = str_replace('T', ' ', $tanggal) . ':00';
 
-// ✅ Insert activity
 $title = "UBAH PEMBAYARAN";
 $message = "";
 $done = 0;
@@ -110,13 +109,11 @@ if ($message != "") {
 }
 
 
-// ✅ Update payment yang dimaksud
 $update = $koneksi->prepare("UPDATE payment SET nominal = ?, payment_method = ?, date = ?, status = 'DP' WHERE payment_id = ?");
 $update->bind_param("issi", $nominal, $method, $tanggal, $payment_id);
 $update->execute();
 $update->close();
 
-// 💰 Hitung total semua pembayaran untuk order ini
 $totalPembayaran = 0;
 $payments = $koneksi->query("SELECT payment_id, nominal FROM payment WHERE order_id = $order_id");
 $paymentIds = [];
@@ -126,22 +123,17 @@ while ($row = $payments->fetch_assoc()) {
     $paymentIds[] = (int)$row['payment_id'];
 }
 
-// 🎯 Ambil total dari order
 $orderResult = $koneksi->query("SELECT total FROM orders WHERE order_id = $order_id LIMIT 1");
 $orderTotal = 0;
 if ($orderRow = $orderResult->fetch_assoc()) {
     $orderTotal = (int)$orderRow['total'];
 }
 
-// 🔄 Update status pembayaran
 if ($totalPembayaran < $orderTotal) {
-    // Semua payment status = DP
     $koneksi->query("UPDATE payment SET status = 'DP' WHERE order_id = $order_id");
 } else {
-    // Semua DP dulu
     $koneksi->query("UPDATE payment SET status = 'DP' WHERE order_id = $order_id");
 
-    // Ambil payment_id terbesar (terbaru) untuk order ini
     $last = $koneksi->query("SELECT payment_id FROM payment WHERE order_id = $order_id ORDER BY payment_id DESC LIMIT 1");
     if ($lastRow = $last->fetch_assoc()) {
         $lastId = (int)$lastRow['payment_id'];

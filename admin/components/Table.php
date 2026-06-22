@@ -78,14 +78,35 @@ function renderTable($config = []) {
                                 } 
                                 elseif ($type === 'action_buttons') {
                                     foreach ($col['buttons'] as $btn) {
+                                        
+                                        // Fitur Pengecualian Tombol
+                                        if (isset($btn['visible'])) {
+                                            $isVisible = is_callable($btn['visible']) ? $btn['visible']($row, $index) : $btn['visible'];
+                                            if (!$isVisible) continue;
+                                        }
+
                                         $btnType  = $btn['type'] ?? 'button'; 
-                                        $btnClass = $btn['class'] ?? '';
-                                        $btnColor = $btn['color'] ?? 'primary';
                                         $btnText  = $btn['text'] ?? '';
                                         $icon     = $btn['icon'] ?? '';
                                         
-                                        $btnStyle = 'line-height: 0; padding: .25rem .5rem; margin-right: 4px;';
+                                        // ==========================================
+                                        // FIX: PENGATURAN KELAS BUTTON (TIDAK ADA LAGI INLINE STYLE YANG MERUSAK)
+                                        // ==========================================
+                                        $customClass = $btn['class'] ?? '';
+                                        $customColor = $btn['color'] ?? 'primary'; // Default warna primary
                                         
+                                        // Gabungkan class bawaan Bootstrap (btn btn-sm btn-warna)
+                                        $finalClass = "btn btn-sm btn-{$customColor}";
+                                        
+                                        // Tambahkan custom class jika ada (tanpa duplikasi)
+                                        if (!empty($customClass) && strpos($finalClass, $customClass) === false) {
+                                            $finalClass .= " " . $customClass;
+                                        }
+                                        
+                                        // Style inline hanya disisakan untuk memberi jarak antar tombol
+                                        $btnStyle = 'margin-right: 4px;';
+                                        // ==========================================
+
                                         if ($btnType === 'form') {
                                             $actionUrl = $btn['action_url'] ?? '#';
                                             $formClass = $btn['form_class'] ?? '';
@@ -96,7 +117,7 @@ function renderTable($config = []) {
                                                     echo '<input type="hidden" name="' . $inputName . '" value="' . htmlspecialchars($row[$rowKey] ?? '') . '">';
                                                 }
                                             }
-                                            echo '<button type="submit" class="btn btn-' . $btnColor . ' btn-sm ' . $btnClass . '" style="' . $btnStyle . '">' . $icon . $btnText . '</button>';
+                                            echo '<button type="submit" class="' . $finalClass . '" style="' . $btnStyle . '">' . $icon . $btnText . '</button>';
                                             echo '</form> ';
                                         } 
                                         elseif ($btnType === 'link') {
@@ -105,7 +126,7 @@ function renderTable($config = []) {
                                             $url = $urlBase . ($paramKey ? urlencode($row[$paramKey] ?? '') : '');
                                             $confirmAttr = isset($btn['confirm']) ? ' onclick="return confirm(\'' . htmlspecialchars($btn['confirm'], ENT_QUOTES) . '\')"' : '';
                                             
-                                            echo '<a href="' . $url . '" class="btn btn-' . $btnColor . ' btn-sm ' . $btnClass . '" style="' . $btnStyle . '"' . $confirmAttr . '>';
+                                            echo '<a href="' . $url . '" class="' . $finalClass . '" style="' . $btnStyle . '"' . $confirmAttr . '>';
                                             echo $icon . $btnText;
                                             echo '</a>';
                                         }
@@ -115,8 +136,9 @@ function renderTable($config = []) {
                                             $dataAttrs = '';
                                             if (isset($btn['data_attributes'])) {
                                                 foreach ($btn['data_attributes'] as $attrName => $rowKey) {
-                                                    $val = htmlspecialchars($row[$rowKey] ?? '');
-                                                    $dataAttrs .= ' data-' . $attrName . '="' . $val . '"';
+                                                    // Fitur Array Key Exists agar static data (seperti "expenditures") terbaca
+                                                    $val = array_key_exists($rowKey, (array)$row) ? $row[$rowKey] : $rowKey;
+                                                    $dataAttrs .= ' data-' . $attrName . '="' . htmlspecialchars((string)$val) . '"';
                                                 }
                                             }
                                             
@@ -144,7 +166,7 @@ function renderTable($config = []) {
                                                 }
                                             }
                                             
-                                            echo '<button type="button" class="btn btn-' . $btnColor . ' btn-sm ' . $btnClass . '" style="' . $btnStyle . '" ' . $targetModal . $dataAttrs . $onclickAttr . '>';
+                                            echo '<button type="button" class="' . $finalClass . '" style="' . $btnStyle . '" ' . $targetModal . $dataAttrs . $onclickAttr . '>';
                                             echo $icon . $btnText;
                                             echo '</button>';
                                         }

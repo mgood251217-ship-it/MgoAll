@@ -2,17 +2,11 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
+require_once BASE_PATH . '/models/Activity.php';
 
-$stmt = $koneksi->prepare("SELECT activity_id, title, message, information, order_id, date, done FROM activity WHERE store_id = ?");
-$stmt->bind_param("i", $store_id);
-$stmt->execute();
-$result = $stmt->get_result();
+$activityModel = new Activity($koneksi);
+$activity = $activityModel->getActivitiesByStoreId($store_id);
 
-$activity = [];
-while ($row = $result->fetch_assoc()) {
-    $activity[] = $row;
-}
-$stmt->close();
 
 $htmlTableAktivitas = renderTable([
     'data'        => $activity,
@@ -75,7 +69,7 @@ $htmlTableAktivitas = renderTable([
       width: 20px;
       height: 20px;
       cursor: pointer;
-      accent-color: #dc3545; /* warna merah ala Bootstrap danger */
+      accent-color: #dc3545;
       border-radius: 6px;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
       display: inline-block;
@@ -121,7 +115,6 @@ $htmlTableAktivitas = renderTable([
           <h5>Daftar Aktivitas</h5>
           <button id="toggleAll" class="btn btn-sm btn-success">✅ Cek Semua</button>
         </div>
-
               <?= $htmlTableAktivitas ?>
           </div>
 
@@ -137,9 +130,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const toggleAllBtn = document.getElementById('toggleAll');
   const rows = document.querySelectorAll('tr.activity-row');
 
-  // Fungsi update status
   function updateActivityStatus(activityId, doneValue, checkbox) {
-    fetch('update_activity_status.php', {
+    fetch('finance_action.php?action=update_activity', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `activity_id=${activityId}&done=${doneValue}`
@@ -156,28 +148,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Klik pada setiap row atau checkbox
   rows.forEach(row => {
     const checkbox = row.querySelector('.activity-check');
     const activityId = checkbox.dataset.id;
 
-    // Klik row
     row.addEventListener('click', e => {
       if (e.target.classList.contains('activity-check')) return;
       checkbox.checked = !checkbox.checked;
       updateActivityStatus(activityId, checkbox.checked ? 1 : 0, checkbox);
     });
 
-    // Klik checkbox langsung
     checkbox.addEventListener('change', () => {
       updateActivityStatus(activityId, checkbox.checked ? 1 : 0, checkbox);
     });
   });
 
-  // Tombol "Cek Semua"
   toggleAllBtn.addEventListener('click', () => {
     const allChecked = [...document.querySelectorAll('.activity-check')].every(cb => cb.checked);
-    const newStatus = allChecked ? 0 : 1; // jika semua sudah cek → uncek semua
+    const newStatus = allChecked ? 0 : 1;
 
     document.querySelectorAll('.activity-check').forEach(cb => {
       cb.checked = newStatus === 1;
@@ -190,29 +178,6 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleAllBtn.classList.toggle('btn-success', newStatus === 0);
   });
 });
-
-
-function updateActivityStatus(activityId, doneValue, checkbox) {
-  fetch('update_activity_status.php', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `activity_id=${activityId}&done=${doneValue}`
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (!data.success) {
-      alert('❌ Gagal memperbarui status.');
-      checkbox.checked = !checkbox.checked; // rollback
-    }
-  })
-  .catch(err => {
-    console.error(err);
-    alert('⚠️ Terjadi kesalahan koneksi.');
-    checkbox.checked = !checkbox.checked;
-  });
-}
-
-
 </script>
 
 </body>

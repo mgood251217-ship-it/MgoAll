@@ -17,7 +17,6 @@ $id_field = ($type === 'income') ? 'income_id' : 'expenditure_id';
 
 $storeNames = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
 
-// 🔹 Ambil tanggal (dan gambar kalau expenditures)
 if ($type === 'expenditures') {
     $stmt = $koneksi->prepare("SELECT date, img FROM expenditures WHERE expenditure_id = ? AND store_id = ?");
     $stmt->bind_param("ii", $id, $store_id);
@@ -30,14 +29,12 @@ if ($type === 'expenditures') {
         die("Data tidak ditemukan");
     }
 
-    // 🔹 Bentuk path folder berdasarkan TANGGAL record
     $ambilTahun   = date('Y', strtotime($date));
     $ambilBulan   = date('m', strtotime($date));
     $ambilTanggal = date('d', strtotime($date));
     $folderDate   = "$ambilTahun/$ambilBulan/$ambilTanggal";
     $uploadDir    = BASE_PATH . "/assets/img/bukti/$storeNames/$folderDate/";
 
-    // 🔹 Hapus file gambar jika ada
     if (!empty($img)) {
         $imgPath = $uploadDir . $img;
         if (file_exists($imgPath)) {
@@ -46,7 +43,6 @@ if ($type === 'expenditures') {
     }
 
 } else {
-    // 🔹 Kalau income, cuma ambil tanggal
     $stmt = $koneksi->prepare("SELECT date FROM income WHERE income_id = ? AND store_id = ?");
     $stmt->bind_param("ii", $id, $store_id);
     $stmt->execute();
@@ -59,7 +55,6 @@ if ($type === 'expenditures') {
     }
 }
 
-// 🔹 Hapus dari database
 $stmt = $koneksi->prepare("DELETE FROM $table WHERE $id_field = ? AND store_id = ?");
 $stmt->bind_param("ii", $id, $store_id);
 $stmt->execute();
@@ -67,11 +62,9 @@ $stmt->close();
 
 
 
-// 🔹 Redirect kembali
 $start_date_hapus = trim($_POST['start_date_hapus'] ?? '');
 $end_date_hapus   = trim($_POST['end_date_hapus'] ?? '');
 
-// 🔹 Refresh data keuangan
 require_once '../global_functions.php';
 refreshFinance($store_id, $start_date_hapus);
 

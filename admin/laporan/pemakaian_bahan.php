@@ -2,62 +2,18 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
+require_once BASE_PATH . '/models/Product.php';
+
+$productModel = new Product($koneksi);
 
 $start_input = $_GET['start_date'] ?? date('Y-m-d');
 $end_input   = $_GET['end_date'] ?? date('Y-m-d');
 
-function validateDate($date, $format = 'Y-m-d') {
-    $d = DateTime::createFromFormat($format, $date);
-    return $d && $d->format($format) === $date;
-}
-
-if (!validateDate($start_input)) {
-    $start_input = date('Y-m-d');
-}
-if (!validateDate($end_input)) {
-    $end_input = date('Y-m-d');
-}
-
 $start_date = $start_input . ' 00:00:00';
 $end_date   = $end_input . ' 23:59:59';
 
-$sql = "
-    SELECT 
-        p.product_id,
-        p.name AS nama_barang,
-        p.unit_type AS satuan,
-        COALESCE(
-            SUM(
-                CASE
-                    WHEN p.unit_type = 'M2' AND oi.size LIKE '%x%' THEN 
-                        oi.quantity * CAST(SUBSTRING_INDEX(oi.size, 'x', 1) AS DECIMAL(10,4)) * CAST(SUBSTRING_INDEX(oi.size, 'x', -1) AS DECIMAL(10,4))
-                    WHEN p.unit_type = 'M2' THEN 
-                        oi.quantity
-                    ELSE 
-                        oi.quantity
-                END
-            ), 0
-        ) AS total_pemakaian
-    FROM products p
-    LEFT JOIN order_items oi ON oi.product_id = p.product_id AND oi.store_id = ?
-    LEFT JOIN orders o ON o.order_id = oi.order_id AND o.store_id = ?
-    WHERE p.store_id = ?
-      AND NOT p.unit_type = '~'
-      AND (o.order_id IS NULL OR (DATE(o.date) BETWEEN ? AND ?))
-    GROUP BY p.product_id
-    ORDER BY p.type DESC
-";
+$dataPemakaian = $productModel->getMaterialUsageByIntervalDate($store_id, $start_date, $end_date);
 
-$stmt = $koneksi->prepare($sql);
-$stmt->bind_param("issss", $store_id, $store_id, $store_id, $start_input, $end_input);
-$stmt->execute();
-$result = $stmt->get_result();
-
-$dataPemakaian = [];
-while ($row = $result->fetch_assoc()) {
-    $dataPemakaian[] = $row;
-}
-$stmt->close();
 
 $htmlTablePemakaian = renderTable([
     'id'          => 'tabelPemakaian',

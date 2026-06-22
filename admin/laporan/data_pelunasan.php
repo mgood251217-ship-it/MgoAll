@@ -26,9 +26,6 @@ $queryTransaksi = "
 ";
 
 $stmtTransaksi = $koneksi->prepare($queryTransaksi);
-if (!$stmtTransaksi) {
-    die("Query error: " . $koneksi->error);
-}
 $stmtTransaksi->bind_param("iss", $store_id, $filter_start_date, $filter_end_date);
 $stmtTransaksi->execute();
 $result = $stmtTransaksi->get_result();

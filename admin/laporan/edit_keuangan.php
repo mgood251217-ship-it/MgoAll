@@ -16,7 +16,6 @@ if (!$type || !$old_info || !$new_info || $new_nominal <= 0) {
  
 $table = ($type === 'income') ? 'income' : 'expenditures';
 
-// Ambil tanggal dari data lama (untuk refreshFinance)
 $stmt = $koneksi->prepare("SELECT date FROM $table WHERE store_id = ? AND information = ? LIMIT 1");
 $stmt->bind_param("is", $store_id, $old_info);
 $stmt->execute();
@@ -28,7 +27,6 @@ if (!$tanggal) {
     die("Data tidak ditemukan");
 }
 
-// Update data
 $query = "
     UPDATE $table SET 
         nominal = ?, 
@@ -42,7 +40,6 @@ $stmt->bind_param("isis", $new_nominal, $new_info, $store_id, $old_info);
 $stmt->execute();
 $stmt->close();
 
-// Refresh keuangan
 require_once '../global_functions.php';
 refreshFinance($store_id, $start_date);
 

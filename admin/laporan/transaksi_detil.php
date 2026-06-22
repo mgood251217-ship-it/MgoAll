@@ -631,7 +631,7 @@ document.addEventListener('click', function(e) {
     const modalEl = document.getElementById('confirmDeleteTFModal');
     const modal = bootstrap.Modal.getInstance(modalEl);
     modal.hide();
-    fetch('delete_file_tf.php', {
+    fetch('finance_action.php?action=delete_tf', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `transfer_id=${hapusFoto}`
@@ -717,11 +717,11 @@ document.querySelectorAll('.upload-container').forEach(container => {
     formData.append('picture', file);
     formData.append('order_id', orderId);
 
-    fetch('add_file_tf.php', {
+    fetch('finance_action.php?action=create_tf', {
       method: 'POST',
       body: formData
     })
-    .then(res => res.text())
+    .then(res => res.json())
     .then(data => {
       const container = document.querySelector(`.payment-info[data-order-id="${orderId}"]`);
       if (container) loadPaymentInfo(orderId, container);

@@ -292,4 +292,18 @@ class Order {
 
         return $result;
     }
+
+    public function getDetailedOrderByIntervalDate($store_id, $start_date, $end_date){
+        $stmt = $this->koneksi->prepare("SELECT i.*, o.nomorator, o.customer_name, o.date, o.order_id, p.price, p.name AS product_name
+                FROM order_items i
+                INNER JOIN orders o ON i.order_id = o.order_id
+                LEFT JOIN products p ON i.product_id = p.product_id
+                WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
+                ORDER BY o.customer_name DESC");
+        $stmt->bind_param("iss", $store_id, $start_date, $end_date);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $result ?? [];
+    }
 }

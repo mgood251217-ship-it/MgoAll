@@ -1,26 +1,40 @@
 <?php
 require_once '../connect.php';
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 header('Content-Type: application/json');
 
-$input = json_decode(file_get_contents('php://input'), true);
+$rawInput = file_get_contents('php://input');
+$input = json_decode($rawInput, true);
+if (!is_array($input)) {
+    $input = $_POST;
+}
+$input = $input ?? [];
 
-date_default_timezone_set('Asia/Jakarta');
-$orderNo = $input['order_no'] ?? '';
-$name = $input['name'] ?? '';
-$userId = (int)($input['user_id'] ?? 0);
-$date = date('Y-m-d');
+$orderNo = trim($input['order_no'] ?? '');
+$name = trim($input['name'] ?? '');
+$date = trim($input['date'] ?? date('Y-m-d'));
+$userId = $_SESSION['shopee_users']['user_id'] ?? 0;
 
-if (!$orderNo || !$name || $userId <= 0) {
+if (!$orderNo || !$name) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Parameter tidak lengkap']);
+    echo json_encode(['success' => false, 'message' => 'Order No dan Nama harus diisi']);
+    exit;
+}
+
+if ($userId <= 0) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'User tidak terautentikasi']);
     exit;
 }
 
 $stmtCheck = $koneksi->prepare("
     SELECT id FROM orders 
-    WHERE order_no = ? AND user_id = ?");
-$stmtCheck->bind_param("si", $orderNo, $userId);
+    WHERE order_no = ? AND user_id = ? AND date = ?");
+$stmtCheck->bind_param("sis", $orderNo, $userId, $date);
 $stmtCheck->execute();
 $existingOrder = $stmtCheck->get_result()->fetch_assoc();
 

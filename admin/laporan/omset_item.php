@@ -2,6 +2,9 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
+require_once BASE_PATH . '/models/Finance.php';
+
+$financeModel = new Finance($koneksi);
 
 $start_date_f = $_GET['start_date'] ?? date('Y-m-d');
 $end_date_f = $_GET['end_date'] ?? date('Y-m-d');
@@ -9,44 +12,7 @@ $end_date_f = $_GET['end_date'] ?? date('Y-m-d');
 $start_date = $start_date_f . ' 00:00:00';
 $end_date   = $end_date_f . ' 23:59:59';
 
-$query = "
-    SELECT 
-        p.name AS nama_barang,
-        p.unit_type AS satuan,
-        COALESCE(
-            SUM(
-                CASE
-                    WHEN p.unit_type = 'M2' AND oi.size LIKE '%x%' THEN 
-                        oi.quantity * CAST(SUBSTRING_INDEX(oi.size, 'x', 1) AS DECIMAL(10,4)) * CAST(SUBSTRING_INDEX(oi.size, 'x', -1) AS DECIMAL(10,4))
-                    WHEN p.unit_type = 'M2' THEN 
-                        oi.quantity
-                    ELSE 
-                        oi.quantity
-                END
-            ), 0
-        ) AS total_terjual,
-        COALESCE(SUM(oi.amount), 0) AS total_omset
-    FROM products p
-    LEFT JOIN order_items oi ON oi.product_id = p.product_id AND oi.store_id = ?
-    LEFT JOIN orders o ON oi.order_id = o.order_id
-    WHERE p.store_id = ?
-    AND NOT p.unit_type = '~'
-    AND (o.date BETWEEN ? AND ?)
-    GROUP BY p.product_id
-    ORDER BY total_omset DESC
-";
-
-$stmt = $koneksi->prepare($query);
-$stmt->bind_param("iiss", $store_id, $store_id, $start_date, $end_date);
-$stmt->execute();
-$result = $stmt->get_result();
-
-$dataOmsetPerItem = [];
-while ($row = $result->fetch_assoc()) {
-    $dataOmsetPerItem[] = $row;
-}
-
-$stmt->close();
+$dataOmsetPerItem = $financeModel->getOmsetItemByIntervalDate($store_id, $start_date, $end_date);
 
 $htmlTableOmsetPerItem = renderTable([
     'id'          => 'omsetPerItem',

@@ -25,6 +25,24 @@ class Activity {
         
         return $success;
     }
+
+    public function updateActivity($data){
+        $stmt = $this->koneksi->prepare("UPDATE activity SET done = ? WHERE activity_id = ?");
+        $stmt->bind_param("ii", $data->done, $data->id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function getActivitiesByStoreId($id){
+        $stmt = $this->koneksi->prepare("SELECT activity_id, title, message, information, order_id, date, done FROM activity WHERE store_id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $data;
+    }
 }
 
 ?>

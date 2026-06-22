@@ -2,60 +2,53 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
+require_once BASE_PATH . '/models/Order.php';
+require_once BASE_PATH . '/models/Product.php';
+
+$productModel = new Product($koneksi);
+$orderModel = new Order($koneksi);
 
 $start_input = $_GET['start_date'] ?? date('Y-m-d');
 $end_input = $_GET['end_date'] ?? date('Y-m-d');
 
-// Validasi format tanggal (YYYY-MM-DD)
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $start_input)) {
-    $start_input = date('Y-m-d');
-}
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $end_input)) {
-    $end_input = date('Y-m-d');
-}
-
-// Versi lengkap (Y-m-d H:i:s) untuk query
 $filter_start_date = $start_input . ' 00:00:00';
 $filter_end_date = $end_input . ' 23:59:59';
 
+$items = $orderModel->getDetailedOrderByIntervalDate($store_id, $filter_start_date, $filter_end_date);
 
-// Ambil data produk utama berdasarkan interval
-$sql = "SELECT 
-          i.judul, i.size, i.amount, i.quantity, i.product_id, i.finishing,
-          o.nomorator, o.customer_name, o.date, o.order_id,
-          p.price, p.name AS product_name
-        FROM order_items i
-        INNER JOIN orders o ON i.order_id = o.order_id
-        LEFT JOIN products p ON i.product_id = p.product_id
-        WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
-        ORDER BY o.customer_name DESC";
-
-$stmt = $koneksi->prepare($sql);
-$stmt->bind_param("iss", $store_id, $filter_start_date, $filter_end_date);
-$stmt->execute();
-$result = $stmt->get_result();
-
-$produkData = [];
-
-while ($row = $result->fetch_assoc()) {
-    // Ambil nama finishing
-    $finishingNames = [];
-    if (!empty($row['finishing'])) {
-        $finishingIDs = explode(',', $row['finishing']);
-        $placeholders = implode(',', array_fill(0, count($finishingIDs), '?'));
-
-        $stmt2 = $koneksi->prepare("SELECT name FROM products WHERE product_id IN ($placeholders)");
-        $types = str_repeat('i', count($finishingIDs));
-        $stmt2->bind_param($types, ...array_map('intval', $finishingIDs));
-        $stmt2->execute();
-        $res2 = $stmt2->get_result();
-        while ($r2 = $res2->fetch_assoc()) {
-            $finishingNames[] = $r2['name'];
+$all_finishing_ids = [];
+foreach ($items as $item) {
+    if (!empty($item['finishing'])) {
+        foreach (explode(',', $item['finishing']) as $id) {
+            $all_finishing_ids[$id] = true;
         }
     }
+}
 
-    $row['finishing_names'] = implode(', ', $finishingNames);
-    $produkData[$row['customer_name']][] = $row;
+$finishing_map = [];
+if (!empty($all_finishing_ids)) {
+    $ids = array_keys($all_finishing_ids);
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+
+    $finishing_data = $productModel->getProductByPlaceholders($placeholders, $ids);
+    
+    foreach ($finishing_data as $row) {
+        $finishing_map[$row['product_id']] = $row['name'];
+    }
+}
+
+$produkData = [];
+foreach ($items as $item) {
+    $finishing_names = [];
+    if (!empty($item['finishing'])) {
+        foreach (explode(',', $item['finishing']) as $fid) {
+            if (isset($finishing_map[$fid])) {
+                $finishing_names[] = $finishing_map[$fid];
+            }
+        }
+    }
+    $item['finishing_names'] = implode(', ', $finishing_names);
+    $produkData[$item['customer_name']][] = $item;
 }
 ?>
 

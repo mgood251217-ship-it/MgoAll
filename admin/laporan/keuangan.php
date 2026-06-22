@@ -20,11 +20,9 @@ while ($row = $resultFinance->fetch_assoc()) {
 $stmt->close();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['refresh_finance'])) {
-    // Ambil tanggal dari form hidden
     $start_date = $_POST['start_date'];
     $end_date = $_POST['end_date'];
 
-    // Fungsi bantu untuk generate array tanggal
     function getDatesFromRange($start, $end) {
         $dates = [];
         $current = strtotime($start);
@@ -41,7 +39,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['refresh_finance'])) {
         refreshFinance($store_id, $date);
     }
 
-    // Redirect agar tidak submit ulang form saat reload
     header("Location: keuangan?start_date=$start_date&end_date=$end_date");
     exit;
 }
@@ -392,8 +389,11 @@ $dataPemasukan = $dataPemasukan->get_result();
                       ],
                       [
                           'header' => 'Foto',
-                          'render' => function($row) {
-                              $imgUrl = BASE_URL . "/assets/img/bukti/{$row['storeNames']}/{$row['folderDate']}/" . htmlspecialchars($row['img']);
+                          'render' => function($row) use ($storeName) {
+                              $stName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
+                              $fDate  = date('Y/m/d', strtotime($row['date']));
+                              $imgUrl = BASE_URL . "/assets/img/bukti/{$stName}/{$fDate}/" . htmlspecialchars($row['img']);
+                              
                               return empty($row['img']) 
                                   ? '<img src="'.BASE_URL.'/assets/img/noproof.png" style="height:30px;">' 
                                   : '<img src="'.$imgUrl.'" class="img-thumb" onclick="showImageModal(\''.$imgUrl.'\')" style="width:50px;height:50px;object-fit:cover;cursor:pointer;">';
@@ -409,13 +409,13 @@ $dataPemasukan = $dataPemasukan->get_result();
                           'buttons' => [
                               [
                                   'text'            => 'Edit',
-                                  'class'           => 'btn-warning',
+                                  'color'           => 'warning',
                                   'modal'           => 'editModal',
                                   'data_attributes' => ['id' => 'expenditure_id', 'type' => 'expenditures', 'info' => 'information', 'nominal' => 'nominal']
                               ],
                               [
                                   'text'            => 'Hapus',
-                                  'class'           => 'btn-danger',
+                                  'color'           => 'danger',
                                   'modal'           => 'deleteModal',
                                   'data_attributes' => ['id' => 'expenditure_id', 'type' => 'expenditures']
                               ]
@@ -452,7 +452,9 @@ $dataPemasukan = $dataPemasukan->get_result();
                         ],
                         [
                             'header' => 'Tanggal',
-                            'render' => fn($row) => date('d-m-Y', strtotime($row['date']))
+                            'render' => function($row) {
+                                return date('d-m-Y', strtotime($row['date']));
+                            }
                         ],
                         [
                             'header' => 'Aksi',
@@ -460,17 +462,29 @@ $dataPemasukan = $dataPemasukan->get_result();
                             'buttons' => [
                                 [
                                     'text'            => 'Edit',
-                                    'class'           => 'btn-warning',
+                                    'color'           => 'warning',
                                     'modal'           => 'editModal',
-                                    'data_attributes' => ['id' => 'income_id', 'type' => 'income', 'info' => 'information', 'nominal' => 'nominal']
+                                    'data_attributes' => [
+                                        'id'      => 'income_id', 
+                                        'type'    => 'income', 
+                                        'info'    => 'information', 
+                                        'nominal' => 'nominal'
+                                    ],
+                                    'visible'         => function($row) { 
+                                        return strpos($row['information'], 'INPUT SALDO OTOMATIS') === false; 
+                                    }
                                 ],
                                 [
                                     'text'            => 'Hapus',
-                                    'class'           => 'btn-danger',
+                                    'color'           => 'danger',
                                     'modal'           => 'deleteModal',
-                                    'data_attributes' => ['id' => 'income_id', 'type' => 'income'],
-                                    // Menambahkan kondisi manual agar tombol hapus tidak muncul untuk saldo otomatis
-                                    'visible'         => function($row) { return !str_contains($row['information'], 'INPUT SALDO OTOMATIS'); }
+                                    'data_attributes' => [
+                                        'id'   => 'income_id', 
+                                        'type' => 'income'
+                                    ],
+                                    'visible'         => function($row) { 
+                                        return strpos($row['information'], 'INPUT SALDO OTOMATIS') === false; 
+                                    }
                                 ]
                             ]
                         ]
@@ -713,7 +727,6 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
 
   const sheet = workbook.addWorksheet("Laporan Keuangan");
 
-  // Header utama
   sheet.mergeCells("A1:H1");
   sheet.getCell("A1").value = toko;
   sheet.getCell("A1").alignment = { horizontal: 'center', vertical: 'middle' };
@@ -764,11 +777,9 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
     }
   });
 
-  // Jeda 2 baris
   sheet.addRow([]);
   sheet.addRow([]);
 
-  // ===== DATA PENGELUARAN =====
   const pengeluaranTitleRowNum = sheet.lastRow.number + 1;
   sheet.mergeCells(`A${pengeluaranTitleRowNum}:E${pengeluaranTitleRowNum}`);
   sheet.getCell(`A${pengeluaranTitleRowNum}`).value = "Data Pengeluaran Bulan Ini";
@@ -783,7 +794,7 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
   const rowsPengeluaran = document.querySelectorAll("#tablePengeluaran tbody tr");
   rowsPengeluaran.forEach(tr => {
     const tds = tr.querySelectorAll("td");
-    if (tds.length >= 4) {  // Bisa >4 karena ada kolom aksi di UI, tapi kita skip
+    if (tds.length >= 4) {
       const no = tds[0].innerText.trim();
       const ket = tds[1].innerText.trim();
       const nominal = parseInt(tds[2].innerText.replace(/Rp\s?|-|\./g, '').trim()) || 0;

@@ -13,7 +13,8 @@ $queryTransaksi = "
     SELECT 
         p.order_id,
         o.nomorator, 
-        o.customer_name, 
+        o.customer_name,
+        o.system,
         p.nominal, 
         p.payment_method, 
         p.status,
@@ -22,7 +23,7 @@ $queryTransaksi = "
     FROM payment p
     JOIN orders o ON p.order_id = o.order_id
     WHERE o.store_id = ? AND p.date BETWEEN ? AND ?
-    ORDER BY p.date ASC
+    ORDER BY o.system ASC, p.date ASC
 ";
 
 $stmt = $koneksi->prepare($queryTransaksi);
@@ -80,8 +81,7 @@ $tfootHtml = '
         <th colspan="3" class="text-end">Total Harian Dari ' . htmlspecialchars($start_input) . ' Sampai ' . htmlspecialchars($end_input) . ' : </th>
         <th>' . number_format($total_harian, 0, ',', '.') . '</th>
         <th>CASH : ' . number_format($cash, 0, ',', '.') . '</th>
-        <th>TF : ' . number_format($tf, 0, ',', '.') . '</th>
-        <th></th>
+        <th colspan="3">TF : ' . number_format($tf, 0, ',', '.') . '</th>
     </tr>
 ';
 
