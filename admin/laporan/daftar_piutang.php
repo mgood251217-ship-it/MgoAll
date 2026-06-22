@@ -1,6 +1,115 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/components/Table.php';
+
+$dataPiutang  = [];
+$total_hutang = 0;
+
+$query = "
+    SELECT 
+        o.order_id,
+        o.customer_name AS nama,
+        o.nomorator,
+        o.nomor,
+        o.total,
+        o.user_id,
+        o.date,
+        CASE 
+        WHEN ps.lunas = 1 THEN 0
+        ELSE o.total - IFNULL(ps.total_dp, 0)
+        END AS hutang
+    FROM orders o
+    LEFT JOIN (
+        SELECT 
+            order_id,
+            MAX(CASE WHEN status = 'LUNAS' THEN 1 ELSE 0 END) AS lunas,
+            SUM(CASE WHEN status = 'DP' THEN nominal ELSE 0 END) AS total_dp
+        FROM payment
+        GROUP BY order_id
+    ) ps ON o.order_id = ps.order_id
+    WHERE o.store_id = ?
+    HAVING hutang > 0
+    ORDER BY o.order_id DESC, o.nomor DESC
+";
+
+$stmt = $koneksi->prepare($query);
+$stmt->bind_param("i", $store_id);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$op_stmt = $koneksi->prepare("SELECT initial FROM users WHERE user_id = ?");
+
+while ($row = $result->fetch_assoc()) {
+    $op_id = $row['user_id'];
+    $op_stmt->bind_param("i", $op_id);
+    $op_stmt->execute();
+    $op_result = $op_stmt->get_result();
+    $operator  = $op_result->fetch_assoc();
+
+    $row['op_initial'] = $operator['initial'] ?? '';
+    $row['nama']       = htmlspecialchars($row['nama']);
+    $row['nomorator']  = htmlspecialchars($row['nomorator']);
+    $row['nomor']      = htmlspecialchars($row['nomor']);
+
+    $total_hutang += $row['hutang'];
+    $dataPiutang[] = $row;
+}
+
+$op_stmt->close();
+$stmt->close();
+
+$htmlTablePiutang = renderTable([
+    'id'          => 'tabelPiutang',
+    'data'        => $dataPiutang,
+    'table_class' => 'table table-bordered table-striped',
+    'thead_class' => 'table-primary',
+    'tfoot'       => '<tr class="table-success">
+                          <td colspan="4" class="text-end fw-bold">Total Hutang : </td>
+                          <td colspan="4" class="fw-bold">Rp ' . number_format($total_hutang, 0, ',', '.') . '</td>
+                      </tr>',
+    'columns'     => [
+        [
+            'header' => 'No',
+            'type'   => 'number'
+        ],
+        [
+            'header' => 'Nama',
+            'field'  => 'nama'
+        ],
+        [
+            'header' => 'Nomorator',
+            'field'  => 'nomorator'
+        ],
+        [
+            'header' => 'Nomor',
+            'field'  => 'nomor'
+        ],
+        [
+            'header' => 'Hutang',
+            'type'   => 'currency',
+            'field'  => 'hutang'
+        ],
+        [
+            'header' => 'OP',
+            'field'  => 'op_initial'
+        ],
+        [
+            'header' => 'Tanggal',
+            'render' => function($row) {
+                return date('Y-m-d', strtotime($row['date']));
+            }
+        ],
+        [
+            'header' => 'Cek',
+            'render' => function($row) {
+                $date = date('Y-m-d', strtotime($row['date']));
+                return '<a href="transaksi_detil?scrl_id=' . htmlspecialchars($row['order_id']) . '&start_date=' . $date . '&end_date=' . $date . '" target="_blank" class="btn btn-danger btn-sm">Cek Order</a>';
+            }
+        ]
+    ]
+]);
+
 ?>
  
 <!DOCTYPE html>
@@ -29,92 +138,8 @@ require_once BASE_PATH . '/session.php';
         </div>
         </div>
 
-      <div class="table-responsive">
-        <table class="table table-bordered table-striped" id="tabelPiutang">
-          <thead class="table-primary">
-            <tr>
-              <th>No</th>
-              <th>Nama</th>
-              <th>Nomorator</th>
-              <th>Nomor</th>
-              <th>Hutang</th>
-              <th>OP</th>
-              <th>Tanggal</th>
-              <th>Cek</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php
-            $query = "
-                SELECT 
-                    o.order_id,
-                    o.customer_name AS nama,
-                    o.nomorator,
-                    o.nomor,
-                    o.total,
-                    o.user_id,
-                    o.date,
-                    CASE 
-                    WHEN ps.lunas = 1 THEN 0
-                    ELSE o.total - IFNULL(ps.total_dp, 0)
-                    END AS hutang
-                FROM orders o
-                LEFT JOIN (
-                    SELECT 
-                        order_id,
-                        MAX(CASE WHEN status = 'LUNAS' THEN 1 ELSE 0 END) AS lunas,
-                        SUM(CASE WHEN status = 'DP' THEN nominal ELSE 0 END) AS total_dp
-                    FROM payment
-                    GROUP BY order_id
-                ) ps ON o.order_id = ps.order_id
-                WHERE o.store_id = ?
-                HAVING hutang > 0
-                ORDER BY o.order_id DESC, o.nomor DESC
-            ";
+        <?= $htmlTablePiutang ?>
 
-            $stmt = $koneksi->prepare($query);
-            $stmt->bind_param("i", $store_id);
-            $stmt->execute();
-            $result = $stmt->get_result();
-
-            $no = 1;
-            $total_hutang = 0;
-
-            while ($row = $result->fetch_assoc()):
-                $op_id = $row['user_id'];
-                $op_stmt = $koneksi->prepare("SELECT initial FROM users WHERE user_id = ?");
-                $op_stmt->bind_param("i", $op_id);
-                $op_stmt->execute();
-                $op_result = $op_stmt->get_result();
-                $operator = $op_result->fetch_assoc();
-            ?>
-                <tr>
-                    <td><?= $no ?></td>
-                    <td><?= htmlspecialchars($row['nama']) ?></td>
-                    <td><?= htmlspecialchars($row['nomorator']) ?></td>
-                    <td><?= htmlspecialchars($row['nomor']) ?></td>
-                    <td>Rp <?= number_format($row['hutang'], 0, ',', '.') ?></td>
-                    <td><?= htmlspecialchars($operator['initial'] ?? '') ?></td>
-                    <td><?= date('Y-m-d', strtotime($row['date'])) ?></td>
-                    <td><a href="transaksi_detil?scrl_id=<?= htmlspecialchars($row['order_id']) ?>&start_date=<?= date('Y-m-d', strtotime($row['date'])) ?>&end_date=<?= date('Y-m-d', strtotime($row['date'])) ?>" target="_black" class="btn btn-danger">Cek Order</a></td>
-                </tr>
-            <?php
-                $total_hutang += $row['hutang'];
-                $no++;
-                $op_stmt->close();
-            endwhile;
-            $stmt->close();
-            ?>
-
-          </tbody>
-          <tfoot>
-                <tr class="table-success">
-                    <td colspan="4" class="text-end">Total Hutang : </td>
-                    <td colspan="4">Rp <?= number_format($total_hutang, 0, ',', '.') ?></td>
-                </tr>
-          </tfoot>
-        </table>
-      </div>
     </div>
   </div>
 

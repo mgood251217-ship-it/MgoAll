@@ -1,60 +1,140 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/components/Table.php';
 
 $start_input = $_GET['start_date'] ?? date('Y-m-d');
 $end_input = $_GET['end_date'] ?? date('Y-m-d');
 
-// Versi lengkap (Y-m-d H:i:s) untuk query
 $filter_start_date = $start_input . ' 00:00:00';
 $filter_end_date = $end_input . ' 23:59:59';
 
-
-
-// --- Query data transaksi harian ---
 $queryTransaksi = "
     SELECT 
-        o.order_id,
+        p.order_id,
         o.nomorator, 
-        o.customer_name,
+        o.customer_name, 
         p.nominal, 
         p.payment_method, 
         p.status,
-        p.date
+        p.date AS payment_date,
+        o.date AS order_date
     FROM payment p
     JOIN orders o ON p.order_id = o.order_id
     WHERE o.store_id = ? AND p.date BETWEEN ? AND ?
-    ORDER BY o.nomorator ASC
+    ORDER BY p.date ASC
 ";
-$stmtTransaksi = $koneksi->prepare($queryTransaksi);
-if (!$stmtTransaksi) {
-    die("Query error: " . $koneksi->error);
-}
-$stmtTransaksi->bind_param("iss", $store_id, $filter_start_date, $filter_end_date);
-$stmtTransaksi->execute();
-$result = $stmtTransaksi->get_result();
 
-// --- Cari order yang pernah DP ---
-$orderDenganDP = [];
+$stmt = $koneksi->prepare($queryTransaksi);
+$stmt->bind_param("iss", $store_id, $filter_start_date, $filter_end_date);
+$stmt->execute();
+$result = $stmt->get_result();
+
 $dataTransaksi = [];
-
+$orderIds = [];
 while ($row = $result->fetch_assoc()) {
-    // if ($row['status'] == 'DP') {
-    //     $orderDenganDP[$row['order_id']] = true;
-    // }
-    $stmtPanjangPayment = $koneksi->prepare("SELECT order_id FROM payment WHERE order_id = ?");
-    $stmtPanjangPayment->bind_param("i", $row['order_id']);
-    $stmtPanjangPayment->execute();
-    $stmtPanjangPayment->store_result();
-    $num_rows = $stmtPanjangPayment->num_rows;
-    if ($num_rows > 1) {
-         $orderDenganDP[$row['order_id']] = true;
-    }
     $dataTransaksi[] = $row;
+    $orderIds[] = $row['order_id'];
 }
 
-?>
+$orderDenganDP = [];
+if (!empty($orderIds)) {
+    $ids = implode(',', array_unique($orderIds));
+    $resDP = $koneksi->query("SELECT order_id FROM payment WHERE status = 'DP' AND order_id IN ($ids)");
+    while ($d = $resDP->fetch_assoc()) {
+        $orderDenganDP[$d['order_id']] = true;
+    }
+}
 
+$tf = 0; $cash = 0; $total_harian = 0;
+$processedData = [];
+
+foreach ($dataTransaksi as $row) {
+    // Logika Status
+    $status = strtoupper($row['status']);
+    if ($status === 'LUNAS' && isset($orderDenganDP[$row['order_id']])) {
+        $statusLabel = 'PELUNASAN';
+    } elseif ($status === 'DP') {
+        $statusLabel = 'BAYAR DP';
+    } else {
+        $statusLabel = 'LUNAS';
+    }
+
+    $tanggal_bayar = date('Y-m-d', strtotime($row['payment_date']));
+    $tanggal_order = date('Y-m-d', strtotime($row['order_date']));
+
+    if ($tanggal_bayar > $tanggal_order) {
+        $statusLabel = 'PELUNASAN';
+    }
+
+    if ($row['payment_method'] == "TF") { $tf += $row['nominal']; } 
+    else { $cash += $row['nominal']; }
+    $total_harian += $row['nominal'];
+
+    $row['status_label'] = $statusLabel;
+    $processedData[] = $row;
+}
+
+$tfootHtml = '
+    <tr class="table-success">
+        <th colspan="3" class="text-end">Total Harian Dari ' . htmlspecialchars($start_input) . ' Sampai ' . htmlspecialchars($end_input) . ' : </th>
+        <th>' . number_format($total_harian, 0, ',', '.') . '</th>
+        <th>CASH : ' . number_format($cash, 0, ',', '.') . '</th>
+        <th>TF : ' . number_format($tf, 0, ',', '.') . '</th>
+        <th></th>
+    </tr>
+';
+
+$htmlTableTransaksi = renderTable([
+    'id'             => 'tableTransaksi',
+    'data'           => $processedData,
+    'table_class'    => 'table table-bordered table-striped',
+    'thead_class'    => 'table-primary',
+
+    'row_attributes' => function($row) {
+        return 'data-date="' . date('Y-m-d', strtotime($row['payment_date'])) . '"';
+    },
+    'tfoot'          => (count($processedData) > 0) ? $tfootHtml : '',
+    'columns'        => [
+        [
+            'header' => 'No',
+            'type'   => 'number'
+        ],
+        [
+            'header' => 'Nomorator',
+            'field'  => 'nomorator'
+        ],
+        [
+            'header' => 'Nama',
+            'field'  => 'customer_name'
+        ],
+        [
+            'header' => 'Nominal',
+            'type'   => 'currency',
+            'field'  => 'nominal'
+        ],
+        [
+            'header' => 'Metode',
+            'field'  => 'payment_method'
+        ],
+        [
+            'header' => 'Status',
+            'field'  => 'status_label'
+        ],
+        [
+            'header' => 'Tanggal',
+            'field'  => 'payment_date'
+        ],
+        [
+            'header' => 'Aksi',
+            'render' => function($row) {
+                $date = date('Y-m-d', strtotime($row['order_date']));
+                return '<a href="transaksi_detil?scrl_id=' . htmlspecialchars($row['order_id']) . '&start_date=' . $date . '&end_date=' . $date . '" target="_blank" class="btn btn-danger btn-sm">Cek Order</a>';
+            }
+        ]
+    ]
+]);
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -82,89 +162,7 @@ while ($row = $result->fetch_assoc()) {
                 </div>
                 </div>
             </div>
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped" id="tableTransaksi">
-                    <thead class="table-primary">
-                        <tr>
-                            <th>No</th>
-                            <th>Nomorator</th>
-                            <th>Nama</th>
-                            <th>Nominal</th>
-                            <th>Metode</th>
-                            <th>Status</th>
-                            <th>Tanggal</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (count($dataTransaksi) > 0): 
-                            $no = 1;
-                            $tf = 0;
-                            $cash = 0;
-                            $total_harian = 0;
-                            foreach ($dataTransaksi as $row): 
-                                $date = $row['date'];
-                                $status = strtoupper($row['status']);
-
-                                $iid = (INT)$row['order_id'];
-                                $stmtDate = $koneksi->prepare("SELECT date FROM orders WHERE order_id = ?");
-                                $stmtDate->bind_param("i", $iid);
-                                $stmtDate->execute();
-                                $resultDate = $stmtDate->get_result()->fetch_assoc();
-
-                                // Cek logika status
-                                if ($status === 'LUNAS' && isset($orderDenganDP[$row['order_id']])) {
-                                    $statusLabel = 'PELUNASAN';
-                                } elseif ($status === 'DP') {
-                                    $statusLabel = 'BAYAR DP';
-                                } else {
-                                    $statusLabel = 'LUNAS';
-                                }
-                                if ($row['payment_method'] == "TF") {
-                                    $tf += $row['nominal'];
-                                }else{
-                                    $cash += $row['nominal'];
-                                }
-                            
-                                $tanggal_bayar = date('Y-m-d', strtotime($row['date']));
-                                $tanggal_order = date('Y-m-d', strtotime($resultDate['date']));
-                                if ($tanggal_bayar > $tanggal_order) {
-                                    $statusLabel = 'PELUNASAN';
-                                }
-
-                        ?>
-                        <tr data-date="<?= date('Y-m-d', strtotime($date)) ?>">
-                            <td><?= $no++ ?></td>
-                            <td><?= htmlspecialchars($row['nomorator']) ?></td>
-                            <td><?= htmlspecialchars($row['customer_name']) ?></td>
-                            <td><?= number_format($row['nominal'], 0, ',', '.') ?></td>
-                            <td><?= htmlspecialchars($row['payment_method']) ?></td>
-                            <td><?= $statusLabel ?></td>
-                            <td><?= htmlspecialchars($row['date']) ?></td>
-                            <?php  
-
-                            ?>
-                            <td><a href="transaksi_detil?scrl_id=<?= htmlspecialchars($row['order_id']) ?>&start_date=<?= date('Y-m-d', strtotime($resultDate['date'])) ?>&end_date=<?= date('Y-m-d', strtotime($resultDate['date'])) ?>" target="_black" class="btn btn-danger">Cek Order</a></td>
-                        </tr>
-                        <?php 
-                            $total_harian += $row['nominal']; 
-                            endforeach;
-                        else: ?>
-                        <tr><td colspan="6" class="text-center">Tidak ada data transaksi.</td></tr>
-                        <?php endif; ?>
-                    </tbody>
-
-                    <tfoot>
-                        <tr class="table-success">
-                            <th colspan="3" class="text-end">Total Harian Dari <?= $start_input ?> Sampai <?= $end_input ?> : </th>
-                            <th><?= number_format($total_harian, 0, ',', '.') ?></th>
-                            <th>TF : <?= number_format($tf, 0, ',', '.') ?></th>
-                            <th>CASH : <?= number_format($cash, 0, ',', '.') ?></th>
-                            <th colspan="2"></th>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+            <?= $htmlTableTransaksi; ?>
         </div>
     </div>
     <?php include BASE_PATH . '/footer.php'; ?>

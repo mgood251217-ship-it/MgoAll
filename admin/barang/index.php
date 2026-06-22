@@ -6,6 +6,7 @@ require_once BASE_PATH . '/components/Modal.php';
 require_once BASE_PATH . '/components/Alert.php';
 require_once BASE_PATH . '/components/Table.php';
 require_once BASE_PATH . '/components/Loading.php';
+require_once BASE_PATH . '/components/Icon.php';
 
 $productController = new ProductController($koneksi);
 $products = $productController->index();
@@ -51,7 +52,7 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
       $iconDelete = '<svg style="width: 16px; height: 16px; stroke-width: 2; stroke: white; fill: none;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
 
       $htmlTableProduct = renderTable([
-          'data'           => $products,
+          'data'           => $products ?? [],
           'empty_message'  => 'Tidak ada data barang untuk toko ini.',
           'tbody_tr_class' => 'barang-rows',
           'columns'        => [
@@ -65,12 +66,12 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
               [
                   'header'  => 'Aksi', 
                   'type'    => 'action_buttons',
-                  'visible' => $isAdmin,
+                  'visible' => $isAdmin ?? false,
                   'buttons' => [
                       [
                           'color'           => 'warning',
                           'modal'           => 'editProductModal',
-                          'icon'            => $iconEdit,
+                          'icon'            => get_icon('update'),
                           'data_attributes' => [
                               'id'         => 'product_id',
                               'type'       => 'type',
@@ -84,7 +85,7 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
                       [
                           'class'           => 'btn-delete-product',
                           'color'           => 'danger',
-                          'icon'            => $iconDelete,
+                          'icon'            => get_icon('delete'),
                           'data_attributes' => [
                               'id' => 'product_id'
                           ]
@@ -96,12 +97,13 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
                   'type'           => 'checkbox',
                   'id_field'       => 'product_id',
                   'is_header_cell' => true,
-                  'visible'        => $isAdmin
+                  'visible'        => $isAdmin ?? false
               ]
           ]
       ]);
-
+      
       echo $htmlTableProduct;
+
       ?>
 
       <?php

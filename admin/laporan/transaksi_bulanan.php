@@ -1,21 +1,19 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/components/Table.php';
 
-// Ambil input rentang bulan & tahun dari GET
 $startMonth = $_GET['start_month'] ?? date('m');
 $startYear  = $_GET['start_year'] ?? date('Y');
 $endMonth   = $_GET['end_month'] ?? date('m');
 $endYear    = $_GET['end_year'] ?? date('Y');
 
-// Bangun tanggal awal dan akhir dalam format YYYY-MM-DD
 $startDate = date('Y-m-d', strtotime("$startYear-$startMonth-01"));
-$endDate = date('Y-m-t', strtotime("$endYear-$endMonth-01")); // t = hari terakhir bulan tsb
+$endDate = date('Y-m-t', strtotime("$endYear-$endMonth-01"));
 
 $startDatef = $startDate . " 00:00:00";
 $endDatef = $endDate . " 23:59:59";
 
-// Query utama bulanan (DIPERBAIKI: Tambah JOIN orders)
 $queryTransaksi = "
     SELECT 
         DATE(p.date) AS tanggal,
@@ -23,8 +21,8 @@ $queryTransaksi = "
         COUNT(DISTINCT p.order_id) AS jumlah_order,
         COUNT(p.payment_id) AS jumlah_transaksi
     FROM payment p
-    JOIN orders o ON p.order_id = o.order_id  -- TAMBAHKAN JOIN INI
-    WHERE o.store_id = ?                      -- GANTI p.store_id JADI o.store_id
+    JOIN orders o ON p.order_id = o.order_id
+    WHERE o.store_id = ?
       AND p.date BETWEEN ? AND ?
     GROUP BY DATE(p.date)
     ORDER BY DATE(p.date) ASC
@@ -40,6 +38,7 @@ $result = $stmt->get_result();
 
 $total_bulan = 0;
 $data_per_tanggal = [];
+$total_transaksi_all = 0;
 
 while ($row = $result->fetch_assoc()) {
     $tanggal = $row['tanggal'];
@@ -52,8 +51,8 @@ while ($row = $result->fetch_assoc()) {
         'TF' => 0
     ];
     $total_bulan += $row['total_nominal'];
+    $total_transaksi_all += (int)$row['jumlah_transaksi'];
 }
-
 
 $queryMetode = "
     SELECT 
@@ -61,8 +60,8 @@ $queryMetode = "
         p.payment_method,
         SUM(p.nominal) AS total_nominal
     FROM payment p
-    JOIN orders o ON p.order_id = o.order_id  -- TAMBAHKAN JOIN INI
-    WHERE o.store_id = ?                      -- GANTI p.store_id JADI o.store_id
+    JOIN orders o ON p.order_id = o.order_id
+    WHERE o.store_id = ?
       AND p.date BETWEEN ? AND ?
     GROUP BY DATE(p.date), p.payment_method
 ";
@@ -78,13 +77,11 @@ $result2 = $stmt2->get_result();
 $total_bulan_tf = 0;
 $total_bulan_cash = 0;
 
-// Gabungkan hasil ke array utama
 while ($row = $result2->fetch_assoc()) {
     $tanggal = $row['tanggal'];
     $metode = strtoupper(trim($row['payment_method']));
     $nominal = (float)$row['total_nominal'];
 
-    // Normalisasi nama metode (biar fleksibel)
     if (in_array($metode, ['TF', 'TRANSFER'])) {
         $metode = 'TF';
     } elseif (in_array($metode, ['CASH', 'TUNAI'])) {
@@ -101,11 +98,53 @@ while ($row = $result2->fetch_assoc()) {
     if ($metode === 'CASH') $total_bulan_cash += $nominal;
 }
 
-// Ubah ke array numerik (biar bisa di-foreach)
 $data_per_tanggal = array_values($data_per_tanggal);
 
+$htmlTableTransaksi = renderTable([
+    'id'          => 'tableTransaksi',
+    'data'        => $data_per_tanggal,
+    'table_class' => 'table table-bordered table-striped',
+    'thead_class' => 'table-primary',
+    'tfoot'       => '
+    <tr class="table-success">
+        <th colspan="2" class="text-end">Total Bulanan Dari ' . htmlspecialchars($startDate) . ' Sampai ' . htmlspecialchars($endDate) . ' : </th>
+        <th>' . number_format($total_transaksi_all, 0, ',', '.') . '</th>
+        <th>' . number_format($total_bulan, 0, ',', '.') . '</th>
+        <th>' . number_format($total_bulan_cash, 0, ',', '.') . '</th>
+        <th>' . number_format($total_bulan_tf, 0, ',', '.') . '</th>
+    </tr>
+',
+    'columns'     => [
+        [
+            'header' => 'No',
+            'type'   => 'number'
+        ],
+        [
+            'header' => 'Tanggal',
+            'field'  => 'tanggal'
+        ],
+        [
+            'header' => 'Jumlah Transaksi',
+            'field'  => 'jumlah_transaksi'
+        ],
+        [
+            'header' => 'Total Nominal',
+            'type'   => 'currency',
+            'field'  => 'total_nominal'
+        ],
+        [
+            'header' => 'CASH',
+            'type'   => 'currency',
+            'field'  => 'CASH'
+        ],
+        [
+            'header' => 'TF',
+            'type'   => 'currency',
+            'field'  => 'TF'
+        ]
+    ]
+]);
 ?>
-
 
 <!DOCTYPE html>
 <html lang="id">
@@ -135,9 +174,6 @@ $data_per_tanggal = array_values($data_per_tanggal);
                 $start_year  = $_GET['start_year'] ?? $currentYear;
                 $end_month   = $_GET['end_month'] ?? $currentMonth;
                 $end_year    = $_GET['end_year'] ?? $currentYear;
-
-                $filter_start = $start_month . "-" . $start_year;
-                $filter_end = $start_year . "-" . $end_year;
                 ?>
 
                 <form method="get" class="row g-2 align-items-end justify-content-end" id="filterForm" style="margin-bottom:0;">
@@ -188,88 +224,53 @@ $data_per_tanggal = array_values($data_per_tanggal);
                         </select>
                     </div>
                     <div class="col-auto align-self-end d-flex gap-2 flex-wrap">
-                        <button type="submit" class="btn btn-success" id="btnExportExcel">Export Excel</button>
-                        <button type="submit" class="btn btn-primary" id="btnExportWord">Export Word</button>
+                        <button type="button" class="btn btn-success" id="btnExportExcel">Export Excel</button>
+                        <button type="button" class="btn btn-primary" id="btnExportWord">Export Word</button>
                     </div>
                 </form>
-
-
             </div>
+            
             <div class="table-responsive">
-                <table class="table table-bordered table-striped" id="tableTransaksi">
-                    <thead class="table-primary">
-                        <tr>
-                            <th>No</th>
-                            <th>Tanggal</th>
-                            <th>Jumlah Transaksi</th>
-                            <th>Total Nominal</th>
-                            <th>CASH</th>
-                            <th>TF</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (count($data_per_tanggal) > 0): 
-                            $no = 1;
-                            foreach ($data_per_tanggal as $row): ?>
-                            <tr>
-                                <td><?= $no++ ?></td>
-                                <td><?= htmlspecialchars($row['tanggal']) ?></td>
-                                <td><?= $row['jumlah_transaksi'] ?></td>
-                                <td><?= number_format($row['total_nominal'], 0, ',', '.') ?></td>
-                                <td><?= number_format($row['CASH'], 0, ',', '.') ?></td>
-                                <td><?= number_format($row['TF'], 0, ',', '.') ?></td>
-                            </tr>
-                        <?php endforeach; else: ?>
-                            <tr><td colspan="4" class="text-center">Tidak ada data transaksi pada bulan ini.</td></tr>
-                        <?php endif; ?>
-                    </tbody>
-                    <?php if (count($data_per_tanggal) > 0): ?>
-                    <tfoot>
-                        <tr class="table-success">
-                            <th colspan="3" class="text-end">Total Bulanan Dari <?= $filter_start ?> Sampai <?= $filter_start ?> : </th>
-                            <th><?= number_format($total_bulan, 0, ',', '.') ?></th>
-                            <th><?= number_format($total_bulan_cash, 0, ',', '.') ?></th>
-                            <th><?= number_format($total_bulan_tf, 0, ',', '.') ?></th>
-                        </tr>
-                    </tfoot>
-                    <?php endif; ?>
-                </table>
+                <?= $htmlTableTransaksi ?>
             </div>
+
         </div>
     </div>
     <?php include BASE_PATH . '/footer.php'; ?>
 </div>
+
 <script>
+// Perbaikan Export Excel: Mendukung 6 Kolom
 document.getElementById('btnExportExcel').addEventListener('click', async function () {
     const toko = "<?= addslashes($storeName) ?>";
     const alamat = "<?= addslashes($storeAddress) ?>";
-    const bulanTahun = "<?= $filter_month . '-' . $filter_year ?>";
+    const bulanTahun = "<?= $start_month . '/' . $start_year . ' sd ' . $end_month . '/' . $end_year ?>";
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Transaksi Bulanan");
 
-    sheet.mergeCells("A1:D1");
+    sheet.mergeCells("A1:F1");
     sheet.getCell("A1").value = toko;
     sheet.getCell("A1").alignment = { horizontal: 'center' };
     sheet.getCell("A1").font = { bold: true, size: 16 };
 
-    sheet.mergeCells("A2:D2");
+    sheet.mergeCells("A2:F2");
     sheet.getCell("A2").value = alamat;
     sheet.getCell("A2").alignment = { horizontal: 'center' };
 
     sheet.addRow([]);
-    sheet.mergeCells("A4:D4");
+    sheet.mergeCells("A4:F4");
     sheet.getCell("A4").value = "Transaksi Bulanan";
     sheet.getCell("A4").alignment = { horizontal: 'center' };
     sheet.getCell("A4").font = { bold: true, size: 14 };
 
-    sheet.mergeCells("A5:D5");
-    sheet.getCell("A5").value = `Bulan ${bulanTahun}`;
+    sheet.mergeCells("A5:F5");
+    sheet.getCell("A5").value = `Periode: ${bulanTahun}`;
     sheet.getCell("A5").alignment = { horizontal: 'center' };
 
     sheet.addRow([]);
 
-    const headerRow = sheet.addRow(['No', 'Tanggal', 'Jumlah Transaksi', 'Total Nominal']);
+    const headerRow = sheet.addRow(['No', 'Tanggal', 'Jumlah Transaksi', 'Total Nominal', 'CASH', 'TF']);
     headerRow.font = { bold: true };
     headerRow.eachCell(cell => {
         cell.fill = {
@@ -287,15 +288,24 @@ document.getElementById('btnExportExcel').addEventListener('click', async functi
     const rows = document.querySelectorAll("#tableTransaksi tbody tr");
     rows.forEach(tr => {
         const tds = tr.querySelectorAll("td");
-        if (tds.length >= 4) {
+        if (tds.length >= 6) { // Harus 6 Kolom
             const nominal = parseInt(tds[3].innerText.replace(/\./g, '')) || 0;
+            const cash = parseInt(tds[4].innerText.replace(/\./g, '')) || 0;
+            const tf = parseInt(tds[5].innerText.replace(/\./g, '')) || 0;
+
             const row = sheet.addRow([
-                tds[0].innerText,
-                tds[1].innerText,
-                tds[2].innerText,
-                nominal
+                tds[0].innerText.trim(),
+                tds[1].innerText.trim(),
+                tds[2].innerText.trim(),
+                nominal,
+                cash,
+                tf
             ]);
-            row.getCell(4).numFmt = '#,##0';
+            
+            row.getCell(4).numFmt = '#,##0'; // Total Nominal
+            row.getCell(5).numFmt = '#,##0'; // CASH
+            row.getCell(6).numFmt = '#,##0'; // TF
+            
             row.eachCell(cell => {
                 cell.alignment = { vertical: 'middle' };
                 cell.border = {
@@ -307,20 +317,20 @@ document.getElementById('btnExportExcel').addEventListener('click', async functi
     });
 
     sheet.columns = [
-        { width: 6 }, { width: 15 }, { width: 20 }, { width: 15 }
+        { width: 6 }, { width: 15 }, { width: 20 }, { width: 18 }, { width: 18 }, { width: 18 }
     ];
 
     const blob = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([blob]), `Transaksi_Bulanan_${bulanTahun}.xlsx`);
+    saveAs(new Blob([blob]), `Transaksi_Bulanan_${bulanTahun.replace(/\//g, '-')}.xlsx`);
 });
 
-
+// Perbaikan Export Word: Mendukung 6 Kolom
 document.getElementById('btnExportWord').addEventListener('click', async function () {
     const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, WidthType, BorderStyle } = window.docx;
 
     const toko = "<?= addslashes($storeName) ?>";
     const alamat = "<?= addslashes($storeAddress) ?>";
-    const bulanTahun = "<?= $filter_month . '-' . $filter_year ?>";
+    const bulanTahun = "<?= $start_month . '/' . $start_year . ' sd ' . $end_month . '/' . $end_year ?>";
 
     const headerToko = new Paragraph({
         children: [new TextRun({ text: toko, bold: true, size: 32 })],
@@ -335,18 +345,20 @@ document.getElementById('btnExportWord').addEventListener('click', async functio
         alignment: AlignmentType.CENTER
     });
     const bulanPar = new Paragraph({
-        children: [new TextRun({ text: `Bulan ${bulanTahun}`, size: 24 })],
-        alignment: AlignmentType.CENTER
+        children: [new TextRun({ text: `Periode: ${bulanTahun}`, size: 24 })],
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 300 }
     });
 
     const tableRows = [];
 
-    // Header table
+    // Header table (6 Kolom)
     tableRows.push(new TableRow({
-        children: ['No', 'Tanggal', 'Jumlah Transaksi', 'Total Nominal'].map(h =>
+        children: ['No', 'Tanggal', 'Jumlah Transaksi', 'Total Nominal', 'CASH', 'TF'].map(h =>
             new TableCell({
                 children: [new Paragraph({ text: h, bold: true })],
-                borders: { top: { style: BorderStyle.SINGLE } }
+                borders: { top: { style: BorderStyle.SINGLE } },
+                margins: { top: 100, bottom: 100, left: 100, right: 100 }
             })
         )
     }));
@@ -354,11 +366,12 @@ document.getElementById('btnExportWord').addEventListener('click', async functio
     const rows = document.querySelectorAll("#tableTransaksi tbody tr");
     rows.forEach(tr => {
         const tds = tr.querySelectorAll("td");
-        if (tds.length >= 4) {
+        if (tds.length >= 6) {
             const row = new TableRow({
                 children: Array.from(tds).map(td =>
                     new TableCell({
-                        children: [new Paragraph(td.innerText.trim())]
+                        children: [new Paragraph(td.innerText.trim())],
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 }
                     })
                 )
             });
@@ -386,9 +399,8 @@ document.getElementById('btnExportWord').addEventListener('click', async functio
     });
 
     const blob = await Packer.toBlob(doc);
-    saveAs(blob, `Transaksi_Bulanan_${bulanTahun}.docx`);
+    saveAs(blob, `Transaksi_Bulanan_${bulanTahun.replace(/\//g, '-')}.docx`);
 });
-
 </script>
 <script>
 const form = document.getElementById('filterForm');
@@ -397,14 +409,6 @@ const form = document.getElementById('filterForm');
         form.submit();
     });
 });
-</script>
-<script>
-    // Submit form otomatis saat select bulan atau tahun berubah
-    document.querySelectorAll('#month, #year').forEach(function(el) {
-        el.addEventListener('change', function() {
-            document.getElementById('filterForm').submit();
-        });
-    });
 </script>
 </body>
 </html>

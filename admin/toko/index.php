@@ -8,6 +8,7 @@ require_once  BASE_PATH . '/access_rights.php';
 require_once BASE_PATH . '/components/Modal.php';
 require_once BASE_PATH . '/components/Alert.php';
 require_once BASE_PATH . '/components/Table.php';
+require_once BASE_PATH . '/components/Icon.php';
 
 $userController = new UserController($koneksi);
 $users = $userController->index();
@@ -40,95 +41,114 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
       <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
         <h1 class="mb-0">Manajemen User</h1>
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addUserModal">
-          + Tambah User
+          <?= get_icon('create', ['class' => 'me-1', 'width' => '18', 'height' => '18']) ?> Tambah User
         </button>
       </div>
 
       <?php if (empty($users)): ?>
         <div class="alert alert-warning">Belum ada user terdaftar.</div>
       <?php else: ?>
-        <div class="table-responsive">
-          <table class="table table-bordered table-striped text-center">
-            <thead class="table-primary">
-              <tr>
-                <th>No</th>
-                <th>Nama</th>
-                <th>Role</th>
-                <th>Initial</th>
-                <th>Foto</th>
-                <th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php foreach ($users as $no => $u): ?>
-              <tr>
-                <td><?= $no + 1 ?></td>
-                <td><?= htmlspecialchars($u['name']) ?></td>
-                <td><span class="badge bg-primary"><?= htmlspecialchars($u['role']) ?></span></td>
-                <td><?= htmlspecialchars($u['initial']) ?></td>
-                <td>
-                  <?php if (!empty($u['picture'])): ?>
-                    <img src="<?= BASE_URL ?>/assets/img/user/<?= htmlspecialchars($u['picture']) ?>" width="40" height="40" class="img-thumbnail rounded">
-                  <?php else: ?>
-                    <span class="text-muted">-</span>
-                  <?php endif; ?>
-                </td>
-                <td>
-                  <button class="btn btn-sm btn-warning btn-edit me-1" data-user='<?= json_encode($u) ?>'>Edit</button>
-                  <form method="POST" action="store_action.php?action=delete_user" class="d-inline delete-user-form">
-                    <input type="hidden" name="user_id" value="<?= $u['user_id'] ?>">
-                    <input type="hidden" name="picture" value="<?= $u['picture'] ?>">
-                    <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
-                  </form>
-                </td>
-              </tr>
-              <?php endforeach; ?>
-            </tbody>
-          </table>
-        </div>
+      <?php
+      $htmlTableUser = [
+          'data' => $users ?? [],
+          'empty_message' => 'Belum ada user terdaftar.',
+          'table_class' => 'table table-bordered table-striped text-center',
+          'thead_class' => 'table-primary',
+          'columns' => [
+              ['header' => 'No', 'type' => 'number'],
+              ['header' => 'Nama', 'field' => 'name'],
+              [
+                  'header' => 'Role', 
+                  'type' => 'badge', 
+                  'field' => 'role', 
+                  'badge_class' => 'bg-primary'
+              ],
+              ['header' => 'Initial', 'field' => 'initial'],
+              [
+                  'header' => 'Foto', 
+                  'type' => 'image', 
+                  'field' => 'picture', 
+                  'base_path' => '/assets/img/user'
+              ],
+              [
+                  'header' => 'Aksi', 
+                  'type' => 'action_buttons',
+                  'buttons' => [
+                      [
+                          'type' => 'button',
+                          'icon' => get_icon('update', ['class' => 'me-1']),
+                          'text' => 'Edit',
+                          'color' => 'warning',
+                          'class' => 'btn-edit me-1',
+                          'data_json' => 'user' 
+                      ],
+                      [
+                          'type' => 'form',
+                          'icon' => get_icon('delete', ['class' => 'me-1']),
+                          'text' => 'Hapus',
+                          'color' => 'danger',
+                          'action_url' => 'store_action.php?action=delete_user',
+                          'form_class' => 'delete-user-form',
+                          'hidden_inputs' => [
+                              'user_id' => 'user_id',
+                              'picture' => 'picture'
+                          ]
+                      ]
+                  ]
+              ]
+          ]
+      ];
+
+      echo renderTable($htmlTableUser);
+      ?>
       <?php endif; ?>
-        <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+      <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
           <h1 class="mb-0">Daftar Mesin</h1>
           <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#tambahMesinModal">
-              <i class="bi bi-plus-circle"></i> Tambah Mesin
+              <?= get_icon('create', ['class' => 'me-1', 'width' => '18', 'height' => '18']) ?> Tambah Mesin
           </button>
-        </div>
-          <div class="card-body p-0">
-              <div class="table-responsive">
-                  <table class="table table-bordered table-striped text-center">
-                      <thead class="table-primary">
-                          <tr>
-                              <th class="text-center" style="width: 50px;">No</th>
-                              <th>Nama Mesin</th>
-                              <th>Tipe Mesin</th>
-                              <th class="text-center" style="width: 100px;">Aksi</th>
-                          </tr>
-                      </thead>
-                      <tbody>
-                          <?php if (empty($mesinList)): ?>
-                          <tr>
-                              <td colspan="4" class="text-center py-4">Belum ada data mesin. Silakan tambah mesin baru.</td>
-                          </tr>
-                          <?php else: ?>
-                              <?php foreach ($mesinList as $index => $mesin): ?>
-                              <tr>
-                                  <td class="text-center align-middle"><?= $index + 1 ?></td>
-                                  <td class="align-middle fw-bold"><?= htmlspecialchars($mesin['name']) ?></td>
-                                  <td class="align-middle">
-                                      <span class="badge bg-secondary"><?= htmlspecialchars($mesin['type']) ?></span>
-                                  </td>
-                                  <td class="text-center align-middle">
-                                      <button type="button" class="btn btn-danger btn-sm" onclick="hapusMesin(<?= $mesin['machine_id'] ?>)">
-                                          <i class="bi bi-trash"></i>
-                                      </button>
-                                  </td>
-                              </tr>
-                              <?php endforeach; ?>
-                          <?php endif; ?>
-                      </tbody>
-                  </table>
-              </div>
-          </div>
+      </div>
+
+      <?php
+      $htmlTableMesin = [
+          'data' => $mesinList ?? [],
+          'empty_message' => 'Belum ada data mesin. Silakan tambah mesin baru.',
+          'table_class' => 'table table-bordered table-striped text-center',
+          'thead_class' => 'table-primary',
+          'columns' => [
+              ['header' => 'No', 'type' => 'number'],
+              [
+                  'header' => 'Nama Mesin', 
+                  'field' => 'name', 
+                  'text_class' => 'fw-bold'
+              ],
+              [
+                  'header' => 'Tipe Mesin', 
+                  'type' => 'badge', 
+                  'field' => 'type', 
+                  'badge_class' => 'bg-secondary'
+              ],
+              [
+                  'header' => 'Aksi', 
+                  'type' => 'action_buttons',
+                  'buttons' => [
+                      [
+                          'type' => 'button',
+                          'icon' => get_icon('delete'), // Mengganti tag <i> statis dengan get_icon('delete')
+                          'color' => 'danger',
+                          'onclick' => [
+                              'function' => 'hapusMesin',
+                              'param_field' => 'machine_id'
+                          ]
+                      ]
+                  ]
+              ]
+          ]
+      ];
+
+      echo renderTable($htmlTableMesin);
+      ?>
+
       <div id="map" style="height: 400px;"></div>
       <button id="setLocationBtn" class="btn btn-primary mt-2">Set Lokasi Saya</button>
     </div>
@@ -151,10 +171,12 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
       'form_id'      => 'addUserForm',
       'title'        => 'Tambah User Baru',
       'header_class' => 'bg-success text-white',
-      'size'         => 'modal-lg',
+      'size'         => 'modal-md',
       'btn_color'    => 'success',
       'btn_text'     => 'Simpan User',
-      'layout'       => 'horizontal',
+      'layout'        => 'horizontal',
+      'label_width'   => 'col-sm-4',
+      'input_width'   => 'col-sm-8',
       'inputs'       => [
           [
               'type'        => 'text',
@@ -204,6 +226,9 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
       'form_id'  => 'editUserForm',
       'title'    => 'Edit User',
       'btn_text' => 'Simpan Perubahan',
+      'layout'        => 'horizontal',
+      'label_width'   => 'col-sm-4',
+      'input_width'   => 'col-sm-8',
       'inputs'   => [
           [
               'type' => 'hidden',
@@ -267,6 +292,9 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
       'title'         => 'Tambah Mesin Baru',
       'body_class'    => 'p-4',
       'btn_text'      => 'Simpan Mesin',
+      'layout'        => 'horizontal',
+      'label_width'   => 'col-sm-4',
+      'input_width'   => 'col-sm-8',
       'custom_bottom' => (isset($mode) && $mode === 1) ? '<style>#tambahMesinModal .modal-content { background-color: #333 !important; color: #e0e0e0 !important; } #tambahMesinModal .btn-close { filter: invert(1); }</style>' : '',
       'inputs'        => [
           [

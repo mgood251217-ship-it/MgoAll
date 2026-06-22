@@ -1,6 +1,11 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/components/Modal.php';
+require_once BASE_PATH . '/components/Alert.php';
+require_once BASE_PATH . '/components/Table.php';
+require_once BASE_PATH . '/components/Loading.php';
+require_once BASE_PATH . '/components/Icon.php';
 
 $start_date = $_GET['start_date'] ?? date('Y-m-d');
 $end_date = $_GET['end_date'] ?? date('Y-m-d');
@@ -148,114 +153,94 @@ $jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DT
         <?php if (empty($items)): ?>
           <div class="alert alert-warning">Belum ada Log</div>
         <?php else: ?>
-          <div class="table-responsive mb-5">
-            <table id="tableGagal" class="table table-bordered table-striped" style="white-space: nowrap; font-size: 14px;">
-              <thead class="table-primary">
-                <tr>
-                  <th>No</th>
-                  <th>Tanggal</th>
-                  <th>Nomorator</th>
-                  <th>Customer</th>
-                  <th>Operator</th>
-                  <th>Mesin</th>
-                  <th>Judul Produk</th>
-                  <th>Ukuran</th>
-                  <th>Qty</th>
-                  <th>Finishing</th>
-                  <th>Detail Gagal</th>
-                  <th>Kerugian</th>
-                  <th>Beban</th>
-                  <th>Keterangan</th>
-                  <th>Aksi</th> </tr>
-              </thead>
-              <tbody>
-                <?php foreach ($items as $no => $p): ?>
-                  <tr class="order-row" data-calc-id="<?= $p['failure_id'] ?>">
-                    <td><?= $no + 1 ?></td>
-                    <td><?= htmlspecialchars(date('d M Y', strtotime($p['date']))) ?></td>
-                    <td><?= htmlspecialchars($p['nomorator'] ?? '-') ?></td>
-                    <td><?= htmlspecialchars($p['customer_name'] ?? '-') ?></td>
-                    <td><?= htmlspecialchars($users[$p['user_id']] ?? '-') ?></td>
-                    <td>
-                        <?= htmlspecialchars($p['nama_mesin'] ?? '-') ?> <br>
-                        <small class="text-muted"><?= htmlspecialchars($p['machine_type'] ?? '') ?></small>
-                    </td>
-                    <td><?= htmlspecialchars($p['judul']) ?></td>
-                    <td><?= htmlspecialchars($p['size']) ?></td>
-                    <td><?= htmlspecialchars($p['quantity']) ?></td>
-                    
-                    <?php
-                        $finishing_names = '-';
-                        $finishing_ids = [];
+        <?php
+        $htmlTableGagal = [
+            'data'           => $items ?? [],
+            'empty_message'  => 'Tidak ada data kegagalan.',
+            'table_class'    => 'table table-bordered table-striped',
+            'thead_class'    => 'table-primary',
+            'row_attributes' => function($row) {
+                return 'class="order-row" data-calc-id="' . $row['failure_id'] . '"';
+            },
+            'columns'        => [
+                ['header' => 'No', 'type' => 'number'],
+                ['header' => 'Tanggal', 'render' => fn($p) => date('d M Y', strtotime($p['date']))],
+                ['header' => 'Nomorator', 'field' => 'nomorator'],
+                ['header' => 'Customer', 'field' => 'customer_name'],
+                ['header' => 'Operator', 'render' => fn($p) => htmlspecialchars($users[$p['user_id']] ?? '-')],
+                ['header' => 'Mesin', 'render' => fn($p) => htmlspecialchars($p['nama_mesin'] ?? '-') . '<br><small class="text-muted">' . htmlspecialchars($p['machine_type'] ?? '') . '</small>'],
+                ['header' => 'Judul Produk', 'field' => 'judul'],
+                ['header' => 'Ukuran', 'field' => 'size'],
+                ['header' => 'Qty', 'field' => 'quantity'],
+                [
+                    'header' => 'Finishing',
+                    'render' => function($p) use ($koneksi) {
+                        if (empty($p['finishing']) || $p['finishing'] === '-') return '-';
+                        
+                        $ids = array_filter(array_map('intval', explode(',', $p['finishing'])));
+                        if (empty($ids)) return '-';
+                        
+                        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+                        $stmt = $koneksi->prepare("SELECT name FROM products WHERE product_id IN ($placeholders)");
+                        $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
+                        $stmt->execute();
+                        $res = $stmt->get_result();
+                        $names = [];
+                        while ($r = $res->fetch_assoc()) $names[] = $r['name'];
+                        $stmt->close();
+                        return implode(', ', $names);
+                    }
+                ],
+                [
+                    'header' => 'Detail Gagal',
+                    'render' => function($p) {
+                        $details = [];
+                        if (!empty($p['failure_design'])) $details[] = "Desain: " . htmlspecialchars($p['failure_design']);
+                        if (!empty($p['failure_print'])) $details[] = "Cetak: " . htmlspecialchars($p['failure_print']);
+                        if (!empty($p['failure_finishing'])) $details[] = "Finishing: " . htmlspecialchars($p['failure_finishing']);
+                        if (!empty($p['failure_cause'])) $details[] = "Penyebab: " . htmlspecialchars($p['failure_cause']);
+                        if (!empty($p['failure_cause_other'])) $details[] = "Lainnya: " . htmlspecialchars($p['failure_cause_other']);
+                        return empty($details) ? '-' : implode('<br>', $details);
+                    }
+                ],
+                ['header' => 'Kerugian', 'render' => fn($p) => '<span class="text-danger fw-bold">Rp ' . number_format(getSatuanHarga($p['product_id'], $p['size'], $p['finishing'], $koneksi) * (int)$p['quantity'], 0, ',', '.') . '</span>'],
+                ['header' => 'Beban', 'render' => fn($p) => '<span class="text-danger fw-bold">' . htmlspecialchars($p['loss_burden']) . '</span>'],
+                ['header' => 'Keterangan', 'render' => fn($p) => '<span class="text-danger fw-bold">' . htmlspecialchars($p['info']) . '</span>'],
+                [
+                    'header'  => 'Aksi',
+                    'type'    => 'action_buttons',
+                    'buttons' => [
+                        [
+                            'type'  => 'button',
+                            'icon'  => get_icon('update', ['class' => 'me-1']),
+                            'text'  => 'Info',
+                            'color' => 'info',
+                            'class' => 'text-white mb-1 me-1',
+                            'onclick' => [
+                                'function' => 'bukaModalEditInfo',
+                                // Fitur baru: param_fields berupa array, otomatis menjadi: 
+                                // bukaModalEditInfo('1', 'Teks Info');
+                                'param_fields' => ['failure_id', 'info'] 
+                            ]
+                        ],
+                        [
+                            // Fitur baru: Tipe Link (<a> tag) yang memiliki fungsi confirm()
+                            'type'        => 'link',
+                            'icon'        => get_icon('delete', ['class' => 'me-1']),
+                            'text'        => 'Hapus',
+                            'color'       => 'danger',
+                            'class'       => 'mb-1',
+                            'href'        => 'delete_failure.php?id=',
+                            'param_field' => 'failure_id',
+                            'confirm'     => 'Yakin ingin menghapus log ini?'
+                        ]
+                    ]
+                ]
+            ]
+        ];
 
-                        if (!empty($p['finishing']) && $p['finishing'] !== '-') {
-                            $finishing_ids = array_filter(array_map('intval', explode(',', $p['finishing'])));
-                            if (!empty($finishing_ids)) {
-                                $placeholders = implode(',', array_fill(0, count($finishing_ids), '?'));
-                                $types = str_repeat('i', count($finishing_ids));
-                                $sqlF = "SELECT name FROM products WHERE product_id IN ($placeholders)";
-                                $stmtF = $koneksi->prepare($sqlF);
-
-                                if ($stmtF) {
-                                    $stmtF->bind_param($types, ...$finishing_ids);
-                                    $stmtF->execute();
-                                    $resF = $stmtF->get_result();
-                                    $all_names = [];
-
-                                    while ($rF = $resF->fetch_assoc()) {
-                                        $all_names[] = $rF['name'];
-                                    }
-                                    $stmtF->close();
-                                    $finishing_names = implode(', ', $all_names);
-                                }
-                            }
-                        }
-                    ?>
-                    <td><?= $finishing_names ?></td>
-                    
-                    <td style="white-space: normal; min-width: 250px;">
-                        <?php 
-                            $details = [];
-                            if (!empty($p['failure_design'])) $details[] = "Desain: " . htmlspecialchars($p['failure_design']);
-                            if (!empty($p['failure_print'])) $details[] = "Cetak: " . htmlspecialchars($p['failure_print']);
-                            if (!empty($p['failure_finishing'])) $details[] = "Finishing: " . htmlspecialchars($p['failure_finishing']);
-                            if (!empty($p['failure_cause'])) $details[] = "Penyebab: " . htmlspecialchars($p['failure_cause']);
-                            if (!empty($p['failure_cause_other'])) $details[] = "Lainnya: " . htmlspecialchars($p['failure_cause_other']);
-                            
-                            echo empty($details) ? '-' : implode('<br>', $details);
-                        ?>
-                    </td>
-
-                    <td class="text-danger fw-bold">
-                      <?php
-                        $size = $p['size'];
-                        $total_satuan = getSatuanHarga($p['product_id'], $size, $p['finishing'], $koneksi) * (int)htmlspecialchars($p['quantity']);
-                        echo "Rp " . number_format($total_satuan, 0, ',', '.');
-                      ?>
-                    </td>
-
-                    <td class="text-danger fw-bold">
-                      <?php echo $p['loss_burden'] ?>
-                    </td>
-
-                    <td class="text-danger fw-bold">
-                      <?php echo $p['info'] ?>
-                    </td>
-                    
-                    <td>
-                      <button type="button" class="btn btn-info btn-sm text-white mb-1" 
-                              onclick="bukaModalEditInfo(<?= $p['failure_id'] ?>, '<?= htmlspecialchars(addslashes($p['info'] ?? '')) ?>')">
-                          <i class="bi bi-pencil-square"></i> Info
-                      </button>
-                      
-                      <a href="delete_failure.php?id=<?= $p['failure_id'] ?>" class="btn btn-danger btn-sm mb-1"
-                        onclick="return confirm('Yakin ingin menghapus log ini?')"><i class="bi bi-trash"></i> Hapus</a>
-                    </td>
-                  </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
-          </div>
+        echo renderTable($htmlTableGagal);
+        ?>
         <?php endif; ?>
           <div class="modal fade" id="editInfoModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">

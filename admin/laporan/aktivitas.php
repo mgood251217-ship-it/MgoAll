@@ -1,6 +1,7 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/components/Table.php';
 
 $stmt = $koneksi->prepare("SELECT activity_id, title, message, information, order_id, date, done FROM activity WHERE store_id = ?");
 $stmt->bind_param("i", $store_id);
@@ -12,6 +13,49 @@ while ($row = $result->fetch_assoc()) {
     $activity[] = $row;
 }
 $stmt->close();
+
+$htmlTableAktivitas = renderTable([
+    'data'        => $activity,
+    'table_class' => 'table table-bordered table-striped',
+    'thead_class' => 'table-primary',
+    'tbody_tr_class' => 'activity-row',
+    'columns'     => [
+        [
+            'header' => 'No',
+            'type'   => 'number'
+        ],
+        [
+            'header' => 'Judul',
+            'field'  => 'title'
+        ],
+        [
+            'header' => 'Pesan',
+            'field'  => 'message'
+        ],
+        [
+            'header' => 'Keterangan',
+            'field'  => 'information'
+        ],
+        [
+            'header' => 'Order ID',
+            'field'  => 'order_id'
+        ],
+        [
+            'header' => 'Tanggal',
+            'field'  => 'date'
+        ],
+        [
+            'header' => 'Aksi',
+            'render' => function($row) {
+                $isChecked = ($row['done'] == "1") ? 'checked' : '';
+                return '<input type="checkbox" 
+                            class="styled-checkbox activity-check" 
+                            data-id="' . htmlspecialchars($row['activity_id']) . '" 
+                            ' . $isChecked . '>';
+            }
+        ]
+    ]
+]);
 ?>
 
 <!DOCTYPE html>
@@ -77,39 +121,10 @@ $stmt->close();
           <h5>Daftar Aktivitas</h5>
           <button id="toggleAll" class="btn btn-sm btn-success">✅ Cek Semua</button>
         </div>
-          <table class="table table-bordered table-striped">
-            <thead class="table-primary">
-              <tr>
-                <th>No</th>
-                <th>Judul</th>
-                <th>Pesan</th>
-                <th>Keterangan</th>
-                <th>Order ID</th>
-                <th>Tanggal</th>
-                <th class="text-nowrap" style="width: 40px;">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php $no = 1; ?>
-              <?php foreach ($activity as $s): ?>
-                <tr class="activity-row">
-                  <td><?= $no++ ?></td>
-                  <td><?= htmlspecialchars($s['title']) ?></td>
-                  <td><?= htmlspecialchars($s['message']) ?></td>
-                  <td><?= htmlspecialchars($s['information']) ?></td>
-                  <td><?= htmlspecialchars($s['order_id']) ?></td>
-                  <td><?= htmlspecialchars($s['date']) ?></td>
-                  <td class="checkbox-cell">
-                    <input type="checkbox" 
-                          class="styled-checkbox activity-check"
-                          data-id="<?= htmlspecialchars($s['activity_id']) ?>"
-                          <?= $s['done'] == "1" ? 'checked' : '' ?>>
-                  </td>
-                </tr>
-              <?php endforeach; ?>
-            </tbody>
-          </table>
-        </div>
+
+              <?= $htmlTableAktivitas ?>
+          </div>
+
       <?php endif; ?>
     </div>
   </div>

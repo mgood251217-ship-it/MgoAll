@@ -6,6 +6,7 @@ require_once BASE_PATH . '/components/Modal.php';
 require_once BASE_PATH . '/components/Alert.php';
 require_once BASE_PATH . '/components/Table.php';
 require_once BASE_PATH . '/components/Loading.php';
+require_once BASE_PATH . '/components/Icon.php';
 
 $stockController = new StockController($koneksi);
 $stocks = $stockController->index();
@@ -37,27 +38,27 @@ $isAdmin = ($role == 'ADMIN' || $role == 'MANAGER');
       </div>
 
       <?php
-        $htmlTableStock = renderTable([
-            'data'           => $stocks,
-            'empty_message'  => 'Tidak ada data stok barang untuk toko ini.',
-            'tbody_tr_class' => 'stock-rows',
-            'columns'        => [
-                ['header' => 'No', 'type' => 'number'],
-                ['header' => 'Jenis Barang', 'field' => 'type'],
-                ['header' => 'Nama Barang', 'field' => 'name'],
-                [
-                    'header' => 'Jumlah Stok',
-                    'render' => function($row) {
-                        $unitType = strtoupper($row['unit_type'] ?? '');
-                        return ($unitType === 'M2' || $unitType === 'CM2')
-                            ? number_format((float)$row['quantity'], 2)
-                            : (int)$row['quantity'];
-                    }
-                ],
-                ['header' => 'Satuan', 'field' => 'unit_type'],
-                [
+      $htmlTableStock = renderTable([
+          'data'           => $stocks ?? [],
+          'empty_message'  => 'Tidak ada data stok barang untuk toko ini.',
+          'tbody_tr_class' => 'stock-rows',
+          'columns'        => [
+              ['header' => 'No', 'type' => 'number'],
+              ['header' => 'Jenis Barang', 'field' => 'type'],
+              ['header' => 'Nama Barang', 'field' => 'name'],
+              [
+                  'header' => 'Jumlah Stok',
+                  'render' => function($row) {
+                      $unitType = strtoupper($row['unit_type'] ?? '');
+                      return ($unitType === 'M2' || $unitType === 'CM2')
+                          ? number_format((float)$row['quantity'], 2)
+                          : (int)$row['quantity'];
+                  }
+              ],
+              ['header' => 'Satuan', 'field' => 'unit_type'],
+              [
                   'header'  => 'Aksi',
-                  'visible' => $isAdmin,
+                  'visible' => $isAdmin ?? false,
                   'render'  => function($row) {
                       ob_start();
                       ?>
@@ -65,22 +66,27 @@ $isAdmin = ($role == 'ADMIN' || $role == 'MANAGER');
                           <form class="d-inline-flex stock-form m-0">
                               <input type="hidden" name="stock" value="add_stock">
                               <input type="hidden" name="product_id" value="<?= htmlspecialchars($row['product_id']) ?>">
-                              <input type="number" name="quantity" step="0.01" class="form-control form-control-sm me-1" placeholder="+Qty" style="width: 65px;" required>
-                              <button type="submit" class="btn btn-success btn-sm">Tambah</button>
+                              <input type="number" name="quantity" step="0.01" class="form-control form-control-sm me-1" placeholder="+Qty" style="width: 75px;" required>
+                              <button type="submit" class="btn btn-success btn-sm" title="Tambah Stok" style="line-height: 0; padding: .4rem .5rem;">
+                                  <?= get_icon('create', ['width' => '16', 'height' => '16']) ?>
+                              </button>
                           </form>
+                          
                           <form class="d-inline-flex stock-form m-0">
                               <input type="hidden" name="stock" value="update_stock">
                               <input type="hidden" name="product_id" value="<?= htmlspecialchars($row['product_id']) ?>">
-                              <input type="number" name="quantity" step="0.01" value="<?= htmlspecialchars($row['quantity']) ?>" class="form-control form-control-sm me-1" style="width: 65px;" required>
-                              <button type="submit" class="btn btn-primary btn-sm">Edit</button>
+                              <input type="number" name="quantity" step="0.01" value="<?= htmlspecialchars($row['quantity']) ?>" class="form-control form-control-sm me-1" style="width: 75px;" required>
+                              <button type="submit" class="btn btn-primary btn-sm" title="Update Stok" style="line-height: 0; padding: .4rem .5rem;">
+                                  <?= get_icon('update', ['width' => '16', 'height' => '16']) ?>
+                              </button>
                           </form>
                       </div>
                       <?php
                       return ob_get_clean();
                   }
               ]
-            ]
-        ]);
+          ]
+      ]);
       ?>
 
       <?= $htmlTableStock; ?>

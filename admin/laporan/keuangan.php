@@ -3,28 +3,19 @@
 require_once '../connect.php';
 require_once '../global_functions.php';
 require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/components/Table.php';
 $start_date = $_GET['start_date'] ?? date('Y-m-d');
 $end_date = $_GET['end_date'] ?? date('Y-m-d');
 
-
-// Ambil data finance untuk tanggal terakhir di rentang
-$stmt = $koneksi->prepare("
-    SELECT omset_offline, omset_online, saldo, transfer, expenditure, date
-    FROM finance
-    WHERE store_id = ? AND date BETWEEN ? AND ?
-    ORDER BY date DESC
-    LIMIT 1
-");
-$stmt->bind_param("iss", $store_id, $start_date, $end_date);
-$stmt->execute();
-$stmt->store_result();
-
-if ($stmt->num_rows > 0) {
-    $stmt->bind_result($omset_offline, $omset_online, $saldo, $transfer, $expenditure, $date);
-    $stmt->fetch();
-} else {
-    $omset_offline = $omset_online = $saldo = $transfer = $expenditure = 0;
-    $date = date('Y-m-d');
+$stmtFinance = $koneksi->prepare("SELECT omset_offline, omset_online, transfer, expenditure, saldo, date FROM finance WHERE store_id = ? AND date BETWEEN ? AND ? ORDER BY date ASC");
+$stmtFinance->bind_param("iss", $store_id, $start_date, $end_date);
+$stmtFinance->execute();
+$resultFinance = $stmtFinance->get_result();
+$dataFinance = [];
+while ($row = $resultFinance->fetch_assoc()) {
+    $row['total_omset'] = $row['omset_offline'] + $row['omset_online'];
+    $row['cash_masuk']  = ($row['omset_offline'] + $row['omset_online']) - $row['transfer'];
+    $dataFinance[] = $row;
 }
 $stmt->close();
 
@@ -202,13 +193,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-
-
-
-
-
-
-
 // Ambil data pengeluaran di rentang tanggal
 $dataPengeluaran = $koneksi->prepare("
     SELECT expenditure_id, information, nominal, img, date
@@ -230,6 +214,8 @@ $dataPemasukan = $koneksi->prepare("
 $dataPemasukan->bind_param("iss", $store_id, $start_date, $end_date);
 $dataPemasukan->execute();
 $dataPemasukan = $dataPemasukan->get_result();
+
+
 
 ?>
 
@@ -276,57 +262,59 @@ $dataPemasukan = $dataPemasukan->get_result();
 
         <div class="card-body">
 
-          <div class="table-responsive">
-            <table class="table table-bordered table-striped" id="tableKeuangan">
-              <thead class="table-info text-center">
-                <tr>
-                  <th>No</th>
-                  <th>Omset Offline</th>
-                  <th>Omset Online</th>
-                  <th>Total Omset</th>
-                  <th>Transfer Masuk</th>
-                  <th>Cash Masuk</th>
-                  <th>Pengeluaran</th>
-                  <th>Saldo Kas</th>
-                  <th>Periode</th>
-                </tr>
-              </thead>
-              <tbody class="text-center">
-                <?php
-                $no = 1;
-                $stmtFinance = $koneksi->prepare("
-                  SELECT omset_offline, omset_online, transfer, expenditure, saldo, date
-                  FROM finance
-                  WHERE store_id = ? AND date BETWEEN ? AND ?
-                  ORDER BY date ASC
-                ");
-                $stmtFinance->bind_param("iss", $store_id, $start_date, $end_date);
-                $stmtFinance->execute();
-                $resultFinance = $stmtFinance->get_result();
-
-                if ($resultFinance->num_rows > 0) {
-                    while ($row = $resultFinance->fetch_assoc()) {
-                      ?>
-                      <tr>
-                        <td><?= $no++ ?></td>
-                        <td>Rp <?= ($row['omset_offline'] < 0 ? '-' : '') . number_format(abs($row['omset_offline']), 0, ',', '.') ?></td>
-                        <td>Rp <?= ($row['omset_online'] < 0 ? '-' : '') . number_format(abs($row['omset_online']), 0, ',', '.') ?></td>
-                        <td>Rp <?= (($row['omset_offline'] + $row['omset_online']) < 0 ? '-' : '') . number_format(abs($row['omset_offline'] + $row['omset_online']), 0, ',', '.') ?></td>
-                        <td>Rp <?= ($row['transfer'] < 0 ? '-' : '') . number_format(abs($row['transfer']), 0, ',', '.') ?></td>
-                        <td>Rp <?= (($row['omset_offline'] + $row['omset_online'] - $row['transfer']) < 0 ? '-' : '') . number_format(abs($row['omset_offline'] + $row['omset_online'] - $row['transfer']), 0, ',', '.') ?></td>
-                        <td>Rp <?= ($row['expenditure'] < 0 ? '-' : '') . number_format(abs($row['expenditure']), 0, ',', '.') ?></td>
-                        <td>Rp <?= ($row['saldo'] < 0 ? '-' : '') . number_format(abs($row['saldo']), 0, ',', '.') ?></td>
-                        <td><?= $row['date'] ?></td>
-                      </tr>
-                      <?php
-                    }
-                } else {
-                    echo '<tr><td colspan="7" class="text-center">Tidak ada data keuangan untuk periode ini.</td></tr>';
-                }
-                ?>
-              </tbody>
-            </table>
-          </div>
+          <?php
+            echo renderTable([
+                'id'          => 'tableKeuangan',
+                'data'        => $dataFinance,
+                'table_class' => 'table table-bordered table-striped text-center',
+                'thead_class' => 'table-info',
+                'columns'     => [
+                    [
+                        'header' => 'No',
+                        'type'   => 'number'
+                    ],
+                    [
+                        'header' => 'Omset Offline',
+                        'type'   => 'currency',
+                        'field'  => 'omset_offline'
+                    ],
+                    [
+                        'header' => 'Omset Online',
+                        'type'   => 'currency',
+                        'field'  => 'omset_online'
+                    ],
+                    [
+                        'header' => 'Total Omset',
+                        'type'   => 'currency',
+                        'field'  => 'total_omset'
+                    ],
+                    [
+                        'header' => 'Transfer Masuk',
+                        'type'   => 'currency',
+                        'field'  => 'transfer'
+                    ],
+                    [
+                        'header' => 'Cash Masuk',
+                        'type'   => 'currency',
+                        'field'  => 'cash_masuk'
+                    ],
+                    [
+                        'header' => 'Pengeluaran',
+                        'type'   => 'currency',
+                        'field'  => 'expenditure'
+                    ],
+                    [
+                        'header' => 'Saldo Kas',
+                        'type'   => 'currency',
+                        'field'  => 'saldo'
+                    ],
+                    [
+                        'header' => 'Periode',
+                        'field'  => 'date'
+                    ]
+                ]
+            ]);
+          ?>
 
           <div class="mt-3 text-end">
             <form method="post" class="d-inline" id="rfrs">
@@ -382,151 +370,113 @@ $dataPemasukan = $dataPemasukan->get_result();
           <!-- Tabel Pengeluaran -->
           <div class="col-md-6">
             <h5 class="mt-4">Data Pengeluaran Bulan Ini</h5>
-            <div class="table-responsive">
-              <table class="table table-bordered table-striped" id="tablePengeluaran">
-                <thead class="table-danger">
-                  <tr>
-                    <th>No</th>
-                    <th>Keterangan</th>
-                    <th>Nominal</th>
-                    <th>Foto</th>
-                    <th>Tanggal</th>
-                    <th>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <?php if ($dataPengeluaran->num_rows > 0): 
-                    $no = 1;
-                    while ($row = $dataPengeluaran->fetch_assoc()):
-                    $storeNames = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
-                    $ambilTahun = date('Y', strtotime($row['date']));
-                    $ambilBulan = date('m', strtotime($row['date']));
-                    $ambilTanggal = date('d', strtotime($row['date']));
-                    $folderDate = $ambilTahun . '/' . $ambilBulan . '/' . $ambilTanggal;
-                    $uploadDir = BASE_PATH . "/assets/img/bukti/$storeNames/$folderDate/";
-                    ?>
-                    <tr>
-                      <td><?= $no++ ?></td>
-                      <td><?= htmlspecialchars($row['information']) ?></td>
-                      <td>Rp <?= number_format($row['nominal'], 0, ',', '.') ?></td>
-                      <th>
-
-                        <?php 
-                        $imgPath = $uploadDir . $row['img']; // path absolut di server
-                        $imgUrl = BASE_URL . "/assets/img/bukti/$storeNames/$folderDate/" . htmlspecialchars($row['img']); // path untuk browser
-
-                        if (empty($row['img']) || !file_exists($imgPath)) {
-                          // Jika kolom kosong atau file tidak ada di direktori
-                          ?>
-                          <img 
-                            src="<?= BASE_URL . '/assets/img/noproof.png' ?>" 
-                            alt="Tanpa Bukti"
-                            style="height:30px; object-fit:cover;"
-                          >
-                        <?php
-                        } else {
-                          ?>
-                          <img 
-                            src="<?= $imgUrl ?>" 
-                            alt="Bukti"
-                            class="img-thumb"
-                            onclick="showImageModal('<?= $imgUrl ?>')"
-                            style="width:50px; height:50px; object-fit:cover; border-radius:6px; cursor:pointer; position:relative;"
-                          >
-                        <?php
-                        }
-                        ?>
-                      </th>
-                      <td><?= date('d-m-Y', strtotime($row['date'])) ?></td>
-                      <td>
-                        <button 
-                          style="display: none;"
-                          class="btn btn-sm btn-warning"
-                          data-bs-toggle="modal"
-                          data-bs-target="#editModal"
-                          data-id="<?= $row['income_id'] ?? $row['expenditure_id'] ?>"
-                          data-type="<?= isset($row['income_id']) ? 'income' : 'expenditures' ?>"
-                          data-info="<?= htmlspecialchars($row['information']) ?>"
-                          data-nominal="<?= $row['nominal'] ?>"
-                        >
-                          Edit
-                        </button>
-                        <button 
-                          class="btn btn-sm btn-danger"
-                          data-bs-toggle="modal"
-                          data-bs-target="#deleteModal"
-                          data-id="<?= $row['income_id'] ?? $row['expenditure_id'] ?>"
-                          data-type="<?= isset($row['income_id']) ? 'income' : 'expenditures' ?>"
-                        >
-                          Hapus
-                        </button>
-                      </td>
-                    </tr>
-                  <?php endwhile; else: ?>
-                    <tr><td colspan="6" class="text-center">Tidak ada data Pengeluaran.</td></tr>
-                  <?php endif; ?>
-                </tbody>
-              </table>
-            </div>
+            <?php
+              echo renderTable([
+                  'id'          => 'tablePengeluaran',
+                  'data'        => $dataPengeluaran,
+                  'table_class' => 'table table-bordered table-striped',
+                  'thead_class' => 'table-danger',
+                  'columns'     => [
+                      [
+                          'header' => 'No',
+                          'type'   => 'number'
+                      ],
+                      [
+                          'header' => 'Keterangan',
+                          'field'  => 'information'
+                      ],
+                      [
+                          'header' => 'Nominal',
+                          'type'   => 'currency',
+                          'field'  => 'nominal'
+                      ],
+                      [
+                          'header' => 'Foto',
+                          'render' => function($row) {
+                              $imgUrl = BASE_URL . "/assets/img/bukti/{$row['storeNames']}/{$row['folderDate']}/" . htmlspecialchars($row['img']);
+                              return empty($row['img']) 
+                                  ? '<img src="'.BASE_URL.'/assets/img/noproof.png" style="height:30px;">' 
+                                  : '<img src="'.$imgUrl.'" class="img-thumb" onclick="showImageModal(\''.$imgUrl.'\')" style="width:50px;height:50px;object-fit:cover;cursor:pointer;">';
+                          }
+                      ],
+                      [
+                          'header' => 'Tanggal',
+                          'render' => fn($row) => date('d-m-Y', strtotime($row['date']))
+                      ],
+                      [
+                          'header' => 'Aksi',
+                          'type'   => 'action_buttons',
+                          'buttons' => [
+                              [
+                                  'text'            => 'Edit',
+                                  'class'           => 'btn-warning',
+                                  'modal'           => 'editModal',
+                                  'data_attributes' => ['id' => 'expenditure_id', 'type' => 'expenditures', 'info' => 'information', 'nominal' => 'nominal']
+                              ],
+                              [
+                                  'text'            => 'Hapus',
+                                  'class'           => 'btn-danger',
+                                  'modal'           => 'deleteModal',
+                                  'data_attributes' => ['id' => 'expenditure_id', 'type' => 'expenditures']
+                              ]
+                          ]
+                      ]
+                  ]
+              ]);
+            ?>
           </div>
 
           <!-- Tabel Pemasukan -->
           <div class="col-md-6">
             <h5 class="mt-4">Data Pemasukan Bulan Ini</h5>
             <div class="table-responsive">
-              <table class="table table-bordered table-striped" id="tablePemasukan">
-                <thead class="table-success">
-                  <tr>
-                    <th>No</th>
-                    <th>Keterangan</th>
-                    <th>Nominal</th>
-                    <th>Tanggal</th>
-                    <th>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <?php if ($dataPemasukan->num_rows > 0): 
-                    $no = 1;
-                    while ($row = $dataPemasukan->fetch_assoc()): ?>
-                    <tr>
-                      <td><?= $no++ ?></td>
-                      <td><?= htmlspecialchars($row['information']) ?></td>
-                      <td>Rp <?= number_format($row['nominal'], 0, ',', '.') ?></td>
-                      <td><?= date('d-m-Y', strtotime($row['date'])) ?></td>
-                      <td>
-                        <button 
-                          style="display: none;"
-                          class="btn btn-sm btn-warning"
-                          data-bs-toggle="modal"
-                          data-bs-target="#editModal"
-                          data-id="<?= $row['income_id'] ?? $row['expenditure_id'] ?>"
-                          data-type="<?= isset($row['income_id']) ? 'income' : 'expenditures' ?>"
-                          data-info="<?= htmlspecialchars($row['information']) ?>"
-                          data-nominal="<?= $row['nominal'] ?>"
-                        >
-                          Edit
-                        </button>
-                        <?php
-                          if (str_contains(htmlspecialchars($row['information']), 'INPUT SALDO OTOMATIS')) { 
-                              
-                          }else{ ?>
-                        <button 
-                          class="btn btn-sm btn-danger"
-                          data-bs-toggle="modal"
-                          data-bs-target="#deleteModal"
-                          data-id="<?= $row['income_id'] ?? $row['expenditure_id'] ?>"
-                          data-type="<?= isset($row['income_id']) ? 'income' : 'expenditures' ?>"
-                        >
-                          Hapus
-                        </button>
-                        <?php  } ?>
-                      </td>
-                    </tr>
-                  <?php endwhile; else: ?>
-                    <tr><td colspan="5" class="text-center">Tidak ada data Pemasukan.</td></tr>
-                  <?php endif; ?>
-                </tbody>
-              </table>
+              <?php
+                echo renderTable([
+                    'id'          => 'tablePemasukan',
+                    'data'        => $dataPemasukan,
+                    'table_class' => 'table table-bordered table-striped',
+                    'thead_class' => 'table-success',
+                    'columns'     => [
+                        [
+                            'header' => 'No',
+                            'type'   => 'number'
+                        ],
+                        [
+                            'header' => 'Keterangan',
+                            'field'  => 'information'
+                        ],
+                        [
+                            'header' => 'Nominal',
+                            'type'   => 'currency',
+                            'field'  => 'nominal'
+                        ],
+                        [
+                            'header' => 'Tanggal',
+                            'render' => fn($row) => date('d-m-Y', strtotime($row['date']))
+                        ],
+                        [
+                            'header' => 'Aksi',
+                            'type'   => 'action_buttons',
+                            'buttons' => [
+                                [
+                                    'text'            => 'Edit',
+                                    'class'           => 'btn-warning',
+                                    'modal'           => 'editModal',
+                                    'data_attributes' => ['id' => 'income_id', 'type' => 'income', 'info' => 'information', 'nominal' => 'nominal']
+                                ],
+                                [
+                                    'text'            => 'Hapus',
+                                    'class'           => 'btn-danger',
+                                    'modal'           => 'deleteModal',
+                                    'data_attributes' => ['id' => 'income_id', 'type' => 'income'],
+                                    // Menambahkan kondisi manual agar tombol hapus tidak muncul untuk saldo otomatis
+                                    'visible'         => function($row) { return !str_contains($row['information'], 'INPUT SALDO OTOMATIS'); }
+                                ]
+                            ]
+                        ]
+                    ]
+                ]);
+              ?>
             </div>
           </div>
         </div>
@@ -666,7 +616,6 @@ $dataPemasukan = $dataPemasukan->get_result();
         </div>
 
       </div>
-      <!-- End Card -->
 
     </div>
   </div>
@@ -674,10 +623,6 @@ $dataPemasukan = $dataPemasukan->get_result();
   <?php include BASE_PATH . '/footer.php'; ?>
 </div>
 
-<!-- <script type="text/javascript">
-  const refreshall = document.getElementById('rfrs');
-  refreshall.submit();                  
-</script> -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const refreshall = document.getElementsByName('refresh_finance');

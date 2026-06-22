@@ -1,11 +1,11 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/components/Table.php';
 
 $start_input = $_GET['start_date'] ?? date('Y-m-d');
 $end_input = $_GET['end_date'] ?? date('Y-m-d');
 
-// Validasi format tanggal (YYYY-MM-DD)
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $start_input)) {
     $start_input = date('Y-m-d');
 }
@@ -13,12 +13,9 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $end_input)) {
     $end_input = date('Y-m-d');
 }
 
-// Versi lengkap (Y-m-d H:i:s) untuk query
 $filter_start_date = $start_input . ' 00:00:00';
 $filter_end_date = $end_input . ' 23:59:59';
 
-
-// Ambil data produk utama berdasarkan interval
 $sql = "SELECT 
           i.judul, i.size, i.amount, i.quantity, i.product_id, i.finishing,
           o.nomorator, o.customer_name, o.date, o.order_id,
@@ -56,6 +53,8 @@ while ($row = $result->fetch_assoc()) {
     $row['finishing_names'] = implode(', ', $finishingNames);
     $produkData[$row['judul']][] = $row;
 }
+
+
 ?>
 
 <!DOCTYPE html>
@@ -113,53 +112,62 @@ while ($row = $result->fetch_assoc()) {
         <?php foreach ($produkData as $judul => $items): ?>
         <div class="produk-block">
             <div class="produk-title fw-bold mb-2"><?= htmlspecialchars($judul) ?></div>
-            <div class="table-responsive">
-            <table class="table table-bordered table-sm dataTable">
-                <thead class="table-primary">
-                <tr>
-                    <th>No</th>
-                    <th>Nomorator</th>
-                    <th>Tanggal</th>
-                    <th>Pelanggan</th>
-                    <th>Ukuran</th>
-                    <th>Finishing</th>
-                    <th>Harga Produk</th>
-                    <th>Qty</th>
-                    <th>Subtotal</th>
-                    <th>Opsi</th>
-                    <th>Cek Order</th>
-                </tr>
-                </thead>
-                <tbody>
-                <?php $i = 1; ?>
-                <?php foreach ($items as $item): ?>
-                <tr>
-                    <td><?= $i ?></td>
-                    <td><?= htmlspecialchars($item['nomorator']) ?></td>
-                    <td><?= htmlspecialchars($item['date']) ?></td>
-                    <td><?= htmlspecialchars($item['customer_name']) ?></td>
-                    <td><?= htmlspecialchars($item['size']) ?></td>
-                    <td><?= htmlspecialchars($item['finishing_names']) ?></td>
-                    <td>Rp<?= number_format($item['price'], 0, ',', '.') ?></td>
-                    <td><?= $item['quantity'] ?></td>
-                    <td>Rp<?= number_format($item['amount'], 0, ',', '.') ?></td>
-                    <td>
-                      <?php
-                      if ($item['product_id'] == 0) {
-                        echo "Manual⚠️";
-                      }else {
-                        echo "Otomatis✅";
-                      }
-                      
-                      ?>
-                    </td>
-                    <td><a href="transaksi_detil?scrl_id=<?= htmlspecialchars($item['order_id']) ?>&start_date=<?= date('Y-m-d', strtotime($item['date'])) ?>&end_date=<?= date('Y-m-d', strtotime($item['date'])) ?>" target="_black" class="btn btn-primary" style="padding: 2px;">Cek Order</a></td>
-                </tr>
-                <?php $i += 1; ?>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
-            </div>
+        <?php
+        $htmlTableItems = renderTable([
+            'data'        => $items,
+            'table_class' => 'table table-bordered table-sm dataTable',
+            'thead_class' => 'table-primary',
+            'columns'     => [
+                [
+                    'header' => 'No',
+                    'type'   => 'number'
+                ],
+                [
+                    'header' => 'Nomorator',
+                    'field'  => 'nomorator'
+                ],
+                [
+                    'header' => 'Tanggal',
+                    'field'  => 'date'
+                ],
+                [
+                    'header' => 'Pelanggan',
+                    'field'  => 'customer_name'
+                ],
+                [
+                    'header' => 'Ukuran',
+                    'field'  => 'size'
+                ],
+                [
+                    'header' => 'Finishing',
+                    'field'  => 'finishing_names'
+                ],
+                [
+                    'header' => 'Harga Produk',
+                    'type'   => 'currency',
+                    'field'  => 'price'
+                ],
+                [
+                    'header' => 'Qty',
+                    'field'  => 'quantity'
+                ],
+                [
+                    'header' => 'Subtotal',
+                    'type'   => 'currency',
+                    'field'  => 'amount'
+                ],
+                [
+                    'header' => 'Cek Order',
+                    'render' => function($row) {
+                        $date = date('Y-m-d', strtotime($row['date']));
+                        return '<a href="transaksi_detil?scrl_id=' . htmlspecialchars($row['order_id']) . '&start_date=' . $date . '&end_date=' . $date . '" target="_blank" class="btn btn-primary btn-sm" style="padding: 2px 8px;">Cek Order</a>';
+                    }
+                ]
+            ]
+        ]);
+
+        echo $htmlTableItems;
+        ?>
         </div>
         <?php endforeach; ?>
       <?php endif; ?>

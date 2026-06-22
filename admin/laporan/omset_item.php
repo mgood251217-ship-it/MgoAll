@@ -1,12 +1,88 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/components/Table.php';
 
 $start_date_f = $_GET['start_date'] ?? date('Y-m-d');
 $end_date_f = $_GET['end_date'] ?? date('Y-m-d');
 
 $start_date = $start_date_f . ' 00:00:00';
 $end_date   = $end_date_f . ' 23:59:59';
+
+$query = "
+    SELECT 
+        p.name AS nama_barang,
+        p.unit_type AS satuan,
+        COALESCE(
+            SUM(
+                CASE
+                    WHEN p.unit_type = 'M2' AND oi.size LIKE '%x%' THEN 
+                        oi.quantity * CAST(SUBSTRING_INDEX(oi.size, 'x', 1) AS DECIMAL(10,4)) * CAST(SUBSTRING_INDEX(oi.size, 'x', -1) AS DECIMAL(10,4))
+                    WHEN p.unit_type = 'M2' THEN 
+                        oi.quantity
+                    ELSE 
+                        oi.quantity
+                END
+            ), 0
+        ) AS total_terjual,
+        COALESCE(SUM(oi.amount), 0) AS total_omset
+    FROM products p
+    LEFT JOIN order_items oi ON oi.product_id = p.product_id AND oi.store_id = ?
+    LEFT JOIN orders o ON oi.order_id = o.order_id
+    WHERE p.store_id = ?
+    AND NOT p.unit_type = '~'
+    AND (o.date BETWEEN ? AND ?)
+    GROUP BY p.product_id
+    ORDER BY total_omset DESC
+";
+
+$stmt = $koneksi->prepare($query);
+$stmt->bind_param("iiss", $store_id, $store_id, $start_date, $end_date);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$dataOmsetPerItem = [];
+while ($row = $result->fetch_assoc()) {
+    $dataOmsetPerItem[] = $row;
+}
+
+$stmt->close();
+
+$htmlTableOmsetPerItem = renderTable([
+    'id'          => 'omsetPerItem',
+    'data'        => $dataOmsetPerItem,
+    'table_class' => 'table table-bordered table-striped',
+    'thead_class' => 'table-primary',
+    'columns'     => [
+        [
+            'header' => 'No',
+            'type'   => 'number'
+        ],
+        [
+            'header' => 'Nama Barang',
+            'field'  => 'nama_barang'
+        ],
+        [
+            'header' => 'Satuan',
+            'field'  => 'satuan'
+        ],
+        [
+            'header' => 'Jumlah Terjual',
+            'render' => function($row) {
+                if ($row['satuan'] === 'M2') {
+                    return number_format($row['total_terjual'], 2);
+                } else {
+                    return number_format($row['total_terjual']);
+                }
+            }
+        ],
+        [
+            'header' => 'Jumlah Omset',
+            'type'   => 'currency',
+            'field'  => 'total_omset'
+        ]
+    ]
+]);
 
 ?>
 
@@ -29,89 +105,20 @@ $end_date   = $end_date_f . ' 23:59:59';
     <div id="page-content-wrapper">
       <?php require 'summary_cards.php'; ?>
       <div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-3">
-        <!-- Judul di kiri atas -->
         <h1 class="mb-4">Daftar Omset Per Produk</h1>
 
-        <!-- Form dan tombol export di kanan -->
         <div class="d-flex flex-wrap justify-content-end align-items-end gap-2">
           <?php $showExport = true; include BASE_PATH . '/interval_date.php'; ?>
         </div>
       </div>
-      <div class="table-responsive">
-        <table class="table table-bordered table-striped" id="omsetPerItem">
-          <thead class="table-primary">
-            <tr>
-              <th>No</th>
-              <th>Nama Barang</th>
-              <th>Satuan</th>
-              <th>Jumlah Terjual</th>
-              <th>Jumlah Omset</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php
-            $query = "
-                SELECT 
-                  p.name AS nama_barang,
-                  p.unit_type AS satuan,
-                  COALESCE(
-                    SUM(
-                      CASE
-                        WHEN p.unit_type = 'M2' AND oi.size LIKE '%x%' THEN 
-                          oi.quantity * 
-                          CAST(SUBSTRING_INDEX(oi.size, 'x', 1) AS DECIMAL(10,4)) * 
-                          CAST(SUBSTRING_INDEX(oi.size, 'x', -1) AS DECIMAL(10,4))
-                        WHEN p.unit_type = 'M2' THEN 
-                          oi.quantity
-                        ELSE 
-                          oi.quantity
-                      END
-                    ), 0
-                  ) AS total_terjual,
-                  COALESCE(SUM(oi.amount), 0) AS total_omset
-                FROM products p
-                LEFT JOIN order_items oi ON oi.product_id = p.product_id AND oi.store_id = ?
-                LEFT JOIN orders o ON oi.order_id = o.order_id
-                WHERE p.store_id = ?
-                AND NOT p.unit_type = '~'
-                AND (o.date BETWEEN ? AND ?)
-                GROUP BY p.product_id
-                ORDER BY total_omset DESC
-            ";
-
-              $stmt = $koneksi->prepare($query);
-              $stmt->bind_param("iiss", $store_id, $store_id, $start_date, $end_date);
-              $stmt->execute();
-              $result = $stmt->get_result();
-
-
-            $no = 1;
-            while ($row = $result->fetch_assoc()) {
-              echo "<tr>";
-              echo "<td>" . $no++ . "</td>";
-              echo "<td>" . htmlspecialchars($row['nama_barang']) . "</td>";
-              echo "<td>" . htmlspecialchars($row['satuan']) . "</td>";
-              // Jika satuan M2, tampilkan dengan 4 desimal, kalau bukan M2 bulatkan saja
-              if ($row['satuan'] === 'M2') {
-                echo "<td>" . number_format($row['total_terjual'], 2) . "</td>";
-              } else {
-                echo "<td>" . number_format($row['total_terjual']) . "</td>";
-              }
-              echo "<td>Rp " . number_format($row['total_omset'], 0, ',', '.') . "</td>";
-              echo "</tr>";
-            }
-
-            $stmt->close();
-            ?>
-          </tbody>
-        </table>
-      </div>
+    <div id="omsetPerItemWrapper">
+        <?= $htmlTableOmsetPerItem ?>
+    </div>
     </div>
   </div>
 
   <?php include BASE_PATH . '/footer.php'; ?>
 </div>
-
 
 <script>
 document.getElementById('btnExportExcel').addEventListener('click', async () => {

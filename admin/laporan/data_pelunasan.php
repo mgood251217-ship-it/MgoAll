@@ -1,12 +1,13 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/components/Table.php';
 
 $start_input = $_GET['start_date'] ?? date('Y-m-d');
-$end_input = $_GET['end_date'] ?? date('Y-m-d');
+$end_input   = $_GET['end_date'] ?? date('Y-m-d');
 
 $filter_start_date = $start_input . ' 00:00:00';
-$filter_end_date = $end_input . ' 23:59:59';
+$filter_end_date   = $end_input . ' 23:59:59';
 
 $queryTransaksi = "
     SELECT 
@@ -16,12 +17,14 @@ $queryTransaksi = "
         p.nominal, 
         p.payment_method, 
         p.status,
-        p.date
+        p.date AS payment_date,
+        o.date AS order_date
     FROM payment p
     JOIN orders o ON p.order_id = o.order_id
     WHERE o.store_id = ? AND p.date BETWEEN ? AND ?
     ORDER BY p.date ASC
 ";
+
 $stmtTransaksi = $koneksi->prepare($queryTransaksi);
 if (!$stmtTransaksi) {
     die("Query error: " . $koneksi->error);
@@ -30,30 +33,156 @@ $stmtTransaksi->bind_param("iss", $store_id, $filter_start_date, $filter_end_dat
 $stmtTransaksi->execute();
 $result = $stmtTransaksi->get_result();
 
-// --- Cari order yang pernah DP ---
-$orderDenganDP = [];
-$dataTransaksi = [];
+$rawPayments = [];
+$orderIds    = [];
 
 while ($row = $result->fetch_assoc()) {
-    // if (strtoupper($row['status']) === 'DP') {
-    //     $orderDenganDP[$row['order_id']] = true;
-    // }
-    $stmtPanjangPayment = $koneksi->prepare("SELECT order_id FROM payment WHERE order_id = ?");
-    $stmtPanjangPayment->bind_param("i", $row['order_id']);
-    $stmtPanjangPayment->execute();
-    $stmtPanjangPayment->store_result();
-    $num_rows = $stmtPanjangPayment->num_rows;
-    if ($num_rows > 1) {
-         $orderDenganDP[$row['order_id']] = true;
-    }
-    $dataTransaksi[] = $row;
+    $rawPayments[] = $row;
+    $orderIds[$row['order_id']] = $row['order_id'];
 }
-$no = 1;
-$tf = 0;
-$cash = 0;
-$total_harian = 0;
+$stmtTransaksi->close();
+
+$paymentCounts = [];
+$dpData = [];
+
+if (!empty($orderIds)) {
+    $inClause = implode(',', $orderIds);
+    
+    $resCount = $koneksi->query("SELECT order_id, COUNT(*) as cnt FROM payment WHERE order_id IN ($inClause) GROUP BY order_id");
+    while ($c = $resCount->fetch_assoc()) {
+        $paymentCounts[$c['order_id']] = (int)$c['cnt'];
+    }
+
+    $dpQuery = "
+        SELECT p1.order_id, p1.nominal, p1.payment_method, p1.date
+        FROM payment p1
+        JOIN (
+            SELECT order_id, MIN(date) as min_date
+            FROM payment
+            WHERE order_id IN ($inClause)
+            GROUP BY order_id
+        ) p2 ON p1.order_id = p2.order_id AND p1.date = p2.min_date
+    ";
+    $resDp = $koneksi->query($dpQuery);
+    while ($d = $resDp->fetch_assoc()) {
+        if (!isset($dpData[$d['order_id']])) {
+            $dpData[$d['order_id']] = $d;
+        }
+    }
+}
+
+$dataPelunasan  = [];
 $Pelunasan_Cash = 0;
-$Pelunasan_TF = 0;
+$Pelunasan_TF   = 0;
+
+foreach ($rawPayments as $row) {
+    $oid    = $row['order_id'];
+    $status = strtoupper($row['status']);
+    $pCount = $paymentCounts[$oid] ?? 0;
+
+    $tanggal_bayar = date('Y-m-d', strtotime($row['payment_date']));
+    $tanggal_order = date('Y-m-d', strtotime($row['order_date']));
+
+    $statusLabel = '';
+    if ($status === 'LUNAS' && $pCount > 1) {
+        $statusLabel = 'PELUNASAN';
+    } elseif ($status === 'DP') {
+        $statusLabel = 'BAYAR DP';
+    } else {
+        $statusLabel = 'LUNAS';
+    }
+
+    if ($tanggal_bayar > $tanggal_order) {
+        $statusLabel = 'PELUNASAN';
+    }
+
+    if ($statusLabel === 'PELUNASAN') {
+        $dp = $dpData[$oid] ?? null;
+
+        $row['dp_nominal'] = $dp ? $dp['nominal'] : 0;
+        $row['dp_method']  = $dp ? $dp['payment_method'] : '-';
+        $row['dp_date']    = $dp ? $dp['date'] : '-';
+
+        if ($row['payment_method'] == 'TF') {
+            $Pelunasan_TF += $row['nominal'];
+        } else {
+            $Pelunasan_Cash += $row['nominal'];
+        }
+
+        $dataPelunasan[] = $row;
+    }
+}
+
+$htmlTablePelunasan = renderTable([
+    'id'             => 'tableTransaksi',
+    'data'           => $dataPelunasan,
+    'table_class'    => 'table table-bordered table-striped',
+    'thead_class'    => 'table-primary',
+    'row_attributes' => function($row) {
+        return 'data-date="' . date('Y-m-d', strtotime($row['payment_date'])) . '"';
+    },
+    'tfoot'          => '
+        <tr class="table-success">
+            <th colspan="5" class="text-end">Data Pelunasan Dari ' . htmlspecialchars($start_input) . ' Sampai ' . htmlspecialchars($end_input) . ' : </th>
+            <th colspan="2">' . number_format($Pelunasan_Cash + $Pelunasan_TF, 0, ',', '.') . '</th>
+            <th>TF : ' . number_format($Pelunasan_TF, 0, ',', '.') . '</th>
+            <th>CASH : ' . number_format($Pelunasan_Cash, 0, ',', '.') . '</th>
+            <th></th>
+        </tr>
+    ',
+    'columns'        => [
+        [
+            'header' => 'No',
+            'type'   => 'number'
+        ],
+        [
+            'header' => 'Nomorator',
+            'field'  => 'nomorator'
+        ],
+        [
+            'header' => 'Nama',
+            'field'  => 'customer_name'
+        ],
+        [
+            'header' => 'Nominal DP',
+            'type'   => 'currency',
+            'field'  => 'dp_nominal'
+        ],
+        [
+            'header' => 'Metode DP',
+            'field'  => 'dp_method'
+        ],
+        [
+            'header' => 'Tanggal DP',
+            'render' => function($row) {
+                return htmlspecialchars($row['dp_date']);
+            }
+        ],
+        [
+            'header' => 'Nominal Pelunasan',
+            'type'   => 'currency',
+            'field'  => 'nominal'
+        ],
+        [
+            'header' => 'Metode Pelunasan',
+            'field'  => 'payment_method'
+        ],
+        [
+            'header' => 'Tanggal Pelunasan',
+            'render' => function($row) {
+                return htmlspecialchars($row['payment_date']);
+            }
+        ],
+        [
+            'header' => 'Cek Order',
+            'render' => function($row) {
+                $dOrder = date('Y-m-d', strtotime($row['order_date']));
+                return '<a href="transaksi_detil?scrl_id=' . $row['order_id'] . '&start_date=' . $dOrder . '&end_date=' . $dOrder . '" target="_blank" class="btn btn-danger btn-sm">Cek Order</a>';
+            }
+        ]
+    ]
+]);
+
 ?>
 
 <!DOCTYPE html>
@@ -77,107 +206,16 @@ $Pelunasan_TF = 0;
                 <h1 class="mb-0">Data Pelunasan Harian</h1>
                 <?php $showExport = true; include BASE_PATH . '/interval_date.php'; ?>
             </div>
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped" id="tableTransaksi">
-                    <thead class="table-primary">
-                        <tr>
-                            <th>No</th>
-                            <th>Nomorator</th>
-                            <th>Nama</th>
-                            <th>Nominal DP</th>
-                            <th>Metode DP</th>
-                            <th>Tanggal DP</th>
-                            <th>Nominal Pelunasan</th>
-                            <th>Metode Pelunasan</th>
-                            <th>Tanggal Pelunasan</th>
-                            <th>Cek Order</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (count($dataTransaksi) > 0): 
-                            foreach ($dataTransaksi as $row): 
-                                $date = $row['date'];
-                                $status = strtoupper($row['status']);
-
-                                $iid = (INT)$row['order_id'];
-                                $stmtDate = $koneksi->prepare("SELECT date FROM orders WHERE order_id = ?");
-                                $stmtDate->bind_param("i", $iid);
-                                $stmtDate->execute();
-                                $resultDate = $stmtDate->get_result()->fetch_assoc();
-
-                                // Cek logika status
-                                if ($status === 'LUNAS' && isset($orderDenganDP[$row['order_id']])) {
-                                    $statusLabel = 'PELUNASAN';
-                                } elseif ($status === 'DP') {
-                                    $statusLabel = 'BAYAR DP';
-                                } else {
-                                    $statusLabel = 'LUNAS';
-                                }
-                                if ($row['payment_method'] == "TF") {
-                                    $tf += $row['nominal'];
-                                }else{
-                                    $cash += $row['nominal'];
-                                }
-                                $tanggal_bayar = date('Y-m-d', strtotime($row['date']));
-                                $tanggal_order = date('Y-m-d', strtotime($resultDate['date']));
-                                if ($tanggal_bayar > $tanggal_order) {
-                                    $statusLabel = 'PELUNASAN';
-                                }
-                        ?>
-                        <?php if ($statusLabel == 'PELUNASAN') {
-                            
-                         ?>
-                        <tr data-date="<?= date('Y-m-d', strtotime($date)) ?>">
-                            <td><?= $no++ ?></td>
-                            <td><?= htmlspecialchars($row['nomorator']) ?></td>
-                            <td><?= htmlspecialchars($row['customer_name']) ?></td>
-                            <?php
-                            
-                            $stmtDP = $koneksi->prepare("SELECT payment_id, nominal, payment_method, date FROM payment WHERE order_id = ? ORDER BY date LIMIT 1");
-                            $stmtDP->bind_param("i", $iid);
-                            $stmtDP->execute();
-                            $resultDP = $stmtDP->get_result()->fetch_assoc();
-
-                            if ($row['payment_method'] == 'TF') {
-                                $Pelunasan_TF += $row['nominal'];
-                            }elseif($row['payment_method'] == 'CASH'){
-                                $Pelunasan_Cash += $row['nominal'];
-                            }
-
-                            ?>
-
-                            <td><?= number_format($resultDP['nominal'], 0, ',', '.') ?></td>
-                            <td><?= htmlspecialchars($resultDP['payment_method']) ?></td>
-                            <td><?= htmlspecialchars($resultDP['date']) ?></td>
-                            <td><?= number_format($row['nominal'], 0, ',', '.') ?></td>
-                            <td><?= htmlspecialchars($row['payment_method']) ?></td>
-                            <td><?= htmlspecialchars($row['date']) ?></td>
-                            <td><a href="transaksi_detil?scrl_id=<?= htmlspecialchars($row['order_id']) ?>&start_date=<?= date('Y-m-d', strtotime($resultDate['date'])) ?>&end_date=<?= date('Y-m-d', strtotime($resultDate['date'])) ?>" target="_black" class="btn btn-danger">Cek Order</a></td>
-                        </tr>
-                        <?php } ?>
-                        <?php 
-                            $total_harian += $row['nominal']; 
-                            endforeach;
-                        else: ?>
-                        <tr><td colspan="6" class="text-center">Tidak ada data transaksi.</td></tr>
-                        <?php endif; ?>
-                    </tbody>
-
-                    <tfoot>
-                        <tr class="table-success">
-                            <th colspan="5" class="text-end">Data Pelunasan Dari <?= $start_input ?> Sampai <?= $end_input ?> : </th>
-                            <th colspan="2"><?= number_format($Pelunasan_Cash + $Pelunasan_TF, 0, ',', '.') ?></th>
-                            <th>TF : <?= number_format($Pelunasan_TF, 0, ',', '.') ?></th>
-                            <th>CASH : <?= number_format($Pelunasan_Cash, 0, ',', '.') ?></th>
-                            <th></th>
-                        </tr>
-                    </tfoot>
-                </table>
+            
+            <div id="tabelPelunasanWrapper">
+                <?= $htmlTablePelunasan ?>
             </div>
+
         </div>
     </div>
     <?php include BASE_PATH . '/footer.php'; ?>
 </div>
+
 <script>
 document.getElementById('start_date').addEventListener('change', function() {
     document.getElementById('filterForm').submit();
@@ -187,7 +225,6 @@ document.getElementById('end_date').addEventListener('change', function() {
 });
 </script>
 <script>
-// Export Excel
 document.getElementById('btnExportExcel').addEventListener('click', async function () {
     const toko = "<?= addslashes($storeName) ?>";
     const alamat = "<?= addslashes($storeAddress) ?>";
@@ -199,7 +236,6 @@ document.getElementById('btnExportExcel').addEventListener('click', async functi
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Daftar Pelunasan");
 
-    // Header
     sheet.mergeCells("A1:F1");
     sheet.getCell("A1").value = toko;
     sheet.getCell("A1").alignment = { vertical: 'middle', horizontal: 'center' };
@@ -221,7 +257,6 @@ document.getElementById('btnExportExcel').addEventListener('click', async functi
 
     sheet.addRow([]);
 
-    // Header tabel
     const headerRow = sheet.addRow(['No', 'Nomorator', 'Nama', 'Nominal DP', 'Metode DP', 'Tanggal DP', 'Nominal Pelunasan', 'Metode Pelunasan', 'Tanggal Pelunasan']);
     headerRow.font = { bold: true };
     headerRow.eachCell(cell => {
@@ -237,7 +272,6 @@ document.getElementById('btnExportExcel').addEventListener('click', async functi
         };
     });
 
-    // Data rows dari tabel HTML
     const rows = document.querySelectorAll("#tableTransaksi tbody tr");
     rows.forEach(tr => {
         const tds = tr.querySelectorAll("td");
@@ -270,7 +304,6 @@ document.getElementById('btnExportExcel').addEventListener('click', async functi
         }
     });
 
-    // Kolom lebar
     sheet.columns = [
         { key: 'no', width: 6 },
         { key: 'nomorator', width: 15 },
@@ -288,7 +321,6 @@ document.getElementById('btnExportExcel').addEventListener('click', async functi
 });
 
 
-// Export Word
 document.getElementById('btnExportWord').addEventListener('click', async function () {
     const { Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType, AlignmentType, BorderStyle } = window.docx;
 
