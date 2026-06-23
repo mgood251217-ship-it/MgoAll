@@ -15,6 +15,14 @@ class Payment {
         return $success;
     }
 
+    public function deletePaymentById($id) {
+        $stmt = $this->koneksi->prepare("DELETE FROM payment WHERE payment_id = ?");
+        $stmt->bind_param("i", $id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
     public function deletePaymentByOrderId($id) {
         $stmt = $this->koneksi->prepare("DELETE FROM payment WHERE order_id = ?");
         $stmt->bind_param("i", $id);

@@ -2,50 +2,15 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
+require_once BASE_PATH . '/controllers/ReportController.php';
 
-$start_input = $_GET['start_date'] ?? date('Y-m-d');
-$end_input = $_GET['end_date'] ?? date('Y-m-d');
+$reportController = new ReportController($koneksi);
 
-$filter_start_date = $start_input . ' 00:00:00';
-$filter_end_date = $end_input . ' 23:59:59';
+$start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
+$end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
 
-$sql = "SELECT 
-          i.judul, i.size, i.amount, i.quantity, i.product_id, i.finishing,
-          o.nomorator, o.customer_name, o.date, o.order_id,
-          p.price, p.name AS product_name
-        FROM order_items i
-        INNER JOIN orders o ON i.order_id = o.order_id
-        LEFT JOIN products p ON i.product_id = p.product_id
-        WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
-        ORDER BY i.judul, o.date DESC";
-
-$stmt = $koneksi->prepare($sql);
-$stmt->bind_param("iss", $store_id, $filter_start_date, $filter_end_date);
-$stmt->execute();
-$result = $stmt->get_result();
-
-$produkData = [];
-
-while ($row = $result->fetch_assoc()) {
-    // Ambil nama finishing
-    $finishingNames = [];
-    if (!empty($row['finishing'])) {
-        $finishingIDs = explode(',', $row['finishing']);
-        $placeholders = implode(',', array_fill(0, count($finishingIDs), '?'));
-
-        $stmt2 = $koneksi->prepare("SELECT name FROM products WHERE product_id IN ($placeholders)");
-        $types = str_repeat('i', count($finishingIDs));
-        $stmt2->bind_param($types, ...array_map('intval', $finishingIDs));
-        $stmt2->execute();
-        $res2 = $stmt2->get_result();
-        while ($r2 = $res2->fetch_assoc()) {
-            $finishingNames[] = $r2['name'];
-        }
-    }
-
-    $row['finishing_names'] = implode(', ', $finishingNames);
-    $produkData[$row['judul']][] = $row;
-}
+$data = $reportController->allDetailOrderByIntervalDate($store_id, $start_date, $end_date);
+$productData = $data->product;
 
 
 ?>
@@ -99,10 +64,10 @@ while ($row = $result->fetch_assoc()) {
         <?php $showExport = true; include BASE_PATH . '/interval_date.php'; ?>
       </div>
 
-      <?php if (empty($produkData)): ?>
+      <?php if (empty($productData)): ?>
         <div class="alert alert-warning">Tidak ada transaksi pada tanggal ini.</div>
       <?php else: ?>
-        <?php foreach ($produkData as $judul => $items): ?>
+        <?php foreach ($productData as $judul => $items): ?>
         <div class="produk-block">
             <div class="produk-title fw-bold mb-2"><?= htmlspecialchars($judul) ?></div>
         <?php

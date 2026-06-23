@@ -55,10 +55,10 @@ function get_json_input() {
     return is_array($data) ? $data : [];
 }
 
-function send_json_response($status, $message, $data = []) {
+function send_json_response($success, $message, $data = []) {
     header('Content-Type: application/json');
     echo json_encode([
-        'status'  => $status,
+        'success'  => $success,
         'message' => $message,
         'data'    => $data
     ]);

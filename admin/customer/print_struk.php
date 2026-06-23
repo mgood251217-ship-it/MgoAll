@@ -68,20 +68,31 @@ $printed_price_for = [];
 </div>
 
 <table class="center" style="font-size:10px;">
-  <tr><td><?= ($store_id == 8) ? "Print Sublim | Jersey | DTF | Spanduk | Stiker" : "Spanduk | Banner Kain | Baligho | Stiker One Way | Stiker Outdoor | Backlite | X-Banner | Roll Banner | ID Card | dll" ?></td></tr>
+  <tr><td><?= ($store_id == 8 || $store_id == 25) ? "Print Sublim | Jersey | DTF | Spanduk | Stiker" : "Spanduk | Banner Kain | Baligho | Stiker One Way | Stiker Outdoor | Backlite | X-Banner | Roll Banner | ID Card | dll" ?></td></tr>
   <tr><td><?= nl2br(htmlspecialchars($store['address'])) ?></td></tr>
   <tr><td style="font-size:12px;">Telp: <?= htmlspecialchars($store['nomor']) ?></td></tr>
 </table>
 
 <div class="line"></div>
-
-<table style="width: 92%; margin: 0 auto;">
-  <tr><td width="25%">Tanggal</td><td>: <?= formatTanggalIndo($order['date']) ?></td></tr>
-  <tr><td>Kepada Yth</td><td>: <?= htmlspecialchars($order['customer_name']) ?></td></tr>
-  <tr><td>Nota No.</td><td>: <?= htmlspecialchars($order['nomorator']) ?></td></tr>
-  <tr><td>Deadline</td><td>: <?= formatTanggalIndo($order['deadline']) . ' ' . date('H.i', strtotime($order['deadline']))  ?></td></tr>
-  <tr><td>Operator</td><td>: <?= htmlspecialchars($operator ?? '-') ?></td></tr>
+<table style="width:100%; table-layout: fixed;">
+  <tr>
+    <td style="width:80%; vertical-align:top;">
+      <table style="width: 90%; margin: 0 auto;">
+        <tr><td width="25%">Tanggal</td><td>: <?= formatTanggalIndo($order['date']) ?></td></tr>
+        <tr><td>Kepada Yth</td><td>: <?= htmlspecialchars($order['customer_name']) ?></td></tr>
+        <tr><td>Nota No.</td><td>: <?= htmlspecialchars($order['nomorator']) ?></td></tr>
+        <tr><td>Deadline</td><td>: <?= formatTanggalIndo($order['deadline']) . ' ' . date('H.i', strtotime($order['deadline']))  ?></td></tr>
+        <tr><td>Operator</td><td>: <?= htmlspecialchars($operator ?? '-') ?></td></tr>
+      </table>
+    </td>
+    <td style="width:20%; text-align:center; vertical-align:middle; padding:0;">
+      <div style="transform: rotate(270deg); font-weight: bold; line-height: 90%; font-size: 15px; white-space: nowrap;">
+        <?= $ada_lunas ? 'LUNAS' : 'BELUM <br> LUNAS' ?>
+      </div>
+    </td>
+  </tr>
 </table>
+
 
 <div class="line"></div>
 

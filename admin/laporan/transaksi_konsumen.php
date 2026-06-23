@@ -2,54 +2,15 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
-require_once BASE_PATH . '/models/Order.php';
-require_once BASE_PATH . '/models/Product.php';
+require_once BASE_PATH . '/controllers/ReportController.php';
 
-$productModel = new Product($koneksi);
-$orderModel = new Order($koneksi);
+$reportController = new ReportController($koneksi);
 
-$start_input = $_GET['start_date'] ?? date('Y-m-d');
-$end_input = $_GET['end_date'] ?? date('Y-m-d');
+$start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
+$end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
 
-$filter_start_date = $start_input . ' 00:00:00';
-$filter_end_date = $end_input . ' 23:59:59';
-
-$items = $orderModel->getDetailedOrderByIntervalDate($store_id, $filter_start_date, $filter_end_date);
-
-$all_finishing_ids = [];
-foreach ($items as $item) {
-    if (!empty($item['finishing'])) {
-        foreach (explode(',', $item['finishing']) as $id) {
-            $all_finishing_ids[$id] = true;
-        }
-    }
-}
-
-$finishing_map = [];
-if (!empty($all_finishing_ids)) {
-    $ids = array_keys($all_finishing_ids);
-    $placeholders = implode(',', array_fill(0, count($ids), '?'));
-
-    $finishing_data = $productModel->getProductByPlaceholders($placeholders, $ids);
-    
-    foreach ($finishing_data as $row) {
-        $finishing_map[$row['product_id']] = $row['name'];
-    }
-}
-
-$produkData = [];
-foreach ($items as $item) {
-    $finishing_names = [];
-    if (!empty($item['finishing'])) {
-        foreach (explode(',', $item['finishing']) as $fid) {
-            if (isset($finishing_map[$fid])) {
-                $finishing_names[] = $finishing_map[$fid];
-            }
-        }
-    }
-    $item['finishing_names'] = implode(', ', $finishing_names);
-    $produkData[$item['customer_name']][] = $item;
-}
+$data = $reportController->allDetailOrderByIntervalDate($store_id, $start_date, $end_date);
+$productData = $data->product;
 ?>
 
 <!DOCTYPE html>
@@ -101,10 +62,10 @@ foreach ($items as $item) {
         <?php $showExport = true; include BASE_PATH . '/interval_date.php'; ?>
       </div>
 
-      <?php if (empty($produkData)): ?>
+      <?php if (empty($productData)): ?>
         <div class="alert alert-warning">Tidak ada transaksi pada tanggal ini.</div>
       <?php else: ?>
-        <?php foreach ($produkData as $judul => $items): ?>
+        <?php foreach ($productData as $judul => $items): ?>
         <div class="produk-block">
             <div class="produk-title fw-bold mb-2"><?= htmlspecialchars($judul) ?></div>
             <div class="table-responsive">

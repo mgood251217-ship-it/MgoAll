@@ -93,7 +93,7 @@ class Order {
     }
 
     public function getNoteOrder($data) {
-        $stmt = $this->koneksi->prepare("SELECT note FROM note_orders WHERE order_id = ? AND note_for = ? ORDER BY note_order_id DESC LIMIT 1");
+        $stmt = $this->koneksi->prepare("SELECT * FROM note_orders WHERE order_id = ? AND note_for = ? ORDER BY note_order_id DESC LIMIT 1");
         $stmt->bind_param("is", $data->order_id, $data->note_for);
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc();
@@ -109,9 +109,9 @@ class Order {
         return $result;
     }
 
-    public function getLatestCustomerNote($order_id) {
-        $stmt = $this->koneksi->prepare("SELECT note_order_id FROM note_orders WHERE order_id = ? AND note_for = 'CTM' ORDER BY note_order_id DESC LIMIT 1");
-        $stmt->bind_param("i", $order_id);
+    public function getLatestCustomerNote($order_id, $note_for) {
+        $stmt = $this->koneksi->prepare("SELECT note_order_id FROM note_orders WHERE order_id = ? AND note_for = ? ORDER BY note_order_id DESC LIMIT 1");
+        $stmt->bind_param("is", $order_id, $note_for);
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc();
     }
@@ -122,9 +122,15 @@ class Order {
         return $stmt->execute();
     }
 
-    public function createNote($order_id, $note) {
-        $stmt = $this->koneksi->prepare("INSERT INTO note_orders (order_id, note, note_for) VALUES (?, ?, 'CTM')");
-        $stmt->bind_param("is", $order_id, $note);
+    public function updateNoteAndSession($note_order_id, $session, $note) {
+        $stmt = $this->koneksi->prepare("UPDATE note_orders SET note = ?, session = ? WHERE note_order_id = ?");
+        $stmt->bind_param("sii", $note, $session, $note_order_id);
+        return $stmt->execute();
+    }
+
+    public function createNote($order_id, $note, $note_for) {
+        $stmt = $this->koneksi->prepare("INSERT INTO note_orders (order_id, note, note_for) VALUES (?, ?, ?)");
+        $stmt->bind_param("iss", $order_id, $note, $note_for);
         return $stmt->execute();
     }
 

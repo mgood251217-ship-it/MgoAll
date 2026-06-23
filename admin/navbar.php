@@ -77,6 +77,12 @@ if (strpos($userAgent, 'Mobile') !== false) {
       <?= htmlspecialchars($storeName) ?>
     </a>
 
+    <?php if (isset($_SESSION['admin_logged_in']['administrator_id'])){ ?>
+    <div class="btn btn-primary">
+      Admin Mode
+    </div>
+    <?php } ?>
+
     <div class="d-flex align-items-center">
 
       <button class="btn btn-light btn-sm me-2 d-flex align-items-center" id="toggleMode" title="Mode Terang/Gelap">

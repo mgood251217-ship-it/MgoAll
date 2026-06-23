@@ -2,18 +2,14 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
+require_once BASE_PATH . '/models/User.php';
 
-$start_input = $_GET['start_date'] ?? date('Y-m-01');
-$end_input   = $_GET['end_date'] ?? date('Y-m-d');
+$userModel = new User($koneksi);
 
-$filter_start_date = $start_input . ' 00:00:00';
-$filter_end_date   = $end_input . ' 23:59:59';
+$start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
+$end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
 
-$stmtUsers = $koneksi->prepare("SELECT user_id, initial, name FROM users WHERE store_id = ?");
-$stmtUsers->bind_param("i", $store_id);
-$stmtUsers->execute();
-$resultUsers = $stmtUsers->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmtUsers->close();
+$resultUser = $userModel->getUsersByStoreId($store_id);
 
 $users = [];
 $usernames = [];
@@ -35,7 +31,7 @@ if (!empty($users)) {
         WHERE o.store_id = ? AND DATE(o.date) BETWEEN ? AND ?
         GROUP BY o.user_id
     ");
-    $stmtOrders->bind_param("iss", $store_id, $filter_start_date, $filter_end_date);
+    $stmtOrders->bind_param("iss", $store_id, $start_date, $end_date);
     $stmtOrders->execute();
     $resOrders = $stmtOrders->get_result()->fetch_all(MYSQLI_ASSOC);
     foreach ($resOrders as $row) {
@@ -52,7 +48,7 @@ if (!empty($users)) {
         WHERE u.store_id = ? AND DATE(p.date) BETWEEN ? AND ? AND p.process = 'DIAMBIL'
         GROUP BY p.user_id
     ");
-    $stmtHitung->bind_param("iss", $store_id, $filter_start_date, $filter_end_date);
+    $stmtHitung->bind_param("iss", $store_id, $start_date, $end_date);
     $stmtHitung->execute();
     $resHitung = $stmtHitung->get_result()->fetch_all(MYSQLI_ASSOC);
     foreach ($resHitung as $row) {
@@ -73,7 +69,7 @@ if (!empty($users)) {
           )
         GROUP BY o.user_id
     ");
-    $stmtSetting->bind_param("iss", $store_id, $filter_start_date, $filter_end_date);
+    $stmtSetting->bind_param("iss", $store_id, $start_date, $end_date);
     $stmtSetting->execute();
     $resSetting = $stmtSetting->get_result()->fetch_all(MYSQLI_ASSOC);
     foreach ($resSetting as $row) {
@@ -84,7 +80,7 @@ if (!empty($users)) {
     $stmtSetting->close();
 
     $stmtPayment = $koneksi->prepare("SELECT nominal, order_id FROM payment WHERE date BETWEEN ? AND ?");
-    $stmtPayment->bind_param("ss", $filter_start_date, $filter_end_date);
+    $stmtPayment->bind_param("ss", $start_date, $end_date);
     $stmtPayment->execute();
     $resPayments = $stmtPayment->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmtPayment->close();
@@ -130,7 +126,6 @@ if (!empty($users)) {
                 if (isset($orderMap[$oid]) && $orderMap[$oid]['store_id'] === (int)$store_id) {
                     $uid = $orderMap[$oid]['user_id'];
                     if (isset($users[$uid])) {
-                        // Jika key omset belum ada, buat baru bernilai 0 terlebih dahulu
                         if (!isset($omsetPerUser[$uid])) {
                             $omsetPerUser[$uid] = 0;
                         }

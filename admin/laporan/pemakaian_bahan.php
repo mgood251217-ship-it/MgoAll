@@ -6,11 +6,8 @@ require_once BASE_PATH . '/models/Product.php';
 
 $productModel = new Product($koneksi);
 
-$start_input = $_GET['start_date'] ?? date('Y-m-d');
-$end_input   = $_GET['end_date'] ?? date('Y-m-d');
-
-$start_date = $start_input . ' 00:00:00';
-$end_date   = $end_input . ' 23:59:59';
+$start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
+$end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
 
 $dataPemakaian = $productModel->getMaterialUsageByIntervalDate($store_id, $start_date, $end_date);
 

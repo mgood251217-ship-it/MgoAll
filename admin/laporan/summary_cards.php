@@ -36,7 +36,6 @@
     line-height: 1.2;
   }
 
-  /* Warna latar */
   .bg1 { background-color: #2196f3; }
   .bg2 { background-color: #ff9800; }
   .bg3 { background-color: #4caf50; }

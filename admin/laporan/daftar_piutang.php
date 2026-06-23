@@ -2,62 +2,13 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
+require_once BASE_PATH . '/controllers/ReportController.php';
 
-$dataPiutang  = [];
-$total_hutang = 0;
+$reportController = new ReportController($koneksi);
 
-$query = "
-    SELECT 
-        o.order_id,
-        o.customer_name AS nama,
-        o.nomorator,
-        o.nomor,
-        o.total,
-        o.user_id,
-        o.date,
-        CASE 
-        WHEN ps.lunas = 1 THEN 0
-        ELSE o.total - IFNULL(ps.total_dp, 0)
-        END AS hutang
-    FROM orders o
-    LEFT JOIN (
-        SELECT 
-            order_id,
-            MAX(CASE WHEN status = 'LUNAS' THEN 1 ELSE 0 END) AS lunas,
-            SUM(CASE WHEN status = 'DP' THEN nominal ELSE 0 END) AS total_dp
-        FROM payment
-        GROUP BY order_id
-    ) ps ON o.order_id = ps.order_id
-    WHERE o.store_id = ?
-    HAVING hutang > 0
-    ORDER BY o.order_id DESC, o.nomor DESC
-";
-
-$stmt = $koneksi->prepare($query);
-$stmt->bind_param("i", $store_id);
-$stmt->execute();
-$result = $stmt->get_result();
-
-$op_stmt = $koneksi->prepare("SELECT initial FROM users WHERE user_id = ?");
-
-while ($row = $result->fetch_assoc()) {
-    $op_id = $row['user_id'];
-    $op_stmt->bind_param("i", $op_id);
-    $op_stmt->execute();
-    $op_result = $op_stmt->get_result();
-    $operator  = $op_result->fetch_assoc();
-
-    $row['op_initial'] = $operator['initial'] ?? '';
-    $row['nama']       = htmlspecialchars($row['nama']);
-    $row['nomorator']  = htmlspecialchars($row['nomorator']);
-    $row['nomor']      = htmlspecialchars($row['nomor']);
-
-    $total_hutang += $row['hutang'];
-    $dataPiutang[] = $row;
-}
-
-$op_stmt->close();
-$stmt->close();
+$data = $reportController->piutang($store_id);
+$total_hutang = $data->total;
+$dataPiutang = $data->data;
 
 $htmlTablePiutang = renderTable([
     'id'          => 'tabelPiutang',

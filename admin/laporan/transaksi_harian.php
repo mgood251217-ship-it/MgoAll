@@ -2,83 +2,23 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
+require_once BASE_PATH . '/controllers/ReportController.php';
 
-$start_input = $_GET['start_date'] ?? date('Y-m-d');
-$end_input = $_GET['end_date'] ?? date('Y-m-d');
+$reportController = new ReportController($koneksi);
 
-$filter_start_date = $start_input . ' 00:00:00';
-$filter_end_date = $end_input . ' 23:59:59';
+$start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
+$end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
 
-$queryTransaksi = "
-    SELECT 
-        p.order_id,
-        o.nomorator, 
-        o.customer_name,
-        o.system,
-        p.nominal, 
-        p.payment_method, 
-        p.status,
-        p.date AS payment_date,
-        o.date AS order_date
-    FROM payment p
-    JOIN orders o ON p.order_id = o.order_id
-    WHERE o.store_id = ? AND p.date BETWEEN ? AND ?
-    ORDER BY o.system ASC, p.date ASC
-";
+$rekap = $reportController->transactionsCapture($store_id, $start_date, $end_date);
 
-$stmt = $koneksi->prepare($queryTransaksi);
-$stmt->bind_param("iss", $store_id, $filter_start_date, $filter_end_date);
-$stmt->execute();
-$result = $stmt->get_result();
-
-$dataTransaksi = [];
-$orderIds = [];
-while ($row = $result->fetch_assoc()) {
-    $dataTransaksi[] = $row;
-    $orderIds[] = $row['order_id'];
-}
-
-$orderDenganDP = [];
-if (!empty($orderIds)) {
-    $ids = implode(',', array_unique($orderIds));
-    $resDP = $koneksi->query("SELECT order_id FROM payment WHERE status = 'DP' AND order_id IN ($ids)");
-    while ($d = $resDP->fetch_assoc()) {
-        $orderDenganDP[$d['order_id']] = true;
-    }
-}
-
-$tf = 0; $cash = 0; $total_harian = 0;
-$processedData = [];
-
-foreach ($dataTransaksi as $row) {
-    // Logika Status
-    $status = strtoupper($row['status']);
-    if ($status === 'LUNAS' && isset($orderDenganDP[$row['order_id']])) {
-        $statusLabel = 'PELUNASAN';
-    } elseif ($status === 'DP') {
-        $statusLabel = 'BAYAR DP';
-    } else {
-        $statusLabel = 'LUNAS';
-    }
-
-    $tanggal_bayar = date('Y-m-d', strtotime($row['payment_date']));
-    $tanggal_order = date('Y-m-d', strtotime($row['order_date']));
-
-    if ($tanggal_bayar > $tanggal_order) {
-        $statusLabel = 'PELUNASAN';
-    }
-
-    if ($row['payment_method'] == "TF") { $tf += $row['nominal']; } 
-    else { $cash += $row['nominal']; }
-    $total_harian += $row['nominal'];
-
-    $row['status_label'] = $statusLabel;
-    $processedData[] = $row;
-}
+$dataTransaksi = $rekap['harian']['data'];
+$tf            = $rekap['harian']['total_tf'];
+$cash          = $rekap['harian']['total_cash'];
+$total_harian  = $rekap['harian']['grand_total'];
 
 $tfootHtml = '
     <tr class="table-success">
-        <th colspan="3" class="text-end">Total Harian Dari ' . htmlspecialchars($start_input) . ' Sampai ' . htmlspecialchars($end_input) . ' : </th>
+        <th colspan="3" class="text-end">Total Harian Dari ' . htmlspecialchars($start_date) . ' Sampai ' . htmlspecialchars($end_date) . ' : </th>
         <th>' . number_format($total_harian, 0, ',', '.') . '</th>
         <th>CASH : ' . number_format($cash, 0, ',', '.') . '</th>
         <th colspan="3">TF : ' . number_format($tf, 0, ',', '.') . '</th>
@@ -87,14 +27,14 @@ $tfootHtml = '
 
 $htmlTableTransaksi = renderTable([
     'id'             => 'tableTransaksi',
-    'data'           => $processedData,
+    'data'           => $dataTransaksi,
     'table_class'    => 'table table-bordered table-striped',
     'thead_class'    => 'table-primary',
 
     'row_attributes' => function($row) {
         return 'data-date="' . date('Y-m-d', strtotime($row['payment_date'])) . '"';
     },
-    'tfoot'          => (count($processedData) > 0) ? $tfootHtml : '',
+    'tfoot'          => (count($dataTransaksi) > 0) ? $tfootHtml : '',
     'columns'        => [
         [
             'header' => 'No',

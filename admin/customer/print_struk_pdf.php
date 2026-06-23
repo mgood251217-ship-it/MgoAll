@@ -99,7 +99,7 @@ $logo_url = BASE_URL . '/assets/img/store/' . ($store["logo_print"] ?: $store['l
     </div>
 
     <table class="center">
-      <tr><td style="font-size:10px;"><?= ($store_id == 8) ? "Print Sublim | Jersey | DTF | Spanduk | Stiker" : "Spanduk | Banner Kain | Baligho | Stiker One Way | Stiker Outdoor | Backlite | X-Banner | Roll Banner | ID Card | dll" ?></td></tr>
+      <tr><td style="font-size:10px;"><?= ($store_id == 8 || $store_id == 8) ? "Print Sublim | Jersey | DTF | Spanduk | Stiker" : "Spanduk | Banner Kain | Baligho | Stiker One Way | Stiker Outdoor | Backlite | X-Banner | Roll Banner | ID Card | dll" ?></td></tr>
       <tr><td style="font-size:10px;"><?= nl2br(htmlspecialchars($store['address'])) ?></td></tr>
       <tr><td style="font-size:12px;">Telp: <?= htmlspecialchars($store['nomor']) ?></td></tr>
     </table>
@@ -108,7 +108,7 @@ $logo_url = BASE_URL . '/assets/img/store/' . ($store["logo_print"] ?: $store['l
 
     <table style="width:100%; table-layout: fixed;">
       <tr>
-        <td style="width:85%; vertical-align:top;">
+        <td style="width:80%; vertical-align:top;">
           
           <table style="width:100%; table-layout: fixed;">
             <colgroup>
@@ -123,9 +123,9 @@ $logo_url = BASE_URL . '/assets/img/store/' . ($store["logo_print"] ?: $store['l
           </table>
 
         </td>
-        <td style="width:15%; text-align:center; vertical-align:middle; padding:0;">
-          <div style="transform: rotate(270deg); font-weight: bold; font-size: 15px; white-space: nowrap;">
-            <?= $ada_lunas ? 'LUNAS' : ' ' ?>
+        <td style="width:20%; text-align:center; vertical-align:middle; padding:0;">
+          <div style="transform: rotate(270deg); line-height: 90%; font-weight: bold; font-size: 15px; white-space: nowrap;">
+            <?= $ada_lunas ? 'LUNAS' : 'BELUM <br> LUNAS' ?>
           </div>
         </td>
       </tr>

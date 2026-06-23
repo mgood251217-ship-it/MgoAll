@@ -19,6 +19,8 @@ if ($action === 'create_tf') {
     $financeController->createTf();
 } else if ($action === 'delete_tf') {
     $financeController->deleteTf();
+} else if ($action === 'delete_payment') {
+    $paymentController->delete();
 } else if ($action === 'update_activity') {
     $data = (object)[
         'id' => $_POST['activity_id'] ?? 0,

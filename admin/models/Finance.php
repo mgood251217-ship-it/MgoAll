@@ -65,6 +65,34 @@ class Finance{
         $stmt->close();
         return $result;
     }
+
+    public function getFinanceByIntervalDate($store_id, $start_date, $end_date){
+        $stmt = $this->koneksi->prepare("SELECT * FROM finance WHERE store_id = ? AND date BETWEEN ? AND ? ORDER BY date ASC");
+        $stmt->bind_param("iss", $store_id, $start_date, $end_date);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $result;
+    }
+
+    public function getExpenditureByIntervalDate($store_id, $start_date, $end_date){
+        $stmt = $this->koneksi->prepare("SELECT * FROM expenditures WHERE store_id = ? AND date BETWEEN ? AND ? ORDER BY date ASC");
+        $stmt->bind_param("iss", $store_id, $start_date, $end_date);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $result;
+    }
+
+    public function getIncomeByIntervalDate($store_id, $start_date, $end_date){
+        $stmt = $this->koneksi->prepare("SELECT * FROM income WHERE store_id = ? AND date BETWEEN ? AND ? ORDER BY date ASC");
+        $stmt->bind_param("iss", $store_id, $start_date, $end_date);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $result;
+    }
+
 }
 
 ?>

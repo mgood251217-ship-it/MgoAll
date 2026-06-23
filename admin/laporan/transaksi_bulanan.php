@@ -2,6 +2,9 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
+require_once BASE_PATH . '/controllers/ReportController.php';
+
+$reportController = new ReportController($koneksi);
 
 $startMonth = $_GET['start_month'] ?? date('m');
 $startYear  = $_GET['start_year'] ?? date('Y');
@@ -11,94 +14,15 @@ $endYear    = $_GET['end_year'] ?? date('Y');
 $startDate = date('Y-m-d', strtotime("$startYear-$startMonth-01"));
 $endDate = date('Y-m-t', strtotime("$endYear-$endMonth-01"));
 
-$startDatef = $startDate . " 00:00:00";
-$endDatef = $endDate . " 23:59:59";
+$start_date = $startDate . " 00:00:00";
+$end_date = $endDate . " 23:59:59";
 
-$queryTransaksi = "
-    SELECT 
-        DATE(p.date) AS tanggal,
-        SUM(p.nominal) AS total_nominal,
-        COUNT(DISTINCT p.order_id) AS jumlah_order,
-        COUNT(p.payment_id) AS jumlah_transaksi
-    FROM payment p
-    JOIN orders o ON p.order_id = o.order_id
-    WHERE o.store_id = ?
-      AND p.date BETWEEN ? AND ?
-    GROUP BY DATE(p.date)
-    ORDER BY DATE(p.date) ASC
-";
-
-$stmt = $koneksi->prepare($queryTransaksi);
-if (!$stmt) {
-    die("Query error: " . $koneksi->error);
-}
-$stmt->bind_param("iss", $store_id, $startDatef, $endDatef);
-$stmt->execute();
-$result = $stmt->get_result();
-
-$total_bulan = 0;
-$data_per_tanggal = [];
-$total_transaksi_all = 0;
-
-while ($row = $result->fetch_assoc()) {
-    $tanggal = $row['tanggal'];
-    $data_per_tanggal[$tanggal] = [
-        'tanggal' => $tanggal,
-        'total_nominal' => (float)$row['total_nominal'],
-        'jumlah_order' => (int)$row['jumlah_order'],
-        'jumlah_transaksi' => (int)$row['jumlah_transaksi'],
-        'CASH' => 0,
-        'TF' => 0
-    ];
-    $total_bulan += $row['total_nominal'];
-    $total_transaksi_all += (int)$row['jumlah_transaksi'];
-}
-
-$queryMetode = "
-    SELECT 
-        DATE(p.date) AS tanggal,
-        p.payment_method,
-        SUM(p.nominal) AS total_nominal
-    FROM payment p
-    JOIN orders o ON p.order_id = o.order_id
-    WHERE o.store_id = ?
-      AND p.date BETWEEN ? AND ?
-    GROUP BY DATE(p.date), p.payment_method
-";
-
-$stmt2 = $koneksi->prepare($queryMetode);
-if (!$stmt2) {
-    die("Query error (metode): " . $koneksi->error);
-}
-$stmt2->bind_param("iss", $store_id, $startDatef, $endDatef);
-$stmt2->execute();
-$result2 = $stmt2->get_result();
-
-$total_bulan_tf = 0;
-$total_bulan_cash = 0;
-
-while ($row = $result2->fetch_assoc()) {
-    $tanggal = $row['tanggal'];
-    $metode = strtoupper(trim($row['payment_method']));
-    $nominal = (float)$row['total_nominal'];
-
-    if (in_array($metode, ['TF', 'TRANSFER'])) {
-        $metode = 'TF';
-    } elseif (in_array($metode, ['CASH', 'TUNAI'])) {
-        $metode = 'CASH';
-    } else {
-        continue;
-    }
-
-    if (isset($data_per_tanggal[$tanggal])) {
-        $data_per_tanggal[$tanggal][$metode] = $nominal;
-    }
-
-    if ($metode === 'TF') $total_bulan_tf += $nominal;
-    if ($metode === 'CASH') $total_bulan_cash += $nominal;
-}
-
-$data_per_tanggal = array_values($data_per_tanggal);
+$rekap = $reportController->transactionsCapture($store_id, $start_date, $end_date);
+$total_bulan = $rekap['rekap']['total_bulan'];
+$data_per_tanggal = $rekap['rekap']['data_per_tanggal'];
+$total_transaksi_all = $rekap['rekap']['total_transaksi_all'];
+$total_bulan_tf = $rekap['rekap']['total_bulan_tf'];
+$total_bulan_cash = $rekap['rekap']['total_bulan_cash'];
 
 $htmlTableTransaksi = renderTable([
     'id'          => 'tableTransaksi',

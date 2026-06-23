@@ -335,17 +335,17 @@ class OrderController {
         return $this->activityModel->createActivity($data);
     }
 
-    public function saveNote() {
+    public function saveNote($note_for) {
         $order_id = (int)($_POST['order_id'] ?? 0);
         $note = trim($_POST['note'] ?? '');
 
         if ($order_id && $note !== '') {
-            $existing = $this->orderModel->getLatestCustomerNote($order_id);
+            $existing = $this->orderModel->getLatestCustomerNote($order_id, $note_for);
 
             if ($existing) {
                 $this->orderModel->updateNote((int)$existing['note_order_id'], $note);
             } else {
-                $this->orderModel->createNote($order_id, $note);
+                $this->orderModel->createNote($order_id, $note, $note_for);
             }
 
             echo htmlspecialchars($note);

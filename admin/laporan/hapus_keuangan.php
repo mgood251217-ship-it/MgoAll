@@ -60,8 +60,6 @@ $stmt->bind_param("ii", $id, $store_id);
 $stmt->execute();
 $stmt->close();
 
-
-
 $start_date_hapus = trim($_POST['start_date_hapus'] ?? '');
 $end_date_hapus   = trim($_POST['end_date_hapus'] ?? '');
 

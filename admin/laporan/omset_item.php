@@ -6,11 +6,8 @@ require_once BASE_PATH . '/models/Finance.php';
 
 $financeModel = new Finance($koneksi);
 
-$start_date_f = $_GET['start_date'] ?? date('Y-m-d');
-$end_date_f = $_GET['end_date'] ?? date('Y-m-d');
-
-$start_date = $start_date_f . ' 00:00:00';
-$end_date   = $end_date_f . ' 23:59:59';
+$start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
+$end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
 
 $dataOmsetPerItem = $financeModel->getOmsetItemByIntervalDate($store_id, $start_date, $end_date);
 

@@ -4,20 +4,18 @@ require_once '../connect.php';
 require_once '../global_functions.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
+require_once BASE_PATH . '/controllers/FinanceController.php';
+require_once BASE_PATH . '/controllers/PaymentController.php';
+
+$paymentController = new PaymentController($koneksi);
+$financeController = new FinanceController($koneksi);
 $start_date = $_GET['start_date'] ?? date('Y-m-d');
 $end_date = $_GET['end_date'] ?? date('Y-m-d');
 
-$stmtFinance = $koneksi->prepare("SELECT omset_offline, omset_online, transfer, expenditure, saldo, date FROM finance WHERE store_id = ? AND date BETWEEN ? AND ? ORDER BY date ASC");
-$stmtFinance->bind_param("iss", $store_id, $start_date, $end_date);
-$stmtFinance->execute();
-$resultFinance = $stmtFinance->get_result();
-$dataFinance = [];
-while ($row = $resultFinance->fetch_assoc()) {
-    $row['total_omset'] = $row['omset_offline'] + $row['omset_online'];
-    $row['cash_masuk']  = ($row['omset_offline'] + $row['omset_online']) - $row['transfer'];
-    $dataFinance[] = $row;
-}
-$stmt->close();
+$data = $financeController->finance($store_id, $start_date, $end_date);
+$dataFinance = $data['finance'];
+$dataPengeluaran = $data['expenditure'];
+$dataPemasukan = $data['income'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['refresh_finance'])) {
     $start_date = $_POST['start_date'];
@@ -36,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['refresh_finance'])) {
 
     $dates = getDatesFromRange($start_date, $end_date);
     foreach ($dates as $date) {
-        refreshFinance($store_id, $date);
+        $financeController->refreshFinance($store_id, $date); 
     }
 
     header("Location: keuangan?start_date=$start_date&end_date=$end_date");
@@ -57,100 +55,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $errors = [];
         $pictureName = '';
-        $maxFileSize = 80 * 1024; // 50KB
 
-        // ============= Upload & Kompres Gambar (resize, bukan kualitas) =============
         if (!empty($_FILES['picture']['name']) && $_FILES['picture']['error'] === 0) {
-            $ext = strtolower(pathinfo($_FILES['picture']['name'], PATHINFO_EXTENSION));
-            $allowed = ['jpg', 'jpeg', 'png', 'gif'];
-
-            if (!in_array($ext, $allowed)) {
-                $errors[] = "Format file tidak valid.";
-            } else {
-                $imageInfo = @getimagesize($_FILES['picture']['tmp_name']);
-                if ($imageInfo === false) {
-                    $errors[] = "File bukan gambar valid.";
-                } else {
-                    list($width, $height) = $imageInfo;
-
-                    switch ($ext) {
-                        case 'jpg':
-                        case 'jpeg':
-                            $src = imagecreatefromjpeg($_FILES['picture']['tmp_name']);
-                            break;
-                        case 'png':
-                            $src = imagecreatefrompng($_FILES['picture']['tmp_name']);
-                            break;
-                        case 'gif':
-                            $src = imagecreatefromgif($_FILES['picture']['tmp_name']);
-                            break;
-                        default:
-                            $src = false;
-                    }
-
-                    if ($src) {
-
-
-                        if (!is_dir($uploadDire)) mkdir($uploadDire, 0777, true);
-
-                        $pictureName = uniqid('exp_', true) . '.' . $ext;
-                        $destination = $uploadDire . $pictureName;
-
-                        $scale = 1.0;
-                        $success = false;
-
-                        // 🔄 Resize bertahap hingga < 50KB
-                        do {
-                            $newWidth  = (int)($width * $scale);
-                            $newHeight = (int)($height * $scale);
-                            $dst = imagecreatetruecolor($newWidth, $newHeight);
-
-                            // Transparansi untuk PNG & GIF
-                            if ($ext === 'png' || $ext === 'gif') {
-                                imagealphablending($dst, false);
-                                imagesavealpha($dst, true);
-                                $transparent = imagecolorallocatealpha($dst, 0, 0, 0, 127);
-                                imagefill($dst, 0, 0, $transparent);
-                            }
-
-                            imagecopyresampled($dst, $src, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-
-                            ob_start();
-                            if ($ext === 'jpg' || $ext === 'jpeg') {
-                                imagejpeg($dst, null, 85);
-                            } elseif ($ext === 'png') {
-                                imagepng($dst, null, 8);
-                            } elseif ($ext === 'gif') {
-                                imagegif($dst);
-                            }
-                            $imgData = ob_get_clean();
-
-                            if (strlen($imgData) <= $maxFileSize) {
-                                file_put_contents($destination, $imgData);
-                                $success = true;
-                                imagedestroy($dst);
-                                break;
-                            }
-
-                            imagedestroy($dst);
-                            $scale -= 0.1;
-                        } while ($scale > 0.1);
-
-                        imagedestroy($src);
-
-                        if (!$success) {
-                            $errors[] = "Gagal mengompres gambar ke ukuran di bawah 50KB.";
-                            $pictureName = '';
-                        } else {
-                            // Simpan path relatif untuk DB
-                            
-                        }
-                    }
-                }
-            }
+            $file = compress($_FILES['picture'], $uploadDire);
+            $pictureName = $file['file'];
         }
 
-        // ✅ Jika tidak ada error, baru insert
         if (empty($errors)) {
             if ($info && is_numeric($nominal) && $tanggal) {
                 $stmt = $koneksi->prepare("INSERT INTO expenditures (store_id, information, nominal, img, date) VALUES (?, ?, ?, ?, ?)");
@@ -158,20 +68,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute();
                 $stmt->close();
 
-                refreshFinance($store_id, $tanggal);
+                $financeController->refreshFinance($store_id, $tanggal);
 
                 header("Location: keuangan?start_date=$start_date&end_date=$end_date&success=1");
                 exit;
             }
         } else {
-            // ❌ Ada error → tampilkan pesan di modal
             $_SESSION['upload_error'] = implode('<br>', $errors);
             header("Location: keuangan?start_date=$start_date&end_date=$end_date&error=1");
             exit;
         }
 
     } elseif (isset($_POST['tambah_pemasukan'])) {
-        // bagian pemasukan tetap sama
         $info    = strtoupper(trim($_POST['information_income']));
         $nominal = trim($_POST['nominal_income']);
         $tanggal = $start_date;
@@ -189,28 +97,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 }
-
-// Ambil data pengeluaran di rentang tanggal
-$dataPengeluaran = $koneksi->prepare("
-    SELECT expenditure_id, information, nominal, img, date
-    FROM expenditures
-    WHERE store_id = ? AND date BETWEEN ? AND ?
-    ORDER BY date ASC
-");
-$dataPengeluaran->bind_param("iss", $store_id, $start_date, $end_date);
-$dataPengeluaran->execute();
-$dataPengeluaran = $dataPengeluaran->get_result();
-
-// Ambil data pemasukan di rentang tanggal
-$dataPemasukan = $koneksi->prepare("
-    SELECT income_id, information, nominal, date
-    FROM income
-    WHERE store_id = ? AND date BETWEEN ? AND ?
-    ORDER BY date ASC
-");
-$dataPemasukan->bind_param("iss", $store_id, $start_date, $end_date);
-$dataPemasukan->execute();
-$dataPemasukan = $dataPemasukan->get_result();
 
 
 
@@ -341,7 +227,7 @@ $dataPemasukan = $dataPemasukan->get_result();
                 </h5>
               </div>
               <div class="modal-body" style="font-size:15px; color:#fff;">
-                <!-- pesan error dari PHP akan diisi otomatis -->
+
               </div>
               <div class="modal-footer border-0 justify-content-center">
                 <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">

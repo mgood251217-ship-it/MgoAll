@@ -2,21 +2,12 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 
-if (isset($_GET['scrl_id'])) {
-  $scrl_id = $_GET['scrl_id'];
-}else {
-  $scrl_id = '';
-}
+$scrl_id = $_GET['scrl_id'] ?? '';
 $access = startEnk('dek', $_COOKIE['admin_access'] ?? '');
 
-// Ambil filter tanggal dari GET, default ke tanggal hari ini
-$start_date_input = $_GET['start_date'] ?? date('Y-m-d');
-$end_date_input = $_GET['end_date'] ?? date('Y-m-d'); 
+$start_date = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
+$end_date = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
 
-$start_date = $start_date_input . ' 00:00:00';
-$end_date = $end_date_input . ' 23:59:59';
-
-// Query untuk ambil order berdasarkan tanggal interval
 $sql = "SELECT o.order_id, o.nomorator, o.nomor, o.customer_name, o.date, o.total, o.system, u.name AS operator
         FROM orders o
         LEFT JOIN users u ON o.user_id = u.user_id
@@ -26,96 +17,65 @@ $sql = "SELECT o.order_id, o.nomorator, o.nomor, o.customer_name, o.date, o.tota
 $stmt = $koneksi->prepare($sql);
 $stmt->bind_param("iss", $store_id, $start_date, $end_date);
 $stmt->execute();
-$orderResult = $stmt->get_result();
+$orders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 
-// Ambil semua order_ids untuk query massal
-$orderIds = [];
-while ($order = $orderResult->fetch_assoc()) {
-    $orderIds[] = $order['order_id'];
-}
-$orderResult->data_seek(0); // Reset pointer
-
-// Query massal untuk order_items dengan finishing
 $itemsByOrder = [];
 $paymentsByOrder = [];
 $transfersByOrder = [];
 $notesByOrder = [];
 
+$orderIds = array_column($orders, 'order_id');
+
 if (!empty($orderIds)) {
     $placeholders = implode(',', array_fill(0, count($orderIds), '?'));
+    $types = str_repeat('i', count($orderIds));
     
-    // Query massal untuk order_items dengan finishing
-    $itemQuery = $koneksi->prepare("SELECT order_id, judul, finishing, size, quantity, unit, amount FROM order_items WHERE order_id IN ($placeholders)");
-    if (!empty($orderIds)) {
-        $itemQuery->bind_param(str_repeat('i', count($orderIds)), ...$orderIds);
-        $itemQuery->execute();
-        $itemResult = $itemQuery->get_result();
-        while ($item = $itemResult->fetch_assoc()) {
-            $itemsByOrder[$item['order_id']][] = $item;
-        }
+    $itemQuery = $koneksi->prepare("
+        SELECT order_id, judul, finishing, size, quantity, unit, amount,
+               (SELECT GROUP_CONCAT(fp.name SEPARATOR ', ') 
+                FROM products fp 
+                WHERE FIND_IN_SET(fp.product_id, REPLACE(order_items.finishing, ' ', '')) > 0
+               ) AS finishing_names
+        FROM order_items 
+        WHERE order_id IN ($placeholders)
+    ");
+    $itemQuery->bind_param($types, ...$orderIds);
+    $itemQuery->execute();
+    $items = $itemQuery->get_result()->fetch_all(MYSQLI_ASSOC);
+    foreach ($items as $item) {
+        $itemsByOrder[$item['order_id']][] = $item;
     }
+    $itemQuery->close();
 
-    // Query massal untuk payments
     $paymentQuery = $koneksi->prepare("SELECT order_id, payment_id, date, nominal, payment_method, status FROM payment WHERE order_id IN ($placeholders)");
-    if (!empty($orderIds)) {
-        $paymentQuery->bind_param(str_repeat('i', count($orderIds)), ...$orderIds);
-        $paymentQuery->execute();
-        $paymentResult = $paymentQuery->get_result();
-        while ($payment = $paymentResult->fetch_assoc()) {
-            $paymentsByOrder[$payment['order_id']][] = $payment;
-        }
+    $paymentQuery->bind_param($types, ...$orderIds);
+    $paymentQuery->execute();
+    $payments = $paymentQuery->get_result()->fetch_all(MYSQLI_ASSOC);
+    foreach ($payments as $payment) {
+        $paymentsByOrder[$payment['order_id']][] = $payment;
     }
+    $paymentQuery->close();
 
-    // Query massal untuk transfers
     $transferQuery = $koneksi->prepare("SELECT order_id, transfer_id, img FROM transfers WHERE order_id IN ($placeholders)");
-    if (!empty($orderIds)) {
-        $transferQuery->bind_param(str_repeat('i', count($orderIds)), ...$orderIds);
-        $transferQuery->execute();
-        $transferResult = $transferQuery->get_result();
-        while ($transfer = $transferResult->fetch_assoc()) {
-            $transfersByOrder[$transfer['order_id']][] = $transfer;
-        }
+    $transferQuery->bind_param($types, ...$orderIds);
+    $transferQuery->execute();
+    $transfers = $transferQuery->get_result()->fetch_all(MYSQLI_ASSOC);
+    foreach ($transfers as $transfer) {
+        $transfersByOrder[$transfer['order_id']][] = $transfer;
     }
+    $transferQuery->close();
 
-    // Query massal untuk notes
     $noteQuery = $koneksi->prepare("SELECT order_id, note FROM note_orders WHERE order_id IN ($placeholders) AND note_for = 'OP'");
-    if (!empty($orderIds)) {
-        $noteQuery->bind_param(str_repeat('i', count($orderIds)), ...$orderIds);
-        $noteQuery->execute();
-        $noteResult = $noteQuery->get_result();
-        while ($note = $noteResult->fetch_assoc()) {
-            $notesByOrder[$note['order_id']] = $note['note'];
-        }
+    $noteQuery->bind_param($types, ...$orderIds);
+    $noteQuery->execute();
+    $notes = $noteQuery->get_result()->fetch_all(MYSQLI_ASSOC);
+    foreach ($notes as $note) {
+        $notesByOrder[$note['order_id']] = $note['note'];
     }
+    $noteQuery->close();
 }
-
-// Ambil semua finishing IDs untuk query massal
-$allFinishingIds = [];
-foreach ($itemsByOrder as $orderItems) {
-    foreach ($orderItems as $item) {
-        if (!empty($item['finishing'])) {
-            $ids = explode(',', $item['finishing']);
-            $allFinishingIds = array_merge($allFinishingIds, array_map('intval', $ids));
-        }
-    }
-}
-$allFinishingIds = array_unique($allFinishingIds);
-
-// Query massal untuk finishing names
-$finishingNames = [];
-if (!empty($allFinishingIds)) {
-    $finishingPlaceholders = implode(',', array_fill(0, count($allFinishingIds), '?'));
-    $finishingQuery = $koneksi->prepare("SELECT product_id, name FROM products WHERE product_id IN ($finishingPlaceholders)");
-    $finishingQuery->bind_param(str_repeat('i', count($allFinishingIds)), ...$allFinishingIds);
-    $finishingQuery->execute();
-    $finishingResult = $finishingQuery->get_result();
-    while ($finishing = $finishingResult->fetch_assoc()) {
-        $finishingNames[$finishing['product_id']] = $finishing['name'];
-    }
-}
-
 ?>
-
 
 <!DOCTYPE html>
 <html lang="id">
@@ -141,9 +101,7 @@ if (!empty($allFinishingIds)) {
       overflow-x: auto;
       padding-top: 10px;
     }
-    .payment-info::-webkit-scrollbar {
-      height: 6px;
-    }
+    .payment-info::-webkit-scrollbar { height: 6px; }
     .payment-info::-webkit-scrollbar-thumb {
       background-color: rgba(0,0,0,0.1);
       border-radius: 3px;
@@ -157,51 +115,17 @@ if (!empty($allFinishingIds)) {
       color: #555;
       transition: background 0.3s, border-color 0.3s;
     }
-    .dropZone.dragover {
-      background: #f0f8ff;
-      border-color: #007bff;
-    }
-
-    #picture {
-      position: absolute;
-      left: -9999px;
-      visibility: hidden;
-    }
-    .custom-file-upload {
-      border: 1px solid #ccc;
-      display: inline-block;
-      padding: 6px 12px;
-      cursor: pointer;
-    }
-    .conimg{
-      margin: 0 !important;
-      padding: 0 !important;
-      max-width: 120px;
-      max-height: 120px;
-    }
-    .payimg{
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }.payimg:hover{
-      filter: blur(3px);
-      transition: opacity 0.2s ease;
-    }
+    .dropZone.dragover { background: #f0f8ff; border-color: #007bff; }
+    #picture { position: absolute; left: -9999px; visibility: hidden; }
+    .custom-file-upload { border: 1px solid #ccc; display: inline-block; padding: 6px 12px; cursor: pointer; }
+    .conimg{ margin: 0 !important; padding: 0 !important; max-width: 120px; max-height: 120px; }
+    .payimg{ width: 100%; height: 100%; object-fit: cover; }
+    .payimg:hover{ filter: blur(3px); transition: opacity 0.2s ease; }
     .btn-delete-img {
-      background-color: rgba(255, 255, 255, 0.7);
-      color: #dc3545;
-      border: none;
-      transition: all 0.2s ease-in-out;
+      background-color: rgba(255, 255, 255, 0.7); color: #dc3545; border: none; transition: all 0.2s ease-in-out;
     }
-
-    .btn-delete-img:hover {
-      background-color: #dc3545;
-      color: white;
-      transform: scale(1.1);
-    }
-    .btn-paste {
-      white-space: nowrap;
-    }
+    .btn-delete-img:hover { background-color: #dc3545; color: white; transform: scale(1.1); }
+    .btn-paste { white-space: nowrap; }
   </style>
     <script>
       function showImageModal(src) {
@@ -210,7 +134,6 @@ if (!empty($allFinishingIds)) {
         modal.show();
       }
     </script>
-    
 </head>
 
 <body>
@@ -221,13 +144,10 @@ if (!empty($allFinishingIds)) {
     <?php include BASE_PATH . '/sidebar.php'; ?>
 
     <div id="page-content-wrapper">
-      <!-- Tombol toggle dan ringkasan -->
       <?php require 'summary_cards.php'; ?>
 
-      <!-- Header dan filter -->
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <h1 class="mb-0">Transaksi Detil</h1>
-
         <div class="row g-2 align-items-end justify-content-end flex-nowrap" style="margin-bottom:0;">
           <?php $showExport = true; include BASE_PATH . '/interval_date.php'; ?>
         </div>
@@ -235,11 +155,10 @@ if (!empty($allFinishingIds)) {
 
       <div class="table-responsive">
         <?php
-        while ($order = $orderResult->fetch_assoc()):
+        foreach ($orders as $order):
             $order_id = $order['order_id'];
-            
         ?>
-        <div class="nota-block" id="<?= htmlspecialchars($order['order_id']) ?>">
+        <div class="nota-block" id="<?= htmlspecialchars($order_id) ?>">
           <div class="nota-header">
             <div class="d-flex mb-2 gap-3 align-items-center">
               <div>
@@ -253,24 +172,18 @@ if (!empty($allFinishingIds)) {
               <div>
                 <strong>Nomor:</strong> <?= htmlspecialchars($order['nomor']) ?>
                 <form action="<?= BASE_URL ?>/customer?start_date=<?= date('Y-m-d', strtotime($order['date'])) ?>&end_date=<?= date('Y-m-d', strtotime($order['date'])) ?>" method="post" target="_blank">
-                  <input type="hidden" name="order_id" value="<?= $order['order_id'] ?>">
+                  <input type="hidden" name="order_id" value="<?= $order_id ?>">
                   <input type="submit" value="▶️Cek Nota" class="btn btn-sm btn-success">
                 </form> 
               </div>
             </div>
             <div>
-              <button type="button" class="btn btn-primary btnNote" data-order-id="<?= htmlspecialchars($order['order_id'])?>">Update Catatan 📝</button>
+              <button type="button" class="btn btn-primary btnNote" data-order-id="<?= htmlspecialchars($order_id)?>">Update Catatan 📝</button>
             </div>
           </div>
 
           <table class="table table-bordered table-sm">
-            <thead
-            <?php if ($order['system'] == 'OFFLINE') {?>
-              class="table-primary"
-            <?php } else {?>
-              class="table-danger"
-            <?php }?>
-            >
+            <thead <?= ($order['system'] == 'OFFLINE') ? 'class="table-primary"' : 'class="table-danger"' ?>>
               <tr>
                 <th>No</th>
                 <th>Bahan</th>
@@ -286,18 +199,7 @@ if (!empty($allFinishingIds)) {
               $orderItems = $itemsByOrder[$order_id] ?? [];
               $no = 1;
               foreach ($orderItems as $item):
-                  $finishingNamesStr = '-';
-                  if (!empty($item['finishing'])) {
-                      $ids = explode(',', $item['finishing']);
-                      $names = [];
-                      foreach ($ids as $id) {
-                          $id = (int)$id;
-                          if (isset($finishingNames[$id])) {
-                              $names[] = $finishingNames[$id];
-                          }
-                      }
-                      $finishingNamesStr = implode(', ', $names);
-                  }
+                  $finishingNamesStr = $item['finishing_names'] ?: '-';
               ?>
               <tr>
                 <td><?= $no++ ?></td>
@@ -318,8 +220,7 @@ if (!empty($allFinishingIds)) {
           </table>
 
           <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-            <div class="payment-info mb-1" data-order-id="<?= $order['order_id'] ?>" ">
-
+            <div class="payment-info mb-1" data-order-id="<?= $order_id ?>" >
               <?php
                 $total_bayar = 0;
                 $ada_tf = false;
@@ -333,72 +234,45 @@ if (!empty($allFinishingIds)) {
                     $nominal = (int)$payment['nominal'];
                     $method = htmlspecialchars($payment['payment_method']);
                     $status = htmlspecialchars($payment['status']);
-                    if ($status == 'LUNAS') {
-                      $isLunas = true;
-                    }else{
-                      $isLunas = false;
-                    }
-                    if ($method == 'TF') {
-                      $ada_tf = true;
-                    }
-                    $total_bayar = $total_bayar + $nominal;
+                    
+                    if ($status == 'LUNAS') { $isLunas = true; } else { $isLunas = false; }
+                    if ($method == 'TF') { $ada_tf = true; }
+                    
+                    $total_bayar += $nominal;
                 ?>
-                <div class="editable-payment border p-2 rounded bg-light" <?= ($mode === 1) ? 'style="background-color: #333 !important; color: #e0e0e0 !important;"' : '' ?>
-                    data-payment-id="<?= $payment_id ?>"
-                    data-order="<?= $order_id ?>"
-                    data-nominal="<?= $nominal ?>"
-                    data-metode="<?= $method ?>"
-                    data-tanggal="<?= $tanggal ?>">
+                <div class="editable-payment border p-2 rounded bg-light" <?= (isset($mode) && $mode === 1) ? 'style="background-color: #333 !important; color: #e0e0e0 !important;"' : '' ?>
+                    data-payment-id="<?= $payment_id ?>" data-order="<?= $order_id ?>" data-nominal="<?= $nominal ?>" data-metode="<?= $method ?>" data-tanggal="<?= $tanggal ?>">
                   <div><strong>Tanggal:</strong> <?= $tanggal ?></div>
                   <div><strong>Nominal:</strong> Rp<?= number_format($nominal, 0, ',', '.') ?></div>
                   <div><strong>Metode Pembayaran:</strong> <?= $method ?></div>
                   <div><strong>Status:</strong> <?= $status ?> </div>
                   <div class="d-flex justify-content-end gap-2">
-                  <?php 
-                  if ($mobile) { ?>
+                  <?php if (isset($mobile) && $mobile) { ?>
                     <button class="btn btn-sm btn-primary editPembayaran" id="editPembayaran">Edit</button>
                     <button class="btn btn-sm btn-danger hapusPembayaran" id="hapusPembayaran">Hapus</button>
                   <?php } ?>
                   </div>
                 </div>
                 <?php
-                    endforeach;
-                  else:
+                  endforeach;
+                else:
                 ?>
-                  <div <?= ($mode === 1) ? 'style="background-color: #333 !important; color: #e0e0e0 !important;"' : '' ?>>Belum ada pembayaran.</div>
+                  <div <?= (isset($mode) && $mode === 1) ? 'style="background-color: #333 !important; color: #e0e0e0 !important;"' : '' ?>>Belum ada pembayaran.</div>
                 <?php endif; ?>
               
                 <?php 
                   $noproff = false;
-                  $storeNameUpload = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName);
-                  $query = "SELECT transfer_id, img FROM transfers WHERE order_id = ?";
-                  $stmt = $koneksi->prepare($query);
-                  $stmt->bind_param("i", $order['order_id']);
-                  $stmt->execute();
-                  $result = $stmt->get_result();
+                  $storeNameUpload = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
+                  
+                  $fotos = $transfersByOrder[$order_id] ?? [];
 
-                  $fotos = [];
-                  while ($row = $result->fetch_assoc()) {
-                      $fotos[] = $row;
-                  }
-                  $stmt->close();
                   if (!empty($fotos)) {
                     foreach ($fotos as $f) {
                       $imgUrl = BASE_URL . '/assets/img/buktitf/'. $storeNameUpload . "/" . $f['img'];
                     ?>
                     <div class="conimg position-relative d-inline-block me-2 mb-2" id="img-<?= $f['transfer_id'] ?>">
-                      <img 
-                        src="<?= $imgUrl ?>" 
-                        onclick="showImageModal('<?= $imgUrl ?>')" 
-                        alt="Bukti Transfer" 
-                        class="payimg rounded img-fluid shadow-sm border"
-                        style="object-fit: cover; max-height: 120px;"
-                      >
-
-                      <button 
-                        type="button" 
-                        class="btn btn-sm btn-light rounded-circle shadow-sm btn-delete-img position-absolute top-0 end-0 m-1"
-                        data-transfer-id="<?= $f['transfer_id'] ?>">
+                      <img src="<?= $imgUrl ?>" onclick="showImageModal('<?= $imgUrl ?>')" alt="Bukti Transfer" class="payimg rounded img-fluid shadow-sm border" style="object-fit: cover; max-height: 120px;">
+                      <button type="button" class="btn btn-sm btn-light rounded-circle shadow-sm btn-delete-img position-absolute top-0 end-0 m-1" data-transfer-id="<?= $f['transfer_id'] ?>">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16">
                           <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
                         </svg>  
@@ -406,59 +280,59 @@ if (!empty($allFinishingIds)) {
                     </div>
                     <?php
                     }
-                  }elseif (empty($fotos) && $ada_tf == true) {
+                  } elseif (empty($fotos) && $ada_tf == true) {
                     $noproff = true;
                   }
                 ?>
             </div>
+            
             <div class="upload-container d-flex gap-1 mb-1" style="height: 120px;">
               <button type="button" class="btn btn-outline-secondary btn-sm btn-paste" title="Tempel bukti transfer">
                 📋 Paste <br> Foto
               </button>
           
               <div class="dropZone">
-                🖼️ Drop atau upload <br>
-                Untuk simpan bukti TF
+                🖼️ Drop atau upload <br> Untuk simpan bukti TF
               </div>
 
               <input class="picture" type="file" name="picture" accept="image/*" hidden>
-              <input type="hidden" class="orderId" value="<?= htmlspecialchars($order['order_id']) ?>">
+              <input type="hidden" class="orderId" value="<?= htmlspecialchars($order_id) ?>">
 
               <div class="uploadStatus mb-1 text-muted"></div>
               <?php if ($isLunas == false) { ?>
-              <button type="button" class="btn btn-danger btn-pay" data-order-id="<?= htmlspecialchars($order['order_id']) ?>">Bayar</button>
+              <button type="button" class="btn btn-danger btn-pay" data-order-id="<?= htmlspecialchars($order_id) ?>">Bayar</button>
               <?php } ?>
             </div>
 
           </div>
-            <div id="note_result_<?= $order['order_id']; ?>" class="position-absolute start-50 translate-middle-x d-flex gap-2">
+          
+          <div id="note_result_<?= $order_id; ?>" class="position-absolute start-50 translate-middle-x d-flex gap-2">
             <?php
-              $ooid =  $order['order_id'];
-              $stmtNote = $koneksi->prepare("SELECT note FROM note_orders WHERE order_id = ? AND note_for = 'OP'");
-              $stmtNote->bind_param("i", $ooid);
-              $stmtNote->execute();
-              $resultNote = $stmtNote->get_result();
-              $rnote = $resultNote->fetch_assoc();
-              $note_isi = $rnote['note'] ?? '';?>
+              $note_isi = $notesByOrder[$order_id] ?? '';
+            ?>
               <?php if ($ada_tf == true && $noproff == true) {?>
                 <div class="bg-warning text-white py-2 px-3 rounded-3">
                   ⚠️ Belum Ada Bukti TF
                 </div>
               <?php } ?>
+              
               <?php if ($total_bayar > $order['total']) { ?>
                 <div class="bg-danger text-white py-2 px-3 rounded-3">
                   ⛔ Kelebihan Bayar
                 </div>
               <?php } ?>
+              
               <?php if ($note_isi != '') {?>
                 <div class="bg-primary text-white py-2 px-3 rounded-3">
-                  ℹ️ <?= $note_isi ?>
+                  ℹ️ <?= htmlspecialchars($note_isi) ?>
                 </div>
               <?php } ?>
           </div>
         </div>
-        <?php endwhile; ?>
+        <?php endforeach; ?>
       </div>
+
+
 
     </div>
     <!-- Modal Payment -->
@@ -639,7 +513,6 @@ document.addEventListener('click', function(e) {
     .then(response => response.json())
     .then(data => {
       if (data.success) {
-        // Hapus elemen gambar dari DOM
         const imgContainer = document.getElementById(`img-${hapusFoto}`);
         if (imgContainer) imgContainer.remove();
       } else {
@@ -656,28 +529,23 @@ document.querySelectorAll('.upload-container').forEach(container => {
   const orderId = container.querySelector('.orderId').value;
   const pasteBtn = container.querySelector('.btn-paste');
 
-  // Klik = buka file explorer
   dropZone.addEventListener('click', () => fileInput.click());
 
-  // Pilih file manual
   fileInput.addEventListener('change', e => {
     if (e.target.files.length > 0) {
       uploadFile(e.target.files[0]);
     }
   });
 
-  // Drag over
   dropZone.addEventListener('dragover', e => {
     e.preventDefault();
     dropZone.classList.add('dragover');
   });
 
-  // Drag leave
   dropZone.addEventListener('dragleave', e => {
     dropZone.classList.remove('dragover');
   });
 
-  // Drop file
   dropZone.addEventListener('drop', e => {
     e.preventDefault();
     dropZone.classList.remove('dragover');
@@ -710,7 +578,6 @@ document.querySelectorAll('.upload-container').forEach(container => {
     }
   });
 
-  // Fungsi upload otomatis
   function uploadFile(file) {
 
     const formData = new FormData();
@@ -733,7 +600,6 @@ document.querySelectorAll('.upload-container').forEach(container => {
   }
 });
 
-// ✅ Fungsi reload info pembayaran
 function loadPaymentInfo(orderId, container) {
   container.classList.add('loading');
   container.innerHTML = '<div class="text-center text-muted py-2">⏳ Memuat data pembayaran...</div>';
@@ -765,7 +631,6 @@ function loadPaymentInfo(orderId, container) {
   const nominalRaw = document.getElementById('payment-nominal-raw');
   const feedback = document.getElementById('paymentFeedback');2000
 
-  // Format rupiah function (sama dengan yang kamu punya)
   function formatRupiah(angka) {
     let numberString = angka.replace(/[^,\d]/g, '').toString();
     let split = numberString.split(',');
@@ -796,7 +661,6 @@ function loadPaymentInfo(orderId, container) {
     nominalInput.setSelectionRange(cursorPos, cursorPos);
   });
 
-  // Submit via AJAX
   paymentForm.querySelectorAll('button[data-method]').forEach(btn => {
     btn.addEventListener('click', function(e) {
       e.preventDefault();
@@ -817,7 +681,6 @@ function loadPaymentInfo(orderId, container) {
         return;
       }
 
-      // Siapkan data form
       const formData = new FormData();
       formData.append('order_id', orderId);
       formData.append(isLunas ? 'lunas_method' : 'payment_method', method);
@@ -838,7 +701,6 @@ function loadPaymentInfo(orderId, container) {
           const modal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
           modal.hide();
           feedback.textContent = '';
-          // Setelah upload sukses → reload info pembayaran
           const container = document.querySelector(`.payment-info[data-order-id="${orderId}"]`);
           if (container) loadPaymentInfo(orderId, container);
 
@@ -884,7 +746,6 @@ function loadPaymentInfo(orderId, container) {
 <script>
 document.querySelectorAll('.btnNote').forEach(div => {
   div.addEventListener('click', () => {
-      // Tampilkan modal
       const modal = new bootstrap.Modal(document.getElementById('noteModal'));
       modal.show();
       const noteOrderId = div.dataset.orderId;
@@ -924,14 +785,14 @@ document.getElementById('confirmNoteInput').addEventListener('click', function()
 });
 function editPembayaranAsli(div) {
   if (access == 'all') {
-    const paymentId = div.dataset.paymentId;  // <--- Tambahan
+    const paymentId = div.dataset.paymentId;
     const orderId = div.dataset.order;
     const nominal = div.dataset.nominal;
     const metode = div.dataset.metode;
     const tanggal = div.dataset.tanggal;
 
     // Isi input form
-    document.getElementById('edit-payment-id').value = paymentId;  // <--- Tambahan
+    document.getElementById('edit-payment-id').value = paymentId;
     document.getElementById('edit-order-id').value = orderId;
     document.getElementById('edit-nominal').value = nominal;
     document.getElementById('edit-metode').value = metode;
@@ -1024,7 +885,7 @@ function hapusPembayaranAsli() {
     let keteranganHapus = document.querySelector("[name='keterangan_hapus']").value;
     if (!deletePaymentId || !deleteOrderId || keteranganHapus == "") return;
     
-    fetch('delete_payment.php', {
+    fetch('finance_action.php?action=delete_payment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `payment_id=${deletePaymentId}&order_id=${deleteOrderId}&keterangan_hapus=${keteranganHapus}`

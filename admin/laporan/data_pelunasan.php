@@ -2,113 +2,19 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
+require_once BASE_PATH . '/controllers/ReportController.php';
 
-$start_input = $_GET['start_date'] ?? date('Y-m-d');
-$end_input   = $_GET['end_date'] ?? date('Y-m-d');
+$reportController = new ReportController($koneksi);
 
-$filter_start_date = $start_input . ' 00:00:00';
-$filter_end_date   = $end_input . ' 23:59:59';
+$start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
+$end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
 
-$queryTransaksi = "
-    SELECT 
-        p.order_id,
-        o.nomorator, 
-        o.customer_name, 
-        p.nominal, 
-        p.payment_method, 
-        p.status,
-        p.date AS payment_date,
-        o.date AS order_date
-    FROM payment p
-    JOIN orders o ON p.order_id = o.order_id
-    WHERE o.store_id = ? AND p.date BETWEEN ? AND ?
-    ORDER BY p.date ASC
-";
+$rekap = $reportController->transactionsCapture($store_id, $start_date, $end_date);
 
-$stmtTransaksi = $koneksi->prepare($queryTransaksi);
-$stmtTransaksi->bind_param("iss", $store_id, $filter_start_date, $filter_end_date);
-$stmtTransaksi->execute();
-$result = $stmtTransaksi->get_result();
-
-$rawPayments = [];
-$orderIds    = [];
-
-while ($row = $result->fetch_assoc()) {
-    $rawPayments[] = $row;
-    $orderIds[$row['order_id']] = $row['order_id'];
-}
-$stmtTransaksi->close();
-
-$paymentCounts = [];
-$dpData = [];
-
-if (!empty($orderIds)) {
-    $inClause = implode(',', $orderIds);
-    
-    $resCount = $koneksi->query("SELECT order_id, COUNT(*) as cnt FROM payment WHERE order_id IN ($inClause) GROUP BY order_id");
-    while ($c = $resCount->fetch_assoc()) {
-        $paymentCounts[$c['order_id']] = (int)$c['cnt'];
-    }
-
-    $dpQuery = "
-        SELECT p1.order_id, p1.nominal, p1.payment_method, p1.date
-        FROM payment p1
-        JOIN (
-            SELECT order_id, MIN(date) as min_date
-            FROM payment
-            WHERE order_id IN ($inClause)
-            GROUP BY order_id
-        ) p2 ON p1.order_id = p2.order_id AND p1.date = p2.min_date
-    ";
-    $resDp = $koneksi->query($dpQuery);
-    while ($d = $resDp->fetch_assoc()) {
-        if (!isset($dpData[$d['order_id']])) {
-            $dpData[$d['order_id']] = $d;
-        }
-    }
-}
-
-$dataPelunasan  = [];
-$Pelunasan_Cash = 0;
-$Pelunasan_TF   = 0;
-
-foreach ($rawPayments as $row) {
-    $oid    = $row['order_id'];
-    $status = strtoupper($row['status']);
-    $pCount = $paymentCounts[$oid] ?? 0;
-
-    $tanggal_bayar = date('Y-m-d', strtotime($row['payment_date']));
-    $tanggal_order = date('Y-m-d', strtotime($row['order_date']));
-
-    $statusLabel = '';
-    if ($status === 'LUNAS' && $pCount > 1) {
-        $statusLabel = 'PELUNASAN';
-    } elseif ($status === 'DP') {
-        $statusLabel = 'BAYAR DP';
-    } else {
-        $statusLabel = 'LUNAS';
-    }
-
-    if ($tanggal_bayar > $tanggal_order) {
-        $statusLabel = 'PELUNASAN';
-    }
-
-    if ($statusLabel === 'PELUNASAN') {
-        $dp = $dpData[$oid] ?? null;
-
-        $row['dp_nominal'] = $dp ? $dp['nominal'] : 0;
-        $row['dp_method']  = $dp ? $dp['payment_method'] : '-';
-        $row['dp_date']    = $dp ? $dp['date'] : '-';
-
-        if ($row['payment_method'] == 'TF') {
-            $Pelunasan_TF += $row['nominal'];
-        } else {
-            $Pelunasan_Cash += $row['nominal'];
-        }
-
-        $dataPelunasan[] = $row;
-    }
-}
+$dataPelunasan = $rekap['pelunasan']['data'];
+$tfPelunasan            = $rekap['pelunasan']['total_tf'];
+$cashPelunasan          = $rekap['pelunasan']['total_cash'];
+$totalPelunasan  = $rekap['pelunasan']['grand_total'];
 
 $htmlTablePelunasan = renderTable([
     'id'             => 'tableTransaksi',
@@ -120,10 +26,10 @@ $htmlTablePelunasan = renderTable([
     },
     'tfoot'          => '
         <tr class="table-success">
-            <th colspan="5" class="text-end">Data Pelunasan Dari ' . htmlspecialchars($start_input) . ' Sampai ' . htmlspecialchars($end_input) . ' : </th>
-            <th colspan="2">' . number_format($Pelunasan_Cash + $Pelunasan_TF, 0, ',', '.') . '</th>
-            <th>TF : ' . number_format($Pelunasan_TF, 0, ',', '.') . '</th>
-            <th>CASH : ' . number_format($Pelunasan_Cash, 0, ',', '.') . '</th>
+            <th colspan="5" class="text-end">Data Pelunasan Dari ' . htmlspecialchars($start_date) . ' Sampai ' . htmlspecialchars($start_date) . ' : </th>
+            <th colspan="2">' . number_format($cashPelunasan + $tfPelunasan, 0, ',', '.') . '</th>
+            <th>TF : ' . number_format($tfPelunasan, 0, ',', '.') . '</th>
+            <th>CASH : ' . number_format($cashPelunasan, 0, ',', '.') . '</th>
             <th></th>
         </tr>
     ',

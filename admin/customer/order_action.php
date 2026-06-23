@@ -17,7 +17,7 @@ $paymentController = new PaymentController($koneksi);
 $order = $_GET['order'] ?? '';
 
 if ($order == 'save_note'){
-    $orderController->saveNote();
+    $orderController->saveNote('CTM');
 }else if ($order == 'create'){
     $orderController->create();
 }else if ($order == 'update'){
