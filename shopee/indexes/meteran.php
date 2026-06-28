@@ -10,7 +10,7 @@ $date = $_GET['d'] ?? date('Y-m-d');
 
 $existingOrders = [];
 $stmtAllOrders = $koneksi->prepare("
-    SELECT id, inv, order_no, name, date
+    SELECT id, inv, order_no, name, date, info
     FROM orders
     WHERE user_id = ? AND date = ?
     ORDER BY id DESC
@@ -81,6 +81,7 @@ $existingOrders = $resultAllOrders->fetch_all(MYSQLI_ASSOC);
                         <th>Order Inv</th>
                         <th>Order No</th>
                         <th>Nama Konsumen</th>
+                        <th>Info</th>
                         <th>Tanggal</th>
                         <th>Aksi</th>
                     </tr>
@@ -93,10 +94,14 @@ $existingOrders = $resultAllOrders->fetch_all(MYSQLI_ASSOC);
                             <td><?= htmlspecialchars(str_pad($order['inv'], 6, '0', STR_PAD_LEFT)) ?></td>
                             <td><?= htmlspecialchars($order['order_no']) ?></td>
                             <td><?= htmlspecialchars($order['name']) ?></td>
+                            <td><?= htmlspecialchars($order['info'] ?? '-') ?></td>
                             <td><?= htmlspecialchars($order['date']) ?></td>
-                            <td>
+                            <td style="display: flex; gap: 8px;">
                                 <button type="button" class="btn btn-primary btnSelectOrder" data-order-id="<?= $order['id'] ?>">
                                     Input Meter
+                                </button>
+                                <button type="button" class="btn btn-warning btnEditOrder" data-order-id="<?= $order['id'] ?>" data-order-no="<?= htmlspecialchars($order['order_no']) ?>" data-name="<?= htmlspecialchars($order['name']) ?>" data-info="<?= htmlspecialchars($order['info'] ?? '') ?>">
+                                    Edit
                                 </button>
                             </td>
                         </tr>
@@ -114,6 +119,37 @@ $existingOrders = $resultAllOrders->fetch_all(MYSQLI_ASSOC);
         <div style="margin-top: 20px;">
             <button class="btn-shopee" id="meteranBulanan">Meteran Bulanan</button>
         </div>
+
+        <!-- Modal Edit Order -->
+        <div class="modal fade" id="editOrderModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <form class="modal-content" id="formEditOrder">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Order</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="editOrderId">
+                        <div class="mb-3">
+                            <label class="form-label">Order No:</label>
+                            <input type="text" id="editOrderNo" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Nama Konsumen:</label>
+                            <input type="text" id="editCustomerName" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Info:</label>
+                            <input type="text" id="editOrderInfo" class="form-control" placeholder="Opsional">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
   <?php include BASE_PATH . '/elements/footer.php'; ?>
@@ -130,6 +166,56 @@ document.querySelectorAll('.btnSelectOrder').forEach(btn => {
         const orderId = this.getAttribute('data-order-id');
         const dateParam = document.getElementById('d').value;
         window.location.href = `<?= BASE_URL ?>/indexes/meteran_input.php?order_id=${orderId}&d=${dateParam}`;
+    });
+});
+
+document.querySelectorAll('.btnEditOrder').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.getElementById('editOrderId').value = this.getAttribute('data-order-id');
+        document.getElementById('editOrderNo').value = this.getAttribute('data-order-no');
+        document.getElementById('editCustomerName').value = this.getAttribute('data-name');
+        document.getElementById('editOrderInfo').value = this.getAttribute('data-info');
+        new bootstrap.Modal(document.getElementById('editOrderModal')).show();
+    });
+});
+
+document.getElementById('formEditOrder').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const orderId = document.getElementById('editOrderId').value;
+    const orderNo = document.getElementById('editOrderNo').value.trim();
+    const customerName = document.getElementById('editCustomerName').value.trim();
+    const info = document.getElementById('editOrderInfo').value.trim();
+    const dateParam = document.getElementById('d').value;
+    
+    if (!orderNo || !customerName) {
+        alert('Order No dan Nama Konsumen wajib diisi');
+        return;
+    }
+    
+    fetch('<?= BASE_URL ?>/functions/update_order.php', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            order_id: orderId,
+            order_no: orderNo,
+            name: customerName,
+            info: info
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('editOrderModal')).hide();
+            location.reload();
+        } else {
+            alert(data.message || 'Gagal mengupdate order');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Terjadi kesalahan sistem');
     });
 });
 

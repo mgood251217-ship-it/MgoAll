@@ -14,7 +14,7 @@ $currentOrder = null;
 $listMeterData = [];
 
 if ($order_id > 0) {
-    $stmtOrder = $koneksi->prepare("\n        SELECT id, inv, order_no, name, date\n        FROM orders\n        WHERE id = ? AND user_id = ? AND date = ?");
+    $stmtOrder = $koneksi->prepare("\n        SELECT id, inv, order_no, name, date, info\n        FROM orders\n        WHERE id = ? AND user_id = ? AND date = ?");
     $stmtOrder->bind_param("iis", $order_id, $user_id, $date);
     $stmtOrder->execute();
     $currentOrder = $stmtOrder->get_result()->fetch_assoc();
@@ -62,9 +62,11 @@ $resultProducts = $stmtProducts->get_result();
                 <div>
                     <strong>Order:</strong> <?= str_pad($currentOrder['inv'], 6, '0', STR_PAD_LEFT) ?> | 
                     <strong>Order No:</strong> <?= htmlspecialchars($currentOrder['order_no']) ?> | 
-                    <strong>Nama Konsumen:</strong> <?= htmlspecialchars($currentOrder['name']) ?> | 
+                    <strong>Nama Konsumen:</strong> <?= htmlspecialchars($currentOrder['name']) ?> |
+                    <strong>Info:</strong> <?= htmlspecialchars($currentOrder['info'] ?? '-') ?> | 
                     <strong>Tanggal:</strong> <?= htmlspecialchars($currentOrder['date']) ?>
                 </div>
+                <button type="button" class="btn btn-warning" id="btnEditCurrentOrder">Edit Order</button>
             </div>
 
             <h4>Daftar Meteran</h4>
@@ -93,12 +95,12 @@ $resultProducts = $stmtProducts->get_result();
                             <td><?= $no ?></td>
                             <td><?= htmlspecialchars($product['type']) ?></td>
                             <td><?= htmlspecialchars($product['name']) ?></td>
-                            <td>
+                            <td id="meterList_<?= $product['product_id'] ?>">
                                 <?php if (!empty($meterList)): ?>
                                     <?php foreach ($meterList as $meter): ?>
                                         <span class="deleteList" data-id="<?= $meter['list_meter_id'] ?>" 
                                             style="display: inline-block; background: #e3f2fd; padding: 3px 8px; margin: 2px; border-radius: 3px; cursor: pointer;"> 
-                                            <?= htmlspecialchars($meter['value']) ?> <?= htmlspecialchars($product['unit_type']) ?>
+                                            <?= htmlspecialchars($meter['value']) ?>
                                         </span>
                                     <?php endforeach; ?>
                                 <?php else: ?>
@@ -124,6 +126,37 @@ $resultProducts = $stmtProducts->get_result();
         <div style="margin-top: 20px;">
             <button class="btn-shopee" id="meteranBulanan">Meteran Bulanan</button>
         </div>
+
+        <!-- Modal Edit Order -->
+        <div class="modal fade" id="editOrderModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <form class="modal-content" id="formEditOrder">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Order</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="editOrderId">
+                        <div class="mb-3">
+                            <label class="form-label">Order No:</label>
+                            <input type="text" id="editOrderNo" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Nama Konsumen:</label>
+                            <input type="text" id="editCustomerName" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Info:</label>
+                            <input type="text" id="editOrderInfo" class="form-control" placeholder="Opsional">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
   <?php include BASE_PATH . '/elements/footer.php'; ?>
@@ -137,6 +170,52 @@ $resultProducts = $stmtProducts->get_result();
 
     document.getElementById('meteranBulanan').addEventListener('click', function() {
         window.location.href = '<?= BASE_URL ?>/indexes/meteran_bulanan.php';
+    });
+
+    document.getElementById('btnEditCurrentOrder').addEventListener('click', function() {
+        document.getElementById('editOrderId').value = '<?= $order_id ?>';
+        document.getElementById('editOrderNo').value = '<?= htmlspecialchars($currentOrder['order_no']) ?>';
+        document.getElementById('editCustomerName').value = '<?= htmlspecialchars($currentOrder['name']) ?>';
+        document.getElementById('editOrderInfo').value = '<?= htmlspecialchars($currentOrder['info'] ?? '') ?>';
+        new bootstrap.Modal(document.getElementById('editOrderModal')).show();
+    });
+
+    document.getElementById('formEditOrder').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const orderId = document.getElementById('editOrderId').value;
+        const orderNo = document.getElementById('editOrderNo').value.trim();
+        const customerName = document.getElementById('editCustomerName').value.trim();
+        const info = document.getElementById('editOrderInfo').value.trim();
+        
+        if (!orderNo || !customerName) {
+            alert('Order No dan Nama Konsumen wajib diisi');
+            return;
+        }
+        
+        fetch('<?= BASE_URL ?>/functions/update_order.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                order_id: orderId,
+                order_no: orderNo,
+                name: customerName,
+                info: info
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('editOrderModal')).hide();
+                location.reload();
+            } else {
+                alert(data.message || 'Gagal mengupdate order');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Terjadi kesalahan sistem');
+        });
     });
 
     document.addEventListener('click', function(e) {
@@ -171,8 +250,21 @@ $resultProducts = $stmtProducts->get_result();
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    const dateParam = '<?= htmlspecialchars($date) ?>';
-                    window.location.href = `<?= BASE_URL ?>/indexes/meteran_input.php?order_id=${orderId}&d=${encodeURIComponent(dateParam)}`;
+                    const meterlistContainer = document.getElementById('meterList_' + productId);
+                    const newMeterSpan = document.createElement('span');
+                    newMeterSpan.className = 'deleteList';
+                    newMeterSpan.style.display = 'inline-block';
+                    newMeterSpan.style.background = '#e3f2fd';
+                    newMeterSpan.style.padding = '3px 8px';
+                    newMeterSpan.style.margin = '2px';
+                    newMeterSpan.style.borderRadius = '3px';
+                    newMeterSpan.style.cursor = 'pointer';
+                    newMeterSpan.innerText = form.querySelector('input[name="value"]').value;
+                    newMeterSpan.setAttribute('data-id', data.list_meter_id);
+                    meterlistContainer.appendChild(newMeterSpan);
+                    form.querySelector('input[name="value"]').value = '';
+                    form.querySelector('input[name="value"]').focus();
+                    
                 } else {
                     alert(data.message || 'Gagal menambah meteran');
                 }
@@ -223,6 +315,16 @@ $resultProducts = $stmtProducts->get_result();
                 btn.innerText = originalText;
                 btn.style.pointerEvents = 'auto';
             });
+        }
+    });
+
+    // Event listener untuk Enter key pada input meteran
+    document.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && e.target.classList.contains('meterValue')) {
+            e.preventDefault();
+            const form = e.target.closest('.formAddMeter');
+            const btn = form.querySelector('.btnAddMeter');
+            btn.click();
         }
     });
 </script>
