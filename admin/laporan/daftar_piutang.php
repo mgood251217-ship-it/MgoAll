@@ -7,8 +7,8 @@ require_once BASE_PATH . '/controllers/ReportController.php';
 $reportController = new ReportController($koneksi);
 
 $data = $reportController->piutang($store_id);
-$total_hutang = $data->total;
-$dataPiutang = $data->data;
+$total_hutang = $data['total']; 
+$dataPiutang = $data['data'];
 
 $htmlTablePiutang = renderTable([
     'id'          => 'tabelPiutang',

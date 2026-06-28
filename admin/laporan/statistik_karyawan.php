@@ -9,7 +9,7 @@ $userModel = new User($koneksi);
 $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
 $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
 
-$resultUser = $userModel->getUsersByStoreId($store_id);
+$resultUsers = $userModel->getUsersByStoreId($store_id);
 
 $users = [];
 $usernames = [];

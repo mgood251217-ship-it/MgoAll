@@ -30,6 +30,16 @@ if ($action === 'create_tf') {
     if ($activityModel->updateActivity($data)) {
         echo json_encode(['success' => $success]);
     }
+} else if ($action === 'create_expenditure') {
+    $financeController->createExpenditure();
+} else if ($action === 'create_income') {
+    $financeController->createIncome();
+} else if ($action === 'sync_finance_by_interval_date') {
+    $financeController->syncFinanceInterval();
+}elseif ($action === 'update_expenditure') {
+    $financeController->updateExpenditure();
+}elseif ($action === 'update_income') {
+    $financeController->updateIncome();
 } else {
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'errors' => ["Aksi tidak valid."]]);

@@ -6,6 +6,7 @@ require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
 require_once BASE_PATH . '/controllers/FinanceController.php';
 require_once BASE_PATH . '/controllers/PaymentController.php';
+require_once BASE_PATH . '/components/Alert.php';
 
 $paymentController = new PaymentController($koneksi);
 $financeController = new FinanceController($koneksi);
@@ -16,89 +17,6 @@ $data = $financeController->finance($store_id, $start_date, $end_date);
 $dataFinance = $data['finance'];
 $dataPengeluaran = $data['expenditure'];
 $dataPemasukan = $data['income'];
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['refresh_finance'])) {
-    $start_date = $_POST['start_date'];
-    $end_date = $_POST['end_date'];
-
-    function getDatesFromRange($start, $end) {
-        $dates = [];
-        $current = strtotime($start);
-        $end = strtotime($end);
-        while ($current <= $end) {
-            $dates[] = date('Y-m-d', $current);
-            $current = strtotime('+1 day', $current);
-        }
-        return $dates;
-    }
-
-    $dates = getDatesFromRange($start_date, $end_date);
-    foreach ($dates as $date) {
-        $financeController->refreshFinance($store_id, $date); 
-    }
-
-    header("Location: keuangan?start_date=$start_date&end_date=$end_date");
-    exit;
-}
-$storeNamese = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
-$ambilTahune = date('Y', strtotime($start_date));
-$ambilBulane = date('m', strtotime($start_date));
-$ambilTanggale = date('d', strtotime($start_date));
-$folderDatee = $ambilTahune . '/' . $ambilBulane . '/' . $ambilTanggale;
-$uploadDire = BASE_PATH . "/assets/img/bukti/$storeNamese/$folderDatee/";
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['tambah_pengeluaran'])) {
-        $info    = strtoupper(trim($_POST['information']));
-        $nominal = trim($_POST['nominal']);
-        $tanggal = $start_date;
-
-        $errors = [];
-        $pictureName = '';
-
-        if (!empty($_FILES['picture']['name']) && $_FILES['picture']['error'] === 0) {
-            $file = compress($_FILES['picture'], $uploadDire);
-            $pictureName = $file['file'];
-        }
-
-        if (empty($errors)) {
-            if ($info && is_numeric($nominal) && $tanggal) {
-                $stmt = $koneksi->prepare("INSERT INTO expenditures (store_id, information, nominal, img, date) VALUES (?, ?, ?, ?, ?)");
-                $stmt->bind_param("isiss", $store_id, $info, $nominal, $pictureName, $tanggal);
-                $stmt->execute();
-                $stmt->close();
-
-                $financeController->refreshFinance($store_id, $tanggal);
-
-                header("Location: keuangan?start_date=$start_date&end_date=$end_date&success=1");
-                exit;
-            }
-        } else {
-            $_SESSION['upload_error'] = implode('<br>', $errors);
-            header("Location: keuangan?start_date=$start_date&end_date=$end_date&error=1");
-            exit;
-        }
-
-    } elseif (isset($_POST['tambah_pemasukan'])) {
-        $info    = strtoupper(trim($_POST['information_income']));
-        $nominal = trim($_POST['nominal_income']);
-        $tanggal = $start_date;
-
-        if ($info && is_numeric($nominal) && $tanggal) {
-            $stmt = $koneksi->prepare("INSERT INTO income (store_id, information, nominal, date) VALUES (?, ?, ?, ?)");
-            $stmt->bind_param("isis", $store_id, $info, $nominal, $tanggal);
-            $stmt->execute();
-            $stmt->close();
-
-            refreshFinance($store_id, $tanggal);
-        }
-
-        header("Location: keuangan?start_date=$start_date&end_date=$end_date&success=1");
-        exit;
-    }
-}
-
-
 
 ?>
 
@@ -200,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           ?>
 
           <div class="mt-3 text-end">
-            <form method="post" class="d-inline" id="rfrs">
+            <form class="d-inline" id="refresForm">
               <input type="hidden" name="start_date" value="<?= htmlspecialchars($start_date) ?>">
               <input type="hidden" name="end_date" value="<?= htmlspecialchars($end_date) ?>">
               <button type="submit" name="refresh_finance" class="btn btn-success px-4">Refresh</button>
@@ -208,46 +126,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
 
         </div>
-
-        <!-- Modal Error Upload -->
-        <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
-          <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content" style="
-              background: rgba(255, 50, 50, 0.15);
-              backdrop-filter: blur(10px);
-              border: 1px solid rgba(255, 80, 80, 0.4);
-              color: #fff;
-              text-align: center;
-              border-radius: 15px;
-              box-shadow: 0 0 25px rgba(255, 0, 0, 0.3);
-            ">
-              <div class="modal-header border-0 justify-content-center">
-                <h5 class="modal-title" id="errorModalLabel" style="font-weight:600; color:#ff4d4d;">
-                  ❌ Gagal Upload
-                </h5>
-              </div>
-              <div class="modal-body" style="font-size:15px; color:#fff;">
-
-              </div>
-              <div class="modal-footer border-0 justify-content-center">
-                <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">
-                  Tutup
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <?php if (isset($_SESSION['upload_error'])): ?>
-        <script>
-        document.addEventListener('DOMContentLoaded', () => {
-          const modalBody = document.querySelector('#errorModal .modal-body');
-          modalBody.innerHTML = `<?= $_SESSION['upload_error']; ?>`;
-          const modal = new bootstrap.Modal(document.getElementById('errorModal'));
-          modal.show();
-        });
-        </script>
-        <?php unset($_SESSION['upload_error']); endif; ?>
-
 
         <div class="row card-body">
           <!-- Tabel Pengeluaran -->
@@ -296,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                               [
                                   'text'            => 'Edit',
                                   'color'           => 'warning',
-                                  'modal'           => 'editModal',
+                                  'modal'           => 'editExpenditureModal',
                                   'data_attributes' => ['id' => 'expenditure_id', 'type' => 'expenditures', 'info' => 'information', 'nominal' => 'nominal']
                               ],
                               [
@@ -349,7 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 [
                                     'text'            => 'Edit',
                                     'color'           => 'warning',
-                                    'modal'           => 'editModal',
+                                    'modal'           => 'editIncomeModal',
                                     'data_attributes' => [
                                         'id'      => 'income_id', 
                                         'type'    => 'income', 
@@ -380,61 +258,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
           </div>
         </div>
-      <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content" style="background:transparent; border:none;">
-            <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-2" data-bs-dismiss="modal"></button>
-            <img id="modalImage" src="" alt="Preview Bukti" 
-              style=" max-height:80vh; object-fit:contain; display:block; margin:auto; border-radius:10px;">
+        <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background:transparent; border:none;">
+              <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-2" data-bs-dismiss="modal"></button>
+              <img id="modalImage" src="" alt="Preview Bukti" 
+                style=" max-height:80vh; object-fit:contain; display:block; margin:auto; border-radius:10px;">
+            </div>
           </div>
         </div>
-      </div>
-      <!-- Modal Tambah Pengeluaran -->
-      <div class="modal fade" id="addExpenditure" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-          <form method="post" class="modal-content" enctype="multipart/form-data">
-            <div class="modal-header">
-              <h5 class="modal-title">Tambah Pengeluaran Baru</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-              <input type="hidden" name="tambah_pengeluaran" value="1">
-              
-              <div class="mb-3">
-                <label class="form-label">Keterangan</label>
-                <input type="text" name="information" class="form-control" required placeholder="Misal: BELI KERTAS" style="text-transform:uppercase" oninput="this.value = this.value.toUpperCase();">
+        <!-- Modal Tambah Pengeluaran -->
+        <div class="modal fade" id="addExpenditure" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog">
+            <form method="post" class="modal-content" enctype="multipart/form-data" id="expenditureForm">
+              <div class="modal-header">
+                <h5 class="modal-title">Tambah Pengeluaran Baru</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <input type="hidden" name="date" value="<?= $start_date ?>">
+                <input type="hidden" name="tambah_pengeluaran" value="1">
+                
+                <div class="mb-3">
+                  <label class="form-label">Keterangan</label>
+                  <input type="text" name="information" class="form-control" required placeholder="Misal: BELI KERTAS" style="text-transform:uppercase" oninput="this.value = this.value.toUpperCase();">
+                </div>
+                
+                <div class="mb-3">
+                  <label class="form-label">Nominal</label>
+                  <input type="number" name="nominal" class="form-control" required placeholder="Contoh: 100000">
+                </div>
+                
+                <div class="mb-3">
+                  <label class="form-label">Foto Bukti</label>
+                  <input type="file" class="form-control" id="picture" name="picture" accept="image/*">
+                </div>
+                
+                <input type="hidden" name="tanggal" value="<?= date('Y-m-d') ?>">
               </div>
               
-              <div class="mb-3">
-                <label class="form-label">Nominal</label>
-                <input type="number" name="nominal" class="form-control" required placeholder="Contoh: 100000">
+              <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Tambah</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
               </div>
-              
-              <div class="mb-3">
-                <label class="form-label">Foto Bukti</label>
-                <input type="file" class="form-control" id="picture" name="picture" accept="image/*">
-              </div>
-              
-              <input type="hidden" name="tanggal" value="<?= date('Y-m-d') ?>">
-            </div>
-            
-            <div class="modal-footer">
-              <button type="submit" class="btn btn-primary">Tambah</button>
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
-      </div>
 
         <!-- Modal Tambah Pemasukan -->
         <div class="modal fade" id="addIncome" tabindex="-1" aria-hidden="true">
           <div class="modal-dialog">
-            <form method="post" class="modal-content">
+            <form method="post" class="modal-content" id="incomeForm">
               <div class="modal-header">
                 <h5 class="modal-title">Tambah Pemasukan Baru</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
               </div>
               <div class="modal-body">
+                <input type="hidden" name="date" value="<?= $start_date ?>">
                 <input type="hidden" name="tambah_pemasukan" value="1">
                 <div class="mb-3">
                   <label class="form-label">Keterangan</label>
@@ -454,19 +334,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
         </div>
 
-        <!-- Modal Edit -->
-        <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+        <!-- Modal Edit Pengeluaran -->
+        <div class="modal fade" id="editExpenditureModal" tabindex="-1" aria-labelledby="editExpenditureModalLabel" aria-hidden="true">
           <div class="modal-dialog modal-dialog-centered">
-            <form method="POST" action="edit_keuangan.php" class="modal-content">
+            <form class="modal-content" id="updateExpenditureForm">
               <div class="modal-header">
-                <h5 class="modal-title" id="editModalLabel">Edit Data</h5>
+                <h5 class="modal-title" id="editExpenditureModalLabel">Edit Data Pengeluaran</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
               </div>
               <div class="modal-body">
-                <input type="hidden" name="old_info" id="edit-id">
-                <input type="hidden" name="type" id="edit-type">
-                <input type="hidden" name="start_date" value="<?= $start_date ?>">
-                <input type="hidden" name="end_date" value="<?= $end_date ?>">
+                <input type="hidden" name="expenditure_id" id="edit-expenditure-id">
+                <input type="hidden" name="type" id="edit-expenditure-type" value="expenditures">
+                <input type="hidden" name="date" value="<?= $start_date ?>">
 
                 <div class="mb-3">
                   <label class="form-label">Keterangan</label>
@@ -485,6 +364,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
         </div>
 
+        <!-- Modal Edit Pemasukan -->
+        <div class="modal fade" id="editIncomeModal" tabindex="-1" aria-labelledby="editIncomeModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <form class="modal-content" id="updateIncomeForm">
+              <div class="modal-header">
+                <h5 class="modal-title" id="editIncomeModalLabel">Edit Data Pemasukan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <input type="hidden" name="income_id" id="edit-income-id">
+                <input type="hidden" name="type" id="edit-income-type" value="income">
+                <input type="hidden" name="date" value="<?= $start_date ?>">
+
+                <div class="mb-3">
+                  <label class="form-label">Keterangan</label>
+                  <input type="text" class="form-control" name="information" id="edit-income-info" required>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Nominal</label>
+                  <input type="number" class="form-control" name="nominal" id="edit-income-nominal" required>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button class="btn btn-primary" type="submit">Simpan Perubahan</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
         <!-- Modal Hapus -->
         <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
           <div class="modal-dialog modal-dialog-centered">
@@ -494,7 +403,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <h5 class="modal-title" id="deleteModalLabel">Konfirmasi Hapus</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
               </div>
-              <div class="modal-body">
+              <div class="modal-body"></div>
               <input type="hidden" name="start_date_hapus" value="<?= $start_date ?>">
               <input type="hidden" name="end_date_hapus" value="<?=  $end_date ?>">
               <input type="hidden" name="id" id="delete-id">
@@ -524,55 +433,177 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <script>
+
 document.addEventListener('DOMContentLoaded', () => {
-  const refreshall = document.getElementsByName('refresh_finance');
-  refreshall.submit;
-  const addExpenditureModal = new bootstrap.Modal(document.getElementById('addExpenditure'));
-  const addIncomeModal = new bootstrap.Modal(document.getElementById('addIncome'));
+  const expenditureForm = document.getElementById('expenditureForm');
+  expenditureForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
 
-  document.getElementById('btnAddExpenditure').addEventListener('click', () => {
-    addExpenditureModal.show();
-  });
-
-  document.getElementById('btnAddIncome').addEventListener('click', () => {
-    addIncomeModal.show();
-  });
-
-  const modals = ['addExpenditure', 'addIncome'];
-
-  modals.forEach(id => {
-    const modalEl = document.getElementById(id);
-    modalEl.addEventListener('shown.bs.modal', () => {
-      const modalContent = modalEl.querySelector('.modal-content');
-      const isDark = document.getElementById('main-content').classList.contains('dark-mode');
-
-      if (isDark) {
-        modalContent.classList.add('dark-mode');
-      } else {
-        modalContent.classList.remove('dark-mode');
+    fetch('finance_action?action=create_expenditure', {
+      method : 'POST',
+      body : formData
+    }).then(response => {
+        if (!response.ok) {
+            return response.text().then(text => { throw new Error(text) });
+        }
+        return response.json();
+    }).then(data => {
+      if (data.success) {
+        showAlert('success', data.message);
+        setTimeout(() => {
+          window.location.reload();
+        },3000);
+      }else{
+        alert('error');
       }
-    });
+    })
   });
+
+  const incomeForm = document.getElementById('incomeForm');
+  incomeForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+
+    fetch('finance_action?action=create_income', {
+      method : 'POST',
+      body : formData
+    }).then(response => {
+        if (!response.ok) {
+            return response.text().then(text => { throw new Error(text) });
+        }
+        return response.json();
+    }).then(data => {
+      if (data.success) {
+        showAlert('success', data.message);
+        setTimeout(() => {
+          window.location.reload();
+        },3000);
+      }else{
+        alert('error');
+      }
+    })
+  });
+
+  const refresForm = document.getElementById('refresForm');
+  refresForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+
+    fetch('finance_action?action=sync_finance_by_interval_date', {
+      method : 'POST',
+      body : formData
+    }).then(response => {
+        if (!response.ok) {
+            return response.text().then(text => { throw new Error(text) });
+        }
+        return response.json();
+    }).then(data => {
+      if (data.success) {
+        showAlert('success', data.message);
+        setTimeout(() => {
+          window.location.reload();
+        },3000);
+      }else{
+        alert('error');
+      }
+    })
+  });
+
+  const updateIncomeForm = document.getElementById('updateIncomeForm');
+  updateIncomeForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+
+    fetch('finance_action?action=update_income', {
+      method : 'POST',
+      body : formData
+    }).then(response => {
+        if (!response.ok) {
+            return response.text().then(text => { throw new Error(text) });
+        }
+        return response.json();
+    }).then(data => {
+      if (data.success) {
+        showAlert('success', data.message);
+        setTimeout(() => {
+          window.location.reload();
+        },3000);
+      }else{
+        alert('error');
+      }
+    })
+  });
+
+  const updateExpenditureForm = document.getElementById('updateExpenditureForm');
+  updateExpenditureForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+
+    fetch('finance_action?action=update_expenditure', {
+      method : 'POST',
+      body : formData
+    }).then(response => {
+        if (!response.ok) {
+            return response.text().then(text => { throw new Error(text) });
+        }
+        return response.json();
+    }).then(data => {
+      if (data.success) {
+        showAlert('success', data.message);
+        setTimeout(() => {
+          window.location.reload();
+        },3000);
+      }else{
+        alert('error');
+      }
+    })
+  });
+
+  
 
 });
+
+
+
 </script>
 <script>
-  const editModal = document.getElementById('editModal');
+  const editExpenditureModal = document.getElementById('editExpenditureModal');
+  const editIncomeModal = document.getElementById('editIncomeModal');
 
-  // Saat modal edit ditampilkan
-  editModal.addEventListener('show.bs.modal', function (event) {
-    const button = event.relatedTarget;
-    if (!button) return;
+  if (editExpenditureModal) {
+    editExpenditureModal.addEventListener('show.bs.modal', function (event) {
+      const button = event.relatedTarget;
+      if (!button) return;
 
-    const info = button.getAttribute('data-info');
-    const nominal = button.getAttribute('data-nominal');
-    const type = button.getAttribute('data-type');
+      const info = button.getAttribute('data-info');
+      const nominal = button.getAttribute('data-nominal');
+      const id = button.getAttribute('data-id');
+      const type = button.getAttribute('data-type');
 
-    editModal.querySelector('#edit-id').value = info;
-    editModal.querySelector('#edit-type').value = type;
-    editModal.querySelector('#edit-info').value = info;
-    editModal.querySelector('#edit-nominal').value = nominal;
-  });
+      editExpenditureModal.querySelector('#edit-expenditure-id').value = id;
+      editExpenditureModal.querySelector('#edit-expenditure-type').value = type || 'expenditures';
+      editExpenditureModal.querySelector('#edit-info').value = info;
+      editExpenditureModal.querySelector('#edit-nominal').value = nominal;
+    });
+  }
+
+  if (editIncomeModal) {
+    editIncomeModal.addEventListener('show.bs.modal', function (event) {
+      const button = event.relatedTarget;
+      if (!button) return;
+
+      const info = button.getAttribute('data-info');
+      const nominal = button.getAttribute('data-nominal');
+      const id = button.getAttribute('data-id');
+      const type = button.getAttribute('data-type');
+
+      editIncomeModal.querySelector('#edit-income-id').value = id;
+      editIncomeModal.querySelector('#edit-income-type').value = type || 'income';
+      editIncomeModal.querySelector('#edit-income-info').value = info;
+      editIncomeModal.querySelector('#edit-income-nominal').value = nominal;
+    });
+  }
 
   // Saat modal hapus ditampilkan
   document.querySelectorAll('[data-bs-target="#deleteModal"]').forEach(button => {

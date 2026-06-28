@@ -10,7 +10,7 @@ $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
 $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
 
 $data = $reportController->allDetailOrderByIntervalDate($store_id, $start_date, $end_date);
-$productData = $data->product;
+$productData = $data['product'];
 
 
 ?>

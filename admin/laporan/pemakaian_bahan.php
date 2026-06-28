@@ -11,7 +11,6 @@ $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
 
 $dataPemakaian = $productModel->getMaterialUsageByIntervalDate($store_id, $start_date, $end_date);
 
-
 $htmlTablePemakaian = renderTable([
     'id'          => 'tabelPemakaian',
     'data'        => $dataPemakaian,
