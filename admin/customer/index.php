@@ -9,6 +9,7 @@ require_once BASE_PATH . '/components/Table.php';
 require_once BASE_PATH . '/functions/helpers.php';
 require_once BASE_PATH . '/components/Modal.php';
 require_once BASE_PATH . '/components/Alert.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 $settingModel = new Setting($koneksi);
 $userModel = new User($koneksi);
@@ -158,20 +159,20 @@ $ordersOffline = $dataOrder['offline'];
             [
                 'header' => 'INV',
                 'render' => function($row) {
-                    return htmlspecialchars($row['nomorator']);
+                    return sanitize($row['nomorator']);
                 }
             ],
             [
                 'header' => 'Nama Customer',
                 'render' => function($row) {
-                    return htmlspecialchars(ucwords(strtolower($row['customer_name'])));
+                    return sanitize(ucwords(strtolower($row['customer_name'])));
                 }
             ],
             [
                 'header' => 'Nomor HP',
                 'visible' => ($role == 'ADMIN' || $role == 'MANAGER'),
                 'render' => function($row) {
-                    return htmlspecialchars(formatKeInternasional($row['nomor']) ?? '-');
+                    return sanitize(formatKeInternasional($row['nomor']) ?? '-');
                 }
             ],
             [
@@ -182,7 +183,7 @@ $ordersOffline = $dataOrder['offline'];
             [
                 'header' => 'Deadline',
                 'render' => function($row) {
-                    return htmlspecialchars(date('d M Y, H:i', strtotime($row['deadline'])));
+                    return sanitize(date('d M Y, H:i', strtotime($row['deadline'])));
                 }
             ],
             [
@@ -202,7 +203,7 @@ $ordersOffline = $dataOrder['offline'];
                                     <button type="submit" class="btn btn-sm btn-success">Buka</button>
                                   </form> ';
                     }
-                    $html .= '<button class="btn btn-sm btn-primary btn-edit" data-id="' . $row['order_id'] . '" data-enk="' . $row['order_enk'] . '">Edit</button> ';
+                    $html .= '<button class="btn btn-sm btn-primary btn-edit" data-id="' . $row['order_id'] . '" data-enk="' . $row['order_enk'] . '" data-paid="' . $row['total_paid'] . '">Edit</button> ';
                     if (!$row['is_lunas']) {
                         $html .= '<button class="btn btn-sm btn-danger btn-pay" data-order-id="' . $row['order_id'] . '">Bayar</button> ';
                     }
@@ -227,10 +228,10 @@ $ordersOffline = $dataOrder['offline'];
                     if ($row['is_lunas_status']) {
                         return "LUNAS " . $row['lunas_method'];
                     } elseif ($row['total_dp'] > 0) {
-                        return "<div style='font-size:12px'>DP: " . number_format($row['total_dp'], 0, ',', '.') .
-                              "<br>Sisa: " . number_format($row['total'] - $row['total_dp'], 0, ',', '.') . "</div>";
+                        return "<div style='font-size:12px'>DP: " . format_rupiah($row['total_dp']) .
+                              "<br>Sisa: " . format_rupiah($row['total'] - $row['total_dp']) . "</div>";
                     } elseif (!empty($row['project_status'])) {
-                        return htmlspecialchars($row['project_status']);
+                        return sanitize($row['project_status']);
                     }
                     return '-';
                 }
@@ -240,7 +241,7 @@ $ordersOffline = $dataOrder['offline'];
                 'render' => function($row) {
                     $proc = ucwords(strtolower($row['project_process']));
                     $stat = ucwords(strtolower($row['project_status']));
-                    if ($proc == 'DIAMBIL') {
+                    if (strtoupper($proc) == 'DIAMBIL') {
                         return $proc . ' ' . $row['project_initial'];
                     } elseif (!empty($proc)) {
                         return $proc;
@@ -259,7 +260,7 @@ $ordersOffline = $dataOrder['offline'];
         ];
 
         if ($is_all_access): ?>
-            <h5 id="order_offline">Order OFFLINE</h5>
+            <h5 id="order_offline">Order Offline</h5>
             <?= renderTable([
                 'data' => $ordersOffline,
                 'empty_message' => 'Data orders kosong.',
@@ -272,7 +273,7 @@ $ordersOffline = $dataOrder['offline'];
                 }
             ]); ?>
 
-            <h5 class="mt-4" id="order_online">Order ONLINE</h5>
+            <h5 class="mt-4" id="order_online">Order Online</h5>
             <?= renderTable([
                 'data' => $ordersOnline,
                 'empty_message' => 'Data orders kosong.',
@@ -285,7 +286,7 @@ $ordersOffline = $dataOrder['offline'];
                 }
             ]); ?>
         <?php else: ?>
-            <h5 id="order_section">Data <?= htmlspecialchars($system) ?></h5>
+            <h5 id="order_section">Data <?= sanitize($system) ?></h5>
             <?php
             $orders = ($system === 'ONLINE') ? $ordersOnline : $ordersOffline;
             $tClass = ($system === 'ONLINE') ? 'table-dan' : 'table-prim';
@@ -317,7 +318,7 @@ $ordersOffline = $dataOrder['offline'];
 
         $operatorOptions = [];
         foreach ($usersInitial as $id => $initial) {
-            $operatorOptions[$id] = htmlspecialchars($initial);
+            $operatorOptions[$id] = sanitize($initial);
         }
 
         $addOrderInputs = [
@@ -357,7 +358,7 @@ $ordersOffline = $dataOrder['offline'];
             $addOrderInputs[] = [
                 'type'        => 'text',
                 'label'       => 'Operator',
-                'value'       => htmlspecialchars($usersInitial[$user_id] ?? ''),
+                'value'       => sanitize($usersInitial[$user_id] ?? ''),
                 'custom_attr' => 'readonly'
             ];
         } else {
@@ -539,7 +540,6 @@ $ordersOffline = $dataOrder['offline'];
         echo $htmlModalEditOrder;
         echo $htmlModalPayment;
         echo $htmlModalProsesMassal;
-        echo $htmlModalProsesMassal;
         echo $htmlModalConfirmDelete;
 
         ?>
@@ -702,14 +702,20 @@ document.addEventListener('dblclick', function (e) {
   if (!editBtn) return;
 
   const encryptedId = editBtn.dataset.enk;
+  const isPaid = editBtn.dataset.paid;
 
-  const form = document.createElement('form');
-  form.method = 'GET';
-  form.action = 'nota';
-  form.target = '_self';
-  form.innerHTML = `<input type="hidden" name="id" value="${encryptedId}">`;
-  document.body.appendChild(form);
-  form.submit();
+
+  if (isPaid > 0) {
+    showAlert('error', 'Tidak dapat membuka nota');
+  }else{
+    const form = document.createElement('form');
+    form.method = 'GET';
+    form.action = 'nota';
+    form.target = '_self';
+    form.innerHTML = `<input type="hidden" name="id" value="${encryptedId}">`;
+    document.body.appendChild(form);
+    form.submit();
+  }
 });
 
 document.addEventListener('keydown', function (e) {

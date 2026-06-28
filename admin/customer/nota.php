@@ -4,10 +4,17 @@ require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/global_functions.php';
 require_once BASE_PATH . '/models/Order.php';
 require_once BASE_PATH . '/models/Store.php'; 
+require_once BASE_PATH . '/models/Payment.php';
 
 $order_id = (int)startEnk('dek', $_GET['id']);
 $orderModel = new Order($koneksi);
 $storeModel = new Store($koneksi);
+$paymentModel = new Payment($koneksi);
+
+if($paymentModel->getPaidByOrderId($order_id)){
+  header("Location: " . BASE_URL . "/customer/");
+  exit;
+}
 
 if ($role === 'PRODUKSI') {
   header("Location: " . BASE_URL . "/customer/");
@@ -140,6 +147,7 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
                     <div class="col-sm-10">
                       <select id="ukuranJersey" name="ukuran_jersey" class="form-select select2">
                         <option value="">-- Pilih Ukuran --</option>
+                        <option value="XS">XS</option>
                         <option value="S">S</option>
                         <option value="M">M</option>
                         <option value="L">L</option>

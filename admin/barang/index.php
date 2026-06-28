@@ -37,12 +37,12 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
         <h1 class="mb-0">Data Barang</h1>
         <div class="d-flex gap-2">
           <button class="btn btn-outline-primary" id="btn-export" style="display: none;">📤 Export Barang</button>
-
+          <?php if ($administrator) { ?>
           <form id="importForm" action="import_products.php" method="POST" enctype="multipart/form-data" style="display: none;">
             <input type="file" id="importFile" name="file" accept=".csv,.xls,.xlsx" onchange="document.getElementById('importForm').submit();">
           </form>
           <button class="btn btn-outline-secondary" onclick="document.getElementById('importFile').click();">📥 Import Barang</button>
-          <?php if ($role == 'ADMIN' || $role == 'MANAGER') { ?>
+          
           <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addProductModal">+ Tambah Barang</button>
           <?php } ?>
         </div>
