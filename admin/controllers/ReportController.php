@@ -66,7 +66,7 @@ class ReportController {
             $produkData[$item['customer_name']][] = $item;
         }
 
-        return (object)[
+        return [
             'product' => $produkData
         ];
     }
@@ -113,7 +113,7 @@ class ReportController {
         foreach ($dataPiutang as $row) {
             $total_hutang += $row['hutang'];
         }
-        return (object)[
+        return [
             'data' => $dataPiutang,
             'total' => $total_hutang
         ];

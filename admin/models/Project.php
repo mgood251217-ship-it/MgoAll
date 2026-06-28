@@ -7,7 +7,7 @@ class Project{
     }
 
     public function createProject($data){
-        $stmt = $this->koneksi->prepare("INSERT INTO projects (order_id, date, status, process, user_id) VALUES (?, ?, 'PEMBAYARAN', 'PEMBAYARAN', 0)");
+        $stmt = $this->koneksi->prepare("INSERT INTO projects (order_id, date, status, process, user_id) VALUES (?, ?, 'BELUM BAYAR', 'BELUM BAYAR', 0)");
         $stmt->bind_param("is", $data->order_id, $data->date);
         $success = $stmt->execute();
         $stmt->close();

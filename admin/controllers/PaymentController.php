@@ -65,11 +65,11 @@ class PaymentController {
         $this->financeController->refreshFinance($store_id, date('Y-m-d'));
 
         $lastProcess = $this->projectModel->getLastProjectProcessByOrderId($order_id);
-        $data->process = ($lastProcess && $lastProcess !== 'PEMBAYARAN') ? $lastProcess : 'BELUM DIPROSES';
+        $data->process = ($lastProcess && $lastProcess !== 'BELUM BAYAR') ? $lastProcess : 'BELUM DIPROSES';
         $this->projectModel->updateProject($data);
 
         $lastStatus = $this->projectModel->getLastProjectStatusByOrderId($order_id);
-        $keteranganBaru = $lastProcess ?: ($lastStatus ?: '-');
+        $keteranganBaru = ucwords(strtolower($lastProcess ?: ($lastStatus ?: '-')));
 
         if ($isLunasStatus) {
             $totalBayar = "LUNAS " . $data->payment_method;

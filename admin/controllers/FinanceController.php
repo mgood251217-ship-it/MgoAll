@@ -235,5 +235,123 @@ class FinanceController {
         }
     }
 
+    public function syncFinanceInterval(){
+        global $store_id;
+        $start_date = $_POST['start_date'];
+        $end_date = $_POST['end_date'];
+
+        function getDatesFromRange($start, $end) {
+            $dates = [];
+            $current = strtotime($start);
+            $end = strtotime($end);
+            while ($current <= $end) {
+                $dates[] = date('Y-m-d', $current);
+                $current = strtotime('+1 day', $current);
+            }
+            return $dates;
+        }
+
+        $dates = getDatesFromRange($start_date, $end_date);
+        foreach ($dates as $date) {
+            $this->refreshFinance($store_id, $date); 
+        }
+
+        echo json_encode(['success' => true, 'message' => "Sinkron Berhasil"]);
+    }
+
+    public function createExpenditure(){
+        global $store_id;
+        global $storeName;
+
+        $info    = strtoupper(trim($_POST['information']));
+        $nominal = $_POST['nominal'] ?? 0;
+        $date = trim($_POST['date']);
+
+        $storeFolder = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
+        $yearFolder = date('Y', strtotime($date));
+        $monthFolder = date('m', strtotime($date));
+        $dateFolder = date('d', strtotime($date));
+        $fullDateFolder = $yearFolder . '/' . $monthFolder . '/' . $dateFolder;
+        $uploadDir = BASE_PATH . "/assets/img/bukti/$storeFolder/$fullDateFolder/";
+
+        $pictureName = '';
+
+        if (!empty($_FILES['picture']['name']) && $_FILES['picture']['error'] === 0) {
+            $file = compress($_FILES['picture'], $uploadDir);
+            $pictureName = $file['file'];
+        }
+
+        $data = (object)[
+            'store_id' => $store_id,
+            'information' => $info,
+            'nominal' => $nominal,
+            'img' => $pictureName,
+            'date' => $date
+        ];
+        $this->financeModel->createExpenditure($data); 
+
+        $this->refreshFinance($store_id, $date);
+
+        echo json_encode(['success' => true, 'message' => "Berhasil Menambahkan Pengeluaran"]);
+
+    }
+
+    public function createIncome(){
+        global $store_id;
+        $info    = strtoupper(trim($_POST['information_income']));
+        $nominal = $_POST['nominal'] ?? 0;
+        $date = trim($_POST['date']);
+
+        $data = (object)[
+            'store_id' => $store_id,
+            'information' => $info,
+            'nominal' => $nominal,
+            'date' => $date
+        ];
+
+        $this->financeModel->createIncome($data);
+
+        $this->refreshFinance($store_id, $date);
+
+        echo json_encode(['success' => true, 'message' => "Berhasil Menambahkan Pemasukan"]);
+
+    }
+
+    public function updateExpenditure(){
+        global $store_id;
+
+        $information     = strtoupper(trim($_POST['information'] ?? ''));
+        $nominal  = (int)($_POST['nominal'] ?? 0);
+        $expenditure_id  = (int)($_POST['expenditure_id'] ?? 0);
+        $date     = strtoupper(trim($_POST['date'] ?? date('Y-m-d')));
+
+        $data = (object)[
+            'nominal' => $nominal,
+            'information' => $information,
+            'expenditure_id' => $expenditure_id
+        ];
+        $this->financeModel->updateExpenditure($data);
+        $this->refreshFinance($store_id, $date);
+        echo json_encode(['success' => true, 'message' => "Berhasil Memperbarui Pengeluaran"]);
+    }
+
+    public function updateIncome(){
+        global $store_id;
+
+        $information     = strtoupper(trim($_POST['information'] ?? ''));
+        $nominal  = (int)($_POST['nominal'] ?? 0);
+        $income_id  = (int)($_POST['income_id'] ?? 0);
+        $date     = strtoupper(trim($_POST['date'] ?? date('Y-m-d')));
+
+        $data = (object)[
+            'nominal' => $nominal,
+            'information' => $information,
+            'income_id' => $income_id
+        ];
+        $this->financeModel->updateIncome($data);
+        $this->refreshFinance($store_id, $date);
+        echo json_encode(['success' => true, 'message' => "Berhasil Memperbarui Pemasukan"]);
+    }
+
 }
 ?>

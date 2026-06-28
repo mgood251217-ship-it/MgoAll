@@ -92,6 +92,38 @@ class Finance{
         $stmt->close();
         return $result;
     }
+    
+    public function createExpenditure($data){
+        $stmt = $this->koneksi->prepare("INSERT INTO expenditures (store_id, information, nominal, img, date) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("isiss", $data->store_id, $data->information, $data->nominal, $data->img, $data->date);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function createIncome($data){
+        $stmt = $this->koneksi->prepare("INSERT INTO income (store_id, information, nominal, date) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("isis", $data->store_id, $data->information, $data->nominal, $data->date);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function updateExpenditure($data){
+        $stmt = $this->koneksi->prepare("UPDATE expenditures SET nominal = ?, information = ? WHERE expenditure_id =?");
+        $stmt->bind_param("iss", $data->nominal, $data->information, $data->expenditure_id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function updateIncome($data){
+        $stmt = $this->koneksi->prepare("UPDATE income SET nominal = ?, information = ? WHERE income_id =?");
+        $stmt->bind_param("iss", $data->nominal, $data->information, $data->income_id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
 
 }
 
