@@ -183,7 +183,7 @@ $ordersOffline = $dataOrder['offline'];
             [
                 'header' => 'Deadline',
                 'render' => function($row) {
-                    return sanitize(date('d M Y, H:i', strtotime($row['deadline'])));
+                    return hitungDeadline($row['deadline']);
                 }
             ],
             [

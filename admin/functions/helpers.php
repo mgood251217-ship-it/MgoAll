@@ -73,3 +73,49 @@ function is_active_page($page_name) {
 function make_slug($string) {
     return strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $string), '-'));
 }
+
+function hitungDeadline($deadline_str) {
+    date_default_timezone_set('Asia/Jakarta');
+
+    $sekarang = new DateTime();
+    $deadline = new DateTime($deadline_str);
+
+    if ($deadline < $sekarang) {
+        return "Sudah Terlewat";
+    }
+
+    $tgl_sekarang = new DateTime($sekarang->format('Y-m-d'));
+    $tgl_deadline = new DateTime($deadline->format('Y-m-d'));
+    $selisih = $tgl_sekarang->diff($tgl_deadline);
+    $jumlah_hari = $selisih->days;
+
+    $jam = (int)$deadline->format('H');
+    $menit = $deadline->format('i');
+    
+    $jam_12 = $jam % 12;
+    if ($jam_12 === 0) {
+        $jam_12 = 12;
+    }
+
+    if ($jam >= 0 && $jam < 4) {
+        $ket_waktu = "Dini Hari";
+    } elseif ($jam >= 4 && $jam < 10) {
+        $ket_waktu = "Pagi";
+    } elseif ($jam >= 10 && $jam < 15) {
+        $ket_waktu = "Siang";
+    } elseif ($jam >= 15 && $jam < 18) {
+        $ket_waktu = "Sore";
+    } else {
+        $ket_waktu = "Malam";
+    }
+
+    $format_jam = "Jam " . $jam_12 . " " . $ket_waktu;
+
+    if ($jumlah_hari === 0) {
+        return $format_jam;
+    } elseif ($jumlah_hari === 1) {
+        return $format_jam . " Besok";
+    } else {
+        return $jumlah_hari . " hari lagi";
+    }
+}

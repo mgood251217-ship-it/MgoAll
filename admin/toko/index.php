@@ -321,47 +321,39 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
 
   ?>
 </div>
-
+ 
 <script>
     const formTambahMesin = document.getElementById('formTambahMesin');
+    formTambahMesin.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
 
-    if (formTambahMesin) {
-        formTambahMesin.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-
-            fetch('store_action.php?action=create_machine', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.text().then(text => { throw new Error(text) });
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Berhasil!',
-                        text: data.message,
-                        timer: 1500,
-                        showConfirmButton: false
-                    }).then(() => {
-                        location.reload();
-                    });
-                } else {
-                    Swal.fire('Gagal', data.message, 'error');
-                }
-            })
-            .catch(error => {
-                Swal.fire('Error', 'Terjadi kesalahan sistem: ' + error.message, 'error');
-            });
+        fetch('store_action.php?action=create_machine', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => { throw new Error(text) });
+            }
+            return response.json();
+        })
+        .then(data => {
+          
+            if (data.success) {
+              await showAlert('success', data.message);
+              setTimeout(() => {
+                window.location.reload();
+              },3000);
+            } else {
+                Swal.fire('Gagal', data.message, 'error');
+            }
+        })
+        .catch(error => {
+            Swal.fire('Error', 'Terjadi kesalahan sistem: ' + error.message, 'error');
         });
-    }
+    });
 
-  // Fungsi sendFormData diperbarui agar menerima parameter target URL aksi secara dinamis
   async function sendFormData(formElement, targetUrl, modalId = null) {
     const formData = new FormData(formElement);
     try {
@@ -375,9 +367,10 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
         if (modalId) {
           bootstrap.Modal.getInstance(document.getElementById(modalId))?.hide();
         }
-        Swal.fire({ icon: 'success', title: 'Berhasil', text: data.message }).then(() => {
+        await showAlert('success', data.message);
+        setTimeout(() => {
           window.location.reload();
-        });
+        },3000);
       } else {
         Swal.fire({ icon: 'error', title: 'Gagal', html: data.errors.join('<br>') });
       }
@@ -386,19 +379,16 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
     }
   }
 
-  // Submit Tambah User diarahkan ke store_action.php?action=create_user
   document.getElementById('addUserForm').addEventListener('submit', function (e) {
     e.preventDefault();
     sendFormData(this, 'store_action.php?action=create_user', 'addUserModal');
   });
 
-  // Submit Edit User diarahkan ke store_action.php?action=update_user
   document.getElementById('editUserForm').addEventListener('submit', function (e) {
     e.preventDefault();
     sendFormData(this, 'store_action.php?action=update_user', 'editUserModal');
   });
 
-  // Hapus User menggunakan URL dinamis berdasarkan atribut 'action' dari tag form HTML
   document.querySelectorAll('.delete-user-form').forEach(form => {
     form.addEventListener('submit', function (e) {
       e.preventDefault();

@@ -32,7 +32,7 @@ if (isset($_SESSION['admin_logged_in'])) {
 }
 
 
-
+$is_localhost = in_array($_SERVER['HTTP_HOST'], ['localhost', '127.0.0.1', '::1']);
 
 $site_key   = "6LegPm0sAAAAACMlVF_Q0hQmj2cRMXNl2Pj8pldB";
 $secret_key = "6LegPm0sAAAAAD028ehVM8ZVd1yn_cXLN2rNEkDA";
@@ -40,61 +40,59 @@ $secret_key = "6LegPm0sAAAAAD028ehVM8ZVd1yn_cXLN2rNEkDA";
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username_input = strtolower(trim($_POST['usernames']));
     $password = $_POST['password'];
-    $recaptcha_response = $_POST['g-recaptcha-response'];
+    $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
+    $login_ok = true;
 
-    if (empty($recaptcha_response)) {     
-        $pesan_error = "reCAPTCHA tidak valid!";
-    } else {
-        
-        $verify_url = "https://www.google.com/recaptcha/api/siteverify";
-        $response = file_get_contents(
-            $verify_url . "?secret=" . $secret_key . "&response=" . $recaptcha_response
-        );
-        $response_keys = json_decode($response, true);
-
-        if (
-            !$response_keys['success'] ||
-            $response_keys['score'] < 0.5 ||
-            $response_keys['action'] !== 'login'
-        ) {
-            $pesan_error = "Aktivitas mencurigakan terdeteksi!";
+    if (!$is_localhost) {
+        if (empty($recaptcha_response)) {
+            $pesan_error = "reCAPTCHA tidak valid!";
+            $login_ok = false;
         } else {
-            $sql = "SELECT administrator_id, username, name, password, access FROM administrator WHERE LOWER(username) = ?";
-            $stmt = $koneksi->prepare($sql);
-            $stmt->bind_param("s", $username_input);
-            $stmt->execute();
-            $result = $stmt->get_result();
+            $verify_url = "https://www.google.com/recaptcha/api/siteverify";
+            $response = file_get_contents(
+                $verify_url . "?secret=" . $secret_key . "&response=" . $recaptcha_response
+            );
+            $response_keys = json_decode($response, true);
 
-            if ($result->num_rows === 1) {
-                $user = $result->fetch_assoc();
-
-                if (password_verify($password, $user['password'])) {
-                    unset($user['password']);
-                    
-                    // $_SESSION['admin_logged_in'] = [
-                    //     'administrator_id' => startEnk('enk', $user['administrator_id']),
-                    //     'username' => startEnk('enk', $user['username']),
-                    //     'access' => startEnk('enk', $user['access'])
-                    // ];
-
-                    $expire = time() + (1 * 24 * 60 * 60);
-                    $path   = '/';
-
-                    setcookie('admin_administrator_id', startEnk('enk', $user['administrator_id']), $expire, $path, "", true, true);
-                    setcookie('admin_username',         startEnk('enk', $user['username']),         $expire, $path, "", true, true);
-                    setcookie('admin_access',           startEnk('enk', $user['access']),           $expire, $path, "", true, true);
-
-                    // setcookie("administrator_id", $user['administrator_id'], time() + 86400, "/");
-                    header("Location: dashboard/dashboard.php");
-                    exit;
-                } else {
-                    $pesan_error = "Password salah!";
-                }
-            } else {
-                $pesan_error = "Username tidak ditemukan!";
+            if (
+                !$response_keys['success'] ||
+                $response_keys['score'] < 0.5 ||
+                $response_keys['action'] !== 'login'
+            ) {
+                $pesan_error = "Aktivitas mencurigakan terdeteksi!";
+                $login_ok = false;
             }
         }
+    }
 
+    if ($login_ok) {
+        $sql = "SELECT administrator_id, username, name, password, access FROM administrator WHERE LOWER(username) = ?";
+        $stmt = $koneksi->prepare($sql);
+        $stmt->bind_param("s", $username_input);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows === 1) {
+            $user = $result->fetch_assoc();
+
+            if (password_verify($password, $user['password'])) {
+                unset($user['password']);
+
+                $expire = time() + (1 * 24 * 60 * 60);
+                $path   = '/';
+
+                setcookie('admin_administrator_id', startEnk('enk', $user['administrator_id']), $expire, $path, "", true, true);
+                setcookie('admin_username',         startEnk('enk', $user['username']),         $expire, $path, "", true, true);
+                setcookie('admin_access',           startEnk('enk', $user['access']),           $expire, $path, "", true, true);
+
+                header("Location: dashboard/dashboard.php");
+                exit;
+            } else {
+                $pesan_error = "Password salah!";
+            }
+        } else {
+            $pesan_error = "Username tidak ditemukan!";
+        }
     }
 }
 ?>
@@ -107,7 +105,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://www.google.com/recaptcha/api.js?render=<?= $site_key ?>"></script>
+  <?php if (!$is_localhost): ?>
+    <script src="https://www.google.com/recaptcha/api.js?render=<?= $site_key ?>"></script>
+  <?php endif; ?>
   <style>
     body {
       min-height: 100vh;

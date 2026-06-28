@@ -54,9 +54,7 @@ $date = date("Y-m-d H:i:s");
 $site_key   = "6LegPm0sAAAAACMlVF_Q0hQmj2cRMXNl2Pj8pldB";
 $secret_key = "6LegPm0sAAAAAD028ehVM8ZVd1yn_cXLN2rNEkDA";
 
-// --- TAMBAHAN BARU: Cek apakah berjalan di localhost ---
 $is_localhost = in_array($_SERVER['HTTP_HOST'], ['localhost', '127.0.0.1', '::1']);
-// --- AKHIR TAMBAHAN BARU ---
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
@@ -65,7 +63,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
     $address = getClientIP();
 
-    // --- PENYESUAIAN: Hanya validasi reCAPTCHA jika BUKAN localhost ---
     if (!$is_localhost) {
         if (empty($recaptcha_response)) {
             $pesan_error = "reCAPTCHA tidak valid!";
@@ -86,7 +83,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     }
 
-    // Eksekusi Login jika tidak ada error dari reCAPTCHA (atau di-bypass oleh localhost)
     if (empty($pesan_error)) {
         $sql = "SELECT COUNT(*) as total
                 FROM users WHERE LOWER(username) = ?";
