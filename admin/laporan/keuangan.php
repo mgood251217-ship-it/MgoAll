@@ -21,8 +21,6 @@ $dataPemasukan = $data['income'];
 
 ?>
 
-
-
 <!DOCTYPE html>
 <html lang="id">
 <head>

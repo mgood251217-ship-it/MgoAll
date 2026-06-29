@@ -6,13 +6,13 @@ if (!isset($_GET['order_id'])) {
     http_response_code(400);
     exit('Missing order_id');
 }
-    $stmt = $koneksi->prepare("SELECT mode FROM user_setting WHERE user_id = ?");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($result && $row = $result->fetch_assoc()) {
-        $mode = (int)$row['mode'];
-    }
+$stmt = $koneksi->prepare("SELECT mode FROM user_setting WHERE user_id = ?");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result && $row = $result->fetch_assoc()) {
+    $mode = (int)$row['mode'];
+}
 $order_id = (int)$_GET['order_id'];
 
 $paymentQuery = $koneksi->prepare("

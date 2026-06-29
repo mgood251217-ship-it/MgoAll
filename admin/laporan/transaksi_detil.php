@@ -2,6 +2,7 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/functions/helpers.php';
+require_once BASE_PATH . '/components/Alert.php';
 
 $scrl_id = $_GET['scrl_id'] ?? '';
 $access = startEnk('dek', $_COOKIE['admin_access'] ?? '');
@@ -756,28 +757,19 @@ document.querySelectorAll('.btnNote').forEach(div => {
 document.getElementById('confirmNoteInput').addEventListener('click', function(){
   const noteInputId = document.getElementById('noteInputId').value;
   const noteInput = document.getElementById('noteInput').value;
-  fetch('add_note_detil.php', {
+  fetch('finance_action.php?action=create_note_detail', {
     method : 'POST',
     headers : { 'Content-type': 'application/x-www-form-urlencoded'},
     body: `note=${noteInput}&order_id=${noteInputId}&access=${access}`,
   })
   .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      const noteContainer = `<div class="bg-primary text-white py-2 px-3 rounded-3">ℹ️ ${noteInput}</div>`;
-      document.getElementById('note_result_' + noteInputId).innerHTML += noteContainer;
-    }else if(data.message){
-      Swal.fire({
-        icon: "error",
-        title: "Tidak ada akses, Hubungi Administrator",
-        theme: '<?= ($mode === 1) ? 'dark' : '' ?>'
-      });
-    }else{
-      Swal.fire({
-        icon: "error",
-        title: "Gagal tambah Nota",
-        theme: '<?= ($mode === 1) ? 'dark' : '' ?>'
-      });
+  .then(res => {
+    if (res.success) {
+      const noteContainer = `<div class="bg-primary text-white py-2 px-3 rounded-3">ℹ️ ${res.data.value}</div>`;
+      document.getElementById('note_result_' + noteInputId).innerHTML = noteContainer;
+      showAlert('success', res.message);
+    }else {
+      showAlert('error', res.message || 'Gagal menambahkan catatan');
     }
     const modalEl = document.getElementById('noteModal');
     const modal = bootstrap.Modal.getInstance(modalEl);

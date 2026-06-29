@@ -3,10 +3,6 @@ require_once '../connect.php';
 require_once '../global_functions.php';
 require_once BASE_PATH . '/session.php';
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 if (!isset($_SESSION['admin_logged_in'])) {
     echo json_encode(['success' => false, 'message' => 'Kesalahan Login Administrator']);
     exit;
