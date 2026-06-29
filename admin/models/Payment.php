@@ -83,6 +83,14 @@ class Payment {
         $stmt->close();
         return $success;
     }
+
+    public function updatePayment($data){
+        $stmt = $this->koneksi->prepare("UPDATE payment SET nominal = ?, payment_method = ?, date = ?, status = ? WHERE payment_id = ?");
+        $stmt->bind_param("isssi", $data->nominal, $data->payment_method, $data->date, $data->status, $data->payment_id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
     
 }
 

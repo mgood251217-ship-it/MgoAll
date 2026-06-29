@@ -312,4 +312,13 @@ class Order {
         $stmt->close();
         return $result ?? [];
     }
+
+    public function getOrderIdsByIntervalDate($store_id, $start_date, $end_date){
+        $stmt = $this->koneksi->prepare("SELECT order_id FROM orders WHERE store_id = ? AND date BETWEEN ? AND ?");
+        $stmt->bind_param("iss", $store_id, $start_date, $end_date);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $result;
+    }
 }

@@ -11,19 +11,6 @@ function getProductPrice(int $product_id, int $store_id, mysqli $koneksi): int {
     return $price;
 }
 
-function getFinishingPrice(string $finishing_ids, int $store_id, mysqli $koneksi): int {
-    $total = 0;
-    if ($finishing_ids === '-' || empty($finishing_ids)) return 0;
-
-    $ids = explode(',', $finishing_ids);
-    foreach ($ids as $fid) {
-        $fid = trim($fid);
-        if (is_numeric($fid)) {
-            $total += getProductPrice((int)$fid, $store_id, $koneksi);
-        }
-    }
-    return $total;
-}
 
 // Fungsi ambil harga finishing tambahan berdasarkan nama
 function addFinishing($name, $store_id, $finishing_type, &$koneksi, &$finishing_ids, &$finishing_additional_price, $panjang = 0, $lebar = 0, $product_type = '') {
@@ -41,26 +28,6 @@ function addFinishing($name, $store_id, $finishing_type, &$koneksi, &$finishing_
         $finishing_additional_price += $price;
     }
     $stmt->close();
-}
-
-// *** Tambahan fungsi dan pemanggilan ***
-function getAvailableProductIdByPrefix($koneksi, $store_id, $judul) {
-    $prefixes = ['XBANNER', 'ROLLUP', 'MINIBANNER', 'KN'];
-    foreach ($prefixes as $prefix) {
-        if (stripos($judul, $prefix) === 0) {
-            $sql = $koneksi->prepare("SELECT p.product_id FROM products p JOIN stock s ON p.product_id = s.product_id WHERE p.store_id = ? AND p.name LIKE ? AND s.quantity > 0 ORDER BY s.quantity DESC LIMIT 1");
-            $likeName = $prefix . '%';
-            $sql->bind_param("is", $store_id, $likeName);
-            $sql->execute();
-            $result = $sql->get_result();
-            if ($row = $result->fetch_assoc()) {
-                $sql->close();
-                return (int)$row['product_id'];
-            }
-            $sql->close();
-        }
-    }
-    return null;
 }
 
 function handleDiskonOrderItem(mysqli $koneksi, int $order_id, int $product_id, int $diskonInput): int {
@@ -208,99 +175,6 @@ function cekDanKurangiStokFinishing(mysqli $koneksi, int $store_id, int $quantit
     }
 
     return true;
-}
-
-
-
-function updateOrderTotal(int $order_id, mysqli $koneksi): bool {
-    $sql = "
-        SELECT 
-            oi.product_id,
-            oi.quantity,
-            oi.size,
-            oi.unit,
-            oi.judul,
-            p.price,
-            UPPER(COALESCE(p.type, '')) AS type,
-            COALESCE(doi.diskon, 0) AS diskon
-        FROM calculator_items oi
-        LEFT JOIN products p ON oi.product_id = p.product_id AND p.store_id = oi.store_id
-        LEFT JOIN diskon_calculator_items doi ON doi.calculator_id = oi.calculator_id AND doi.product_id = oi.product_id
-        WHERE oi.calculator_id = ?
-    ";
-
-    $stmt = $koneksi->prepare($sql);
-    if (!$stmt) return false;
-
-    $stmt->bind_param("i", $order_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    $outdoorGroups = [];
-    $grand_total = 0;
-
-    while ($row = $result->fetch_assoc()) {
-        $product_id = $row['product_id'];
-        $type = $row['type'];
-        $quantity = (int)$row['quantity'];
-        $size_str = $row['size'];
-        $judul = strtoupper(trim($row['judul']));
-        $unit = $row['unit'];
-        $price = (int)$row['price'];
-        $diskon = (int)$row['diskon'];
-
-        $is_manual = empty($product_id);
-
-        if ($is_manual) {
-            $type = '';
-            $product_id = 'manual_' . $judul;
-        }
-
-        if ($type === 'OUTDOOR') {
-            if (!isset($outdoorGroups[$product_id])) {
-                $outdoorGroups[$product_id] = [
-                    'price' => $price,
-                    'diskon' => $diskon,
-                    'total_size' => 0,
-                ];
-            }
-
-            if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $size_str, $matches)) {
-                $panjang = floatval($matches[1]);
-                $lebar = floatval($matches[2]);
-                $luas = $panjang * $lebar;
-                $outdoorGroups[$product_id]['total_size'] += $luas * $quantity;
-            } else {
-                $outdoorGroups[$product_id]['total_size'] += 0;
-            }
-        } else {
-            // Non-OUTDOOR → ambil harga dari unit
-            $harga_satuan = (int)$unit;
-            $amount = $harga_satuan * $quantity;
-            $grand_total += $amount;
-        }
-    }
-
-    $stmt->close();
-
-    // Hitung total untuk OUTDOOR
-    foreach ($outdoorGroups as $group) {
-        $harga_per_meter = max($group['price'] - $group['diskon'], 0);
-        $total_size = $group['total_size'];
-        $amount = ($total_size < 1) ? $harga_per_meter : ($total_size * $harga_per_meter);
-        $grand_total += $amount;
-    }
-
-    // Bulatkan ke bawah kelipatan 500
-    $grand_total = floor($grand_total / 500) * 500;
-
-    $stmt = $koneksi->prepare("UPDATE calculator SET total = ? WHERE calculator_id = ?");
-    if (!$stmt) return false;
-    $stmt->bind_param("ii", $grand_total, $order_id);
-    $success = $stmt->execute();
-    $stmt->close();
-
-    return $success;
 }
 
 ?>
