@@ -1,6 +1,7 @@
 <?php
 require_once BASE_PATH . '/models/Setting.php';
 require_once BASE_PATH . '/functions/helpers.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 class SettingController {
     private $settingModel;
@@ -30,8 +31,23 @@ class SettingController {
         }
     }
 
-    public function update() {
+    public function updatePreviewPrint(){
+        global $user_id;
 
+        if ($this->settingModel->cekUserSetting($user_id)) {
+            $old_preview_print = (int)$this->settingModel->getOneValue($user_id, 'preview_print');
+            $new_preview_print = $old_preview_print === 1 ? 0 : 1;
+
+            $this->settingModel->updateOneValue($user_id, 'preview_print', $new_preview_print);
+        } else {
+            $data = new stdClass();
+            $data->user_id = $user_id;
+            $data->preview_print = 1;
+            $this->settingModel->create($data);
+        }
+
+        $redirect_url = $_SERVER['HTTP_REFERER'] ?? 'index';
+        redirect($redirect_url);
     }
 
 }

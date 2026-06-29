@@ -119,3 +119,9 @@ function hitungDeadline($deadline_str) {
         return $jumlah_hari . " hari lagi";
     }
 }
+
+function redirect($url){
+    header("Location: $url");
+    exit;
+}
+

@@ -254,7 +254,25 @@ $ordersOffline = $dataOrder['offline'];
             [
                 'header' => '<input type="checkbox" class="check-all order-checkbox form-check-input m-0">',
                 'render' => function($row) {
-                    return '<input type="checkbox" class="order-checkbox form-check-input m-0" value="' . $row['order_id'] . '" style="cursor:pointer;">';
+                    $checkboxBg = '';
+                    switch (strtoupper($row['project_process'])) {
+                        case 'DIAMBIL':
+                            $checkboxBg = 'bg-success';
+                            break;
+                        case 'DIPROSES':
+                            $checkboxBg = 'bg-secondary';
+                            break;
+                        case 'BELUM DIPROSES':
+                            $checkboxBg = 'bg-warning';
+                            break;
+                        case 'BELUM BAYAR':
+                            $checkboxBg = 'bg-danger';
+                            break;
+                        case 'MENUNGGU KONFIRMASI':
+                            $checkboxBg = 'bg-info';
+                            break;
+                    }
+                    return '<input type="checkbox" class="order-checkbox form-check-input m-0 ' . $checkboxBg . '" value="' . $row['order_id'] . '" style="cursor:pointer;">';
                 }
             ]
         ];
