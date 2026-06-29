@@ -257,7 +257,7 @@ $ordersOffline = $dataOrder['offline'];
                     $checkboxBg = '';
                     switch (strtoupper($row['project_process'])) {
                         case 'DIAMBIL':
-                            $checkboxBg = 'bg-success';
+                            $checkboxBg = 'bg-primary';
                             break;
                         case 'DIPROSES':
                             $checkboxBg = 'bg-secondary';
@@ -268,11 +268,14 @@ $ordersOffline = $dataOrder['offline'];
                         case 'BELUM BAYAR':
                             $checkboxBg = 'bg-danger';
                             break;
-                        case 'MENUNGGU KONFIRMASI':
+                        case 'SELESAI':
+                            $checkboxBg = 'bg-success';
+                            break;
+                        default:
                             $checkboxBg = 'bg-info';
                             break;
                     }
-                    return '<input type="checkbox" class="order-checkbox form-check-input m-0 ' . $checkboxBg . '" value="' . $row['order_id'] . '" style="cursor:pointer;">';
+                    return '<input type="checkbox" class="order-checkbox form-check-input m-0 ' . $checkboxBg . '" value="' . $row['order_id'] . '" style="cursor:pointer; width: 20px; height: 20px;">';
                 }
             ]
         ];
@@ -806,8 +809,8 @@ addOrderBtn.addEventListener('click', (e) => {
         body: formData
     })
     .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
+    .then(res => {
+        if (res.success) {
             const form = document.createElement('form');
             form.method = 'GET';
             form.action = 'nota';
@@ -815,7 +818,7 @@ addOrderBtn.addEventListener('click', (e) => {
             const id = document.createElement('input');
             id.type = 'hidden';
             id.name = 'id';
-            id.value = data.id;
+            id.value = res.data.id;
             
             form.appendChild(id);
             document.body.appendChild(form);
@@ -824,7 +827,7 @@ addOrderBtn.addEventListener('click', (e) => {
             if (typeof hideGlobalLoading === 'function') {
                 hideGlobalLoading();
             }
-            alert(data.message);
+            alert(res.data.message);
         }
     })
     .catch(error => {

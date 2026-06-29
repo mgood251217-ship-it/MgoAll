@@ -6,6 +6,7 @@ require_once BASE_PATH . '/models/Order.php';
 require_once BASE_PATH . '/models/Store.php'; 
 require_once BASE_PATH . '/models/Payment.php';
 require_once BASE_PATH . '/functions/helpers.php';
+require_once BASE_PATH . '/components/Alert.php';
 
 $order_id = (int)startEnk('dek', $_GET['id']);
 $orderModel = new Order($koneksi);
@@ -959,11 +960,11 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('addItemForm').reset();
             document.getElementById('jenis').dispatchEvent(new Event('change'));
         } else {
-            alert("Gagal: " + data.message);
+            showAlert('error', data.message);
         }
     })
     .catch(err => {
-        Swal.fire({ icon: 'error', title: 'Gagal!', text: 'Terjadi kesalahan sistem.' });
+        showAlert('error', 'Terjadi kesalahan sistem: ' + err);
     })
     .finally(() => {
         btn.innerHTML = 'Tambah Item';
@@ -1028,7 +1029,8 @@ document.addEventListener('DOMContentLoaded', function () {
           })
           .then(res => res.text())
           .then(response => {
-              document.getElementById('noteDisplay').innerHTML = `<div class="alert alert-danger">${response}</div>`;
+              showAlert('success', 'Catatan berhasil disimpan.');
+              document.getElementById('noteDisplay').innerHTML = `<div class="alert alert-success">${response}</div>`;
               document.getElementById('exampleFormControlTextarea1').value = '';
           });
       });
@@ -1050,6 +1052,12 @@ document.addEventListener('DOMContentLoaded', function () {
 function updatePricePreview() {
     if (!elJudul) {
         console.error('Element #judul tidak ditemukan');
+        return;
+    }
+    const judulValue = elJudul.value || '';
+    const jenisValue = elJenis ? elJenis.value : '';
+    const qtyValue = elQty ? elQty.value : '';
+    if (!judulValue.trim() || !jenisValue.trim() || !qtyValue.trim()) {
         return;
     }
     const selectedOption = elJudul.options[elJudul.selectedIndex];
@@ -1131,6 +1139,7 @@ function updatePricePreview() {
         }
     });
 }  
+
   const inputsToWatch = ['jenis', 'judul', 'ukuranDropdown', 'finishing', 'panjang', 'lebar', 'kiloan', 'waktu', 'ukuranJersey', 'qty', 'enableDiskon', 'lebarSublim', 'panjangSublim', 'diskonInput', 'finishingCut', 'finishingDie'];
   inputsToWatch.forEach(id => {
       const el = document.getElementById(id);
