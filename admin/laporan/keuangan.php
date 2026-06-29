@@ -7,6 +7,7 @@ require_once BASE_PATH . '/components/Table.php';
 require_once BASE_PATH . '/controllers/FinanceController.php';
 require_once BASE_PATH . '/controllers/PaymentController.php';
 require_once BASE_PATH . '/components/Alert.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 $paymentController = new PaymentController($koneksi);
 $financeController = new FinanceController($koneksi);
@@ -58,7 +59,7 @@ $dataPemasukan = $data['income'];
 
       <div class="card mb-4" <?= ($mode === 1) ? 'style="background-color: #333 !important; color: #e0e0e0 !important;"' : '' ?>>
         <div class="card-header bg-primary text-white">
-          Keuangan Terkini (<?= date('d-m-Y', strtotime($start_date)) ?> s.d <?= date('d-m-Y', strtotime($end_date)) ?>)
+          Keuangan Terkini (<?= format_tanggal_id($start_date) ?> s.d <?= format_tanggal_id($end_date) ?>)
         </div>
 
         <div class="card-body">
@@ -111,7 +112,10 @@ $dataPemasukan = $data['income'];
                     ],
                     [
                         'header' => 'Periode',
-                        'field'  => 'date'
+                        'field'  => 'date',
+                        'render' => function($row) {
+                            return format_tanggal_id($row['date']);
+                        }
                     ]
                 ]
             ]);
@@ -119,8 +123,8 @@ $dataPemasukan = $data['income'];
 
           <div class="mt-3 text-end">
             <form class="d-inline" id="refresForm">
-              <input type="hidden" name="start_date" value="<?= htmlspecialchars($start_date) ?>">
-              <input type="hidden" name="end_date" value="<?= htmlspecialchars($end_date) ?>">
+              <input type="hidden" name="start_date" value="<?= sanitize($start_date) ?>">
+              <input type="hidden" name="end_date" value="<?= sanitize($end_date) ?>">
               <button type="submit" name="refresh_finance" class="btn btn-success px-4">Refresh</button>
             </form>
           </div>
@@ -156,7 +160,7 @@ $dataPemasukan = $data['income'];
                           'render' => function($row) use ($storeName) {
                               $stName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
                               $fDate  = date('Y/m/d', strtotime($row['date']));
-                              $imgUrl = BASE_URL . "/assets/img/bukti/{$stName}/{$fDate}/" . htmlspecialchars($row['img']);
+                              $imgUrl = BASE_URL . "/assets/img/bukti/{$stName}/{$fDate}/" . sanitize($row['img']);
                               
                               return empty($row['img']) 
                                   ? '<img src="'.BASE_URL.'/assets/img/noproof.png" style="height:30px;">' 
@@ -165,7 +169,7 @@ $dataPemasukan = $data['income'];
                       ],
                       [
                           'header' => 'Tanggal',
-                          'render' => fn($row) => date('d-m-Y', strtotime($row['date']))
+                          'render' => fn($row) => format_tanggal_id($row['date'])
                       ],
                       [
                           'header' => 'Aksi',
@@ -217,7 +221,7 @@ $dataPemasukan = $data['income'];
                         [
                             'header' => 'Tanggal',
                             'render' => function($row) {
-                                return date('d-m-Y', strtotime($row['date']));
+                                return format_tanggal_id($row['date']);
                             }
                         ],
                         [

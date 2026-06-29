@@ -5,7 +5,7 @@ require_once BASE_PATH . '/models/Project.php';
 require_once BASE_PATH . '/models/Activity.php';
 require_once BASE_PATH . '/models/Finance.php';
 require_once BASE_PATH . '/controllers/FinanceController.php';
-
+require_once BASE_PATH . '/functions/helpers.php';
 
 class PaymentController {
     private $paymentModel;
@@ -46,7 +46,7 @@ class PaymentController {
         $nominal = $isLunas ? ($total - $paid) : ((int)($_POST['nominal'] ?? 0));
 
         if ($nominal <= 0) {
-            echo json_encode(['success' => false, 'message' => $isLunas ? 'Sudah Lunas' : 'Nominal Invalid']);
+            send_json_response(false, $isLunas ? 'Sudah Lunas' : 'Nominal Invalid');
             exit;
         }
 
@@ -69,17 +69,15 @@ class PaymentController {
         $this->projectModel->updateProject($data);
 
         $lastStatus = $this->projectModel->getLastProjectStatusByOrderId($order_id);
-        $keteranganBaru = ucwords(strtolower($lastProcess ?: ($lastStatus ?: '-')));
+        $keteranganBaru = title_case($lastProcess ?: ($lastStatus ?: '-'));
 
         if ($isLunasStatus) {
-            $totalBayar = "LUNAS " . $data->payment_method;
+            $totalBayar = title_case("LUNAS " . $data->payment_method);
         } else {
-            $totalBayar = "<div style='font-size: 12px; line-height: 12px;'>DP: " . number_format($total_paid, 0, ',', '.') . " | Sisa : " . number_format($total - $total_paid, 0, ',', '.') . "</div>";
+            $totalBayar = "<div style='font-size: 12px; line-height: 12px;'>DP: " . format_rupiah($total_paid) . " | Sisa : " . format_rupiah($total - $total_paid) . "</div>";
         }
 
-        echo json_encode([
-            'success' => true,
-            'message' => 'Pembayaran berhasil',
+        send_json_response(true, 'Pembayaran berhasil', [
             'status' => $data->status,
             'bayar' => $totalBayar,
             'keterangan' => $keteranganBaru,
@@ -119,7 +117,7 @@ class PaymentController {
         $tanggalAja = date("Y-m-d");
         $this->financeController->refreshFinance($store_id, $tanggalAja);
 
-        echo json_encode(['success' => true]);
+        send_json_response(true, 'Pembayaran berhasil dihapus.');
 
     }
 

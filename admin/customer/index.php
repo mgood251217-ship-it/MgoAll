@@ -165,7 +165,7 @@ $ordersOffline = $dataOrder['offline'];
             [
                 'header' => 'Nama Customer',
                 'render' => function($row) {
-                    return sanitize(ucwords(strtolower($row['customer_name'])));
+                    return sanitize(title_case($row['customer_name']));
                 }
             ],
             [
@@ -226,12 +226,12 @@ $ordersOffline = $dataOrder['offline'];
                 'header' => 'Bayar',
                 'render' => function($row) {
                     if ($row['is_lunas_status']) {
-                        return "LUNAS " . $row['lunas_method'];
+                        return title_case("LUNAS " . $row['lunas_method']);
                     } elseif ($row['total_dp'] > 0) {
                         return "<div style='font-size:12px'>DP: " . format_rupiah($row['total_dp']) .
                               "<br>Sisa: " . format_rupiah($row['total'] - $row['total_dp']) . "</div>";
                     } elseif (!empty($row['project_status'])) {
-                        return sanitize($row['project_status']);
+                        return sanitize(title_case($row['project_status']));
                     }
                     return '-';
                 }
@@ -239,8 +239,8 @@ $ordersOffline = $dataOrder['offline'];
             [
                 'header' => 'Keterangan',
                 'render' => function($row) {
-                    $proc = ucwords(strtolower($row['project_process']));
-                    $stat = ucwords(strtolower($row['project_status']));
+                    $proc = title_case($row['project_process']);
+                    $stat = title_case($row['project_status']);
                     if (strtoupper($proc) == 'DIAMBIL') {
                         return $proc . ' ' . $row['project_initial'];
                     } elseif (!empty($proc)) {
@@ -643,13 +643,13 @@ document.querySelectorAll('.order-row').forEach(row => {
     timeout = setTimeout(() => {
       fetch(`order_action.php?order=get_order_items&order_id=${orderId}`)
         .then(res => res.json())
-        .then(data => {
-          if (data.items.length === 0) {
+        .then(res => {
+          if (res.data.items.length === 0) {
             tooltip.innerText = 'Tidak ada item';
             return;
           }
 
-          tooltip.innerText = data.items.map(item => {
+          tooltip.innerText = res.data.items.map(item => {
             const size = item.size && item.size !== '-' ? ` (${item.size})` : '';
             const finishing_names = item.finishing_names && item.finishing_names !== '-' ? ` + ${item.finishing_names}` : '';
             return `• ${item.judul}${size}${finishing_names} x${item.quantity}`;
@@ -1017,10 +1017,10 @@ nominalInput.addEventListener('input', function(e) {
         body: formData,
       })
       .then(resp => resp.json())
-      .then(data => {
-      if (data.success) {
+      .then(res => {
+      if (res.success) {
         feedback.style.color = 'green';
-        feedback.textContent = data.message || 'Pembayaran berhasil';
+        feedback.textContent = res.message || 'Pembayaran berhasil';
         hideGlobalLoading();
 
         const orderId = document.getElementById('payment-order-id').value;
@@ -1036,12 +1036,12 @@ nominalInput.addEventListener('input', function(e) {
             aksiCell = row.cells[6];
           }
           if (bayarCell) {
-            bayarCell.innerHTML = data.bayar || '';
+            bayarCell.innerHTML = res.data.bayar || '';
           }
           if (keteranganCell) {
-            keteranganCell.textContent = data.keterangan || '';
+            keteranganCell.textContent = res.data.keterangan || '';
           }
-          if (aksiCell && data.isLunas) {
+          if (aksiCell && res.data.isLunas) {
             const bayarBtn = aksiCell.querySelector('button.btn-pay'); 
             if (bayarBtn) {
               bayarBtn.remove();
@@ -1058,7 +1058,7 @@ nominalInput.addEventListener('input', function(e) {
 
       } else {
         feedback.style.color = 'red';
-        feedback.textContent = data.message || 'Gagal melakukan pembayaran';
+        feedback.textContent = res.message || 'Gagal melakukan pembayaran';
         showAlert('error', 'Pembayaran Gagal');
         hideGlobalLoading();
       }

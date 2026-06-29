@@ -1,5 +1,6 @@
 <?php
 require_once BASE_PATH . '/models/Product.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 class ProductController {
     private $productModel;
@@ -34,9 +35,9 @@ class ProductController {
         $data = $this->requestData();
         
         if ($this->productModel->createProduct($data)) {
-            echo json_encode(['success' => true, 'message' => 'Produk berhasil ditambahkan.']);
+            send_json_response(true, 'Produk berhasil ditambahkan.');
         } else {
-            echo json_encode(['success' => false, 'errors' => ['Gagal menambahkan produk.']]);
+            send_json_response(false, 'Gagal menambahkan produk.');
         }
         exit;
     }
@@ -46,9 +47,9 @@ class ProductController {
         $data = $this->requestData();
         
         if ($this->productModel->updateProduct($data)) {
-            echo json_encode(['success' => true, 'message' => 'Produk berhasil diperbarui.']);
+            send_json_response(true, 'Produk berhasil diperbarui.');
         } else {
-            echo json_encode(['success' => false, 'errors' => ['Gagal memperbarui produk.']]);
+            send_json_response(false, 'Gagal memperbarui produk.');
         }
         exit;
     }
@@ -59,9 +60,9 @@ class ProductController {
         $data->id = $_POST['product_id'] ?? 0;
         
         if ($this->productModel->deleteProductById($data)) {
-            echo json_encode(['success' => true, 'message' => 'Produk berhasil dihapus.']);
+            send_json_response(true, 'Produk berhasil dihapus.');
         } else {
-            echo json_encode(['success' => false, 'errors' => ['Gagal menghapus produk.']]);
+            send_json_response(false, 'Gagal menghapus produk.');
         }
         exit;
     }

@@ -1,5 +1,6 @@
 <?php
 require_once BASE_PATH . '/models/Setting.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 class SettingController {
     private $settingModel;
@@ -22,10 +23,10 @@ class SettingController {
         $data = $this->requestData();
         if ($this->settingModel->cekUserSetting($data->user_id)) {
             $this->settingModel->updateOneValue($data->user_id, 'customer_limit', $data->customer_limit);
-            echo json_encode(['success' => true, 'message' => 'Berhasil diperbarui.']);
+            send_json_response(true, 'Berhasil diperbarui.');
         } else {
             $this->settingModel->create($data);
-            echo json_encode(['success' => true, 'message' => 'Berhasil diperbarui.']);
+            send_json_response(true, 'Berhasil diperbarui.');
         }
     }
 

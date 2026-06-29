@@ -2,6 +2,7 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require BASE_PATH . '/access_rights.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 $startMonth  = date('Y-m-01 00:00:00');
 $endMonth    = date('Y-m-t 23:59:59');
@@ -259,73 +260,73 @@ $stmt->close();
         <div class="laporan-grid">
           <a href="transaksi_detil" class="laporan-card">
             <div class="laporan-title">Transaksi Detil</div>
-            <div class="laporan-keterangan">Cash: Rp<?= number_format($cashTotal, 0, ',', '.') ?></div>
-            <div class="laporan-keterangan">TF: Rp<?= number_format($tfTotal, 0, ',', '.') ?></div>
+            <div class="laporan-keterangan">Cash: <?= format_rupiah($cashTotal) ?></div>
+            <div class="laporan-keterangan">TF: <?= format_rupiah($tfTotal) ?></div>
           </a>
           <a href="transaksi_harian" class="laporan-card">
             <div class="laporan-title">Transaksi Harian</div>
             <div class="laporan-keterangan">Jumlah Transaksi: <?= $jumlahPaymentHarian ?></div>
-            <div class="laporan-keterangan">Pendapatan: Rp<?= number_format($pendapatanHarian, 0, ',', '.') ?></div>
+            <div class="laporan-keterangan">Pendapatan: <?= format_rupiah($pendapatanHarian) ?></div>
           </a>
           <a href="transaksi_bulanan" class="laporan-card">
               <div class="laporan-title">Transaksi Bulanan</div>
               <div class="laporan-keterangan">Jumlah Transaksi: <?= $jumlahPaymentBulanan ?></div>
-              <div class="laporan-keterangan">Pendapatan: Rp<?= number_format($pendapatanBulanan, 0, ',', '.') ?></div>
+              <div class="laporan-keterangan">Pendapatan: <?= format_rupiah($pendapatanBulanan) ?></div>
           </a>
           <a href="transaksi_item" class="laporan-card">
               <div class="laporan-title">Transaksi per Item</div>
               <div class="laporan-keterangan">Produk terjual Bulan Ini: <strong><?= $total_qty_all_products ?></strong></div>
               <div class="laporan-keterangan">
-                  Paling Banyak Terjual: <strong><?= htmlspecialchars($top_product_name) ?></strong> (<?= $max_qty ?>)
+                  Paling Banyak Terjual: <strong><?= sanitize($top_product_name) ?></strong> (<?= $max_qty ?>)
               </div>
           </a>
           <a href="transaksi_konsumen" class="laporan-card">
               <div class="laporan-title">Transaksi per Konsumen</div>
               <div class="laporan-keterangan">Produk terjual Bulan Ini: <strong><?= $total_qty_all_products ?></strong></div>
               <div class="laporan-keterangan">
-                  Paling Banyak Terjual: <strong><?= htmlspecialchars($top_product_name) ?></strong> (<?= $max_qty ?>)
+                  Paling Banyak Terjual: <strong><?= sanitize($top_product_name) ?></strong> (<?= $max_qty ?>)
               </div>
           </a>
           <a href="omset_item" class="laporan-card">
             <div class="laporan-title">Omset per Item</div>
-            <div class="laporan-keterangan">Total Omset: Rp <?= number_format($totalOmsetSemuaProduk, 0, ',', '.') ?></div>
-            <div class="laporan-keterangan">Top Sales: <?= htmlspecialchars($topSalesName) ?> (Rp <?= number_format($topSalesOmset, 0, ',', '.') ?>)</div>
+            <div class="laporan-keterangan">Total Omset:  <?= format_rupiah($totalOmsetSemuaProduk) ?></div>
+            <div class="laporan-keterangan">Top Sales: <?= sanitize($topSalesName) ?> ( <?= format_rupiah($topSalesOmset) ?>)</div>
           </a>
           <a href="pemakaian_bahan" class="laporan-card">
               <div class="laporan-title">Daftar Pemakaian Bahan</div>
 
               <div class="laporan-keterangan tooltip-wrap">
-                  Digunakan: <?= htmlspecialchars(implode(', ', $digunakan_short)) ?>
+                  Digunakan: <?= sanitize(implode(', ', $digunakan_short)) ?>
                   
               </div>
 
               <div class="laporan-keterangan tooltip-wrap">
-                  Tidak Digunakan: <?= htmlspecialchars(implode(', ', $tidak_short)) ?>
+                  Tidak Digunakan: <?= sanitize(implode(', ', $tidak_short)) ?>
                   
               </div>
           </a>
           <a href="daftar_piutang" class="laporan-card">
               <div class="laporan-title">Daftar Piutang</div>
               <div class="laporan-keterangan">Pelanggan Belum Bayar : <?= $jumlah_pelanggan_belum_bayar ?> Orang</div>
-              <div class="laporan-keterangan">Total Hutang : Rp <?= number_format($total_hutang, 0, ',', '.') ?></div>
+              <div class="laporan-keterangan">Total Hutang :  <?= format_rupiah($total_hutang) ?></div>
           </a>
           <a href="data_pelunasan" class="laporan-card">
               <div class="laporan-title">Data Pelunasan</div>
               <div class="laporan-keterangan">Pelanggan Belum Bayar : <?= $jumlah_pelanggan_belum_bayar ?> Orang</div>
-              <div class="laporan-keterangan">Total Hutang : Rp <?= number_format($total_hutang, 0, ',', '.') ?></div>
+              <div class="laporan-keterangan">Total Hutang :  <?= format_rupiah($total_hutang) ?></div>
           </a>
           <a href="keuangan" class="laporan-card">
             <div class="laporan-title">Keuangan</div>
-            <div class="laporan-keterangan">Omset Offline: Rp <?= number_format($omset_offline, 0, ',', '.') ?></div>
-            <div class="laporan-keterangan">Omset Online: Rp <?= number_format($omset_online, 0, ',', '.') ?></div>
+            <div class="laporan-keterangan">Omset Offline:  <?= format_rupiah($omset_offline) ?></div>
+            <div class="laporan-keterangan">Omset Online:  <?= format_rupiah($omset_online) ?></div>
           </a>
           <a href="statistik_karyawan" class="laporan-card">
               <div class="laporan-title">Statistik Karyawan</div>
               <div class="laporan-keterangan">
-                  Pengambilan Terbanyak: <?= htmlspecialchars($topUserName ?? '-') ?>
+                  Pengambilan Terbanyak: <?= sanitize($topUserName ?? '-') ?>
               </div>
               <div class="laporan-keterangan">
-                  Konsumen Terbanyak: <?= htmlspecialchars($topKonsumenName ?? '-') ?>
+                  Konsumen Terbanyak: <?= sanitize($topKonsumenName ?? '-') ?>
               </div>
           </a> 
           <a href="aktivitas" class="laporan-card">

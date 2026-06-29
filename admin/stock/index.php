@@ -7,6 +7,7 @@ require_once BASE_PATH . '/components/Alert.php';
 require_once BASE_PATH . '/components/Table.php';
 require_once BASE_PATH . '/components/Loading.php';
 require_once BASE_PATH . '/components/Icon.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 $stockController = new StockController($koneksi);
 $stocks = $stockController->index();
@@ -65,7 +66,7 @@ $isAdmin = ($role == 'ADMIN' || $role == 'MANAGER');
                       <div class="d-flex gap-1 align-items-center">
                           <form class="d-inline-flex stock-form m-0">
                               <input type="hidden" name="stock" value="add_stock">
-                              <input type="hidden" name="product_id" value="<?= htmlspecialchars($row['product_id']) ?>">
+                              <input type="hidden" name="product_id" value="<?= sanitize($row['product_id']) ?>">
                               <input type="number" name="quantity" step="0.01" class="form-control form-control-sm me-1" placeholder="+Qty" style="width: 75px;" required>
                               <button type="submit" class="btn btn-success btn-sm" title="Tambah Stok" style="line-height: 0; padding: .4rem .5rem;">
                                   <?= get_icon('create', ['width' => '16', 'height' => '16']) ?>
@@ -74,8 +75,8 @@ $isAdmin = ($role == 'ADMIN' || $role == 'MANAGER');
                           
                           <form class="d-inline-flex stock-form m-0">
                               <input type="hidden" name="stock" value="update_stock">
-                              <input type="hidden" name="product_id" value="<?= htmlspecialchars($row['product_id']) ?>">
-                              <input type="number" name="quantity" step="0.01" value="<?= htmlspecialchars($row['quantity']) ?>" class="form-control form-control-sm me-1" style="width: 75px;" required>
+                              <input type="hidden" name="product_id" value="<?= sanitize($row['product_id']) ?>">
+                              <input type="number" name="quantity" step="0.01" value="<?= sanitize($row['quantity']) ?>" class="form-control form-control-sm me-1" style="width: 75px;" required>
                               <button type="submit" class="btn btn-primary btn-sm" title="Update Stok" style="line-height: 0; padding: .4rem .5rem;">
                                   <?= get_icon('update', ['width' => '16', 'height' => '16']) ?>
                               </button>

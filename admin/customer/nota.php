@@ -5,6 +5,7 @@ require_once BASE_PATH . '/global_functions.php';
 require_once BASE_PATH . '/models/Order.php';
 require_once BASE_PATH . '/models/Store.php'; 
 require_once BASE_PATH . '/models/Payment.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 $order_id = (int)startEnk('dek', $_GET['id']);
 $orderModel = new Order($koneksi);
@@ -92,7 +93,7 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
           <div class="row h-100 align-items-stretch">
             <div class="col-md-5 h-100" >
             <form action="<?= BASE_URL ?>/customer?start_date=<?= date('Y-m-d', strtotime($order['date'])) ?>&end_date=<?= date('Y-m-d', strtotime($order['date'])) ?>" method="post">
-              <input type="hidden" name="system" value="<?= htmlspecialchars($order['system']) ?>">
+              <input type="hidden" name="system" value="<?= sanitize($order['system']) ?>">
               <button type="submit" class="btn btn-success mb-3">
                 <i class="bi bi-arrow-left"></i> Kembali ke Customer
               </button>
@@ -106,7 +107,7 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
               >
                 <h4 class="mb-3">Tambah Item</h4>
                 <form id="addItemForm" class="d-flex flex-column h-100">
-                  <input type="hidden" name="order_id" value="<?= htmlspecialchars($order_id) ?>">
+                  <input type="hidden" name="order_id" value="<?= sanitize($order_id) ?>">
 
                   <div class="row mb-3">
                       <label for="jenis" class="col-sm-2 col-form-label">Jenis</label>
@@ -114,8 +115,8 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
                       <select id="jenis" name="jenis" class="form-select select2" required>
                         <option value="" selected>-- Pilih Jenis --</option>
                         <?php foreach ($jenisList as $jenis): ?>
-                          <option value="<?= htmlspecialchars($jenis) ?>">
-                            <?= htmlspecialchars($jenis) ?>
+                          <option value="<?= sanitize($jenis) ?>">
+                            <?= sanitize($jenis) ?>
                           </option>
                         <?php endforeach; ?>
                       </select>
@@ -267,10 +268,10 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
             <div class="col-md-7">
               <div class="row mb-4">
                 <div class="col-md-4">
-                  <strong>Nomorator:</strong> <?= htmlspecialchars($order['nomorator']) ?>
+                  <strong>Nomorator:</strong> <?= sanitize($order['nomorator']) ?>
                 </div>
                 <div class="col-md-4">
-                  <strong>Nama:</strong> <?= htmlspecialchars($order['customer_name']) ?>
+                  <strong>Nama:</strong> <?= sanitize(title_case($order['customer_name'])) ?>
                 </div>
                 <div class="col-md-4">
                   <strong>Tanggal:</strong> <?= date('d M Y, H:i', strtotime($order['date'])) ?>
@@ -298,7 +299,7 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
                   <strong>Deadline:</strong> <?= date('d M Y, H:i', strtotime($order['deadline'])) ?>
                 </div>
                 <div class="col-md-6">
-                  <strong>Operator:</strong> <?= htmlspecialchars($order['operator_initial']) ?>
+                  <strong>Operator:</strong> <?= sanitize($order['operator_initial']) ?>
                 </div>
               </div>
               <div id="noteSection">
@@ -351,10 +352,10 @@ document.addEventListener('DOMContentLoaded', function () {
   function loadOrderItems() {
       fetch(`order_action.php?order=get_order_items&order_id=<?= (int)$order_id ?>`)
           .then(res => res.json())
-          .then(data => {
-              const items = data.items;
-              const total = data.total;
-              const diskonPerProduk = data.diskon_per_produk || {};
+          .then(res => {
+              const items = res.data.items;
+              const total = res.data.total;
+              const diskonPerProduk = res.data.diskon_per_produk || {};
               
               const tbody = document.querySelector('#orderItemsTable tbody');
               tbody.innerHTML = '';
@@ -1114,7 +1115,7 @@ function updatePricePreview() {
         const priceDisplay = document.getElementById('priceDisplay');
         if (response.success) {
             if (priceDisplay) {
-                priceDisplay.textContent ='Total Harga: Rp ' +Number(response.total || 0).toLocaleString('id-ID');
+                priceDisplay.textContent ='Total Harga: Rp ' +Number(response.data.total || 0).toLocaleString('id-ID');
             }
         } else {
             if (priceDisplay) {

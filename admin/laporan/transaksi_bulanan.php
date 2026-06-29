@@ -3,6 +3,7 @@ require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
 require_once BASE_PATH . '/controllers/ReportController.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 $reportController = new ReportController($koneksi);
 
@@ -31,11 +32,11 @@ $htmlTableTransaksi = renderTable([
     'thead_class' => 'table-primary',
     'tfoot'       => '
     <tr class="table-success">
-        <th colspan="2" class="text-end">Total Bulanan Dari ' . htmlspecialchars($startDate) . ' Sampai ' . htmlspecialchars($endDate) . ' : </th>
-        <th>' . number_format($total_transaksi_all, 0, ',', '.') . '</th>
-        <th>' . number_format($total_bulan, 0, ',', '.') . '</th>
-        <th>' . number_format($total_bulan_cash, 0, ',', '.') . '</th>
-        <th>' . number_format($total_bulan_tf, 0, ',', '.') . '</th>
+        <th colspan="2" class="text-end">Total Bulanan Dari ' . sanitize(format_tanggal_id($startDate)) . ' Sampai ' . sanitize(format_tanggal_id($endDate)) . ' : </th>
+        <th>' . $total_transaksi_all . '</th>
+        <th>' . format_rupiah($total_bulan) . '</th>
+        <th>' . format_rupiah($total_bulan_cash) . '</th>
+        <th>' . format_rupiah($total_bulan_tf) . '</th>
     </tr>
 ',
     'columns'     => [
@@ -45,7 +46,10 @@ $htmlTableTransaksi = renderTable([
         ],
         [
             'header' => 'Tanggal',
-            'field'  => 'tanggal'
+            'field'  => 'tanggal',
+            'render' => function($row) {
+                return format_tanggal_id($row['tanggal']);
+            }
         ],
         [
             'header' => 'Jumlah Transaksi',

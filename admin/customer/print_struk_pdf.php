@@ -7,6 +7,7 @@ require_once BASE_PATH . '/models/Store.php';
 require_once BASE_PATH . '/models/Order.php';
 require_once BASE_PATH . '/models/Payment.php';
 require_once BASE_PATH . '/models/Setting.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 $storeModel   = new Store($koneksi);
 $orderModel   = new Order($koneksi);
@@ -58,7 +59,7 @@ $printed_price_for = [];
 $preview_print = $settingModel->getOneValue($user_id, 'preview_print') ?? 0;
 
 $tanggal = formatTanggalIndo($order['date']);
-$nomorator = htmlspecialchars($order['nomorator']);
+$nomorator = sanitize($order['nomorator']);
 $filename = "{$customer_name_clean}_{$initial}_{$tanggal}_{$nomorator}.pdf";
 $logo_url = BASE_URL . '/assets/img/store/' . ($store["logo_print"] ?: $store['logo']);
 
@@ -67,7 +68,7 @@ $logo_url = BASE_URL . '/assets/img/store/' . ($store["logo_print"] ?: $store['l
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title><?= htmlspecialchars($filename) ?></title>
+    <title><?= sanitize($filename) ?></title>
     <style>
       body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; margin: 0; padding: 0; line-height: 1.3; background-color: #f5f5f5; }
       .action-container { text-align: center; padding: 15px; background-color: #e0e0e0; }
@@ -95,13 +96,13 @@ $logo_url = BASE_URL . '/assets/img/store/' . ($store["logo_print"] ?: $store['l
 <div id="nota-printable">
     <div class="center">
       <img src="<?= $logo_url ?>" alt="Logo" style="height:30px; display: block; margin: 0 auto 2px;">
-      <div class="branch-script"><?= ucwords(strtolower(htmlspecialchars($store['branch']))) ?></div>
+      <div class="branch-script"><?= ucwords(strtolower(sanitize($store['branch']))) ?></div>
     </div>
 
     <table class="center">
       <tr><td style="font-size:10px;"><?= ($store_id == 8 || $store_id == 8) ? "Print Sublim | Jersey | DTF | Spanduk | Stiker" : "Spanduk | Banner Kain | Baligho | Stiker One Way | Stiker Outdoor | Backlite | X-Banner | Roll Banner | ID Card | dll" ?></td></tr>
-      <tr><td style="font-size:10px;"><?= nl2br(htmlspecialchars($store['address'])) ?></td></tr>
-      <tr><td style="font-size:12px;">Telp: <?= htmlspecialchars($store['nomor']) ?></td></tr>
+      <tr><td style="font-size:10px;"><?= nl2br(sanitize($store['address'])) ?></td></tr>
+      <tr><td style="font-size:12px;">Telp: <?= sanitize($store['nomor']) ?></td></tr>
     </table>
 
     <div class="line"></div>
@@ -116,10 +117,10 @@ $logo_url = BASE_URL . '/assets/img/store/' . ($store["logo_print"] ?: $store['l
               <col style="width: auto;">
             </colgroup>
             <tr><td style="white-space: nowrap;">Tanggal</td><td>: <?= formatTanggalIndo($order['date']) ?></td></tr>
-            <tr><td style="white-space: nowrap;">Kepada Yth</td><td style="word-break: break-word; vertical-align: top;">: <?= htmlspecialchars($order['customer_name']) ?></td></tr>
-            <tr><td style="white-space: nowrap;">Nota No.</td><td>: <?= htmlspecialchars($order['nomorator']) ?></td></tr>
+            <tr><td style="white-space: nowrap;">Kepada Yth</td><td style="word-break: break-word; vertical-align: top;">: <?= sanitize($order['customer_name']) ?></td></tr>
+            <tr><td style="white-space: nowrap;">Nota No.</td><td>: <?= sanitize($order['nomorator']) ?></td></tr>
             <tr><td style="white-space: nowrap;">Deadline</td><td style="word-break: break-word; vertical-align: top;">: <?= formatTanggalIndo($order['deadline']) . ' ' . date('H.i', strtotime($order['deadline'])) ?></td></tr>
-            <tr><td style="white-space: nowrap;">Operator</td><td>: <?= htmlspecialchars($operator_name ?? '-') ?></td></tr>
+            <tr><td style="white-space: nowrap;">Operator</td><td>: <?= sanitize($operator_name ?? '-') ?></td></tr>
           </table>
 
         </td>
@@ -145,30 +146,30 @@ $logo_url = BASE_URL . '/assets/img/store/' . ($store["logo_print"] ?: $store['l
         $harga = $custom_price ?? $item['amount'];
       ?>
         <tr style="border-top: 0.5px solid #000;">
-          <td width="45%"><?= htmlspecialchars($item['judul'] ?: ($item['product_name'] ?? '-')) ?></td>
-          <td width="20%"><?= htmlspecialchars($item['size']) ?></td>
-          <td width="35%" class="text-end"><?= $hide_price ? '' : 'Rp ' . number_format($harga, 0, ',', '.') ?></td>
+          <td width="45%"><?= sanitize($item['judul'] ?: ($item['product_name'] ?? '-')) ?></td>
+          <td width="20%"><?= sanitize($item['size']) ?></td>
+          <td width="35%" class="text-end"><?= $hide_price ? '' : format_rupiah($harga) ?></td>
         </tr>
         <tr style="border-bottom: 0.5px solid #000;">
           <td colspan="3">
-            <?= ($item['finishing_names'] !== ' ') ? htmlspecialchars($item['finishing_names']) . ' | ' : '' ?>
-            <?= $item['quantity'] ?> x <?= $hide_price ? '' : 'Rp ' . number_format($harga / $item['quantity'], 0, ',', '.') ?>
+            <?= ($item['finishing_names'] !== ' ') ? sanitize($item['finishing_names']) . ' | ' : '' ?>
+            <?= $item['quantity'] ?> x <?= $hide_price ? '' :  format_rupiah($harga / $item['quantity']) ?>
           </td>
         </tr>
       <?php endforeach; ?>
     </table>
 
     <?php if ($noted): ?>
-        <div style="font-style: italic; width: 100%;">Catatan : <?= $noted['note']; ?></div>
+        <div style="font-style: italic; width: 100%;">Catatan : <?= sanitize($noted['note']); ?></div>
     <?php endif; ?>
 
     <div class="line"></div>
 
     <table>
-      <tr><td class="text-end"><strong>TOTAL: Rp <?= number_format($order['total'], 0, ',', '.') ?></strong></td></tr>
+      <tr><td class="text-end"><strong>TOTAL: <?= format_rupiah($order['total']) ?></strong></td></tr>
       <?php if ($total_bayar > 0 && !$ada_lunas): ?>
-      <tr><td class="text-end"><?= $ada_dp ? 'Uang Muka' : 'Total Bayar' ?>: Rp <?= number_format($total_bayar, 0, ',', '.') ?></td></tr>
-      <tr><td class="text-end">Sisa: Rp <?= number_format($sisa, 0, ',', '.') ?></td></tr>
+      <tr><td class="text-end"><?= $ada_dp ? 'Uang Muka' : 'Total Bayar' ?>: <?= format_rupiah($total_bayar) ?></td></tr>
+      <tr><td class="text-end">Sisa: <?= format_rupiah($sisa) ?></td></tr>
       <?php endif; ?>
     </table>
 

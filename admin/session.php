@@ -74,6 +74,8 @@ if (isset($_SESSION['user']['user_id']) &&
 
 if (isset($_SESSION['admin_logged_in']['administrator_id'])) {
   $administrator = true;
+}else {
+  $administrator = false;
 }
 
 

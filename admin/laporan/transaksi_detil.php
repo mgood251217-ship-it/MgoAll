@@ -1,6 +1,7 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 $scrl_id = $_GET['scrl_id'] ?? '';
 $access = startEnk('dek', $_COOKIE['admin_access'] ?? '');
@@ -158,19 +159,19 @@ if (!empty($orderIds)) {
         foreach ($orders as $order):
             $order_id = $order['order_id'];
         ?>
-        <div class="nota-block" id="<?= htmlspecialchars($order_id) ?>">
+        <div class="nota-block" id="<?= sanitize($order_id) ?>">
           <div class="nota-header">
             <div class="d-flex mb-2 gap-3 align-items-center">
               <div>
-                <strong>Nomorator:</strong> <?= htmlspecialchars($order['nomorator']) ?><br>
-                <strong>Nama:</strong> <?= htmlspecialchars($order['customer_name']) ?>
+                <strong>Nomorator:</strong> <?= sanitize($order['nomorator']) ?><br>
+                <strong>Nama:</strong> <?= sanitize($order['customer_name']) ?>
               </div>
               <div>
-                <strong>Operator:</strong> <?= htmlspecialchars($order['operator']) ?><br>
-                <strong>Tanggal:</strong> <?= htmlspecialchars($order['date']) ?>
+                <strong>Operator:</strong> <?= sanitize($order['operator']) ?><br>
+                <strong>Tanggal:</strong> <?= sanitize($order['date']) ?>
               </div>
               <div>
-                <strong>Nomor:</strong> <?= htmlspecialchars($order['nomor']) ?>
+                <strong>Nomor:</strong> <?= sanitize($order['nomor']) ?>
                 <form action="<?= BASE_URL ?>/customer?start_date=<?= date('Y-m-d', strtotime($order['date'])) ?>&end_date=<?= date('Y-m-d', strtotime($order['date'])) ?>" method="post" target="_blank">
                   <input type="hidden" name="order_id" value="<?= $order_id ?>">
                   <input type="submit" value="▶️Cek Nota" class="btn btn-sm btn-success">
@@ -178,7 +179,7 @@ if (!empty($orderIds)) {
               </div>
             </div>
             <div>
-              <button type="button" class="btn btn-primary btnNote" data-order-id="<?= htmlspecialchars($order_id)?>">Update Catatan 📝</button>
+              <button type="button" class="btn btn-primary btnNote" data-order-id="<?= sanitize($order_id)?>">Update Catatan 📝</button>
             </div>
           </div>
 
@@ -203,18 +204,18 @@ if (!empty($orderIds)) {
               ?>
               <tr>
                 <td><?= $no++ ?></td>
-                <td><?= htmlspecialchars($item['judul']) ?></td>
-                <td><?= htmlspecialchars($finishingNamesStr) ?></td>
-                <td><?= htmlspecialchars($item['size']) ?></td>
-                <td><?= htmlspecialchars($item['quantity']) ?></td>
-                <td><?= htmlspecialchars($item['unit']) ?></td>
-                <td>Rp<?= number_format($item['amount'], 0, ',', '.') ?></td>
+                <td><?= sanitize($item['judul']) ?></td>
+                <td><?= sanitize($finishingNamesStr) ?></td>
+                <td><?= sanitize($item['size']) ?></td>
+                <td><?= sanitize($item['quantity']) ?></td>
+                <td><?= sanitize($item['unit']) ?></td>
+                <td><?= format_rupiah($item['amount']) ?></td>
               </tr>
               <?php endforeach; ?>
               <tr class="fw-bold">
                 <td colspan="5" class="text-end"></td>
                 <td>Total</td>
-                <td>Rp<?= number_format($order['total'], 0, ',', '.') ?></td>
+                <td><?= format_rupiah($order['total']) ?></td>
               </tr>
             </tbody>
           </table>
@@ -230,10 +231,10 @@ if (!empty($orderIds)) {
                 if (!empty($orderPayments)):
                   foreach ($orderPayments as $payment):
                     $payment_id = (int)$payment['payment_id'];
-                    $tanggal = htmlspecialchars($payment['date']);
+                    $tanggal = sanitize($payment['date']);
                     $nominal = (int)$payment['nominal'];
-                    $method = htmlspecialchars($payment['payment_method']);
-                    $status = htmlspecialchars($payment['status']);
+                    $method = sanitize($payment['payment_method']);
+                    $status = sanitize($payment['status']);
                     
                     if ($status == 'LUNAS') { $isLunas = true; } else { $isLunas = false; }
                     if ($method == 'TF') { $ada_tf = true; }
@@ -243,7 +244,7 @@ if (!empty($orderIds)) {
                 <div class="editable-payment border p-2 rounded bg-light" <?= (isset($mode) && $mode === 1) ? 'style="background-color: #333 !important; color: #e0e0e0 !important;"' : '' ?>
                     data-payment-id="<?= $payment_id ?>" data-order="<?= $order_id ?>" data-nominal="<?= $nominal ?>" data-metode="<?= $method ?>" data-tanggal="<?= $tanggal ?>">
                   <div><strong>Tanggal:</strong> <?= $tanggal ?></div>
-                  <div><strong>Nominal:</strong> Rp<?= number_format($nominal, 0, ',', '.') ?></div>
+                  <div><strong>Nominal:</strong> <?= format_rupiah($nominal) ?></div>
                   <div><strong>Metode Pembayaran:</strong> <?= $method ?></div>
                   <div><strong>Status:</strong> <?= $status ?> </div>
                   <div class="d-flex justify-content-end gap-2">
@@ -296,11 +297,11 @@ if (!empty($orderIds)) {
               </div>
 
               <input class="picture" type="file" name="picture" accept="image/*" hidden>
-              <input type="hidden" class="orderId" value="<?= htmlspecialchars($order_id) ?>">
+              <input type="hidden" class="orderId" value="<?= sanitize($order_id) ?>">
 
               <div class="uploadStatus mb-1 text-muted"></div>
               <?php if ($isLunas == false) { ?>
-              <button type="button" class="btn btn-danger btn-pay" data-order-id="<?= htmlspecialchars($order_id) ?>">Bayar</button>
+              <button type="button" class="btn btn-danger btn-pay" data-order-id="<?= sanitize($order_id) ?>">Bayar</button>
               <?php } ?>
             </div>
 
@@ -324,7 +325,7 @@ if (!empty($orderIds)) {
               
               <?php if ($note_isi != '') {?>
                 <div class="bg-primary text-white py-2 px-3 rounded-3">
-                  ℹ️ <?= htmlspecialchars($note_isi) ?>
+                  ℹ️ <?= sanitize($note_isi) ?>
                 </div>
               <?php } ?>
           </div>

@@ -3,6 +3,7 @@ require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
 require_once BASE_PATH . '/models/Finance.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 $financeModel = new Finance($koneksi);
 

@@ -1,5 +1,6 @@
 <?php
 require_once BASE_PATH . '/models/Store.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 class StoreController {
     private $storeModel;
@@ -17,10 +18,10 @@ class StoreController {
         ];
 
         if ($this->storeModel->createMachine($data)) {
-            echo json_encode(['success' => true, 'message' => 'Mesin baru berhasil ditambahkan.']);
+            send_json_response(true, 'Mesin baru berhasil ditambahkan.');
         } else {
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Gagal menyimpan data ke database']);
+            send_json_response(false, 'Gagal menyimpan data ke database');
         }
 
     }

@@ -1,5 +1,6 @@
 <?php
 require_once BASE_PATH . '/models/Stock.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 class StockController {
     private $stockModel;
@@ -36,9 +37,9 @@ class StockController {
         }
 
         if ($success) {
-            echo json_encode(['success' => true, 'message' => 'Stok berhasil ditambahkan.']);
+            send_json_response(true, 'Stok berhasil ditambahkan.');
         } else {
-            echo json_encode(['success' => false, 'errors' => ['Gagal menambahkan stok.']]);
+            send_json_response(false, 'Gagal menambahkan stok.');
         }
         exit;
     }
@@ -55,9 +56,9 @@ class StockController {
         }
 
         if ($success) {
-            echo json_encode(['success' => true, 'message' => 'Stok berhasil diperbarui.']);
+            send_json_response(true, 'Stok berhasil diperbarui.');
         } else {
-            echo json_encode(['success' => false, 'errors' => ['Gagal memperbarui stok.']]);
+            send_json_response(false, 'Gagal memperbarui stok.');
         }
         exit;
     }

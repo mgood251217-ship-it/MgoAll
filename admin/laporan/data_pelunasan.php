@@ -3,6 +3,7 @@ require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
 require_once BASE_PATH . '/controllers/ReportController.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 $reportController = new ReportController($koneksi);
 
@@ -26,10 +27,10 @@ $htmlTablePelunasan = renderTable([
     },
     'tfoot'          => '
         <tr class="table-success">
-            <th colspan="5" class="text-end">Data Pelunasan Dari ' . htmlspecialchars($start_date) . ' Sampai ' . htmlspecialchars($start_date) . ' : </th>
-            <th colspan="2">' . number_format($cashPelunasan + $tfPelunasan, 0, ',', '.') . '</th>
-            <th>TF : ' . number_format($tfPelunasan, 0, ',', '.') . '</th>
-            <th>CASH : ' . number_format($cashPelunasan, 0, ',', '.') . '</th>
+            <th colspan="5" class="text-end">Data Pelunasan Dari ' . sanitize(format_tanggal_id($start_date)) . ' Sampai ' . sanitize(format_tanggal_id($end_date)) . ' : </th>
+            <th colspan="2">' . format_rupiah($cashPelunasan + $tfPelunasan) . '</th>
+            <th>TF : ' . format_rupiah($tfPelunasan) . '</th>
+            <th>CASH : ' . format_rupiah($cashPelunasan) . '</th>
             <th></th>
         </tr>
     ',
@@ -58,7 +59,7 @@ $htmlTablePelunasan = renderTable([
         [
             'header' => 'Tanggal DP',
             'render' => function($row) {
-                return htmlspecialchars($row['dp_date']);
+                return sanitize($row['dp_date']);
             }
         ],
         [
@@ -73,7 +74,7 @@ $htmlTablePelunasan = renderTable([
         [
             'header' => 'Tanggal Pelunasan',
             'render' => function($row) {
-                return htmlspecialchars($row['payment_date']);
+                return sanitize($row['payment_date']);
             }
         ],
         [

@@ -3,6 +3,7 @@ require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
 require_once BASE_PATH . '/controllers/ReportController.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 $reportController = new ReportController($koneksi);
 
@@ -17,7 +18,7 @@ $htmlTablePiutang = renderTable([
     'thead_class' => 'table-primary',
     'tfoot'       => '<tr class="table-success">
                           <td colspan="4" class="text-end fw-bold">Total Hutang : </td>
-                          <td colspan="4" class="fw-bold">Rp ' . number_format($total_hutang, 0, ',', '.') . '</td>
+                          <td colspan="4" class="fw-bold">' . format_rupiah($total_hutang) . '</td>
                       </tr>',
     'columns'     => [
         [
@@ -48,14 +49,14 @@ $htmlTablePiutang = renderTable([
         [
             'header' => 'Tanggal',
             'render' => function($row) {
-                return date('Y-m-d', strtotime($row['date']));
+                return format_tanggal_id($row['date']);
             }
         ],
         [
             'header' => 'Cek',
             'render' => function($row) {
                 $date = date('Y-m-d', strtotime($row['date']));
-                return '<a href="transaksi_detil?scrl_id=' . htmlspecialchars($row['order_id']) . '&start_date=' . $date . '&end_date=' . $date . '" target="_blank" class="btn btn-danger btn-sm">Cek Order</a>';
+                return '<a href="transaksi_detil?scrl_id=' . sanitize($row['order_id']) . '&start_date=' . $date . '&end_date=' . $date . '" target="_blank" class="btn btn-danger btn-sm">Cek Order</a>';
             }
         ]
     ]

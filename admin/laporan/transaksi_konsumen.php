@@ -3,6 +3,7 @@ require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
 require_once BASE_PATH . '/controllers/ReportController.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 $reportController = new ReportController($koneksi);
 
@@ -67,7 +68,7 @@ $productData = $data['product'];
       <?php else: ?>
         <?php foreach ($productData as $judul => $items): ?>
         <div class="produk-block">
-            <div class="produk-title fw-bold mb-2"><?= htmlspecialchars($judul) ?></div>
+            <div class="produk-title fw-bold mb-2"><?= sanitize($judul) ?></div>
             <div class="table-responsive">
                 <?php $htmlTableKonsumen = renderTable([
                     'data'        => $items,
@@ -84,7 +85,10 @@ $productData = $data['product'];
                         ],
                         [
                             'header' => 'Tanggal',
-                            'field'  => 'date'
+                            'field'  => 'date',
+                            'render' => function($row) {
+                                return format_tanggal_id($row['date']);
+                            }
                         ],
                         [
                             'header' => 'Judul',
@@ -116,7 +120,7 @@ $productData = $data['product'];
                             'header' => 'Cek Order',
                             'render' => function($row) {
                                 $date = date('Y-m-d', strtotime($row['date']));
-                                return '<a href="transaksi_detil?scrl_id=' . htmlspecialchars($row['order_id']) . '&start_date=' . $date . '&end_date=' . $date . '" target="_blank" class="btn btn-primary btn-sm" style="padding: 2px 8px;">Cek Order</a>';
+                                return '<a href="transaksi_detil?scrl_id=' . sanitize($row['order_id']) . '&start_date=' . $date . '&end_date=' . $date . '" target="_blank" class="btn btn-primary btn-sm" style="padding: 2px 8px;">Cek Order</a>';
                             }
                         ]
                     ]

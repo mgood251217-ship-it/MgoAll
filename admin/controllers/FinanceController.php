@@ -1,5 +1,6 @@
 <?php
 require_once BASE_PATH . '/models/Finance.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 class FinanceController {
     private $koneksi;
@@ -35,15 +36,15 @@ class FinanceController {
                 ];
 
                 if ($this->financeModel->create_tf($data)) {
-                    echo json_encode(['success' => true, 'message' => 'Pembayaran berhasil']);
+                    send_json_response(true, 'Pembayaran berhasil');
                     exit;
                 }else{
-                    echo json_encode(['success' => false, 'message' => 'Gagal menyimpan ke database']);
+                    send_json_response(false, 'Gagal menyimpan ke database');
                     exit;
                 }
 
             }else{
-                echo json_encode(['success' => false, 'message' => 'Gagal menyimpan ke database']);
+                send_json_response(false, 'Gagal menyimpan ke database');
                 exit;
             }
             
@@ -65,7 +66,7 @@ class FinanceController {
 
         if (file_exists($imgPath)) unlink($imgPath);
 
-        echo json_encode(['success' => true]);
+        send_json_response(true, 'Berhasil menghapus transfer');
     }
 
     public function finance($store_id, $start_date, $end_date){
@@ -256,7 +257,7 @@ class FinanceController {
             $this->refreshFinance($store_id, $date); 
         }
 
-        echo json_encode(['success' => true, 'message' => "Sinkron Berhasil"]);
+        send_json_response(true, "Sinkron Berhasil");
     }
 
     public function createExpenditure(){
@@ -280,7 +281,7 @@ class FinanceController {
             $file = compress($_FILES['picture'], $uploadDir);
             $pictureName = $file['file'];
             if (!$file) {
-                echo json_encode(['success' => false, 'message' => 'Gagal mengompres gambar ke target ukuran (120KB)']);
+                send_json_response(false, 'Gagal mengompres gambar ke target ukuran (120KB)');
                 exit;
             }
         }
@@ -296,7 +297,7 @@ class FinanceController {
 
         $this->refreshFinance($store_id, $date);
 
-        echo json_encode(['success' => true, 'message' => "Berhasil Menambahkan Pengeluaran"]);
+        send_json_response(true, "Berhasil Menambahkan Pengeluaran");
 
     }
 
@@ -317,7 +318,7 @@ class FinanceController {
 
         $this->refreshFinance($store_id, $date);
 
-        echo json_encode(['success' => true, 'message' => "Berhasil Menambahkan Pemasukan"]);
+        send_json_response(true, "Berhasil Menambahkan Pemasukan");
 
     }
 
@@ -336,7 +337,7 @@ class FinanceController {
         ];
         $this->financeModel->updateExpenditure($data);
         $this->refreshFinance($store_id, $date);
-        echo json_encode(['success' => true, 'message' => "Berhasil Memperbarui Pengeluaran"]);
+        send_json_response(true, "Berhasil Memperbarui Pengeluaran");
     }
 
     public function updateIncome(){
@@ -354,7 +355,7 @@ class FinanceController {
         ];
         $this->financeModel->updateIncome($data);
         $this->refreshFinance($store_id, $date);
-        echo json_encode(['success' => true, 'message' => "Berhasil Memperbarui Pemasukan"]);
+        send_json_response(true, "Berhasil Memperbarui Pemasukan");
     }
 
 }

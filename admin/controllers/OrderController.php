@@ -6,6 +6,7 @@ require_once BASE_PATH . '/models/Product.php';
 require_once BASE_PATH . '/models/Stock.php';
 require_once BASE_PATH . '/models/Activity.php';
 require_once BASE_PATH . '/models/Payment.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 class OrderController {
     private $koneksi;
@@ -169,7 +170,7 @@ class OrderController {
         $today_check = date('Y-m-d');
 
         if (($deadline_check < $today_check) || $customer_name == '' || $user_id == 0) {
-            echo json_encode(['status' => 'error', 'message' => 'Validasi gagal. Data tidak lengkap atau deadline tidak valid.']);
+            send_json_response(false, 'Validasi gagal. Data tidak lengkap atau deadline tidak valid.');
             exit;
         }
 
@@ -182,10 +183,10 @@ class OrderController {
             $data->order_id = $order_id;
             $this->projectModel->createProject($data);
             
-            echo json_encode(['status' => 'success', 'order_id' => $order_id, 'id' => startEnk('enk', $order_id)]);
+            send_json_response(true, 'Order berhasil ditambahkan', ['order_id' => $order_id, 'id' => startEnk('enk', $order_id)]);
             exit;
         } else {
-            echo json_encode(['status' => 'error', 'message' => 'Gagal menambahkan order']);
+            send_json_response(false, 'Gagal menambahkan order');
             exit;
         }
     }
@@ -286,7 +287,7 @@ class OrderController {
         global $store_id;
 
         if (!isset($_POST['order_id']) || !isset($_SESSION['admin_logged_in'])) {
-            echo json_encode(['success' => false, 'message' => 'Akses ditolak atau data tidak valid.']);
+            send_json_response(false, 'Akses ditolak atau data tidak valid.');
             exit;
         }
 
@@ -311,12 +312,11 @@ class OrderController {
             $this->orderModel->deleteOrderAndItems($order_id);
             $this->koneksi->commit();
             refreshFinance($order['store_id'], date('Y-m-d', strtotime($order['date'])));
-            
-            echo json_encode(['success' => true]);
+            send_json_response(true, 'Order berhasil dihapus');
 
         } catch (Exception $e) {
             $this->koneksi->rollback();
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            send_json_response(false, $e->getMessage());
         }
         exit;
     }
@@ -348,7 +348,7 @@ class OrderController {
                 $this->orderModel->createNote($order_id, $note, $note_for);
             }
 
-            echo htmlspecialchars($note);
+            echo sanitize($note);
             exit;
         }
     }
@@ -361,7 +361,7 @@ class OrderController {
 
         if ($order_item_id <= 0) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'ID item tidak valid.']);
+            send_json_response(false, 'ID item tidak valid.');
             exit;
         }
 
@@ -369,7 +369,7 @@ class OrderController {
 
         if (!$item) {
             http_response_code(404);
-            echo json_encode(['success' => false, 'message' => 'Item tidak ditemukan.']);
+            send_json_response(false, 'Item tidak ditemukan.');
             exit;
         }
 
@@ -434,11 +434,11 @@ class OrderController {
 
         if ($this->orderModel->deleteOrderItem($order_item_id, $store_id)) {
             $this->orderTotal($order_id);
-            echo json_encode(['success' => true, 'message' => 'Item berhasil dihapus dan stok dikembalikan.']);
+            send_json_response(true, 'Item berhasil dihapus dan stok dikembalikan.');
             exit;
         } else {
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Gagal menghapus item.']);
+            send_json_response(false, 'Gagal menghapus item.');
             exit;
         }
     }
@@ -745,21 +745,18 @@ class OrderController {
         $data = $input ?: $_POST;
 
         if (empty($data['product_id'])) {
-            echo json_encode(['total_price' => 0]);
+            send_json_response(false, 'Product ID tidak valid.');
             exit;
         }
 
         $itemData = $this->_prepareItemData($data, $store_id);
 
         if (isset($itemData['error'])) {
-            echo json_encode(['total_price' => 0]);
+            send_json_response(false, $itemData['error']);
             exit;
         }
 
-        echo json_encode([
-            'success' => true,
-            'total' => $itemData['amount']
-        ]); 
+        send_json_response(true, 'Berhasil menghitung harga total', ['total' => $itemData['amount']]);
         exit;
     }
 
@@ -773,7 +770,7 @@ class OrderController {
 
         if (isset($itemData['error'])) {
             http_response_code($itemData['status']);
-            echo json_encode(['success' => false, 'message' => $itemData['error']]);
+            send_json_response(false, $itemData['error']);
             exit;
         }
 
@@ -784,7 +781,7 @@ class OrderController {
         $existing_stock = $this->stockModel->getStockById($itemData['product_id']);
         if ($product['unit_type'] !== '~' && $existing_stock < $stok_butuh) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Stock Barang Utama tidak mencukupi']);
+            send_json_response(false, 'Stock Barang Utama tidak mencukupi');
             exit;
         }
 
@@ -792,7 +789,7 @@ class OrderController {
             $f_existing = $this->stockModel->getStockById($f_reduce['product_id']);
             if ($f_existing < $f_reduce['qty']) {
                 // http_response_code(400);
-                // echo json_encode(['success' => false, 'message' => 'Stock Finishing tidak mencukupi']);
+                // send_json_response(false, 'Stock Finishing tidak mencukupi');
                 // exit;
             }
         }
@@ -827,11 +824,11 @@ class OrderController {
                 $this->orderTotal($itemData['order_id']);
                 $this->paymentStatus($itemData['order_id']);
                 
-                echo json_encode(['success' => true, 'message' => 'Item berhasil diperbarui.']);
+                send_json_response(true, 'Item berhasil diperbarui.');
                 exit;
             } else {
                 http_response_code(500);
-                echo json_encode(['success' => false, 'message' => 'Gagal memperbarui item']);
+                send_json_response(false, 'Gagal memperbarui item');
                 exit;
             }
         } else {
@@ -846,11 +843,11 @@ class OrderController {
                 $this->orderTotal($itemData['order_id']);
                 $this->paymentStatus($itemData['order_id']);
                 
-                echo json_encode(['success' => true, 'message' => 'Item berhasil ditambahkan.']);
+                send_json_response(true, 'Item berhasil ditambahkan.');
                 exit;
             } else {
                 http_response_code(500);
-                echo json_encode(['success' => false, 'message' => 'Gagal menambahkan item']);
+                send_json_response(false, 'Gagal menambahkan item');
                 exit;
             }
         }
@@ -872,10 +869,9 @@ class OrderController {
             'product_name' => $row['product_name'] ?? '',
         ]), $items_raw);
 
-        header('Content-Type: application/json');
-        echo json_encode([
-            'items'             => $items,
-            'total'             => $total,
+        send_json_response(true, 'Berhasil mengambil data item', [
+            'total' => $total,
+            'items' => $items,
             'diskon_per_produk' => $diskon_per_produk
         ]);
     }

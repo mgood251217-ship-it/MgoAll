@@ -1,5 +1,6 @@
 <?php
 require_once BASE_PATH . '/models/Location.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 class LocationController {
     private $locationModel;
@@ -33,7 +34,7 @@ class LocationController {
             $this->locationModel->createLocation($data);
         }
 
-        echo json_encode(['success' => true, 'message' => "Lokasi berhasil diperbarui."]);
+        send_json_response(true, "Lokasi berhasil diperbarui.");
         exit;
     }
 }

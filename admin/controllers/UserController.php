@@ -1,5 +1,6 @@
 <?php
 require_once BASE_PATH . '/models/User.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 class UserController {
     private $userModel;
@@ -55,14 +56,14 @@ class UserController {
         }
 
         if (!empty($errors)) {
-            echo json_encode(['success' => false, 'errors' => $errors]);
+            send_json_response(false, "Terjadi kesalahan saat memperbarui user.", $errors);
             exit;
         }
 
         if ($this->userModel->updateUser($data)) {
-            echo json_encode(['success' => true, 'message' => "User berhasil diperbarui."]);
+            send_json_response(true, "User berhasil diperbarui.");
         } else {
-            echo json_encode(['success' => false, 'errors' => ["Gagal memperbarui user."]]);
+            send_json_response(false, "Gagal memperbarui user.");
         }
         exit;
     }
@@ -89,14 +90,14 @@ class UserController {
         }
 
         if (!empty($errors)) {
-            echo json_encode(['success' => false, 'errors' => $errors]);
+            send_json_response(false, "Terjadi kesalahan saat menambahkan user.", $errors);
             exit;
         }
 
         if ($this->userModel->createUser($data)) {
-            echo json_encode(['success' => true, 'message' => "User berhasil ditambahkan."]);
+            send_json_response(true, "User berhasil ditambahkan.");
         } else {
-            echo json_encode(['success' => false, 'errors' => ["Gagal menambahkan user."]]);
+            send_json_response(false, "Gagal menambahkan user.");
         }
         exit;
     }
@@ -107,7 +108,7 @@ class UserController {
         $data = $this->requestData();
 
         if ($this->userModel->checkUserStore($store_id) == 1 || $data->role != 'MANAGER') {
-            echo json_encode(['success' => false, 'errors' => ["Tidak bisa menghapus user terakhir."]]);
+            send_json_response(false, "Tidak bisa menghapus user terakhir.");
             exit;
         }
 
@@ -118,9 +119,9 @@ class UserController {
                     unlink($filePath);
                 }
             }
-            echo json_encode(['success' => true, 'message' => "User berhasil dihapus."]);
+            send_json_response(true, "User berhasil dihapus.");
         } else {
-            echo json_encode(['success' => false, 'errors' => ["Gagal menghapus user."]]);
+            send_json_response(false, "Gagal menghapus user.");
         }
         exit;
     }
