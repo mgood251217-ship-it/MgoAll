@@ -121,5 +121,139 @@ class PaymentController {
 
     }
 
+    public function updatePayment(){
+        global $store_id;
+
+        if (!isset($_SESSION['admin_logged_in'])) {
+            echo json_encode(['success' => false, 'message' => 'Kesalahan Login Administrator']);
+            exit;
+        }
+
+        $administrator_id = startEnk('dek', $_SESSION['admin_logged_in']['administrator_id']);
+
+        $date = date("Y-m-d H:i:s");
+
+        $payment_id = isset($_POST['payment_id']) ? (int)$_POST['payment_id'] : 0;
+        $order_id   = isset($_POST['order_id']) ? (int)$_POST['order_id'] : 0;
+        $nominal    = isset($_POST['nominal']) ? (int)$_POST['nominal'] : 0;
+        $method     = isset($_POST['payment_method']) ? strtoupper(trim($_POST['payment_method'])) : '';
+        $tanggal    = isset($_POST['tanggal']) ? trim($_POST['tanggal']) : '';
+        $keterangan = isset($_POST['keterangan']) ? trim($_POST['keterangan']) : '';
+        $tanggalOld = strtotime($tanggal);
+        $tanggalcek = date('Y-m-d', $tanggalOld);
+
+        $tanggal = str_replace('T', ' ', $tanggal) . ':00';
+
+        $title = "UBAH PEMBAYARAN";
+        $message = "";
+        $done = 0;
+
+        $order = $this->orderModel->getOrderById($order_id);
+        $orderName = $order['customer_name'];
+        $orderNomorator = $order['nomorator'];
+
+        $payment = $this->paymentModel->getPaymentByOrderId($order_id);
+        $paymentNominal = $payment['nominal'] ?? '';
+        $paymentPaymentmethod = $payment['payment_method'] ?? '';
+        $paymentDateOld = strtotime($payment['date']);
+        $paymentDate = date('Y-m-d', $paymentDateOld);
+
+        if ($method != $paymentPaymentmethod && $paymentNominal != $nominal && $paymentDate != $tanggalcek) {
+            $message = "UBAH METODE PEMBAYARAN, NOMINAL, DAN TANGGAL BAYAR DARI: \n"
+                        . $paymentNominal . " => ". $nominal . "\n"
+                        . $paymentPaymentmethod . " => ". $method . "\n"
+                        . $paymentDate . " => ". $tanggalcek . "\n"
+                        . "NAMA ". $orderName . " NOMORATOR " . $orderNomorator
+                        ;
+        }elseif ($method != $paymentPaymentmethod && $paymentNominal != $nominal) {
+            $message = "UBAH METODE PEMBAYARAN DAN NOMINAL DARI: \n"
+                        . $paymentNominal . " => ". $nominal . "\n"
+                        . $paymentPaymentmethod . " => ". $method . "\n"
+                        . "NAMA ". $orderName . " NOMORATOR " . $orderNomorator
+                        ;
+        }elseif ($paymentNominal != $nominal && $paymentDate != $tanggalcek) {
+            $message = "UBAH NOMINAL, DAN TANGGAL BAYAR DARI: \n"
+                        . $paymentNominal . " => ". $nominal . "\n"
+                        . $paymentDate . " => ". $tanggalcek . "\n"
+                        . "NAMA ". $orderName . " NOMORATOR " . $orderNomorator
+                        ;
+        }elseif ($method != $paymentPaymentmethod && $paymentDate != $tanggalcek) {
+            $message = "UBAH METODE PEMBAYARAN, DAN TANGGAL BAYAR DARI: \n"
+                        . $paymentPaymentmethod . " => ". $method . "\n"
+                        . $paymentDate . " => ". $tanggalcek . "\n"
+                        . "NAMA ". $orderName . " NOMORATOR " . $orderNomorator
+                        ;
+        }elseif ($method != $paymentPaymentmethod) {
+            $message = "UBAH METODE PEMBAYARAN DARI: \n"
+                        . $paymentPaymentmethod . " => ". $method . "\n"
+                        . "NAMA ". $orderName . " NOMORATOR " . $orderNomorator
+                        ;
+        }elseif ($paymentNominal != $nominal) {
+            $message = "UBAH NOMINAL DARI: \n"
+                        . $paymentNominal . " => ". $nominal . "\n"
+                        . "NAMA ". $orderName . " NOMORATOR " . $orderNomorator
+                        ;
+        }elseif ($paymentDate != $tanggalcek) {
+            $message = "UBAH NOMINAL, DAN TANGGAL BAYAR DARI: \n"
+                        . $paymentDate . " => ". $tanggalcek . "\n"
+                        . "NAMA ". $orderName . " NOMORATOR " . $orderNomorator
+                        ;
+        }else {
+            $message = "";
+        }
+
+        if ($message != "") {
+            $data = (object)[
+                'store_id' => $store_id,
+                'title' => $title,
+                'message' => $message,
+                'information' => $keterangan,
+                'date' => $date,
+                'order_id' => $order_id,
+                'done' => $done,
+                'administrator_id' => $administrator_id
+            ];
+            $this->activityModel->createActivity($data);
+        }
+
+        $data = (object)[
+            'nominal' => $nominal,
+            'payment_method' => $method,
+            'date' => $tanggal,
+            'status' => 'DP',
+            'payment_id' => $payment_id
+        ];
+
+        $this->paymentModel->updatePayment($data);
+
+        $totalPembayaran = 0;
+        $payments = $this->koneksi->query("SELECT payment_id, nominal FROM payment WHERE order_id = $order_id");
+
+        while ($row = $payments->fetch_assoc()) {
+            $totalPembayaran += (int)$row['nominal'];
+        }
+
+        $orderResult = $this->koneksi->query("SELECT total FROM orders WHERE order_id = $order_id LIMIT 1");
+        $orderTotal = 0;
+        if ($orderRow = $orderResult->fetch_assoc()) {
+            $orderTotal = (int)$orderRow['total'];
+        }
+
+        if ($totalPembayaran < $orderTotal) {
+            $this->koneksi->query("UPDATE payment SET status = 'DP' WHERE order_id = $order_id");
+        } else {
+            $this->koneksi->query("UPDATE payment SET status = 'DP' WHERE order_id = $order_id");
+
+            $last = $this->koneksi->query("SELECT payment_id FROM payment WHERE order_id = $order_id ORDER BY payment_id DESC LIMIT 1");
+            if ($lastRow = $last->fetch_assoc()) {
+                $lastId = (int)$lastRow['payment_id'];
+                $this->koneksi->query("UPDATE payment SET status = 'LUNAS' WHERE payment_id = $lastId");
+                $tanggalAja = date("Y-m-d");
+                $this->financeController->refreshFinance($store_id, $tanggalAja);
+            }
+        }
+
+    }
+
 }
 ?>

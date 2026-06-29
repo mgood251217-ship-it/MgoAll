@@ -904,4 +904,35 @@ class OrderController {
         exit;
     }
 
+    public function createNoteDetail() {
+        $order_id = (int)($_POST['order_id'] ?? 0);
+        $note = trim($_POST['note'] ?? '');
+        $access = trim($_POST['access'] ?? '');
+
+        if ($order_id && $note !== '') {
+        $data = (object)[
+            'order_id'=> $order_id,
+            'note_for' => 'OP'
+        ];
+        $existing = $this->orderModel->getNoteOrder($data);
+
+        if ($existing) {
+            $note_order_id = (int)$existing['note_order_id'];
+            $note_session = (int)$existing['session'];
+            if ($note_session <= 0 || $access == 'all') {
+                $note_session_set = $note_session + 1;
+                if ($this->orderModel->updateNoteAndSession($note_order_id, $note_session_set, $note)) {
+                    send_json_response(true, 'Note berhasil diperbarui', ['value' => $note]);
+                }
+            }else {
+                send_json_response(false, 'access', []);
+            }
+
+        } else {
+            $this->orderModel->createNote($order_id, $note, 'OP');
+            send_json_response(true, 'Note berhasil ditambahkan', ['value' => $note]);
+        }
+        }
+    }
+
 }
