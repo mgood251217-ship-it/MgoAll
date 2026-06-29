@@ -72,6 +72,10 @@ if (isset($_SESSION['user']['user_id']) &&
     exit;
 }
 
+if (isset($_SESSION['admin_logged_in']['administrator_id'])) {
+  $administrator = true;
+}
+
 
 $stmt = $koneksi->prepare("SELECT user_id FROM users WHERE user_id = ?");
 $stmt->bind_param("i", $user_id);

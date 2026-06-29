@@ -279,6 +279,10 @@ class FinanceController {
         if (!empty($_FILES['picture']['name']) && $_FILES['picture']['error'] === 0) {
             $file = compress($_FILES['picture'], $uploadDir);
             $pictureName = $file['file'];
+            if (!$file) {
+                echo json_encode(['success' => false, 'message' => 'Gagal mengompres gambar ke target ukuran (120KB)']);
+                exit;
+            }
         }
 
         $data = (object)[

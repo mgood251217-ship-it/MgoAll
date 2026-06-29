@@ -208,9 +208,9 @@ $ordersOffline = $dataOrder['offline'];
                         $html .= '<button class="btn btn-sm btn-danger btn-pay" data-order-id="' . $row['order_id'] . '">Bayar</button> ';
                     }
                     $html .= '<div class="btn-group">
-                                <button class="btn btn-sm btn-warning dropdown-toggle" data-bs-toggle="dropdown">Print Struk</button>
+                                <button class="btn btn-sm btn-warning dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Print</button>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" onclick="printStruk(' . $row['order_id'] . ')">Print langsung</a></li>
+                                    <li><a class="dropdown-item" onclick="printStruk(' . $row['order_id'] . ')">Print Struk</a></li>
                                     <li><a class="dropdown-item" onclick="printStrukPDF(' . $row['order_id'] . ')">Print PDF</a></li>
                                 </ul>
                               </div> ';
@@ -703,9 +703,9 @@ document.addEventListener('dblclick', function (e) {
 
   const encryptedId = editBtn.dataset.enk;
   const isPaid = editBtn.dataset.paid;
+  const access = '<?= $access ?>';
 
-
-  if (isPaid > 0) {
+  if (isPaid > 0 && access !== 'all') {
     showAlert('error', 'Tidak dapat membuka nota');
   }else{
     const form = document.createElement('form');

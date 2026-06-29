@@ -341,7 +341,7 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
         .then(data => {
           
             if (data.success) {
-              await showAlert('success', data.message);
+              showAlert('success', data.message);
               setTimeout(() => {
                 window.location.reload();
               },3000);
@@ -367,7 +367,7 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
         if (modalId) {
           bootstrap.Modal.getInstance(document.getElementById(modalId))?.hide();
         }
-        await showAlert('success', data.message);
+        showAlert('success', data.message);
         setTimeout(() => {
           window.location.reload();
         },3000);
@@ -484,9 +484,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             const data = await res.json();
 
             if (data.success) {
-              Swal.fire({ icon: 'success', title: 'Berhasil', text: data.message }).then(() => {
-                window.location.reload();
-              });
+              showAlert('success', data.message);
             } else {
               Swal.fire({ icon: 'error', title: 'Gagal', text: data.errors.join('<br>') });
             }

@@ -7,9 +7,6 @@ require_once BASE_PATH . '/components/Alert.php';
 require_once BASE_PATH . '/components/Table.php';
 require_once BASE_PATH . '/components/Loading.php';
 require_once BASE_PATH . '/components/Icon.php';
-if (isset($_SESSION['admin_logged_in']['administrator_id'])) {
-  $administrator = true;
-}
 
 $productController = new ProductController($koneksi);
 $products = $productController->index();

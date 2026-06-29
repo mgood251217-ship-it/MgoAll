@@ -403,11 +403,11 @@ $dataPemasukan = $data['income'];
                 <h5 class="modal-title" id="deleteModalLabel">Konfirmasi Hapus</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
               </div>
-              <div class="modal-body"></div>
-              <input type="hidden" name="start_date_hapus" value="<?= $start_date ?>">
-              <input type="hidden" name="end_date_hapus" value="<?=  $end_date ?>">
-              <input type="hidden" name="id" id="delete-id">
-              <input type="hidden" name="type" id="delete-type">
+              <div class="modal-body">
+                <input type="hidden" name="start_date_hapus" value="<?= $start_date ?>">
+                <input type="hidden" name="end_date_hapus" value="<?= $end_date ?>">
+                <input type="hidden" name="id" id="delete-id">
+                <input type="hidden" name="type" id="delete-type">
                 <p>Apakah Anda yakin ingin menghapus data ini?</p>
               </div>
               <div class="modal-footer">
@@ -420,8 +420,8 @@ $dataPemasukan = $data['income'];
 
 
         <div class="mt-3 mb-4 text-center">
-          <button class="btn btn-danger me-2" id="btnAddExpenditure">+ Pengeluaran</button>
-          <button class="btn btn-success" id="btnAddIncome">+ Pemasukan</button>
+          <button class="btn btn-danger me-2" id="btnAddExpenditure" data-bs-toggle="modal" data-bs-target="#addExpenditure">+ Pengeluaran</button>
+          <button class="btn btn-success" id="btnAddIncome" data-bs-toggle="modal" data-bs-target="#addIncome">+ Pemasukan</button>
         </div>
 
       </div>
@@ -605,15 +605,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Saat modal hapus ditampilkan
-  document.querySelectorAll('[data-bs-target="#deleteModal"]').forEach(button => {
-    button.addEventListener('click', () => {
+  const deleteModal = document.getElementById('deleteModal');
+  if (deleteModal) {
+    deleteModal.addEventListener('show.bs.modal', function (event) {
+      const button = event.relatedTarget;
+      if (!button) return;
+
       const id = button.getAttribute('data-id');
       const type = button.getAttribute('data-type');
-      document.getElementById('delete-id').value = id;
-      document.getElementById('delete-type').value = type;
+      
+      deleteModal.querySelector('#delete-id').value = id;
+      deleteModal.querySelector('#delete-type').value = type;
     });
-  });
+  }
 
 
 </script>

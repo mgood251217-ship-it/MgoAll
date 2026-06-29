@@ -11,7 +11,7 @@ $orderModel = new Order($koneksi);
 $storeModel = new Store($koneksi);
 $paymentModel = new Payment($koneksi);
 
-if($paymentModel->getPaidByOrderId($order_id)){
+if($paymentModel->getPaidByOrderId($order_id) && $administrator !== true){
   header("Location: " . BASE_URL . "/customer/");
   exit;
 }
