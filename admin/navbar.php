@@ -5,37 +5,7 @@ require_once BASE_PATH . '/models/Store.php';
 $settingModel = new Setting($koneksi);
 $storeModel = new Store($koneksi);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WITH']) &&
-    strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
-
-    $inputJSON = file_get_contents('php://input');
-    $data = json_decode($inputJSON, true);
-
-    if (isset($data['mode'])) {
-        $newMode = ($data['mode'] == 1) ? 1 : 0;
-
-        if ($settingModel->cekUserSetting($user_id)) {
-            $settingModel->updateOneValue($user_id, 'mode', $newMode);
-        } else {
-            $settingModel->create([
-              'user_id' => $user_id,
-              'mode' => $newMode
-            ]);
-        }
-    }
-
-    if (ob_get_length()) {
-        ob_clean();
-    }
-    
-    header('Content-Type: application/json');
-    echo json_encode(['success' => true]);
-    exit;
-}
-
 $mode = (int)$settingModel->getOneValue($user_id, 'mode');
-$totalNotif = $storeModel->countNotif($store_id);
-$notifications = $storeModel->getNotifByStoreId($store_id);
 
 $iconClass = $mode === 1 ? "text-warning" : "text-primary";
 $iconMode = '';
@@ -90,88 +60,62 @@ if (strpos($userAgent, 'Mobile') !== false) {
         <?= $iconMode ?>
       </button>
 
-      <div class="dropdown me-2">
-        <a class="btn btn-light btn-sm position-relative dropdown-toggle" href="#" data-bs-toggle="dropdown">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bell-fill text-primary" viewBox="0 0 16 16">
-            <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2m.995-14.901a1 1 0 1 0-1.99 0A5 5 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901"/>
-          </svg>
-          <?php if ($totalNotif > 0) { ?>
-            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><?= $totalNotif ?></span>
-          <?php } ?>
-        </a>
-        <ul class="dropdown-menu dropdown-menu-end" style="width: 300px; max-height: 300px; overflow-y: auto;">
-          <li><h6 class="dropdown-header">Notifikasi</h6></li>
-          <?php if (!empty($notifications)) {
-            foreach ($notifications as $row) { ?>
-              <li>
-                <a href="#" class="dropdown-item notif-item <?= $row['is_read'] == 1 ? 'read-notif' : '' ?>"
-                   data-id="<?= $row['notif_id'] ?>">
-                  <strong><?= htmlspecialchars($row['message']) ?></strong><br>
-                  <small class="notif-content">
-                    <?= htmlspecialchars(mb_strimwidth($row['message_content'], 0, 60, '...')) ?>
-                  </small>
-                  <div class="text-muted small"><?= date("d-m-Y H:i", strtotime($row['created_at'])) ?></div>
-                </a>
-              </li>
-              <li><hr class="dropdown-divider"></li>
-          <?php } } else { ?>
-            <li><a class="dropdown-item text-muted" href="#">Tidak ada notifikasi</a></li>
-          <?php } ?>
-        </ul>
-      </div>
-
-      <a href="<?= BASE_URL ?>/logout.php" class="btn btn-light btn-sm d-flex align-items-center">
+      <button class="btn btn-light btn-sm d-flex align-items-center" id="btnLogoout">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-right me-1 text-primary" viewBox="0 0 16 16">
             <path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0z"/>
             <path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708z"/>
           </svg>
         Logout
-      </a>
+      </button>
     </div>
   </div>
 </nav>
 
 <script src="<?= BASE_URL ?>/assets/js/sweetalert2@11.js"></script>
 <script>
+
+document.getElementById("btnLogoout").addEventListener('click', function (){
+  fetch('<?= BASE_URL ?>/action.php?action=logout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  })
+  .then(response => {
+    if (!response.ok) {
+        throw new Error("Gagal");
+    }
+    return response.json();
+  }).then(data => {
+      if (data.success) {
+        window.location.href = '<?= BASE_URL ?>/login';
+      }
+    });
+})
+
+
 document.getElementById('toggleMode').addEventListener('click', function () {
   let mode = '<?= $mode ?>';
   let newMode = (mode == '1') ? 0 : 1;
 
-  fetch(window.location.href, {
+  fetch('<?= BASE_URL ?>/action.php?action=theme', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ mode: newMode })
-  }).then(() => {
-     window.location.reload();
-  });
-});
-
-document.addEventListener('DOMContentLoaded', function () {
-  document.querySelectorAll('.notif-item').forEach(item => {
-    item.addEventListener('click', function (e) {
-      e.preventDefault();
-      const notifId = {notif_id: this.dataset.id};
-
-      fetch('<?= BASE_URL ?>/get_notif.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(notifId)
-      })
-      .then(response => {
-        if (!response.ok) {
-            throw new Error("Gagal mengambil notifikasi");
-        }
-        return response.json();
-      }).then(data => {
-          Swal.fire({
-            icon: 'info',
-            title: data.message,
-            html: data.message_content,
-            confirmButtonText: 'Tutup'  
-          })
-        });
+  }).then(response => {
+    if (!response.ok) {
+        throw new Error("Gagal");
+    }
+    return response.json();
+  })
+  .then(data => {
+      if (data.success) {
+        window.location.reload(); 
+      } else {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: data.message });
+      }
+    })
+    .catch(err => {
+        console.error('Error:', err);
     });
-  });
 });
 </script>
 <script src="<?= BASE_URL ?>/assets/js/navbar.js"></script>

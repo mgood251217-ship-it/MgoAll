@@ -2,177 +2,16 @@
 session_start();
 require_once "connect.php";
 require_once BASE_PATH . '/global_functions.php';
-require_once BASE_PATH . '/functions/setInfo.php';
-require_once BASE_PATH . '/functions/Otp.php';
+require_once BASE_PATH . '/controllers/AuthController.php';
+require_once BASE_PATH . '/components/Alert.php';
 
-
-if (isset($_SESSION['user']['user_id']) &&
-    isset($_SESSION['user']['store_id']) &&
-    isset($_SESSION['user']['role']) &&
-    isset($_SESSION['user']['username']) &&
-    isset($_SESSION['user']['initial']) &&
-    isset($_SESSION['user']['name']) &&
-    isset($_SESSION['user']['foto'])&&
-    isset($_SESSION['user']['store_name']) &&
-    isset($_SESSION['user']['store_address']) &&
-    isset($_SESSION['user']['store_logo']) 
-    // isset($_SESSION['user']['mode'])
-    ) {
-    header("Location: " . BASE_URL . "/customer");
-
-    exit;
-}elseif(isset($_COOKIE['user_user_id']) &&
-    isset($_COOKIE['user_username']) &&
-    isset($_COOKIE['user_name']) &&
-    isset($_COOKIE['user_initial']) &&
-    isset($_COOKIE['user_store_id']) &&
-    isset($_COOKIE['user_role']) &&
-    isset($_COOKIE['user_foto']) &&
-    isset($_COOKIE['store_name']) &&
-    isset($_COOKIE['store_address']) &&
-    isset($_COOKIE['store_logo']) 
-    // isset($_COOKIE['user_mode'])
-    ){
-        $_SESSION['user'] = [
-            'user_id' => $_COOKIE['user_user_id'],
-            'store_id'         => $_COOKIE['user_store_id'],
-            'role'           => $_COOKIE['user_role'],
-            'username'           => $_COOKIE['user_username'],
-            'initial'           => $_COOKIE['user_initial'],
-            'name'           => $_COOKIE['user_name'],
-            'foto'              => $_COOKIE['user_foto']
-        ];
+if (AuthController::checkSession()) {
     header("Location: " . BASE_URL . "/customer");
     exit;
 }
-
-$pesan_error = '';
-
-date_default_timezone_set('Asia/Jakarta');
-$date = date("Y-m-d H:i:s");
 
 $site_key   = "6LegPm0sAAAAACMlVF_Q0hQmj2cRMXNl2Pj8pldB";
-$secret_key = "6LegPm0sAAAAAD028ehVM8ZVd1yn_cXLN2rNEkDA";
-
 $is_localhost = in_array($_SERVER['HTTP_HOST'], ['localhost', '127.0.0.1', '::1']);
-
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-
-    $username_input = strtolower(trim($_POST['usernames']));
-    $password = $_POST['password'];
-    $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
-    $address = getClientIP();
-
-    if (!$is_localhost) {
-        if (empty($recaptcha_response)) {
-            $pesan_error = "reCAPTCHA tidak valid!";
-        } else {
-            $verify_url = "https://www.google.com/recaptcha/api/siteverify";
-            $response = file_get_contents(
-                $verify_url . "?secret=" . $secret_key . "&response=" . $recaptcha_response
-            );
-            $response_keys = json_decode($response, true);
-
-            if (
-                !$response_keys['success'] ||
-                $response_keys['score'] < 0.5 ||
-                $response_keys['action'] !== 'login'
-            ) {
-                $pesan_error = "Aktivitas mencurigakan terdeteksi!";
-            }
-        }
-    }
-
-    if (empty($pesan_error)) {
-        $sql = "SELECT COUNT(*) as total
-                FROM users WHERE LOWER(username) = ?";
-        $stmt = $koneksi->prepare($sql);
-        $stmt->bind_param("s", $username_input);
-        $stmt->execute();
-        $resultCek = $stmt->get_result();
-        $stmt->close(); 
-
-        if ($resultCek->fetch_assoc()['total'] > 0) {
-            
-            $sql = "SELECT password, store_id
-                    FROM users WHERE LOWER(username) = ?";
-            $stmt = $koneksi->prepare($sql);
-            $stmt->bind_param("s", $username_input);
-            $stmt->execute();
-            $resultCek = $stmt->get_result();
-            $user = $resultCek->fetch_assoc();
-            $stmt->close();
-
-            $dataStore = dataStore($user['store_id']);
-            $storeEmail = $dataStore['email'];
-
-            if (password_verify($password, $user['password'])) {
-
-                unset($user['password']);
-
-                $sql = "SELECT user_id, username, name, store_id, initial, role, picture
-                        FROM users WHERE LOWER(username) = ?";
-                $stmt = $koneksi->prepare($sql);
-                $stmt->bind_param("s", $username_input);
-                $stmt->execute();
-                $result = $stmt->get_result();
-                $user = $result->fetch_assoc();
-                $stmt->close();
-
-                // // 🔥 CEK TRUSTED DEVICE (BYPASS OTP)
-                // $stmt = $koneksi->prepare("
-                //     SELECT last_used, status 
-                //     FROM otp_verifications 
-                //     WHERE LOWER(username) = ? AND address = ?
-                //     LIMIT 1
-                // ");
-                // $stmt->bind_param("ss", $username_input, $address);
-                // $stmt->execute();
-                // $resultOtp = $stmt->get_result();
-
-                // if ($resultOtp->num_rows > 0) {
-                //     $otpData = $resultOtp->fetch_assoc();
-
-                //     if (
-                //         $otpData['status'] == 1 &&
-                //         time() <= (strtotime($otpData['last_used']) + (5 * 24 * 60 * 60))
-                //     ) {
-                //         // ✅ LOGIN LANGSUNG (BYPASS OTP)
-                //         setInfo($user, $dataStore);
-                //         insertActivity($user['user_id'], $address, $date);
-
-                //         header("Location: customer");
-                //         exit;
-                //     }
-                // }
-
-                // if (isset($_GET['u']) && $_GET['u'] == 'medina') {
-                //     setOtp($username_input, $address, 'umifaruq@gmail.com');
-                //     exit;
-                // } elseif (isset($_GET['u']) && $_GET['u'] == 'demo') {
-                //     setOtp($username_input, $address, 'mgood251217@gmail.com');
-                //     exit;
-                // }else {
-                //     setOtp($username_input, $address, $storeEmail);
-                // }
-
-                // ❌ kalau tidak lolos → kirim OTP
-                
-                setInfo($user, $dataStore);
-                insertActivity($user['user_id'], $address, $date);
-
-                header("Location: customer");
-                exit;
-
-            } else {
-                $pesan_error = "Username atau password salah!";
-            }
-            
-        } else {
-            $pesan_error = "Username atau password salah!";
-        }
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -443,15 +282,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <div class="">
 
                 <div >
-                    <form method="POST" id="loginForm" style="z-index: 999;">
+                    <form id="loginForm" style="z-index: 999;">
                       <h4>Login</h4>
                         <div class="mb-3">
                             <label class="form-label">Username</label>
-                            <input type="text" name="usernames"  required autocomplete="off">
+                            <input type="text" name="usernames" id="usernames" required autocomplete="off">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Password</label>
-                            <input type="password" name="password"  required autocomplete="off">
+                            <input type="password" name="password" id="password" required autocomplete="off">
                         </div>
 
                         <?php if (!$is_localhost): ?>
@@ -475,35 +314,60 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </ul>
 </div>
 <script>
+const isLocalhost = <?= $is_localhost ? 'true' : 'false' ?>;
+const siteKey = '<?= $site_key ?>';
+
 function showGlobalLoading() {
   document.getElementById('global-loading').classList.remove('d-none');
 }
-document.getElementById('loginForm').addEventListener('submit', function() {
-  showGlobalLoading();
-});
-</script>
 
-<?php if (!$is_localhost): ?>
-<script>
-grecaptcha.ready(function () {
-    grecaptcha.execute('<?= $site_key ?>', {action: 'login'})
-        .then(function (token) {
-            document.getElementById('g-recaptcha-response').value = token;
-            
+function hideGlobalLoading() {
+  document.getElementById('global-loading').classList.add('d-none');
+}
+
+function generateRecaptchaToken() {
+    if (!isLocalhost && typeof grecaptcha !== 'undefined') {
+        grecaptcha.ready(function () {
+            grecaptcha.execute(siteKey, {action: 'login'})
+                .then(function (token) {
+                    document.getElementById('g-recaptcha-response').value = token;
+                });
         });
-});
-</script>
-<?php endif; ?>
+    }
+}
 
-<?php if ($pesan_error): ?>
-<script>
-Swal.fire({
-    icon: 'error',
-    title: 'Login Gagal',
-    text: <?= json_encode($pesan_error) ?>,
-    confirmButtonColor: '#d33'
+generateRecaptchaToken();
+
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault(); 
+    showGlobalLoading();
+
+    const formData = new FormData(this);
+
+    fetch('<?= BASE_URL ?>/action.php?action=login', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideGlobalLoading();
+        
+        if(data.success) {
+            window.location.href = "customer";
+        } else {
+            showAlert('error', data.message);
+            generateRecaptchaToken();
+        }
+    })
+    .catch(error => {
+        hideGlobalLoading();
+        console.error('Error:', error);
+        showAlert('success', 'Terjadi Kesalahan');
+        generateRecaptchaToken();
+        generateRecaptchaToken();
+    });
 });
 </script>
-<?php endif; ?>
+
 </body>
 </html>

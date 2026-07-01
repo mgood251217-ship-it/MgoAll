@@ -1,7 +1,6 @@
 <?php
 require_once BASE_PATH . '/models/Setting.php';
 require_once BASE_PATH . '/functions/helpers.php';
-require_once BASE_PATH . '/functions/helpers.php';
 
 class SettingController {
     private $settingModel;
@@ -48,6 +47,36 @@ class SettingController {
 
         $redirect_url = $_SERVER['HTTP_REFERER'] ?? 'index';
         redirect($redirect_url);
+    }
+
+    public function changeTheme(){
+        global $user_id;
+        $inputJSON = file_get_contents('php://input');
+        $data = json_decode($inputJSON, true);
+
+        if (isset($data['mode'])) {
+            $newMode = ($data['mode'] == 1) ? 1 : 0;
+
+            $result = false;
+            if ($this->settingModel->cekUserSetting($user_id)) {
+                $result = $this->settingModel->updateOneValue($user_id, 'mode', $newMode);
+            } else {
+                $result = $this->settingModel->create((object)[
+                    'user_id' => $user_id,
+                    'mode' => $newMode,
+                    'preview_print' => 0,
+                    'customer_limit' => 0
+                ]);
+            }
+
+            if ($result) {
+                send_json_response(true, 'Tema berhasil disimpan');
+                exit;
+            }
+        }
+        
+        send_json_response(false, 'Gagal menyimpan data ke database');
+        exit;
     }
 
 }

@@ -56,12 +56,32 @@ class User{
     }
 
     public function getUsersByStoreId($id){
-        $stmt = $this->koneksi->prepare("SELECT user_id, name, username, role, initial, picture, store_id FROM users WHERE store_id = ?");
+        $stmt = $this->koneksi->prepare("SELECT * FROM users WHERE store_id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
         return $result;
+    }
+
+    public function getUserByUsername($username){
+        $stmt = $this->koneksi->prepare("SELECT user_id, username, name, store_id, initial, role, picture FROM users WHERE LOWER(username) = ?");
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $user = $result->fetch_assoc();
+        $stmt->close();
+        return $user;
+    }
+
+    public function getUserAuthData($username) {
+        $stmt = $this->koneksi->prepare("SELECT password, store_id FROM users WHERE LOWER(username) = ?");
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $user = $result->fetch_assoc();
+        $stmt->close();
+        return $user;
     }
 
     public function checkUser ($username) {
