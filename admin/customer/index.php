@@ -62,37 +62,37 @@ $ordersOffline = $dataOrder['offline'];
     text-align: center;
   }
 
-<?php if (isset($username) && ($username == 'zannia' || $username == 'vikialvian')) { ?>
-    .dark-mode .table-primary tr th {
-      background-color:rgb(192, 22, 155) !important;
+  <?php if (isset($username) && ($username == 'zannia' || $username == 'vikialvian')) { ?>
+  .dark-mode .table-primary tr th {
+    background-color:rgb(192, 22, 155) !important;
+    color: white !important;
+  }
+  .dark-mode .table-danger tr th {
+    background-color:rgb(192, 22, 155) !important;
+    color: white !important;
+  }
+  .dark-mode .table-prim > tbody > .order-row:nth-child(even) > td{
+    background-color: #ffcce5 !important;
+    color: rgb(115, 0, 90) !important;
+  }
+  .dark-mode .table-prim > tbody > .order-row:nth-child(odd) > td{
+    background-color:rgb(255, 244, 249) !important;
+    color: rgb(115, 0, 90) !important;
+  }
+  .dark-mode .table-dan > tbody > .order-row:nth-child(even) > td{
+    background-color: #ffcce5 !important;
+    color: rgb(115, 0, 90) !important;
+  }
+  .dark-mode .table-dan > tbody > .order-row:nth-child(odd) > td{
+    background-color: rgb(255, 244, 249) !important;
+    color: rgb(115, 0, 90) !important;
+  }
+  .dark-mode .table-prim > tbody > .order-row.row-selected > td,
+  .dark-mode .table-dan > tbody > .order-row.row-selected > td {
+      background-color: rgb(255, 151, 232) !important;
       color: white !important;
-    }
-    .dark-mode .table-danger tr th {
-      background-color:rgb(192, 22, 155) !important;
-      color: white !important;
-    }
-    .dark-mode .table-prim > tbody > .order-row:nth-child(even) > td{
-      background-color: #ffcce5 !important;
-      color: rgb(115, 0, 90) !important;
-    }
-    .dark-mode .table-prim > tbody > .order-row:nth-child(odd) > td{
-      background-color:rgb(255, 244, 249) !important;
-      color: rgb(115, 0, 90) !important;
-    }
-    .dark-mode .table-dan > tbody > .order-row:nth-child(even) > td{
-      background-color: #ffcce5 !important;
-      color: rgb(115, 0, 90) !important;
-    }
-    .dark-mode .table-dan > tbody > .order-row:nth-child(odd) > td{
-      background-color: rgb(255, 244, 249) !important;
-      color: rgb(115, 0, 90) !important;
-    }
-    .dark-mode .table-prim > tbody > .order-row.row-selected > td,
-    .dark-mode .table-dan > tbody > .order-row.row-selected > td {
-        background-color: rgb(255, 151, 232) !important;
-        color: white !important;
-    }
-<?php } ?>
+  }
+  <?php } ?>
 
 </style>
 </head>
@@ -114,12 +114,11 @@ $ordersOffline = $dataOrder['offline'];
             </form>
           </div>
           <div class="col">
-          <form method="post" action="order_action.php?order=limit" class="row g-2 " id="limitForm" style="margin-bottom:0;">
+          <form class="row g-2" id="limitForm" style="margin-bottom:0;">
             <div class="col-auto">
                 <select class="form-select" aria-label="Default select example"
                 name="limit"
                 id="limit"
-                onchange="this.form.submit()
                 ">
                   <option selected value="0">Limit Order</option>
                   <option value="1">1</option>
@@ -852,6 +851,30 @@ function printStrukPDF(order_id) {
     window.open(url, "_blank");
   }
 }
+
+document.getElementById('limitForm').addEventListener('change', function (e) {
+  e.preventDefault();
+  
+  const formData = new FormData(this);
+  formData.submit = true;
+
+  fetch('order_action.php?order=limit', {
+    method: 'POST',
+    body: formData
+  }).then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showAlert('success', 'Limit berhasil diperbarui');
+      setTimeout(() => {
+        location.reload();
+      }, 3000);
+    } else {
+      showAlert('error', 'Gagal memperbarui limit: ' + data.message);
+    }
+  }).catch(error => {
+    showAlert('error', 'Terjadi kesalahan sistem.');
+  });
+});
 
 document.querySelectorAll('.btn-edit').forEach(button => {
   button.addEventListener('click', function () {
