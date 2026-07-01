@@ -125,23 +125,22 @@ function redirect($url){
     exit;
 }
 
-if (!function_exists('startEnk')) {
-    function startEnk($enkdek, $enkvalue){
-        $enkkey = "kunci-rahasia-sangat-aman";
-        $enkmethod = "aes-256-cbc";
-        $iv_length = openssl_cipher_iv_length($enkmethod);
 
-        if ($enkdek == 'enk') {
-            $iv = openssl_random_pseudo_bytes($iv_length);
-            $encrypted = openssl_encrypt($enkvalue, $enkmethod, $enkkey, OPENSSL_RAW_DATA,  $iv);
+function startEnk($enkdek, $enkvalue){
+    $enkkey = "kunci-rahasia-sangat-aman";
+    $enkmethod = "aes-256-cbc";
+    $iv_length = openssl_cipher_iv_length($enkmethod);
 
-            return base64_encode($iv . $encrypted);
-        } elseif ($enkdek == 'dek') {
-            $data = base64_decode($enkvalue);
-            $iv = substr($data, 0, $iv_length);
-            $ciphertext = substr($data, $iv_length);
+    if ($enkdek == 'enk') {
+        $iv = openssl_random_pseudo_bytes($iv_length);
+        $encrypted = openssl_encrypt($enkvalue, $enkmethod, $enkkey, OPENSSL_RAW_DATA,  $iv);
 
-            return openssl_decrypt( $ciphertext, $enkmethod, $enkkey, OPENSSL_RAW_DATA, $iv );
-        }
+        return base64_encode($iv . $encrypted);
+    } elseif ($enkdek == 'dek') {
+        $data = base64_decode($enkvalue);
+        $iv = substr($data, 0, $iv_length);
+        $ciphertext = substr($data, $iv_length);
+
+        return openssl_decrypt( $ciphertext, $enkmethod, $enkkey, OPENSSL_RAW_DATA, $iv );
     }
 }
