@@ -206,6 +206,8 @@ $ordersOffline = $dataOrder['offline'];
                     $html .= '<button class="btn btn-sm btn-primary btn-edit" data-id="' . $row['order_id'] . '" data-enk="' . $row['order_enk'] . '" data-paid="' . $row['total_paid'] . '">Edit</button> ';
                     if (!$row['is_lunas']) {
                         $html .= '<button class="btn btn-sm btn-danger btn-pay" data-order-id="' . $row['order_id'] . '">Bayar</button> ';
+                    }else {
+                        $html .= '<button class="btn btn-sm btn-secondary" disabled>Lunas</button> ';
                     }
                     $html .= '<div class="btn-group">
                                 <button class="btn btn-sm btn-warning dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Print</button>
@@ -1065,7 +1067,11 @@ nominalInput.addEventListener('input', function(e) {
           if (aksiCell && res.data.isLunas) {
             const bayarBtn = aksiCell.querySelector('button.btn-pay'); 
             if (bayarBtn) {
-              bayarBtn.remove();
+              let sudahLunas = document.createElement('button');
+              sudahLunas.className = 'btn btn-sm btn-secondary';
+              sudahLunas.disabled = true;
+              sudahLunas.textContent = 'Lunas';
+              bayarBtn.replaceWith(sudahLunas);
             }
           }
           nominal.innerHTML = '';
