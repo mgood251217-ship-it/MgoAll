@@ -12,6 +12,18 @@ class AuthController {
         $this->koneksi = $koneksi;
     }
 
+    public function session()
+    {
+        if (self::checkSession()) {
+            Response::success(
+                'Session aktif',
+                $_SESSION['user'] ?? []
+            );
+        }
+
+        Response::error('Belum login', 401);
+    }
+
     public static function checkSession() {
         if (isset($_SESSION['user']['user_id']) &&
             isset($_SESSION['user']['store_id']) &&
@@ -51,55 +63,54 @@ class AuthController {
     }
 
     public function login() {
-        if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['usernames'])) {
-            $username_input = strtolower(trim($_POST['usernames']));
-            $password = $_POST['password'];
-            $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
-            $address = getClientIP();
+        $username_input = strtolower(trim($_POST['username']));
+        $password = $_POST['password'];
+        $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
+        $address = getClientIP();
 
-            date_default_timezone_set('Asia/Jakarta');
-            $date = date("Y-m-d H:i:s");
+        date_default_timezone_set('Asia/Jakarta');
+        $date = date("Y-m-d H:i:s");
 
-            $secret_key = "6LegPm0sAAAAAD028ehVM8ZVd1yn_cXLN2rNEkDA";
-            $is_localhost = in_array($_SERVER['HTTP_HOST'], ['localhost', '127.0.0.1', '::1']);
+        $secret_key = "6LegPm0sAAAAAD028ehVM8ZVd1yn_cXLN2rNEkDA";
+        $is_localhost = in_array($_SERVER['HTTP_HOST'], ['localhost', '127.0.0.1', '::1']);
 
-            if (!$is_localhost) {
-                if (empty($recaptcha_response)) {
-                    send_json_response(false, "reCAPTCHA tidak valid!");
+        if (!$is_localhost) {
+            if (empty($recaptcha_response)) {
+                send_json_response(false, "reCAPTCHA tidak valid!");
+                exit;
+            } else {
+                $verify_url = "https://www.google.com/recaptcha/api/siteverify";
+                $response = file_get_contents($verify_url . "?secret=" . $secret_key . "&response=" . $recaptcha_response);
+                $response_keys = json_decode($response, true);
+
+                if (!$response_keys['success'] || $response_keys['score'] < 0.5 || $response_keys['action'] !== 'login') {
+                    send_json_response(false, "Aktivitas mencurigakan terdeteksi!");
                     exit;
-                } else {
-                    $verify_url = "https://www.google.com/recaptcha/api/siteverify";
-                    $response = file_get_contents($verify_url . "?secret=" . $secret_key . "&response=" . $recaptcha_response);
-                    $response_keys = json_decode($response, true);
-
-                    if (!$response_keys['success'] || $response_keys['score'] < 0.5 || $response_keys['action'] !== 'login') {
-                        send_json_response(false, "Aktivitas mencurigakan terdeteksi!");
-                        exit;
-                    }
                 }
             }
+        }
 
-            if ($this->userModel->checkUser($username_input)) {
-                $userAuth = $this->userModel->getUserAuthData($username_input);
-                $dataStore = dataStore($userAuth['store_id']);
+        if ($this->userModel->checkUser($username_input)) {
+            $userAuth = $this->userModel->getUserAuthData($username_input);
+            $dataStore = dataStore($userAuth['store_id']);
 
-                if (password_verify($password, $userAuth['password'])) {
-                    $fullUserData = $this->userModel->getUserByUsername($username_input);
-                    
-                    setInfo($fullUserData, $dataStore);
-                    insertActivity($fullUserData['user_id'], $address, $date);
+            if (password_verify($password, $userAuth['password'])) {
+                $fullUserData = $this->userModel->getUserByUsername($username_input);
+                
+                setInfo($fullUserData, $dataStore);
+                insertActivity($fullUserData['user_id'], $address, $date);
 
-                    send_json_response(true, "Login Berhasil");
-                    exit;
-                } else {
-                    send_json_response(false, "Username atau password salah!");
-                    exit;
-                }
+                send_json_response(true, "Login Berhasil");
+                exit;
             } else {
                 send_json_response(false, "Username atau password salah!");
                 exit;
             }
+        } else {
+            send_json_response(false, "Username atau password salah!");
+            exit;
         }
+        
     }
 
     public static function logout() {

@@ -8,7 +8,7 @@ require_once BASE_PATH . '/models/Activity.php';
 require_once BASE_PATH . '/models/Payment.php';
 require_once BASE_PATH . '/functions/helpers.php';
 
-class OrderController {
+class MeterController {
     private $koneksi;
     private $orderModel;
     private $userModel;

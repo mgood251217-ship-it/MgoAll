@@ -286,7 +286,7 @@ $is_localhost = in_array($_SERVER['HTTP_HOST'], ['localhost', '127.0.0.1', '::1'
                       <h4>Login</h4>
                         <div class="mb-3">
                             <label class="form-label">Username</label>
-                            <input type="text" name="usernames" id="usernames" required autocomplete="off">
+                            <input type="text" name="username" id="username" required autocomplete="off">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Password</label>
