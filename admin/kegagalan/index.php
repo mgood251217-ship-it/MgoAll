@@ -155,6 +155,7 @@ $jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DT
         <?php else: ?>
         <?php
         $htmlTableGagal = [
+            'id'             => 'tableGagal',
             'data'           => $items ?? [],
             'empty_message'  => 'Tidak ada data kegagalan.',
             'table_class'    => 'table table-bordered table-striped',
