@@ -194,15 +194,15 @@ $darkModeClass = ($mode === 1) ? 'dark-mode' : '';
             <li class="list-group-item">
               <strong class="text-dark">Customer:</strong><br>
               <span class="text-primary fw-bold"><?= htmlspecialchars($top_customer); ?></span><br>
-              <span class="text-success fw-semibold"><?= rupiah($top_total); ?></span>
+              <span class="text-success fw-semibold"><?= format_rupiah($top_total); ?></span>
             </li>
             <li class="list-group-item">
               <strong class="text-dark">Total 30 Hari:</strong><br>
-              <span class="text-success fw-semibold"><?= rupiah($total30); ?></span>
+              <span class="text-success fw-semibold"><?= format_rupiah($total30); ?></span>
             </li>
             <li class="list-group-item">
               <strong class="text-dark">Total Hari Ini:</strong><br>
-              <span class="text-primary fw-semibold"><?= rupiah($total_today); ?></span>
+              <span class="text-primary fw-semibold"><?= format_rupiah($total_today); ?></span>
             </li>
           </ul>
         </div>

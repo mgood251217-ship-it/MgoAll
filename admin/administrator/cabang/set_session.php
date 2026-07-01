@@ -2,7 +2,7 @@
 
 session_start();
 require_once "../../connect.php";
-require_once BASE_PATH . '/global_functions.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 $user_id = (int)$_POST['user_id'];
 $sql = "SELECT user_id, username, name, password, store_id, initial, role, picture FROM users WHERE user_id = ?";

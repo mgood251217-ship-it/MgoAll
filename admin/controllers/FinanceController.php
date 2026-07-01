@@ -277,13 +277,27 @@ class FinanceController {
 
         $pictureName = '';
 
-        if (!empty($_FILES['picture']['name']) && $_FILES['picture']['error'] === 0) {
-            $file = compress($_FILES['picture'], $uploadDir);
-            $pictureName = $file['file'];
-            if (!$file) {
-                send_json_response(false, 'Gagal mengompres gambar ke target ukuran (120KB)');
+        if (!empty($_FILES['picture']['name'])) {
+            if ($_FILES['picture']['error'] !== UPLOAD_ERR_OK) {
+                send_json_response(false, 'Gagal mengupload gambar. Silakan pilih file yang valid.');
                 exit;
             }
+
+            if ($_FILES['picture']['size'] > 2 * 1024 * 1024) {
+                send_json_response(false, 'Ukuran gambar maksimal 2 MB.');
+                exit;
+            }
+
+            require_once BASE_PATH . '/global_functions.php';
+            $file = compress($_FILES['picture'], $uploadDir);
+
+            if (!$file || !($file['success'] ?? false)) {
+                $errorMessage = $file['error'] ?? 'Gagal mengompres gambar.';
+                send_json_response(false, $errorMessage);
+                exit;
+            }
+
+            $pictureName = $file['file'] ?? '';
         }
 
         $data = (object)[

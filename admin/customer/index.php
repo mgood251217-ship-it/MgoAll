@@ -1,7 +1,6 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
-require_once BASE_PATH . '/global_functions.php';
 require_once BASE_PATH . '/models/Setting.php';
 require_once BASE_PATH . '/models/User.php';
 require_once BASE_PATH . '/controllers/OrderController.php';
@@ -861,15 +860,15 @@ document.querySelectorAll('.btn-edit').forEach(button => {
     fetch('order_action.php?order=get_order&order_id=' + this.dataset.id)
     .then(response => response.json())
     .then(data => {
-      document.getElementById('edit-nomorator').value = data.nomorator;
-      document.getElementById('edit-customer_name').value = data.customer_name;
-      document.getElementById('edit-nomor').value = data.nomor;
-      document.getElementById('edit-deadline').value = data.deadline;
-      const rawDate = data.date;
+      document.getElementById('edit-nomorator').value = data.data.nomorator;
+      document.getElementById('edit-customer_name').value = data.data.customer_name;
+      document.getElementById('edit-nomor').value = data.data.nomor;
+      document.getElementById('edit-deadline').value = data.data.deadline;
+      const rawDate = data.data.date;
       const formattedDate = rawDate.replace(' ', 'T').slice(0, 16);
       document.getElementById('edit-date').value = formattedDate;
-      document.getElementById('edit-user_id').value = data.user_id;
-      document.getElementById('edit-sistem').value = data.system;
+      document.getElementById('edit-user_id').value = data.data.user_id;
+      document.getElementById('edit-sistem').value = data.data.system;
 
       new bootstrap.Modal(document.getElementById('editOrderModal')).show();
     })
@@ -1119,7 +1118,7 @@ nominalInput.addEventListener('input', function(e) {
         return response.json();
       })
       .then(data => {
-        history = data;
+        history = data.data;
         dropdown.innerHTML = '';
         if (val.length === 0) return dropdown.style.display = 'none';
 

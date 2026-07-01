@@ -134,60 +134,65 @@ $dataPemasukan = $data['income'];
           <div class="col-md-6">
             <h5 class="mt-4">Data Pengeluaran Bulan Ini</h5>
             <?php
+              $pengeluaranColumns = [
+                  [
+                      'header' => 'No',
+                      'type'   => 'number'
+                  ],
+                  [
+                      'header' => 'Keterangan',
+                      'field'  => 'information'
+                  ],
+                  [
+                      'header' => 'Nominal',
+                      'type'   => 'currency',
+                      'field'  => 'nominal'
+                  ],
+                  [
+                      'header' => 'Foto',
+                      'render' => function($row) use ($storeName) {
+                          $stName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
+                          $fDate  = date('Y/m/d', strtotime($row['date']));
+                          $imgUrl = BASE_URL . "/assets/img/bukti/{$stName}/{$fDate}/" . sanitize($row['img']);
+                          
+                          return empty($row['img']) 
+                              ? '<img src="'.BASE_URL.'/assets/img/noproof.png" style="height:30px;">' 
+                              : '<img src="'.$imgUrl.'" class="img-thumb" onclick="showImageModal(\''.$imgUrl.'\')" style="width:50px;height:50px;object-fit:cover;cursor:pointer;">';
+                      }
+                  ],
+                  [
+                      'header' => 'Tanggal',
+                      'render' => fn($row) => format_tanggal_id($row['date'])
+                  ]
+              ];
+
+              if ($administrator) {
+                  $pengeluaranColumns[] = [
+                      'header' => 'Aksi',
+                      'type'   => 'action_buttons',
+                      'buttons' => [
+                          [
+                              'text'            => 'Edit',
+                              'color'           => 'warning',
+                              'modal'           => 'editExpenditureModal',
+                              'data_attributes' => ['id' => 'expenditure_id', 'type' => 'expenditures', 'info' => 'information', 'nominal' => 'nominal']
+                          ],
+                          [
+                              'text'            => 'Hapus',
+                              'color'           => 'danger',
+                              'modal'           => 'deleteModal',
+                              'data_attributes' => ['id' => 'expenditure_id', 'type' => 'expenditures']
+                          ]
+                      ]
+                  ];
+              }
+
               echo renderTable([
                   'id'          => 'tablePengeluaran',
                   'data'        => $dataPengeluaran,
                   'table_class' => 'table table-bordered table-striped',
                   'thead_class' => 'table-danger',
-                  'columns'     => [
-                      [
-                          'header' => 'No',
-                          'type'   => 'number'
-                      ],
-                      [
-                          'header' => 'Keterangan',
-                          'field'  => 'information'
-                      ],
-                      [
-                          'header' => 'Nominal',
-                          'type'   => 'currency',
-                          'field'  => 'nominal'
-                      ],
-                      [
-                          'header' => 'Foto',
-                          'render' => function($row) use ($storeName) {
-                              $stName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
-                              $fDate  = date('Y/m/d', strtotime($row['date']));
-                              $imgUrl = BASE_URL . "/assets/img/bukti/{$stName}/{$fDate}/" . sanitize($row['img']);
-                              
-                              return empty($row['img']) 
-                                  ? '<img src="'.BASE_URL.'/assets/img/noproof.png" style="height:30px;">' 
-                                  : '<img src="'.$imgUrl.'" class="img-thumb" onclick="showImageModal(\''.$imgUrl.'\')" style="width:50px;height:50px;object-fit:cover;cursor:pointer;">';
-                          }
-                      ],
-                      [
-                          'header' => 'Tanggal',
-                          'render' => fn($row) => format_tanggal_id($row['date'])
-                      ],
-                      [
-                          'header' => 'Aksi',
-                          'type'   => 'action_buttons',
-                          'buttons' => [
-                              [
-                                  'text'            => 'Edit',
-                                  'color'           => 'warning',
-                                  'modal'           => 'editExpenditureModal',
-                                  'data_attributes' => ['id' => 'expenditure_id', 'type' => 'expenditures', 'info' => 'information', 'nominal' => 'nominal']
-                              ],
-                              [
-                                  'text'            => 'Hapus',
-                                  'color'           => 'danger',
-                                  'modal'           => 'deleteModal',
-                                  'data_attributes' => ['id' => 'expenditure_id', 'type' => 'expenditures']
-                              ]
-                          ]
-                      ]
-                  ]
+                  'columns'     => $pengeluaranColumns
               ]);
             ?>
           </div>
@@ -197,64 +202,69 @@ $dataPemasukan = $data['income'];
             <h5 class="mt-4">Data Pemasukan Bulan Ini</h5>
             <div class="table-responsive">
               <?php
+                $pemasukanColumns = [
+                    [
+                        'header' => 'No',
+                        'type'   => 'number'
+                    ],
+                    [
+                        'header' => 'Keterangan',
+                        'field'  => 'information'
+                    ],
+                    [
+                        'header' => 'Nominal',
+                        'type'   => 'currency',
+                        'field'  => 'nominal'
+                    ],
+                    [
+                        'header' => 'Tanggal',
+                        'render' => function($row) {
+                            return format_tanggal_id($row['date']);
+                        }
+                    ]
+                ];
+
+                if ($administrator) {
+                    $pemasukanColumns[] = [
+                        'header' => 'Aksi',
+                        'type'   => 'action_buttons',
+                        'buttons' => [
+                            [
+                                'text'            => 'Edit',
+                                'color'           => 'warning',
+                                'modal'           => 'editIncomeModal',
+                                'data_attributes' => [
+                                    'id'      => 'income_id', 
+                                    'type'    => 'income', 
+                                    'info'    => 'information', 
+                                    'nominal' => 'nominal'
+                                ],
+                                'visible'         => function($row) { 
+                                    return strpos($row['information'], 'INPUT SALDO OTOMATIS') === false; 
+                                }
+                            ],
+                            [
+                                'text'            => 'Hapus',
+                                'color'           => 'danger',
+                                'modal'           => 'deleteModal',
+                                'data_attributes' => [
+                                    'id'   => 'income_id', 
+                                    'type' => 'income'
+                                ],
+                                'visible'         => function($row) { 
+                                    return strpos($row['information'], 'INPUT SALDO OTOMATIS') === false; 
+                                }
+                            ]
+                        ]
+                    ];
+                }
+
                 echo renderTable([
                     'id'          => 'tablePemasukan',
                     'data'        => $dataPemasukan,
                     'table_class' => 'table table-bordered table-striped',
                     'thead_class' => 'table-success',
-                    'columns'     => [
-                        [
-                            'header' => 'No',
-                            'type'   => 'number'
-                        ],
-                        [
-                            'header' => 'Keterangan',
-                            'field'  => 'information'
-                        ],
-                        [
-                            'header' => 'Nominal',
-                            'type'   => 'currency',
-                            'field'  => 'nominal'
-                        ],
-                        [
-                            'header' => 'Tanggal',
-                            'render' => function($row) {
-                                return format_tanggal_id($row['date']);
-                            }
-                        ],
-                        [
-                            'header' => 'Aksi',
-                            'type'   => 'action_buttons',
-                            'buttons' => [
-                                [
-                                    'text'            => 'Edit',
-                                    'color'           => 'warning',
-                                    'modal'           => 'editIncomeModal',
-                                    'data_attributes' => [
-                                        'id'      => 'income_id', 
-                                        'type'    => 'income', 
-                                        'info'    => 'information', 
-                                        'nominal' => 'nominal'
-                                    ],
-                                    'visible'         => function($row) { 
-                                        return strpos($row['information'], 'INPUT SALDO OTOMATIS') === false; 
-                                    }
-                                ],
-                                [
-                                    'text'            => 'Hapus',
-                                    'color'           => 'danger',
-                                    'modal'           => 'deleteModal',
-                                    'data_attributes' => [
-                                        'id'   => 'income_id', 
-                                        'type' => 'income'
-                                    ],
-                                    'visible'         => function($row) { 
-                                        return strpos($row['information'], 'INPUT SALDO OTOMATIS') === false; 
-                                    }
-                                ]
-                            ]
-                        ]
-                    ]
+                    'columns'     => $pemasukanColumns
                 ]);
               ?>
             </div>
@@ -457,7 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
           window.location.reload();
         },3000);
       }else{
-        alert('error');
+        showAlert('error', data.message);
       }
     })
   });
@@ -482,7 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
           window.location.reload();
         },3000);
       }else{
-        alert('error');
+        showAlert('error', data.message);
       }
     })
   });
@@ -507,7 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
           window.location.reload();
         },3000);
       }else{
-        alert('error');
+        showAlert('error', data.message);
       }
     })
   });
@@ -557,7 +567,7 @@ document.addEventListener('DOMContentLoaded', () => {
           window.location.reload();
         },3000);
       }else{
-        alert('error');
+        showAlert('error', data.message);
       }
     })
   });

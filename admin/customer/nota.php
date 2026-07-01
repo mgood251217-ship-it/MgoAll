@@ -1,7 +1,6 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
-require_once BASE_PATH . '/global_functions.php';
 require_once BASE_PATH . '/models/Order.php';
 require_once BASE_PATH . '/models/Store.php'; 
 require_once BASE_PATH . '/models/Payment.php';
@@ -13,7 +12,7 @@ $orderModel = new Order($koneksi);
 $storeModel = new Store($koneksi);
 $paymentModel = new Payment($koneksi);
 
-if($paymentModel->getPaidByOrderId($order_id) && $administrator !== true){
+if($paymentModel->getPaidByOrderId($order_id) && !$administrator){
   header("Location: " . BASE_URL . "/customer/");
   exit;
 }
@@ -49,38 +48,38 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
     <script>
         const store_id = <?= (int) $store_id ?>;
     </script>
-<style>
-  .dark-mode-select{
-    background-color: #1e1e1e !important;
-    color: #e0e0e0 !important;
-    border: none #333 !important;
-    border-radius: 7px;
-  }
-  .dark-mode-select .select2-results__option--highlighted {
-    background-color:rgb(63, 42, 42) !important;
-    border: none #333 !important;
-  }
-  <?php if (isset($username) && ($username == 'zannia' || $username == 'vikialvian')) { ?>
-  .dark-mode-select{
-    background-color: white !important;
-    color: rgb(115, 0, 90) !important;
-    border: none #333 !important;
-  }
-  .dark-mode-select .select2-results__option--highlighted {
-    background-color: rgb(255, 151, 232) !important;
-    border: none #333 !important;
-  }
-  <?php } ?>
-  .dark-mode-select[aria-selected="true"] {
-    border: none !important;
-    outline: none !important;
-  }
-  .default-mode-select{
-    background-color: white !important;
-    color: black !important;
-  }
+    <style>
+    .dark-mode-select{
+        background-color: #1e1e1e !important;
+        color: #e0e0e0 !important;
+        border: none #333 !important;
+        border-radius: 7px;
+    }
+    .dark-mode-select .select2-results__option--highlighted {
+        background-color:rgb(63, 42, 42) !important;
+        border: none #333 !important;
+    }
+    <?php if (isset($username) && ($username == 'zannia' || $username == 'vikialvian')) { ?>
+    .dark-mode-select{
+        background-color: white !important;
+        color: rgb(115, 0, 90) !important;
+        border: none #333 !important;
+    }
+    .dark-mode-select .select2-results__option--highlighted {
+        background-color: rgb(255, 151, 232) !important;
+        border: none #333 !important;
+    }
+    <?php } ?>
+    .dark-mode-select[aria-selected="true"] {
+        border: none !important;
+        outline: none !important;
+    }
+    .default-mode-select{
+        background-color: white !important;
+        color: black !important;
+    }
 
-</style>
+    </style>
 </head>
 <body>
   <div id="main-wrapper">
@@ -91,15 +90,15 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
 
       <div id="page-content-wrapper">
         <div class="container-fluid py-4 px-2">
-          <div class="row h-100 align-items-stretch">
-            <div class="col-md-5 h-100" >
+          <div class="row align-items-start">
+            <div class="col-md-5">
             <form action="<?= BASE_URL ?>/customer?start_date=<?= date('Y-m-d', strtotime($order['date'])) ?>&end_date=<?= date('Y-m-d', strtotime($order['date'])) ?>" method="post">
               <input type="hidden" name="system" value="<?= sanitize($order['system']) ?>">
               <button type="submit" class="btn btn-success mb-3">
                 <i class="bi bi-arrow-left"></i> Kembali ke Customer
               </button>
             </form>
-              <div class="card shadow-sm p-4 mb-4 h-100"
+              <div class="card shadow-sm p-4 mb-4"
               <?php if ($username == 'zannia' || $username == 'vikialvian') { ?>
                 style="background-color: #f5b6cf !important;"
               <?php }elseif($mode === 1){ ?>
@@ -107,7 +106,7 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
               <?php } ?>
               >
                 <h4 class="mb-3">Tambah Item</h4>
-                <form id="addItemForm" class="d-flex flex-column h-100">
+                <form id="addItemForm" class="d-flex flex-column">
                   <input type="hidden" name="order_id" value="<?= sanitize($order_id) ?>">
 
                   <div class="row mb-3">
@@ -538,7 +537,7 @@ document.addEventListener('DOMContentLoaded', function () {
       fetch(`order_action.php?order=get_product&store_id=${store_id}&type=${encodeURIComponent(jenis)}`)
           .then(response => response.json())
           .then(data => {
-              data.forEach(product => {
+              data.data.forEach(product => {
                   let nameOnly = product.name;
 
                   if (jenis === 'PAKET INDOOR OUTDOOR') {
@@ -601,7 +600,7 @@ document.addEventListener('DOMContentLoaded', function () {
                           elFinishingJersey.innerHTML = '';
                       }
 
-                      data.forEach(product => {
+                      data.data.forEach(product => {
                           if (!seenFinishing.has(product.name)) {
                               seenFinishing.add(product.name);
                               elFinishingJersey.insertAdjacentHTML('beforeend', `
@@ -613,7 +612,7 @@ document.addEventListener('DOMContentLoaded', function () {
                           }
                       });
                   } else {
-                      data.forEach(product => {
+                      data.data.forEach(product => {
                           if (!seenFinishing.has(product.name)) {
                               seenFinishing.add(product.name);
                               const opt = document.createElement('option');
@@ -868,7 +867,7 @@ document.addEventListener('DOMContentLoaded', function () {
               fetch(`order_action.php?order=get_product&store_id=${store_id}&type=KARTU NAMA`)
                   .then(res => res.json())
                   .then(dataProduk => {
-                      const produkCocok = dataProduk.find(p => p.name.trim().toUpperCase() === fullName);
+                      const produkCocok = dataProduk.data.find(p => p.name.trim().toUpperCase() === fullName);
                       if (!produkCocok) {
                           Swal.fire({ icon: 'error', title: 'Produk tidak ditemukan', text: `Tidak ada produk dengan nama "${fullName}"`, confirmButtonText: 'Tutup' });
                           return;
@@ -929,9 +928,6 @@ document.addEventListener('DOMContentLoaded', function () {
         finishing_cut: document.getElementById('finishingCut').checked ? 1 : 0,
         finishing_die: document.getElementById('finishingDie').checked ? 1 : 0,
     };
-
-    console.log(dataPost);
-    
 
     if (elEnableDiskon && elEnableDiskon.checked) {
         dataPost.diskon = parseFloat(elDiskonInput.value) || 0;
@@ -1011,9 +1007,9 @@ document.addEventListener('DOMContentLoaded', function () {
   function loadNote() {
       const orderId = <?= (int)$order_id ?>;
       fetch(`order_action.php?order=get_note&order_id=${orderId}`)
-          .then(res => res.text())
+          .then(res => res.json())
           .then(response => {
-              document.getElementById('noteDisplay').innerHTML = `<div class="alert alert-danger" role="alert">${response}</div>`;
+              document.getElementById('noteDisplay').innerHTML = `<div class="alert alert-success" role="alert">${response.data.note}</div>`;
           });
   }
 
@@ -1027,14 +1023,15 @@ document.addEventListener('DOMContentLoaded', function () {
               method: 'POST',
               body: formData
           })
-          .then(res => res.text())
+          .then(res => res.json())
           .then(response => {
               showAlert('success', 'Catatan berhasil disimpan.');
-              document.getElementById('noteDisplay').innerHTML = `<div class="alert alert-success">${response}</div>`;
+              document.getElementById('noteDisplay').innerHTML = `<div class="alert alert-success">${response.data.note}</div>`;
               document.getElementById('exampleFormControlTextarea1').value = '';
           });
       });
   }
+  loadNote();
 
   function getFinishingList() {
       let list = [];

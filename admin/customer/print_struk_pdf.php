@@ -58,7 +58,7 @@ $printed_price_for = [];
 
 $preview_print = $settingModel->getOneValue($user_id, 'preview_print') ?? 0;
 
-$tanggal = formatTanggalIndo($order['date']);
+$tanggal = format_tanggal_id($order['date']);
 $nomorator = sanitize($order['nomorator']);
 $filename = "{$customer_name_clean}_{$initial}_{$tanggal}_{$nomorator}.pdf";
 $logo_url = BASE_URL . '/assets/img/store/' . ($store["logo_print"] ?: $store['logo']);
@@ -116,10 +116,10 @@ $logo_url = BASE_URL . '/assets/img/store/' . ($store["logo_print"] ?: $store['l
               <col style="width: 75px;">
               <col style="width: auto;">
             </colgroup>
-            <tr><td style="white-space: nowrap;">Tanggal</td><td>: <?= formatTanggalIndo($order['date']) ?></td></tr>
+            <tr><td style="white-space: nowrap;">Tanggal</td><td>: <?= format_tanggal_id($order['date']) ?></td></tr>
             <tr><td style="white-space: nowrap;">Kepada Yth</td><td style="word-break: break-word; vertical-align: top;">: <?= sanitize($order['customer_name']) ?></td></tr>
             <tr><td style="white-space: nowrap;">Nota No.</td><td>: <?= sanitize($order['nomorator']) ?></td></tr>
-            <tr><td style="white-space: nowrap;">Deadline</td><td style="word-break: break-word; vertical-align: top;">: <?= formatTanggalIndo($order['deadline']) . ' ' . date('H.i', strtotime($order['deadline'])) ?></td></tr>
+            <tr><td style="white-space: nowrap;">Deadline</td><td style="word-break: break-word; vertical-align: top;">: <?= format_tanggal_id($order['deadline']) . ' ' . date('H.i', strtotime($order['deadline'])) ?></td></tr>
             <tr><td style="white-space: nowrap;">Operator</td><td>: <?= sanitize($operator_name ?? '-') ?></td></tr>
           </table>
 

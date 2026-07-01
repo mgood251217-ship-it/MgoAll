@@ -1,5 +1,5 @@
 <?php
-require_once BASE_PATH . '/global_functions.php';
+require_once BASE_PATH . '/functions/helpers.php';
 session_start();
 
 if (isset($_SESSION['admin_logged_in'])) {

@@ -1,56 +1,17 @@
 <?php
 
-function jerseyPrice($size){
-    $unit = 0;
-    if ($size === '5XL') {
-        $unit += 50000;
-    } elseif ($size === '4XL') {
-        $unit += 40000;
-    } elseif ($size === '3XL') {
-        $unit += 30000;
-    } elseif ($size === '2XL') {
-        $unit += 20000;
-    } elseif ($size === 'XL') {
-        $unit += 10000;
-    }
-
-    return $unit;
-}
-
-function startEnk($enkdek, $enkvalue){
-    $enkkey = "kunci-rahasia-sangat-aman";
-    $enkmethod = "aes-256-cbc";
-    $iv_length = openssl_cipher_iv_length($enkmethod);
-
-    if ($enkdek == 'enk') {
-        $iv = openssl_random_pseudo_bytes($iv_length);
-        $encrypted = openssl_encrypt($enkvalue, $enkmethod, $enkkey, OPENSSL_RAW_DATA,  $iv);
-
-        return base64_encode($iv . $encrypted);
-    } elseif ($enkdek == 'dek') {
-        $data = base64_decode($enkvalue);
-        $iv = substr($data, 0, $iv_length);
-        $ciphertext = substr($data, $iv_length);
-
-        return openssl_decrypt( $ciphertext, $enkmethod, $enkkey, OPENSSL_RAW_DATA, $iv );
-    }
-}
-
-function formatTanggalIndo($tanggal) {
-    $bulan = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ];
-
-    $dt = new DateTime($tanggal);
-    $tgl = $dt->format('d');
-    $bln = (int)$dt->format('m');
-    $thn = $dt->format('Y');
-
-    return $tgl . ' ' . $bulan[$bln - 1] . ' ' . $thn;
-}
 function compress($picture, $uploadDir, $targetFileSize = 120 * 1024) {
-    if ($picture['size'] > 2 * 1024 * 1024) return false;
+    if (!is_array($picture) || empty($picture['tmp_name']) || !is_uploaded_file($picture['tmp_name'])) {
+        return ['success'=>false, 'error'=>'File upload tidak valid.'];
+    }
+
+    if (($picture['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        return ['success'=>false, 'error'=>'Gagal mengupload file.'];
+    }
+
+    if ($picture['size'] > 2 * 1024 * 1024) {
+        return ['success'=>false, 'error'=>'Ukuran gambar maksimal 2 MB.'];
+    }
 
     $ext = strtolower(pathinfo($picture['name'], PATHINFO_EXTENSION));
     if (!in_array($ext, ['jpg','jpeg','png','gif'])) return ['success'=>false, 'error'=>'Format file tidak valid'];
@@ -60,12 +21,12 @@ function compress($picture, $uploadDir, $targetFileSize = 120 * 1024) {
     [$width, $height] = $imageInfo;
 
     $src = match($ext) {
-        'jpg','jpeg' => imagecreatefromjpeg($picture['tmp_name']),
-        'png' => imagecreatefrompng($picture['tmp_name']),
-        'gif' => imagecreatefromgif($picture['tmp_name']),
+        'jpg','jpeg' => @imagecreatefromjpeg($picture['tmp_name']),
+        'png' => @imagecreatefrompng($picture['tmp_name']),
+        'gif' => @imagecreatefromgif($picture['tmp_name']),
         default => false
     };
-    if (!$src) return ['success'=>false, 'error'=>'Gagal membaca gambar'];
+    if (!$src) return ['success'=>false, 'error'=>'File gambar rusak atau tidak valid'];
     if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
     $pictureName = uniqid('img_', true) . '.' . $ext;
     $destination = $uploadDir . $pictureName;
@@ -279,8 +240,5 @@ function refreshFinance($store_id, $date) {
 
     $stmt->execute();
     $stmt->close();
-}
-function rupiah($angka) {
-    return 'Rp ' . number_format($angka, 0, ',', '.');
 }
 ?>

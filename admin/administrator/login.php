@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once "../connect.php";
-require_once BASE_PATH . '/global_functions.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 $pesan_error = '';
 

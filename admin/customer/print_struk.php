@@ -79,10 +79,10 @@ $printed_price_for = [];
   <tr>
     <td style="width:80%; vertical-align:top;">
       <table style="width: 90%; margin: 0 auto;">
-        <tr><td width="25%">Tanggal</td><td>: <?= formatTanggalIndo($order['date']) ?></td></tr>
+        <tr><td width="25%">Tanggal</td><td>: <?= format_tanggal_id($order['date']) ?></td></tr>
         <tr><td>Kepada Yth</td><td>: <?= sanitize($order['customer_name']) ?></td></tr>
         <tr><td>Nota No.</td><td>: <?= sanitize($order['nomorator']) ?></td></tr>
-        <tr><td>Deadline</td><td>: <?= formatTanggalIndo($order['deadline']) . ' ' . date('H.i', strtotime($order['deadline']))  ?></td></tr>
+        <tr><td>Deadline</td><td>: <?= format_tanggal_id($order['deadline']) . ' ' . date('H.i', strtotime($order['deadline']))  ?></td></tr>
         <tr><td>Operator</td><td>: <?= sanitize($operator ?? '-') ?></td></tr>
       </table>
     </td>

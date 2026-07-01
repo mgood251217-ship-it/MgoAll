@@ -311,7 +311,8 @@ class OrderController {
             $this->orderModel->archiveOrderItems($order_id);
             $this->orderModel->deleteOrderAndItems($order_id);
             $this->koneksi->commit();
-            refreshFinance($order['store_id'], date('Y-m-d', strtotime($order['date'])));
+            $financeController = new FinanceController($this->koneksi);
+            $financeController->refreshFinance($order['store_id'], date('Y-m-d', strtotime($order['date'])));
             send_json_response(true, 'Order berhasil dihapus');
 
         } catch (Exception $e) {
@@ -348,7 +349,7 @@ class OrderController {
                 $this->orderModel->createNote($order_id, $note, $note_for);
             }
 
-            echo sanitize($note);
+            send_json_response(true, 'Note saved successfully.', ['note' => $note]);
             exit;
         }
     }

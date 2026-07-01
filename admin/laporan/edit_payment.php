@@ -1,6 +1,6 @@
 <?php
 require_once '../connect.php';
-require_once '../global_functions.php';
+require_once BASE_PATH . '/functions/helpers.php';
 require_once BASE_PATH . '/session.php';
 
 if (!isset($_SESSION['admin_logged_in'])) {

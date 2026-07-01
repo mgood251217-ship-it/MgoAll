@@ -6,7 +6,8 @@ require_once BASE_PATH . '/controllers/OrderController.php';
 require_once BASE_PATH . '/controllers/SettingController.php';
 require_once BASE_PATH . '/controllers/PaymentController.php';
 require_once BASE_PATH . '/models/Order.php';
-require_once BASE_PATH . '/models/Product.php'; 
+require_once BASE_PATH . '/models/Product.php';
+require_once BASE_PATH . '/functions/helpers.php';
 
 $productModel = new Product($koneksi);
 $orderModel = new Order($koneksi);
@@ -38,14 +39,13 @@ switch ($order) {
     case 'get_order':
         $id = (int)($_GET['order_id'] ?? 0);
         $order = $orderModel->getOrderById($id);
-        echo json_encode($order);
+        send_json_response(true, 'Order retrieved successfully.', $order);
         break;
     case 'get_product':
         $type = $_GET['type'] ?? '';
         $data = (object)['type' => $type, 'store_id' => $store_id];
         $products = $productModel->getProductByTypeAndStoreId($data);
-
-        echo json_encode($products);
+        send_json_response(true, 'Products retrieved successfully.', $products);
         break;
     case 'get_note':
         $order_id = $_GET['order_id'] ?? 0;
@@ -53,23 +53,22 @@ switch ($order) {
         $noted = $orderModel->getNoteOrder($data); 
 
         if ($noted && !empty($noted['note'])) {
-            echo htmlspecialchars($noted['note']);
+            send_json_response(true, 'Note retrieved successfully.', ['note' => $noted['note']]);
         }
         break;
     case 'get_history':
         $data = (object)['name' => $_GET['name'] ?? '', 'store_id' => $store_id];
         $history = $orderModel->getHistoryNameAndNomor($data) ?? [];
+        send_json_response(true, 'History retrieved successfully.', $history);
 
-        echo json_encode($history);
         break;
     case 'maklun':
         $data = (object) ['store_id_maklun' => $_POST['store_id_maklun'] ?? 0, 'order_item_id' => $_POST['order_item_id'] ?? 0];
-        $update = $orderModel->updateMaklun($data);
 
-        if ($update) {
-            echo json_encode(['success' => true]);
+        if ($orderModel->updateMaklun($data)) {
+            send_json_response(true, 'Maklun updated successfully.');
         } else {
-            echo json_encode(['success' => false]);
+            send_json_response(false, 'Failed to update Maklun.');
         }
         break;
     case 'limit':
