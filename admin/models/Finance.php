@@ -125,6 +125,31 @@ class Finance{
         return $success;
     }
 
+    public function deleteExpenditure($id, $store_id){
+        $stmt = $this->koneksi->prepare("DELETE FROM expenditures WHERE expenditure_id = ? AND store_id = ?");
+        $stmt->bind_param("ii", $id, $store_id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function deleteIncome($id, $store_id){
+        $stmt = $this->koneksi->prepare("DELETE FROM income WHERE income_id = ? AND store_id = ?");
+        $stmt->bind_param("ii", $id, $store_id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function getExpenditureById($id){
+        $stmt = $this->koneksi->prepare("SELECT * FROM expenditures WHERE expenditure_id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $result;
+    }
+
 }
 
 ?>

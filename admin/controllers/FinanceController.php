@@ -316,7 +316,7 @@ class FinanceController {
 
     public function createIncome(){
         global $store_id;
-        $info    = strtoupper(trim($_POST['information_income']));
+        $info    = strtoupper(trim($_POST['information']));
         $nominal = $_POST['nominal'] ?? 0;
         $date = trim($_POST['date']);
 
@@ -369,6 +369,46 @@ class FinanceController {
         $this->financeModel->updateIncome($data);
         $this->refreshFinance($store_id, $date);
         send_json_response(true, "Berhasil Memperbarui Pemasukan");
+    }
+
+    public function deleteExpenditure(){
+        global $store_id;
+        global $storeName;
+
+        $expenditure_id = (int)($_POST['id'] ?? 0);
+        $start_date = $_POST['start_date_hapus'] ?? '';
+
+        $row = $this->financeModel->getExpenditureById($expenditure_id);
+
+        $uploadDir = folder(BASE_PATH . '/assets/img/bukti', $storeName, $row['date']);
+
+        if (!empty($row['img'])) {
+            $imgPath = $uploadDir . $row['img'];
+            if (file_exists($imgPath)) {
+                unlink($imgPath);
+            }
+        }
+
+        if ($this->financeModel->deleteExpenditure($expenditure_id, $store_id)) {
+            $this->refreshFinance($store_id, $start_date);
+            send_json_response(true, 'Pengeluaran berhasil dihapus');
+        } else {
+            send_json_response(false, 'Gagal menghapus pengeluaran');
+        }
+    }
+
+    public function deleteIncome(){
+        global $store_id;
+
+        $income_id = (int)($_POST['id'] ?? 0);
+        $start_date = $_POST['start_date_hapus'] ?? '';
+
+        if ($this->financeModel->deleteIncome($income_id, $store_id)) {
+            $this->refreshFinance($store_id, $start_date);
+            send_json_response(true, 'Pemasukan berhasil dihapus');
+        } else {
+            send_json_response(false, 'Gagal menghapus pemasukan');
+        }
     }
 
 }

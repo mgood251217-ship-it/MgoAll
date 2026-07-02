@@ -144,3 +144,14 @@ function startEnk($enkdek, $enkvalue){
         return openssl_decrypt( $ciphertext, $enkmethod, $enkkey, OPENSSL_RAW_DATA, $iv );
     }
 }
+
+function folder($basePath, $storeName, $date){
+    $storeFolder = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
+    $year = date('Y', strtotime($date));
+    $month = date('m', strtotime($date));
+    $day = date('d', strtotime($date));
+    $folderDate = "$year/$month/$day";
+    $uploadDir = "/$basePath/$storeFolder/$folderDate/";
+
+    return $uploadDir;
+}

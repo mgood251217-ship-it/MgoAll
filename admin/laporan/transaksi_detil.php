@@ -334,8 +334,6 @@ if (!empty($orderIds)) {
         <?php endforeach; ?>
       </div>
 
-
-
     </div>
     <!-- Modal Payment -->
     <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true" >
@@ -363,7 +361,6 @@ if (!empty($orderIds)) {
               </div>
             </div>
                   
-
             <!-- Bayar Lunas -->
             <div class="mb-3">
               <label class="form-label">Lunas Langsung</label><br>
@@ -608,7 +605,21 @@ function loadPaymentInfo(orderId, container) {
 
   fetch('get_payment.php?order_id=' + orderId)
     .then(res => res.text())
-    .then(html => {
+    .then(data => {
+
+      const html = `<div class="editable-payment border p-2 rounded bg-light" <?= ($mode === 1) ? 'style="background-color: #333 !important; color: #e0e0e0 !important;"' : '' ?>
+                      data-payment-id="${data.data.payment_id}"
+                      data-order-id="${data.data.order_id}"
+                      data-nominal="${data.data.nominal}"
+                      data-metode="${data.data.payment_method}"
+                      data-tanggal="${data.data.date}">
+                    <div><strong>Tanggal:</strong> ${data.data.date}</div>
+                    <div><strong>Nominal:</strong> Rp${data.data.nominal}</div>
+                    <div><strong>Metode Pembayaran:</strong> ${data.data.payment_method}</div>
+                    <div><strong>Status:</strong> ${data.data.status}</div>
+                  </div>` ;
+
+
       container.innerHTML = html;
       container.classList.remove('loading'); 
     })

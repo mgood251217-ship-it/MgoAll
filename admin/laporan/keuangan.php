@@ -330,13 +330,13 @@ $dataPemasukan = $data['income'];
                 <input type="hidden" name="tambah_pemasukan" value="1">
                 <div class="mb-3">
                   <label class="form-label">Keterangan</label>
-                  <input type="text" name="information_income" class="form-control" required placeholder="Misal: PENJUALAN ONLINE" style="text-transform:uppercase" oninput="this.value = this.value.toUpperCase();">
+                  <input type="text" name="information" class="form-control" required placeholder="Misal: PENJUALAN ONLINE" style="text-transform:uppercase" oninput="this.value = this.value.toUpperCase();">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Nominal</label>
-                  <input type="number" name="nominal_income" class="form-control" required placeholder="Contoh: 200000">
+                  <input type="number" name="nominal" class="form-control" required placeholder="Contoh: 200000">
                 </div>
-                <input type="hidden" name="tanggal_income" value="<?= date('Y-m-d') ?>">
+                <input type="hidden" name="tanggal" value="<?= date('Y-m-d') ?>">
               </div>
               <div class="modal-footer">
                 <button type="submit" class="btn btn-primary">Tambah</button>
@@ -409,7 +409,7 @@ $dataPemasukan = $data['income'];
         <!-- Modal Hapus -->
         <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
           <div class="modal-dialog modal-dialog-centered">
-            <form method="POST" action="hapus_keuangan.php" class="modal-content">
+            <form class="modal-content" id="formDeleteFinance">
               
               <div class="modal-header">
                 <h5 class="modal-title" id="deleteModalLabel">Konfirmasi Hapus</h5>
@@ -631,6 +631,37 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const formDeleteFinance = document.getElementById('formDeleteFinance');
+  if (formDeleteFinance) {
+    formDeleteFinance.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      const type = formData.get('type');
+      const action = type === 'expenditures' ? 'delete_expenditure' : 'delete_income';
+
+      fetch('finance_action?action=' + action, {
+        method: 'POST',
+        body: formData
+      }).then(response => {
+        if (!response.ok) {
+          return response.text().then(text => { throw new Error(text) });
+        }
+        return response.json();
+      }).then(data => {
+        if (data.success) {
+          showAlert('success', data.message);
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        } else {
+          showAlert('error', data.message);
+          console.log('Error creating expenditure:', data.message);
+        }
+      }).catch(error => {
+        showAlert('error', 'Error: ' + error.message);
+      });
+    });
+  }
 
 </script>
 <script>

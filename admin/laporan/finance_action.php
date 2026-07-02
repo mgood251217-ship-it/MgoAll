@@ -57,11 +57,11 @@ switch ($action) {
     case 'update_income':
         $financeController->updateIncome();
         break;
-    case 'allDetailOrderByIntervalDate':
-        $store_id = $_GET['store_id'] ?? 0;
-        $start_date = $_GET['start_date'] ?? '';
-        $end_date = $_GET['end_date'] ?? '';
-        $reportController->allDetailOrderByIntervalDate($store_id, $start_date, $end_date);
+    case 'delete_expenditure':
+        $financeController->deleteExpenditure();
+        break;
+    case 'delete_income':
+        $financeController->deleteIncome();
         break;
     case 'create_note_detail':
         $orderController->createNoteDetail();

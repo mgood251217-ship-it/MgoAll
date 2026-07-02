@@ -1,4 +1,7 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
@@ -10,6 +13,7 @@ $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
 $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
 
 $resultUsers = $userModel->getUsersByStoreId($store_id);
+$usersInitial = $userModel->getUsersInitial($store_id);
 
 $users = [];
 $usernames = [];
@@ -79,8 +83,8 @@ if (!empty($users)) {
     }
     $stmtSetting->close();
 
-    $stmtPayment = $koneksi->prepare("SELECT nominal, order_id FROM payment WHERE date BETWEEN ? AND ?");
-    $stmtPayment->bind_param("ss", $start_date, $end_date);
+    $stmtPayment = $koneksi->prepare("SELECT nominal, order_id FROM payment WHERE date BETWEEN ? AND ? AND store_id = ?");
+    $stmtPayment->bind_param("ssi", $start_date, $end_date, $store_id);
     $stmtPayment->execute();
     $resPayments = $stmtPayment->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmtPayment->close();

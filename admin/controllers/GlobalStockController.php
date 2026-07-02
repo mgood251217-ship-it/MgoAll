@@ -73,23 +73,23 @@ class GlobalStockController {
         exit;
     }
 
-    public function sendStock() {
-        header('Content-Type: application/json');
-        global $koneksi, $store_id;
+    // public function sendStock() {
+    //     header('Content-Type: application/json');
+    //     global $koneksi, $store_id;
 
-        $global_stock_id     = (int) $_POST['global_stock_id'];
-        $to_store_id         = $_POST['to_store_id'];
-        $to_global_stock_id_input = $_POST['to_global_stock_id']; 
-        $qty                 = (double) $_POST['qty'];
-        $date                = $_POST['date'];
+    //     $global_stock_id     = (int) $_POST['global_stock_id'];
+    //     $to_store_id         = $_POST['to_store_id'];
+    //     $to_global_stock_id_input = $_POST['to_global_stock_id']; 
+    //     $qty                 = $_POST['qty'];
+    //     $date                = $_POST['date'];
 
-        if ($this->globalStockModel->sendGlobalStock($global_stock_id, $to_store_id, $to_global_stock_id_input, $qty, $date, $store_id)) {
-            send_json_response(true, 'Barang berhasil dikirim dan terhubung dengan stok toko tujuan.');
-        } else {
-            send_json_response(false, 'Gagal mengirim barang.');
-        }
-        exit;
-    }
+    //     if ($this->globalStockModel->sendGlobalStock($global_stock_id, $to_store_id, $to_global_stock_id_input, $qty, $date, $store_id)) {
+    //         send_json_response(true, 'Barang berhasil dikirim dan terhubung dengan stok toko tujuan.');
+    //     } else {
+    //         send_json_response(false, 'Gagal mengirim barang.');
+    //     }
+    //     exit;
+    // }
 
 
     // if ($action === 'send_stock') {
