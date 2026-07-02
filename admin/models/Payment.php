@@ -35,7 +35,10 @@ class Payment {
         $stmt = $this->koneksi->prepare("SELECT * FROM payment WHERE payment_id = ? LIMIT 1");
         $stmt->bind_param("i", $id);
         $stmt->execute();
-        return $stmt->get_result();
+        $result =$stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $result;
+
     }
 
     public function getPaymentByOrderId($id){

@@ -18,8 +18,7 @@ class Router
 		];
 	}
 
-	public function dispatch(string $action): void
-	{
+	public function dispatch(string $action): void {
 		if (!isset($this->routes[$action])) {
 			Response::error('Action tidak ditemukan.', 404);
 		}

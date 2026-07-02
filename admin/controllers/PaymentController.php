@@ -152,7 +152,7 @@ class PaymentController {
         $orderName = $order['customer_name'];
         $orderNomorator = $order['nomorator'];
 
-        $payment = $this->paymentModel->getPaymentByOrderId($order_id);
+        $payment = $this->paymentModel->getPaymentById($payment_id);
         $paymentNominal = $payment['nominal'] ?? '';
         $paymentPaymentmethod = $payment['payment_method'] ?? '';
         $paymentDateOld = strtotime($payment['date']);
@@ -252,6 +252,7 @@ class PaymentController {
                 $this->financeController->refreshFinance($store_id, $tanggalAja);
             }
         }
+        send_json_response(true, 'Pembayaran berhasil diubah.');
 
     }
 

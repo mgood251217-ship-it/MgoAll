@@ -12,16 +12,33 @@ class AuthController {
         $this->koneksi = $koneksi;
     }
 
-    public function session()
-    {
-        if (self::checkSession()) {
-            Response::success(
-                'Session aktif',
-                $_SESSION['user'] ?? []
-            );
+    public function session(){
+        if (!self::checkSession()) {
+            Response::error('Belum login.', 401);
         }
 
-        Response::error('Belum login', 401);
+        require_once BASE_PATH . '/session.php';
+
+        Response::success(
+            'Session aktif.',
+            [
+                'user' => [
+                    'user_id' => $user_id,
+                    'store_id' => $store_id,
+                    'role' => $role,
+                    'username' => $username,
+                    'initial' => $initial,
+                    'name' => $name,
+                    'foto' => $foto
+                ],
+                'store' => [
+                    'name' => $storeName,
+                    'address' => $storeAddress,
+                    'logo' => $storeLogo
+                ],
+                'administrator' => $administrator
+            ]
+        );
     }
 
     public static function checkSession() {
@@ -63,8 +80,8 @@ class AuthController {
     }
 
     public function login() {
-        $username_input = strtolower(trim($_POST['username']));
-        $password = $_POST['password'];
+        $username_input = strtolower(trim($_POST['username'])) ?? '';
+        $password = $_POST['password'] ?? '';
         $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
         $address = getClientIP();
 
@@ -114,6 +131,9 @@ class AuthController {
     }
 
     public static function logout() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         session_unset();
         session_destroy();
 

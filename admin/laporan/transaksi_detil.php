@@ -381,7 +381,7 @@ if (!empty($orderIds)) {
     <!-- Modal Edit Payment -->
     <div class="modal fade" id="editPaymentModal" tabindex="-1" aria-labelledby="editPaymentLabel" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered ">
-        <form id="editPaymentForm" class="modal-content" method="POST" action="edit_payment.php">
+        <form id="editPaymentForm" class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="editPaymentLabel">Edit Pembayaran</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
@@ -897,6 +897,31 @@ function hapusPembayaranAsli() {
           if (container) loadPaymentInfo(deleteOrderId, container);
       } else {
         alert('Gagal menghapus pembayaran: ' + data.message);
+      }
+    });
+  });
+
+document.getElementById('editPaymentForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+
+    fetch('finance_action.php?action=update_payment', {
+      method: 'POST',
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        showAlert('success', data.message || 'Pembayaran berhasil diperbarui');
+        const modalEl = document.getElementById('editPaymentModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        modal.hide();
+        const orderId = formData.get('order_id');
+        const container = document.querySelector(`.payment-info[data-order-id="${orderId}"]`);
+        if (container) loadPaymentInfo(orderId, container);
+      } else {
+        alert('Gagal mengupdate pembayaran: ' + data.message);
       }
     });
   });

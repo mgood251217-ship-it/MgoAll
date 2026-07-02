@@ -44,9 +44,7 @@ class SettingController {
             $data->preview_print = 1;
             $this->settingModel->create($data);
         }
-
-        $redirect_url = $_SERVER['HTTP_REFERER'] ?? 'index';
-        redirect($redirect_url);
+        send_json_response(true, 'Berhasil diperbarui.');
     }
 
     public function changeTheme(){

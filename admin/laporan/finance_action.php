@@ -7,11 +7,13 @@ require_once BASE_PATH . '/models/Payment.php';
 require_once BASE_PATH . '/controllers/PaymentController.php';
 require_once BASE_PATH . '/models/Activity.php';
 require_once BASE_PATH . '/controllers/OrderController.php';
+require_once BASE_PATH . '/controllers/ReportController.php';
 
 $activityModel = new Activity($koneksi);
 $financeModel = new Finance($koneksi);
 $financeController = new FinanceController($koneksi);
 $paymentModel = new Payment($koneksi);
+$reportController = new ReportController($koneksi);
 $paymentController = new PaymentController($koneksi);
 $orderController = new OrderController($koneksi);
 
@@ -23,6 +25,9 @@ switch ($action) {
         break;
     case 'delete_tf':
         $financeController->deleteTf();
+        break;
+    case 'update_payment':
+        $paymentController->updatePayment();
         break;
     case 'delete_payment':
         $paymentController->delete();
@@ -51,6 +56,12 @@ switch ($action) {
         break;
     case 'update_income':
         $financeController->updateIncome();
+        break;
+    case 'allDetailOrderByIntervalDate':
+        $store_id = $_GET['store_id'] ?? 0;
+        $start_date = $_GET['start_date'] ?? '';
+        $end_date = $_GET['end_date'] ?? '';
+        $reportController->allDetailOrderByIntervalDate($store_id, $start_date, $end_date);
         break;
     case 'create_note_detail':
         $orderController->createNoteDetail();

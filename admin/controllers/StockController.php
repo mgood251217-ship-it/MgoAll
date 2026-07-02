@@ -41,7 +41,6 @@ class StockController {
         } else {
             send_json_response(false, 'Gagal menambahkan stok.');
         }
-        exit;
     }
 
     public function updateStock() {
@@ -60,6 +59,5 @@ class StockController {
         } else {
             send_json_response(false, 'Gagal memperbarui stok.');
         }
-        exit;
     }
 }

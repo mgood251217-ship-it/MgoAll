@@ -9,7 +9,6 @@ class FinanceController {
     public function __construct($koneksi) {
         $this->koneksi = $koneksi;
         $this->financeModel = new Finance($koneksi);
-        
     }
 
     public function createTf(){

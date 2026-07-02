@@ -1,9 +1,7 @@
 <?php
 
-class Request
-{
+class Request{
 	private static ?array $json = null;
-
 	private static function json(): array
 	{
 		if (self::$json !== null) {
@@ -21,8 +19,7 @@ class Request
 		return self::$json;
 	}
 
-	public static function input(string $key, mixed $default = null): mixed
-	{
+	public static function input(string $key, mixed $default = null): mixed {
 		if (array_key_exists($key, $_POST)) {
 			return $_POST[$key];
 		}
@@ -40,8 +37,7 @@ class Request
 		return $default;
 	}
 
-	public static function all(): array
-	{
+	public static function all(): array {
 		return array_merge(
 			$_GET,
 			$_POST,
@@ -49,13 +45,11 @@ class Request
 		);
 	}
 
-	public static function file(string $key)
-	{
+	public static function file(string $key) {
 		return $_FILES[$key] ?? null;
 	}
 
-	public static function method(): string
-	{
+	public static function method(): string{
 		return $_SERVER['REQUEST_METHOD'];
 	}
 }
