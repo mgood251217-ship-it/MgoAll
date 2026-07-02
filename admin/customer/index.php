@@ -107,7 +107,7 @@ $ordersOffline = $dataOrder['offline'];
             <h1 class="mb-0" style="font-size:1.7rem;">Data Order</h1>
           </div>
           <div class="col">
-            <form method="post" action="order_action.php?order=preview_print" style="display:inline;">
+            <form style="display:inline;" id="previewPrintForm">
               <button type="submit" name="toggle_preview_print" value="1" style="border:none; background:none; padding:0; cursor:pointer;" title="Toggle Preview Print">
                 <img src="<?= BASE_URL ?>/assets/img/prt.svg" alt="Print Preview" style="width:30px; height:30px; filter: invert(1) sepia(1) saturate(5) hue-rotate(180deg);  opacity: <?= ($preview_print === 1) ? '1' : '0.5' ?>;  transition: opacity 0.3s ease;">
               </button>
@@ -1232,6 +1232,29 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   nominalInput.addEventListener('input', updateLunasButtonState);
+});
+
+document.getElementById('previewPrintForm').addEventListener('submit', function (e) {
+  e.preventDefault();
+  const formData = new FormData(this);
+  fetch('order_action.php?order=preview_print', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showAlert('success', data.message);
+      setTimeout(() => {
+        location.reload();
+      }, 3000);
+    } else {
+      showAlert('error', 'Gagal memperbarui pengaturan: ' + data.message);
+    }
+  })
+  .catch(error => {
+    showAlert('error', 'Terjadi kesalahan sistem.');
+  });
 });
 
 </script>
