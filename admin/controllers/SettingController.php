@@ -48,12 +48,10 @@ class SettingController {
     }
 
     public function changeTheme(){
-        global $user_id;
-        $inputJSON = file_get_contents('php://input');
-        $data = json_decode($inputJSON, true);
+        $user_id = $_POST['user_id'];
 
-        if (isset($data['mode'])) {
-            $newMode = ($data['mode'] == 1) ? 1 : 0;
+        if (isset($_POST['mode'])) {
+            $newMode = ($_POST['mode'] == 1) ? 1 : 0;
 
             $result = false;
             if ($this->settingModel->cekUserSetting($user_id)) {

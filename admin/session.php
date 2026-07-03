@@ -1,6 +1,8 @@
 <?php
 session_start();
 require_once BASE_PATH . '/functions/helpers.php';
+require_once BASE_PATH . '/connect.php';
+global $koneksi;
 
 if (isset($_SESSION['user']['user_id']) &&
     isset($_SESSION['user']['store_id']) &&

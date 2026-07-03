@@ -66,5 +66,18 @@ class ProductController {
         }
         exit;
     }
+
+    public function updateStock() {
+        header('Content-Type: application/json');
+        $id       = $_POST['product_id'] ?? 0;
+        $quantity = $_POST['quantity'] ?? 0;
+
+        if ($this->productModel->updateStock($id, $quantity)) {
+            send_json_response(true, 'Stok berhasil diperbarui.');
+        } else {
+            send_json_response(false, 'Gagal memperbarui stok.');
+        }
+        exit;
+    }
 }
 ?>

@@ -98,8 +98,8 @@ document.getElementById('toggleMode').addEventListener('click', function () {
 
   fetch('<?= BASE_URL ?>/action.php?action=theme', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mode: newMode })
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `mode=${newMode}&user_id=${<?= $user_id ?>}`
   }).then(response => {
     if (!response.ok) {
         throw new Error("Gagal");

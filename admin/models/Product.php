@@ -125,6 +125,30 @@ class Product{
         $stmt->close();
         return $result ?? [];
     }
+
+    public function updateStock($id, $quantity) {
+        $stmt = $this->koneksi->prepare("UPDATE products SET stock = ? WHERE product_id = ?");
+        $stmt->bind_param("di", $quantity, $id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function getStockByProductId($product_id) {
+        $stmt = $this->koneksi->prepare("SELECT stock FROM products WHERE product_id = ? LIMIT 1");
+        $stmt->bind_param("i", $product_id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        return $result ? (float)$result['stock'] : 0;
+    }
+
+    public function reduceStock($quantity, $product_id) {
+        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock - ? WHERE product_id = ?");
+        $stmt->bind_param("di", $quantity, $product_id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
     
 }
 ?>

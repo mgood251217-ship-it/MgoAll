@@ -10,6 +10,9 @@ switch ($action) {
     case 'create_product':
         $productController->createProduct();
         break;
+    case 'update_stock':
+        $productController->updateStock();
+        break;
     case 'update_product':
         $productController->updateProduct();
         break;

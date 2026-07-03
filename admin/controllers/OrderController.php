@@ -3,7 +3,6 @@ require_once BASE_PATH . '/models/Order.php';
 require_once BASE_PATH . '/models/User.php';
 require_once BASE_PATH . '/models/Project.php';
 require_once BASE_PATH . '/models/Product.php';
-require_once BASE_PATH . '/models/Stock.php';
 require_once BASE_PATH . '/models/Activity.php';
 require_once BASE_PATH . '/models/Payment.php';
 require_once BASE_PATH . '/functions/helpers.php';
@@ -14,7 +13,6 @@ class OrderController {
     private $userModel;
     private $projectModel;
     private $productModel;
-    private $stockModel;
     private $paymentModel;
     private $activityModel;
 
@@ -24,7 +22,6 @@ class OrderController {
         $this->userModel = new User($koneksi);
         $this->projectModel = new Project($koneksi);
         $this->productModel = new Product($koneksi);
-        $this->stockModel = new Stock($koneksi);
         $this->paymentModel = new Payment($koneksi);
         $this->activityModel = new Activity($koneksi);
     }
@@ -350,96 +347,6 @@ class OrderController {
             }
 
             send_json_response(true, 'Note saved successfully.', ['note' => $note]);
-            exit;
-        }
-    }
-
-    public function deleteItem() {
-        header('Content-Type: application/json');
-        global $store_id;
-
-        $order_item_id = (int)$_POST['order_item_id'] ?? 0;
-
-        if ($order_item_id <= 0) {
-            http_response_code(400);
-            send_json_response(false, 'ID item tidak valid.');
-            exit;
-        }
-
-        $item = $this->orderModel->getOrderItem($order_item_id, $store_id);
-
-        if (!$item) {
-            http_response_code(404);
-            send_json_response(false, 'Item tidak ditemukan.');
-            exit;
-        }
-
-        $product_id = $item['product_id'];
-        $quantity = $item['quantity'];
-        $size = $item['size'];
-        $finishing_ids = $item['finishing'];
-        $order_id = $item['order_id'];
-
-        $product = $this->productModel->getProductById($product_id);
-        $unit_type = $product['unit_type'] ?? '';
-        $type = $product['type'] ?? '';
-
-        $stok_kembali = $quantity;
-        $panjang = 0;
-        $lebar = 0;
-
-        if (preg_match('/([\d.]+)x([\d.]+)/', $size, $matches)) {
-            $panjang = (float)$matches[1];
-            $lebar = (float)$matches[2];
-        }
-
-        if ($unit_type === 'M2' || $unit_type === 'CM2') {
-            $stok_kembali = round(($panjang / 100) * ($lebar / 100) * $quantity, 4);
-        }
-        if (strtoupper($type) === 'SPANDUK') {
-            $stok_kembali = round((($panjang + 5) * ($lebar + 5)) / 10000 * $quantity, 4);
-        }
-
-        $stockData = new stdClass();
-        $stockData->id = $product_id;
-        $stockData->store_id = $store_id;
-        $stockData->quantity = $stok_kembali;
-        $this->stockModel->createUpdateStock($stockData);
-
-        if ($finishing_ids !== '-') {
-            $finishing_array = explode(',', $finishing_ids);
-            foreach ($finishing_array as $fid) {
-                $fid = (int)$fid;
-                if ($fid === 0) continue;
-
-                $fin_product = $this->productModel->getProductById($fid);
-                $fin_type = strtoupper($fin_product['type'] ?? '');
-
-                $stok_kembali_fin = $quantity;
-
-                if ($fin_type === 'FINISHING STIKER A3' || $fin_type === 'FINISHING PHOTO A3') {
-                    $stok_kembali_fin = 0.1536 * $quantity;
-                } elseif ($fin_type === 'FINISHING STIKER PERMETER' || $fin_type === 'FINISHING PHOTO PERMETER') {
-                    $panjang_meter = ($panjang > 20) ? $panjang / 100 : $panjang;
-                    $lebar_meter = ($lebar > 20) ? $lebar / 100 : $lebar;
-                    $stok_kembali_fin = $panjang_meter * $lebar_meter * $quantity;
-                }
-
-                $finStockData = new stdClass();
-                $finStockData->id = $fid;
-                $finStockData->store_id = $store_id;
-                $finStockData->quantity = $stok_kembali_fin;
-                $this->stockModel->createUpdateStock($finStockData);
-            }
-        }
-
-        if ($this->orderModel->deleteOrderItem($order_item_id, $store_id)) {
-            $this->orderTotal($order_id);
-            send_json_response(true, 'Item berhasil dihapus dan stok dikembalikan.');
-            exit;
-        } else {
-            http_response_code(500);
-            send_json_response(false, 'Gagal menghapus item.');
             exit;
         }
     }
@@ -778,8 +685,7 @@ class OrderController {
         $product = $itemData['product'];
         $stok_butuh = $itemData['stok_butuh'];
 
-        // Cek Stok Barang Utama
-        $existing_stock = $this->stockModel->getStockById($itemData['product_id']);
+        $existing_stock = $this->productModel->getStockByProductId($product['product_id']);
         if ($product['unit_type'] !== '~' && $existing_stock < $stok_butuh) {
             http_response_code(400);
             send_json_response(false, 'Stock Barang Utama tidak mencukupi');
@@ -787,11 +693,11 @@ class OrderController {
         }
 
         foreach ($itemData['finishing_to_reduce'] as $f_reduce) {
-            $f_existing = $this->stockModel->getStockById($f_reduce['product_id']);
+            $f_existing = $this->productModel->getStockByProductId($f_reduce['product_id']);
             if ($f_existing < $f_reduce['qty']) {
-                // http_response_code(400);
-                // send_json_response(false, 'Stock Finishing tidak mencukupi');
-                // exit;
+                http_response_code(400);
+                send_json_response(false, 'Stock Finishing tidak mencukupi');
+                exit;
             }
         }
 
@@ -816,10 +722,10 @@ class OrderController {
 
             if ($this->orderModel->updateOrderItem($data_item)) {
                 if ($product['unit_type'] !== '~') {
-                    $this->stockModel->reduceStock($stok_butuh, $itemData['product_id']);
+                    $this->productModel->reduceStock($stok_butuh, $itemData['product_id']);
                 }
                 foreach ($itemData['finishing_to_reduce'] as $f_reduce) {
-                    $this->stockModel->reduceStock($f_reduce['qty'], $f_reduce['product_id']);
+                    $this->productModel->reduceStock($f_reduce['qty'], $f_reduce['product_id']);
                 }
 
                 $this->orderTotal($itemData['order_id']);
@@ -835,10 +741,10 @@ class OrderController {
         } else {
             if ($this->orderModel->createOrderItem($data_item)) {
                 if ($product['unit_type'] !== '~') {
-                    $this->stockModel->reduceStock($stok_butuh, $itemData['product_id']);
+                    $this->productModel->reduceStock($stok_butuh, $itemData['product_id']);
                 }
                 foreach ($itemData['finishing_to_reduce'] as $f_reduce) {
-                    $this->stockModel->reduceStock($f_reduce['qty'], $f_reduce['product_id']);
+                    $this->productModel->reduceStock($f_reduce['qty'], $f_reduce['product_id']);
                 }
 
                 $this->orderTotal($itemData['order_id']);
@@ -851,6 +757,88 @@ class OrderController {
                 send_json_response(false, 'Gagal menambahkan item');
                 exit;
             }
+        }
+    }
+
+    public function deleteItem() {
+        header('Content-Type: application/json');
+        global $store_id;
+
+        $order_item_id = (int)$_POST['order_item_id'] ?? 0;
+
+        if ($order_item_id <= 0) {
+            http_response_code(400);
+            send_json_response(false, 'ID item tidak valid.');
+            exit;
+        }
+
+        $item = $this->orderModel->getOrderItem($order_item_id, $store_id);
+
+        if (!$item) {
+            http_response_code(404);
+            send_json_response(false, 'Item tidak ditemukan.');
+            exit;
+        }
+
+        $product_id = $item['product_id'];
+        $quantity = $item['quantity'];
+        $size = $item['size'];
+        $finishing_ids = $item['finishing'];
+        $order_id = $item['order_id'];
+
+        $product = $this->productModel->getProductById($product_id);
+        $unit_type = $product['unit_type'] ?? '';
+        $type = $product['type'] ?? '';
+
+        $stok_kembali = $quantity;
+        $panjang = 0;
+        $lebar = 0;
+
+        if (preg_match('/([\d.]+)x([\d.]+)/', $size, $matches)) {
+            $panjang = (float)$matches[1];
+            $lebar = (float)$matches[2];
+        }
+
+        if ($unit_type === 'M2' || $unit_type === 'CM2') {
+            $stok_kembali = round(($panjang / 100) * ($lebar / 100) * $quantity, 4);
+        }
+        if (strtoupper($type) === 'SPANDUK') {
+            $stok_kembali = round((($panjang + 5) * ($lebar + 5)) / 10000 * $quantity, 4);
+        }
+
+        $this->productModel->updateStock($product_id, $stok_kembali);
+
+        if ($finishing_ids !== '-') {
+            $finishing_array = explode(',', $finishing_ids);
+            foreach ($finishing_array as $fid) {
+                $fid = (int)$fid;
+                if ($fid === 0) continue;
+
+                $fin_product = $this->productModel->getProductById($fid);
+                $fin_type = strtoupper($fin_product['type'] ?? '');
+
+                $stok_kembali_fin = $quantity;
+
+                if ($fin_type === 'FINISHING STIKER A3' || $fin_type === 'FINISHING PHOTO A3') {
+                    $stok_kembali_fin = 0.1536 * $quantity;
+                } elseif ($fin_type === 'FINISHING STIKER PERMETER' || $fin_type === 'FINISHING PHOTO PERMETER') {
+                    $panjang_meter = ($panjang > 20) ? $panjang / 100 : $panjang;
+                    $lebar_meter = ($lebar > 20) ? $lebar / 100 : $lebar;
+                    $stok_kembali_fin = $panjang_meter * $lebar_meter * $quantity;
+                }
+
+                $this->productModel->updateStock($fid, $stok_kembali_fin);
+            }
+        }
+
+        if ($this->orderModel->deleteOrderItem($order_item_id, $store_id)) {
+            $this->orderTotal($order_id);
+            send_json_response(true, 'Item berhasil dihapus dan stok dikembalikan.');
+            exit;
+        } else {
+            http_response_code(500);
+            send_json_response(false, 'Gagal menghapus item.');
+            exit;
         }
     }
 

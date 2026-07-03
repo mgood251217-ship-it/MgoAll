@@ -36,7 +36,7 @@ class AuthController {
                     'address' => $storeAddress,
                     'logo' => $storeLogo
                 ],
-                'administrator' => $administrator
+                'administrator' => $administrator ?? false
             ]
         );
     }

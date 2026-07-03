@@ -64,6 +64,26 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
               ['header' => 'Maklun <br> Cabang', 'field' => 'reasonable_price'],
               ['header' => 'Harga <br> kegagalan', 'field' => 'failed_price'],
               [
+                  'header'  => 'Stock',
+                  'visible' => $isAdmin ?? false,
+                  'render'  => function($row) {
+                      ob_start();
+                      ?>
+                      <div class="d-flex gap-1 align-items-center">                          
+                          <form class="d-inline-flex stock-form m-0">
+                              <input type="hidden" name="product" value="update_stock">
+                              <input type="hidden" name="product_id" value="<?= sanitize($row['product_id']) ?>">
+                              <input type="number" name="quantity" value="<?= sanitize($row['stock']) ?>" class="form-control form-control-sm me-1" style="width: 75px;" required>
+                              <button type="submit"  class="d-none" title="Update Stok" style="line-height: 0; padding: .4rem .5rem;">
+                                  <?= get_icon('update', ['width' => '16', 'height' => '16']) ?>
+                              </button>
+                          </form>
+                      </div>
+                      <?php
+                      return ob_get_clean();
+                  }
+              ],
+              [
                   'header'  => 'Aksi', 
                   'type'    => 'action_buttons',
                   'visible' => $administrator ?? false,
@@ -433,6 +453,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+});
+
+document.addEventListener('submit', function (e) {
+  const stockForm = e.target.closest('.stock-form');
+  if (stockForm) {
+    e.preventDefault();
+    const formData = new FormData(stockForm);
+    fetch('product_action.php', {
+      method: 'POST',
+      body: formData
+    }).then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showAlert('success', data.message);
+        refreshTable();
+      } else {
+        const errorMessage = data.errors ? data.errors.join('<br>') : 'Gagal diproses';
+        showAlert('error', errorMessage);
+      }
+    })
+  }
 });
 
 hideLoading();
