@@ -55,16 +55,10 @@ class OrderController {
         return $data;
     }
 
-    public function index() {
-        global $is_all_access;
-        global $search_text;
+    public function index($is_all_access, $system, $search_text, $start_date, $end_date, $customerLimit, $usersInitial) {
+
         global $store_id;
-        global $customerLimit;
-        global $start_date;
-        global $end_date;
-        global $system;
         global $koneksi;
-        global $usersInitial;
 
         $all_orders = $this->orderModel->getFilteredOrders(
             $is_all_access, $search_text, $store_id, $customerLimit, $start_date, $end_date, $system

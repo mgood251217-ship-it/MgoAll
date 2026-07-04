@@ -71,7 +71,6 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
                       ?>
                       <div class="d-flex gap-1 align-items-center">                          
                           <form class="d-inline-flex stock-form m-0">
-                              <input type="hidden" name="product" value="update_stock">
                               <input type="hidden" name="product_id" value="<?= sanitize($row['product_id']) ?>">
                               <input type="number" name="quantity" value="<?= sanitize($row['stock']) ?>" class="form-control form-control-sm me-1" style="width: 75px;" required>
                               <button type="submit"  class="d-none" title="Update Stok" style="line-height: 0; padding: .4rem .5rem;">
@@ -314,67 +313,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function submitDataAPI(formData, modalId = null) {
-    try {
-      const response = await fetch('product_action.php', {
-        method: 'POST',
-        body: formData
-      });
-      const data = await response.json();
-      
-      if (data.success) {
-        if (modalId) {
-          bootstrap.Modal.getInstance(document.getElementById(modalId))?.hide();
-        }
-        showAlert('success', data.message);
-        await refreshTable();
-      } else {
-        const errorMessage = data.errors ? data.errors.join('<br>') : 'Gagal diproses';
-        showAlert('error', errorMessage);
-      }
-    } catch (error) {
-      showAlert('error', 'Terjadi kesalahan sistem.');
-    }
-  }
-
-  document.getElementById('addProductForm')?.addEventListener('submit', function (e) {
-    e.preventDefault();
-    submitDataAPI(new FormData(this), 'addProductModal');
-  });
-
-  document.getElementById('editProductForm')?.addEventListener('submit', function (e) {
-    e.preventDefault();
-    submitDataAPI(new FormData(this), 'editProductModal');
-  });
-
-  document.addEventListener('click', function (e) {
-    const btnDelete = e.target.closest('.btn-delete-product');
-    
-    if (btnDelete) {
-      e.preventDefault();
-      
-      const productId = btnDelete.getAttribute('data-id');
-      
-      Swal.fire({
-        title: 'Yakin ingin menghapus?',
-        text: "Data produk akan dihapus permanen.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Ya, hapus!',
-        cancelButtonText: 'Batal'
-      }).then((result) => {
-        if (result.isConfirmed) {
-          const formData = new FormData();
-          formData.append('product', 'delete_product');
-          formData.append('product_id', productId);
-          
-          submitDataAPI(formData);
-        }
-      });
-    }
-  });
 
   const editModal = document.getElementById('editProductModal');
   if (editModal) {
@@ -453,14 +391,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-});
-
 document.addEventListener('submit', function (e) {
   const stockForm = e.target.closest('.stock-form');
   if (stockForm) {
     e.preventDefault();
     const formData = new FormData(stockForm);
-    fetch('product_action.php', {
+    fetch('../routes/?action=update_stock', {
       method: 'POST',
       body: formData
     }).then(response => response.json())
@@ -474,6 +410,49 @@ document.addEventListener('submit', function (e) {
       }
     })
   }
+});
+
+document.getElementById('addProductForm')?.addEventListener('submit', function (e) {
+  e.preventDefault();
+  const formData = new FormData(this);
+  fetch('../routes/?action=create_product', {
+    method: 'POST',
+    body: formData
+  }).then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showAlert('success', data.message);
+      refreshTable();
+      const addModal = bootstrap.Modal.getInstance(document.getElementById('addProductModal'));
+      addModal.hide();
+      this.reset();
+    } else {
+      const errorMessage = data.errors ? data.errors.join('<br>') : 'Gagal diproses';
+      showAlert('error', errorMessage);
+    }
+  })
+});
+
+document.getElementById('editProductForm')?.addEventListener('submit', function (e) {
+  e.preventDefault();
+  const formData = new FormData(this);
+  fetch('../routes/?action=update_product', {
+    method: 'POST',
+    body: formData
+  }).then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showAlert('success', data.message);
+      refreshTable();
+      const editModal = bootstrap.Modal.getInstance(document.getElementById('editProductModal'));
+      editModal.hide();
+    } else {
+      const errorMessage = data.errors ? data.errors.join('<br>') : 'Gagal diproses';
+      showAlert('error', errorMessage);
+    }
+  })
+});
+
 });
 
 hideLoading();

@@ -56,7 +56,7 @@ class User{
     }
 
     public function getUsersByStoreId($id){
-        $stmt = $this->koneksi->prepare("SELECT * FROM users WHERE store_id = ?");
+        $stmt = $this->koneksi->prepare("SELECT user_id, name, username, role, initial, picture, store_id FROM users WHERE store_id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);

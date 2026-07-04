@@ -350,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function () {
   let ukuranMap = {};
 
   function loadOrderItems() {
-      fetch(`order_action.php?order=get_order_items&order_id=<?= (int)$order_id ?>`)
+      fetch(`../routes/?action=get_order_items&order_id=<?= (int)$order_id ?>`)
           .then(res => res.json())
           .then(res => {
               const items = res.data.items;
@@ -411,7 +411,7 @@ document.addEventListener('DOMContentLoaded', function () {
                       const maklunStoreId = e.target.value;
                       const orderItemId = select.dataset.orderItemId;
 
-                      fetch('order_action.php?order=maklun', {
+                      fetch('../routes/?action=maklun', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                           body: `order_item_id=${encodeURIComponent(orderItemId)}&store_id_maklun=${maklunStoreId}`
@@ -534,7 +534,7 @@ document.addEventListener('DOMContentLoaded', function () {
       ukuranMap = {};
       const seen = new Set();
 
-      fetch(`order_action.php?order=get_product&store_id=${store_id}&type=${encodeURIComponent(jenis)}`)
+      fetch(`../routes/?action=get_product&store_id=${store_id}&type=${encodeURIComponent(jenis)}`)
           .then(response => response.json())
           .then(data => {
               data.data.forEach(product => {
@@ -588,7 +588,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       if (typeFinishing) {
-          fetch(`order_action.php?order=get_product&store_id=${store_id}&type=${encodeURIComponent(typeFinishing)}`)
+          fetch(`../routes/?action=get_product&store_id=${store_id}&type=${encodeURIComponent(typeFinishing)}`)
               .then(response => response.json())
               .then(data => {
                   const seenFinishing = new Set();
@@ -631,6 +631,7 @@ document.addEventListener('DOMContentLoaded', function () {
           }
       }
   }
+
 
   function toggleFinishingDisplay(jenis) {
       const cutDie = document.getElementById('cutDieCheckboxes');
@@ -706,6 +707,7 @@ document.addEventListener('DOMContentLoaded', function () {
           }
       }
   }
+
 
     if (elJenis) {
         elJenis.addEventListener('change', () => {
@@ -830,6 +832,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
   }
 
+
   if (elJudul) {
       elJudul.addEventListener('change', function () {
           const selectedOption = this.options[this.selectedIndex];
@@ -864,7 +867,7 @@ document.addEventListener('DOMContentLoaded', function () {
           if (jenis === 'KARTU NAMA') {
               const fullName = (selectedJudul + ' ' + selectedFinishing).trim().toUpperCase();
               
-              fetch(`order_action.php?order=get_product&store_id=${store_id}&type=KARTU NAMA`)
+              fetch(`../routes/?action=get_product&store_id=${store_id}&type=KARTU NAMA`)
                   .then(res => res.json())
                   .then(dataProduk => {
                       const produkCocok = dataProduk.data.find(p => p.name.trim().toUpperCase() === fullName);
@@ -883,6 +886,7 @@ document.addEventListener('DOMContentLoaded', function () {
       });
   }
 
+  
   if (elEnableDiskon) {
       elEnableDiskon.addEventListener('change', function () {
           elDiskonInput.style.display = this.checked ? 'block' : 'none';
@@ -942,7 +946,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const btn = document.getElementById('btnTambah');
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading...';
     btn.disabled = true;
-    fetch("order_action.php?order=create_item", { 
+    fetch("../routes/?action=create_item", { 
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -975,7 +979,7 @@ document.addEventListener('DOMContentLoaded', function () {
           
           if (!orderItemId) return;
 
-          fetch('order_action.php?order=delete_item', {
+          fetch('../routes/?action=delete_item', {
               method: 'POST',
               headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
               body: `order_item_id=${encodeURIComponent(orderItemId)}`
@@ -1006,7 +1010,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function loadNote() {
       const orderId = <?= (int)$order_id ?>;
-      fetch(`order_action.php?order=get_note&order_id=${orderId}`)
+      fetch(`../routes/?action=get_note&order_id=${orderId}`)
           .then(res => res.json())
           .then(response => {
               document.getElementById('noteDisplay').innerHTML = `<div class="alert alert-success" role="alert">${response.data.note}</div>`;
@@ -1019,7 +1023,7 @@ document.addEventListener('DOMContentLoaded', function () {
           e.preventDefault();
           const formData = new URLSearchParams(new FormData(this));
 
-          fetch('order_action.php?order=save_note', {
+          fetch('../routes/?action=save_note', {
               method: 'POST',
               body: formData
           })
@@ -1046,96 +1050,97 @@ document.addEventListener('DOMContentLoaded', function () {
       return list;
   }
 
-function updatePricePreview() {
-    if (!elJudul) {
-        console.error('Element #judul tidak ditemukan');
-        return;
-    }
-    const judulValue = elJudul.value || '';
-    const jenisValue = elJenis ? elJenis.value : '';
-    const qtyValue = elQty ? elQty.value : '';
-    if (!judulValue.trim() || !jenisValue.trim() || !qtyValue.trim()) {
-        return;
-    }
-    const selectedOption = elJudul.options[elJudul.selectedIndex];
-    let judulAsli = '';
-    let unitType = '-';
-    if (selectedOption && selectedOption.dataset) {
-        judulAsli = selectedOption.dataset.name || '';
-        unitType = selectedOption.dataset.unit || '-';
-    }
-    let jenisAsli = elJenis ? elJenis.value : '';
-    let panjangAsli = elPanjang ? parseFloat(elPanjang.value) || 0 : 0;
-    let lebarAsli = elLebar ? parseFloat(elLebar.value) || 0 : 0;
-    if ((judulAsli.includes('TRANSFERPAPER') || judulAsli.includes('PRINT PRES')) && jenisAsli === 'SUBLIM' ) {
-        panjangAsli = parseFloat(document.getElementById('lebarSublim')?.value) || 0;
-        lebarAsli = parseFloat(document.getElementById('panjangSublim')?.value) || 0;
-    }
+    function updatePricePreview() {
+        if (!elJudul) {
+            console.error('Element #judul tidak ditemukan');
+            return;
+        }
+        const judulValue = elJudul.value || '';
+        const jenisValue = elJenis ? elJenis.value : '';
+        const qtyValue = elQty ? elQty.value : '';
+        if (!judulValue.trim() || !jenisValue.trim() || !qtyValue.trim()) {
+            return;
+        }
+        const selectedOption = elJudul.options[elJudul.selectedIndex];
+        let judulAsli = '';
+        let unitType = '-';
+        if (selectedOption && selectedOption.dataset) {
+            judulAsli = selectedOption.dataset.name || '';
+            unitType = selectedOption.dataset.unit || '-';
+        }
+        let jenisAsli = elJenis ? elJenis.value : '';
+        let panjangAsli = elPanjang ? parseFloat(elPanjang.value) || 0 : 0;
+        let lebarAsli = elLebar ? parseFloat(elLebar.value) || 0 : 0;
+        if ((judulAsli.includes('TRANSFERPAPER') || judulAsli.includes('PRINT PRES')) && jenisAsli === 'SUBLIM' ) {
+            panjangAsli = parseFloat(document.getElementById('lebarSublim')?.value) || 0;
+            lebarAsli = parseFloat(document.getElementById('panjangSublim')?.value) || 0;
+        }
 
-    let finishingJersey = [];
-    if (jenisAsli === 'JERSEY') {
-        document.querySelectorAll('.finishing-jersey:checked').forEach(item => {
-            finishingJersey.push(item.value);
+        let finishingJersey = [];
+        if (jenisAsli === 'JERSEY') {
+            document.querySelectorAll('.finishing-jersey:checked').forEach(item => {
+                finishingJersey.push(item.value);
+            });
+        }
+        let finishingList = [];
+        if (typeof getFinishingList === 'function') {
+            finishingList = getFinishingList();
+        }
+        const dataPost = {
+            order_id: "<?= (int)$order_id ?>",
+            product_id: elJudul.value,
+            judul: judulAsli,
+            size: document.getElementById('ukuranDropdown') && document.getElementById('ukuranDropdown').style.display !== 'none'
+                ? document.getElementById('ukuranDropdown').value
+                : '-',
+            quantity: parseInt(elQty?.value) || 1,
+            finishing: finishingList.join(',') || '-',
+            finishingJersey: finishingJersey,
+            panjang: panjangAsli,
+            lebar: lebarAsli,
+            kiloan: parseFloat(elKiloan?.value) || 0,
+            waktu: parseFloat(elWaktu?.value) || 0,
+            ukuranJersey: elUkuranJersey?.value || '',
+            unit_type: unitType,
+            diskon: elEnableDiskon && elEnableDiskon.checked
+                ? parseFloat(elDiskonInput?.value) || 0
+                : 0
+        };
+        
+        fetch('../routes/?action=price', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(dataPost)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('HTTP Error ' + response.status + ' ' + response.statusText );
+            }
+            return response.json();
+        })
+        .then(response => {
+            const priceDisplay = document.getElementById('priceDisplay');
+            if (response.success) {
+                if (priceDisplay) {
+                    priceDisplay.textContent ='Total Harga: Rp ' +Number(response.data.total || 0).toLocaleString('id-ID');
+                }
+            } else {
+                if (priceDisplay) {
+                    priceDisplay.textContent = response.message || '';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Update harga gagal:', error);
+            const priceDisplay = document.getElementById('priceDisplay');
+            if (priceDisplay) {
+                priceDisplay.textContent = 'Gagal koneksi server';
+            }
         });
-    }
-    let finishingList = [];
-    if (typeof getFinishingList === 'function') {
-        finishingList = getFinishingList();
-    }
-    const dataPost = {
-        order_id: "<?= (int)$order_id ?>",
-        product_id: elJudul.value,
-        judul: judulAsli,
-        size: document.getElementById('ukuranDropdown') && document.getElementById('ukuranDropdown').style.display !== 'none'
-            ? document.getElementById('ukuranDropdown').value
-            : '-',
-        quantity: parseInt(elQty?.value) || 1,
-        finishing: finishingList.join(',') || '-',
-        finishingJersey: finishingJersey,
-        panjang: panjangAsli,
-        lebar: lebarAsli,
-        kiloan: parseFloat(elKiloan?.value) || 0,
-        waktu: parseFloat(elWaktu?.value) || 0,
-        ukuranJersey: elUkuranJersey?.value || '',
-        unit_type: unitType,
-        diskon: elEnableDiskon && elEnableDiskon.checked
-            ? parseFloat(elDiskonInput?.value) || 0
-            : 0
-    };
-    
-    fetch('order_action.php?order=price', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(dataPost)
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('HTTP Error ' + response.status + ' ' + response.statusText );
-        }
-        return response.json();
-    })
-    .then(response => {
-        const priceDisplay = document.getElementById('priceDisplay');
-        if (response.success) {
-            if (priceDisplay) {
-                priceDisplay.textContent ='Total Harga: Rp ' +Number(response.data.total || 0).toLocaleString('id-ID');
-            }
-        } else {
-            if (priceDisplay) {
-                priceDisplay.textContent = response.message || '';
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Update harga gagal:', error);
-        const priceDisplay = document.getElementById('priceDisplay');
-        if (priceDisplay) {
-            priceDisplay.textContent = 'Gagal koneksi server';
-        }
-    });
-}  
+    }  
+
 
   const inputsToWatch = ['jenis', 'judul', 'ukuranDropdown', 'finishing', 'panjang', 'lebar', 'kiloan', 'waktu', 'ukuranJersey', 'qty', 'enableDiskon', 'lebarSublim', 'panjangSublim', 'diskonInput', 'finishingCut', 'finishingDie'];
   inputsToWatch.forEach(id => {

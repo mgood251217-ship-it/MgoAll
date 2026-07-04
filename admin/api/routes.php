@@ -38,4 +38,40 @@ $router->add(
     'session'
 );
 
+$router->add(
+    'users',
+    UserController::class,
+    'index',
+    [
+        'auth'
+    ]
+);
+
+$router->add(
+    'products',
+    ProductController::class,
+    'index',
+    [
+        'auth'
+    ]
+);
+
+$router->add(
+    'orders',
+    OrderController::class,
+    'index',
+    [
+        'auth'
+    ]
+);
+
+$router->add(
+    'locations',
+    LocationController::class,
+    'index',
+    [
+        'auth'
+    ]
+);
+
 return $router;

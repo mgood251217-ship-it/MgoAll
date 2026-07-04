@@ -25,7 +25,7 @@ class Store{
         return $result;
     }
 
-    public function getMachineByStore_id($id){
+    public function getMachineByStoreId($id){
         $stmt = $this->koneksi->prepare("SELECT machine_id, name, type FROM machine WHERE store_id = ? ORDER BY type ASC, name ASC");
         $stmt->bind_param('i', $id);
         $stmt->execute();

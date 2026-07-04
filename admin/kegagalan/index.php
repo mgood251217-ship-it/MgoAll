@@ -6,19 +6,16 @@ require_once BASE_PATH . '/components/Alert.php';
 require_once BASE_PATH . '/components/Table.php';
 require_once BASE_PATH . '/components/Loading.php';
 require_once BASE_PATH . '/components/Icon.php';
+require_once BASE_PATH . '/models/User.php';
+require_once BASE_PATH . '/models/Store.php';
 
+$userModel = new User($koneksi);
+$storeModel = new Store($koneksi);
 $start_date = $_GET['start_date'] ?? date('Y-m-d');
 $end_date = $_GET['end_date'] ?? date('Y-m-d');
 
-$stmtUser = $koneksi->prepare("SELECT user_id, name FROM users WHERE store_id = ?");
-$stmtUser->bind_param("i", $store_id);
-$stmtUser->execute();
-$userResult = $stmtUser->get_result();
-$users = [];
-while ($u = $userResult->fetch_assoc()) {
-  $users[$u['user_id']] = $u['name'];
-}
-$stmtUser->close();
+$users = $userModel->getUsersInitial($store_id);
+$machines = $storeModel->getMachineByStoreId($store_id);
 
 $sql = "SELECT f.*, m.name AS nama_mesin, m.type AS machine_type 
         FROM failure f 
@@ -30,12 +27,6 @@ $stmt2 = $koneksi->prepare($sql);
 $stmt2->bind_param("iss", $store_id, $start_date, $end_date);
 $stmt2->execute();
 $items = $stmt2->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt2->close();
-
-$stmt2 = $koneksi->prepare("SELECT * FROM machine WHERE store_id = ?");
-$stmt2->bind_param("i", $store_id);
-$stmt2->execute();
-$machines = $stmt2->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt2->close();
 
 function getFinishingFailedPrice(string $finishing_ids, $size, mysqli $koneksi): int {
@@ -119,9 +110,7 @@ $jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DT
   <meta charset="UTF-8">
   <title>Log Kegagalan</title>
   <?php include BASE_PATH . '/header.php'; ?>
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
       <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-      <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
       <link href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.3.1/dist/select2-bootstrap4.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
   <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/dark_mode.css">
@@ -512,8 +501,9 @@ $jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DT
                     </div>
                 </div>
             </div>
+            <?php include '../footer.php'; ?>
       </div>
-        <?php include '../footer.php'; ?>
+        
     </div>
 
     <div style="position: fixed; bottom: 50px; right: 20px; z-index: 999;">
@@ -523,291 +513,362 @@ $jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DT
   </div>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
-      document.querySelectorAll('#month, #year').forEach(function(el) {
-          el.addEventListener('change', function() {
-              document.getElementById('filterForm').submit();
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  const elMainContent = document.getElementById('main-content');
+  const elJenis       = document.getElementById('jenis');
+  const elJudul       = document.getElementById('judul');
+  const elPanjang     = document.getElementById('panjang');
+  const elLebar       = document.getElementById('lebar');
+  const elQty         = document.getElementById('qty');
+  const elFinishing   = document.getElementById('finishing');
+  const elBtnTambah   = document.getElementById('btnTambah');
+  const elEnableDiskon = document.getElementById('enableDiskon');
+  const elDiskonInput = document.getElementById('diskonInput');
+  const bahanSublim = document.getElementById('bahanSublim');
+  const ukuranInputs = document.getElementById('ukuranInputs');
+  const finishingRow = document.getElementById('finishingRow');
+  const elUkuranJersey = document.getElementById('ukuranJersey');
+  const elFinishingJersey = document.getElementById('finishingJersey');
+  const elFinishingCut = document.getElementById('finishingCut');
+  const elFinishingDie = document.getElementById('finishingDie');
+  const elKiloan = document.getElementById('kiloan');
+  const elWaktu = document.getElementById('waktu');
+  let ukuranMap = {};
+
+  function loadProdukByJenis(jenis, typeFinishing = '') {
+      if (elJudul) {
+          elJudul.innerHTML = '<option value="">-- Pilih Judul --</option>';
+      }
+      ukuranMap = {};
+      const seen = new Set();
+
+      fetch(`../routes/?action=get_product&store_id=${store_id}&type=${encodeURIComponent(jenis)}`)
+          .then(response => response.json())
+          .then(data => {
+              data.data.forEach(product => {
+                  let nameOnly = product.name;
+
+                  if (jenis === 'PAKET INDOOR OUTDOOR') {
+                      nameOnly = nameOnly.replace(/\s*\d+(\.\d+)?\s*[x×X]\s*\d+(\.\d+)?/gi, '').trim();
+                  } else if (jenis === 'KARTU NAMA') {
+                      nameOnly = nameOnly.replace(/\s+(GLOSSY|DOFF)\s*$/i, '').trim();
+                  }
+
+                  const ukuranMatch = product.name.match(/(\d+(\.\d+)?\s*[x×X]\s*\d+(\.\d+)?)/i);
+                  const ukuran = ukuranMatch ? ukuranMatch[0].replace(/×/gi, 'x') : null;
+
+                  if (!ukuranMap[nameOnly]) ukuranMap[nameOnly] = [];
+                  if (ukuran && !ukuranMap[nameOnly].includes(ukuran)) {
+                      ukuranMap[nameOnly].push(ukuran);
+                  }
+
+                  if (!seen.has(nameOnly)) {
+                      seen.add(nameOnly);
+                      const opt = document.createElement('option');
+                      opt.value = product.product_id;
+                      opt.dataset.name = nameOnly;
+                      opt.dataset.unit = product.unit_type;
+                      opt.dataset.price = product.price;
+                      opt.textContent = nameOnly;
+                      if (elJudul) elJudul.appendChild(opt);
+                  }
+              });
           });
-      });
 
-    $(document).ready(function () {
-
-    function loadProdukByJenis(jenis, typeFinishing = '') {
-
-      $.getJSON(`get_products.php?store_id=${store_id}&type=${encodeURIComponent(jenis)}`, function (data) {
-        const judul = $('#judul').empty().append('<option value="">-- Pilih Judul --</option>');
-        ukuranMap = {};
-        const seen = new Set();
-
-        data.forEach(product => {
-          let nameOnly = product.name;
-
-          if (jenis === 'PAKET INDOOR OUTDOOR') {
-            nameOnly = nameOnly.replace(/\s*\d+(\.\d+)?\s*[x×X]\s*\d+(\.\d+)?/gi, '').trim();
-          } else if (jenis === 'KARTU NAMA') {
-            nameOnly = nameOnly.replace(/\s+(GLOSSY|DOFF)\s*$/i, '').trim();
-          }
-
-          const ukuranMatch = product.name.match(/(\d+(\.\d+)?\s*[x×X]\s*\d+(\.\d+)?)/i);
-          const ukuran = ukuranMatch ? ukuranMatch[0].replace(/×/gi, 'x') : null;
-
-          if (!ukuranMap[nameOnly]) ukuranMap[nameOnly] = [];
-          if (ukuran && !ukuranMap[nameOnly].includes(ukuran)) {
-            ukuranMap[nameOnly].push(ukuran);
-          }
-
-          if (!seen.has(nameOnly)) {
-            seen.add(nameOnly);
-            judul.append(
-              `<option value="${product.product_id}"
-                      data-name="${nameOnly}"
-                      data-unit="${product.unit_type}"
-                      data-price="${product.price}">
-                ${nameOnly}
-              </option>`
-            );
-          }
-        });
-      });
-
-      const finishingSelect = $('#finishing');
-      const finishingJersey = $('#finishingJersey');
-
-      finishingSelect.empty().append('<option value="">-- Pilih Finishing --</option>').show();
-      finishingJersey.empty().hide();
-      $('#ukuranJersey').val('').trigger('change');
-      $('#kiloan').val('');
+      if (elFinishing) {
+          elFinishing.innerHTML = '<option value="">-- Pilih Finishing --</option>';
+          elFinishing.style.display = '';
+      }
+      if (elFinishingJersey) elFinishingJersey.style.display = 'none';
+      if (elUkuranJersey) elUkuranJersey.value = '';
+      if (elKiloan) elKiloan.value = '';
+      if (elWaktu) elWaktu.value = '';
 
       if (jenis === 'KARTU NAMA') {
-        finishingSelect.append('<option value="DOFF">DOFF</option>');
-        finishingSelect.append('<option value="GLOSSY">GLOSSY</option>');
-        return;
+          const options = ['DOFF', 'GLOSSY'];
+          options.forEach(val => {
+              const opt = document.createElement('option');
+              opt.value = val;
+              opt.textContent = val;
+              if (elFinishing) elFinishing.appendChild(opt);
+          });
+          return;
       }
 
       if (typeFinishing) {
-        $.getJSON(`get_products.php?store_id=${store_id}&type=${typeFinishing}`, function (data) {
+          fetch(`../routes/?action=get_product&store_id=${store_id}&type=${encodeURIComponent(typeFinishing)}`)
+              .then(response => response.json())
+              .then(data => {
+                  const seenFinishing = new Set();
 
-          const seenFinishing = new Set();
+                  if (jenis === 'JERSEY') {
+                      if (elFinishing) elFinishing.style.display = 'none';
+                      if (elFinishingJersey) {
+                          elFinishingJersey.style.display = 'flex';
+                          elFinishingJersey.innerHTML = '';
+                      }
 
-          if (jenis === 'JERSEY') {
-            finishingSelect.hide();
-            finishingJersey.show();
-
-            data.forEach(product => {
-              if (!seenFinishing.has(product.name)) {
-                seenFinishing.add(product.name);
-
-                finishingJersey.append(`
-                  <div class="form-check">
-                    <input class="form-check-input finishing-jersey"
-                          type="checkbox"
-                          name="finishing_jersey[]"
-                          value="${product.product_id}"
-                          data-price="${product.price}">
-                    <label class="form-check-label">
-                      ${product.name}
-                    </label>
-                  </div>
-                `);
-              }
-            });
-
-          } else {
-            data.forEach(product => {
-              if (!seenFinishing.has(product.name)) {
-                seenFinishing.add(product.name);
-                finishingSelect.append(
-                  `<option value="${product.product_id}"
-                          data-name="${product.name}"
-                          data-price="${product.price}">
-                    ${product.name}
-                  </option>`
-                );
-              }
-            });
-          }
-        });
-
+                      data.data.forEach(product => {
+                          if (!seenFinishing.has(product.name)) {
+                              seenFinishing.add(product.name);
+                              elFinishingJersey.insertAdjacentHTML('beforeend', `
+                                  <div class="form-check">
+                                      <input class="form-check-input finishing-jersey" type="checkbox" name="finishing_jersey[]" value="${product.product_id}" data-price="${product.price}">
+                                      <label class="form-check-label">${product.name}</label>
+                                  </div>
+                              `);
+                          }
+                      });
+                  } else {
+                      data.data.forEach(product => {
+                          if (!seenFinishing.has(product.name)) {
+                              seenFinishing.add(product.name);
+                              const opt = document.createElement('option');
+                              opt.value = product.product_id;
+                              opt.dataset.name = product.name;
+                              opt.dataset.price = product.price;
+                              opt.textContent = product.name;
+                              if (elFinishing) elFinishing.appendChild(opt);
+                          }
+                      });
+                  }
+              });
       } else {
-        finishingSelect.append('<option value="-">-</option>');
+          if (elFinishing) {
+              elFinishing.insertAdjacentHTML('beforeend', '<option value="-">-</option>');
+          }
       }
-    }
+  }
 
-    function toggleFinishingDisplay(jenis) {
-      const cutDie = $('#cutDieCheckboxes');
-      const cut = $('#finishingCut');
-      const die = $('#finishingDie');
-      const row = $('#finishingRow');
 
-      // RESET AWAL
-      row.show();
-      cutDie.hide();
-      cut.parent().hide();
-      die.parent().hide();
-      cut.prop('checked', false);
-      die.prop('checked', false);
+  function toggleFinishingDisplay(jenis) {
+      const cutDie = document.getElementById('cutDieCheckboxes');
+      const row = document.getElementById('finishingRow');
+      
+      if (row) row.style.display = '';
+      if (cutDie) cutDie.style.display = 'none';
+      if (elFinishingCut && elFinishingCut.parentElement) elFinishingCut.parentElement.style.display = 'none';
+      if (elFinishingDie && elFinishingDie.parentElement) elFinishingDie.parentElement.style.display = 'none';
+      if (elFinishingCut) elFinishingCut.checked = false;
+      if (elFinishingDie) elFinishingDie.checked = false;
 
       switch (jenis) {
+          case 'LASER A3':
+              if (cutDie) cutDie.style.display = 'flex';
+              if (elFinishingCut && elFinishingCut.parentElement) elFinishingCut.parentElement.style.display = '';
+              if (elFinishingDie && elFinishingDie.parentElement) elFinishingDie.parentElement.style.display = '';
+              break;
 
-        case 'LASER A3':
-          cutDie.show();
-          cut.parent().show();
-          die.parent().show();
-          break;
+          case 'INDOOR':
+              if (cutDie) cutDie.style.display = 'flex';
+              if (elFinishingCut && elFinishingCut.parentElement) elFinishingCut.parentElement.style.display = '';
+              break;
 
-        case 'INDOOR':
-          cutDie.show();
-          cut.parent().show();
-          break;
+          case 'OUTDOOR':
+          case 'SUBLIM':
+          case 'AKRILIK':
+              break;
 
-        case 'OUTDOOR':
-        case 'SUBLIM':
-        case 'AKRILIK':
-          break;
+          case 'JERSEY':
+              if (cutDie) cutDie.style.display = 'none';
+              if (elFinishingCut) elFinishingCut.checked = false;
+              if (elFinishingDie) elFinishingDie.checked = false;
+              break;
 
-        case 'JERSEY':
-          cutDie.hide();
-          cut.prop('checked', false);
-          die.prop('checked', false);
-          break;
+          case 'PAKET INDOOR OUTDOOR':
+              if (row) row.style.display = 'none';
+              return;
 
-        case 'PAKET INDOOR OUTDOOR':
-          row.hide();
-          return;
-
-        case 'STAMP':
-        case 'MERCENDISE':
-        case 'MERCENDISE AKRILIK':
-          row.hide();
-          $('#finishing').empty();
-          return;
+          case 'STAMP':
+          case 'MERCENDISE':
+          case 'MERCENDISE AKRILIK':
+              if (row) row.style.display = 'none';
+              if (elFinishing) elFinishing.innerHTML = '';
+              return;
       }
 
-      // Placeholder ukuran
       if (jenis === 'AKRILIK') {
-        $('#panjang').attr('placeholder', 'Panjang (cm)');
-        $('#lebar').attr('placeholder', 'Lebar (cm)');
+          if (elPanjang) elPanjang.placeholder = 'Panjang (cm)';
+          if (elLebar) elLebar.placeholder = 'Lebar (cm)';
       } else {
-        $('#panjang').attr('placeholder', 'Panjang (m)');
-        $('#lebar').attr('placeholder', 'Lebar (m)');
+          if (elPanjang) elPanjang.placeholder = 'Panjang (m)';
+          if (elLebar) elLebar.placeholder = 'Lebar (m)';
       }
 
-      // Aturan khusus DTF
       if (jenis === 'DTF') {
-        $('#lebar').val('0.58').prop('readonly', true);
-        $('#panjang').val('').prop('readonly', false);
+          if (elLebar) {
+              elLebar.value = '0.58';
+              elLebar.readOnly = true;
+          }
+          if (elPanjang) {
+              elPanjang.value = '';
+              elPanjang.readOnly = false;
+          }
       } else {
-        $('#lebar').val('').prop('readonly', false);
-        $('#panjang').val('').prop('readonly', false);
+          if (elLebar) {
+              elLebar.value = '';
+              elLebar.readOnly = false;
+          }
+          if (elPanjang) {
+              elPanjang.value = '';
+              elPanjang.readOnly = false;
+          }
       }
+  }
+
+
+  if (elJenis) {
+      elJenis.addEventListener('change', function () {
+          const jenis = this.value;
+          toggleFinishingDisplay(jenis);
+
+          let finishingType = '';
+          if (['OUTDOOR', 'INDOOR', 'KAIN', 'JERSEY', 'AKRILIK', 'LASER A3'].includes(jenis)) {
+              finishingType = `FINISHING ${jenis}`;
+          }
+          loadProdukByJenis(jenis, finishingType);
+      });
+  }
+
+  function updateUkuranView(name) {
+    const jenis = elJenis ? elJenis.value : '';
+    const selectedOption = elJudul ? elJudul.options[elJudul.selectedIndex] : null;
+    const unit = selectedOption ? selectedOption.dataset.unit : '';
+    const judul = selectedOption ? selectedOption.dataset.name : '';
+
+    ['ukuranSublimRow', 'ukuranInputs', 'ukuranJerseyRow', 'bahanSublim'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+
+    if (name.includes('TRANSFERPAPER') || name.includes('PRINT PRES')) {
+        const subRow = document.getElementById('ukuranSublimRow');
+        if (subRow && subRow.closest('.row')) subRow.closest('.row').style.display = '';
+    } else if (jenis === 'JERSEY') {
+        const jerRow = document.getElementById('ukuranJersey');
+        if (jerRow && jerRow.closest('.row')) jerRow.closest('.row').style.display = '';
+    } else if (unit === 'M2' || unit === 'CM2') {
+        const inpRow = document.getElementById('ukuranInputs');
+        if (inpRow && inpRow.closest('.row')) inpRow.closest('.row').style.display = '';
+    } else if (jenis === 'JASA' && (judul === 'SETTING' || judul === 'POTONG AKRILIK')) {
+        const setRow = document.getElementById('settingDesain');
+        if (setRow && setRow.closest('.row')) setRow.closest('.row').style.display = '';
     }
 
-      // 🔥 gunakan delegated listener agar berfungsi walau elemen muncul di modal
-      $(document).on('change', '#jenis', function() {
-      const jenis = $(this).val();
-      toggleFinishingDisplay(jenis);
+    if (judul.includes('BAHAN') && unit === 'PCS') {
+        if (bahanSublim) bahanSublim.style.display = '';
+        if (ukuranInputs) ukuranInputs.style.display = 'none';
+        if (finishingRow) finishingRow.style.display = 'none';
+    }
+  }
 
-      let finishingType = '';
-      if (['OUTDOOR', 'INDOOR', 'KAIN', 'JERSEY', 'AKRILIK', 'LASER A3'].includes(jenis)) {
-        finishingType = `FINISHING ${jenis}`;
-      }
-      loadProdukByJenis(jenis, finishingType);
+
+  if (elJudul) {
+      elJudul.addEventListener('change', function () {
+          const selectedOption = this.options[this.selectedIndex];
+          const name = selectedOption ? selectedOption.dataset.name : '';
+          const ukuranList = ukuranMap[name] || [];
+          const ukuranDropdown = document.getElementById('ukuranDropdown');
+          const ukuranDropdownRow = document.getElementById('ukuranDropdownRow');
+
+          if (ukuranList.length > 0) {
+              if (ukuranDropdown) {
+                  ukuranDropdown.innerHTML = '<option value="">-- Pilih Ukuran --</option>';
+                  ukuranList.forEach(uk => {
+                      ukuranDropdown.insertAdjacentHTML('beforeend', `<option value="${uk}">${uk}</option>`);
+                  });
+              }
+              if (ukuranDropdownRow) ukuranDropdownRow.style.display = '';
+          } else {
+              if (ukuranDropdownRow) ukuranDropdownRow.style.display = 'none';
+          }
+
+          updateUkuranView(name);
       });
+  }
 
-      function updateUkuranView(name) {
-        const jenis = $('#jenis').val();
-        const unit = $('#judul option:selected').data('unit');
-        const judul = $('#judul option:selected').data('name');
 
-        // Hapus .closest('.row') dan panggil ID pembungkusnya langsung
-        $('#ukuranSublimRow, #ukuranInputs, #ukuranJerseyRow, #bahanSublim').hide();
+  if (elBtnTambah) {
+      elBtnTambah.addEventListener('click', function () {
+          const jenis = elJenis ? elJenis.value : '';
+          const selectedOption = elJudul ? elJudul.options[elJudul.selectedIndex] : null;
+          const selectedJudul = selectedOption ? selectedOption.dataset.name : '';
+          const selectedFinishing = (elFinishing && elFinishing.value) ? elFinishing.value.trim().toUpperCase() : '';
 
-        if (name.includes('TRANSFERPAPER') || name.includes('PRINT PRES')) {
-          $('#ukuranSublimRow').show();
-        } else if (jenis === 'JERSEY') {
-          $('#ukuranJerseyRow').show(); 
-        } else if (unit === 'M2' || unit === 'CM2') {
-          $('#ukuranInputs').show();
-        }
-
-        if(judul.includes('BAHAN') && unit == 'PCS'){
-          $('#bahanSublim').show();
-          $('#ukuranInputs, #finishingRow').hide();
-        }
-      }
-
-      $(document).on('change', '#judul', function() {
-        const name = $('#judul option:selected').data('name');
-        const ukuranList = ukuranMap[name] || [];
-
-        if (ukuranList.length > 0) {
-          $('#ukuranDropdown').empty().append('<option value="">-- Pilih Ukuran --</option>');
-          ukuranList.forEach(uk => {
-            $('#ukuranDropdown').append(`<option value="${uk}">${uk}</option>`);
-          });
-          $('#ukuranDropdownRow').show();
-        } else {
-          $('#ukuranDropdownRow').hide();
-        }
-
-        updateUkuranView(name);
-      });
-
-      $(document).on('click', '#btnTambah', function() {
-        const jenis = $('#jenis').val();
-        const selectedJudul = $('#judul option:selected').data('name') || '';
-        const selectedFinishing = $('#finishing').val().trim().toUpperCase();
-
-        if (jenis === 'KARTU NAMA') {
-          const fullName = (selectedJudul + ' ' + selectedFinishing).trim().toUpperCase();
-          $.getJSON(`get_products.php?store_id=${store_id}&type=KARTU NAMA`, function (dataProduk) {
-            const produkCocok = dataProduk.find(p => p.name.trim().toUpperCase() === fullName);
-            if (!produkCocok) {
-              Swal.fire({ icon: 'error', title: 'Produk tidak ditemukan', text: `Tidak ada produk dengan nama "${fullName}"`, confirmButtonText: 'Tutup' });
+          if (jenis === 'KARTU NAMA') {
+              const fullName = (selectedJudul + ' ' + selectedFinishing).trim().toUpperCase();
+              
+              fetch(`../routes/?action=get_product&store_id=${store_id}&type=KARTU NAMA`)
+                  .then(res => res.json())
+                  .then(dataProduk => {
+                      const produkCocok = dataProduk.data.find(p => p.name.trim().toUpperCase() === fullName);
+                      if (!produkCocok) {
+                          Swal.fire({ icon: 'error', title: 'Produk tidak ditemukan', text: `Tidak ada produk dengan nama "${fullName}"`, confirmButtonText: 'Tutup' });
+                          return;
+                      }
+                      if (typeof submitTambahItem === 'function') submitTambahItem(produkCocok.product_id);
+                  });
               return;
-            }
-            submitTambahItem(produkCocok.product_id);
-          });
-          return;
-        }
+          }
 
-        const productId = $('#judul').val();
-        submitTambahItem(productId);
+          if (typeof submitTambahItem === 'function') {
+              submitTambahItem(elJudul ? elJudul.value : '');
+          }
       });
+  }
+
 
       function submitTambahItem() {
       // 1. TANGKAP VARIABEL LAMA
-      const jenis = $('#jenis').val();
-      const selectedJudulId = $('#judul').val(); // default product_id
-      let selectedJudulName = $('#judul option:selected').data('name') || '';
-      let finishing = $('#finishing').val() || '-';
+      const jenis = elJenis ? elJenis.value : '';
+      const selectedJudulId = elJudul ? elJudul.value : '';
+      const selectedOption = elJudul ? elJudul.options[elJudul.selectedIndex] : null;
+      let selectedJudulName = selectedOption ? selectedOption.dataset.name : '';
+      let finishing = elFinishing ? elFinishing.value : '-';
       let finishingJersey = [];
-      let panjang = parseFloat($('#panjang').val()) || 0;
-      let lebar = parseFloat($('#lebar').val()) || 0;
-      let kiloan = parseFloat($('#kiloan').val()) || 0; 
-      const qty = parseInt($('#qty').val()) || 1;
-      const unitType = $('#judul option:selected').data('unit') || '-';
-      const finishingCut = $('#finishingCut').is(':checked') ? 1 : 0;
-      const finishingDie = $('#finishingDie').is(':checked') ? 1 : 0;
-      const orderItemId = $('#addItemForm').attr('data-order-item-id') || null;
+      let panjang = elPanjang ? parseFloat(elPanjang.value) || 0 : 0;
+      let lebar = elLebar ? parseFloat(elLebar.value) || 0 : 0;
+      let kiloan = elKiloan ? parseFloat(elKiloan.value) || 0 : 0;
+      const elQtyField = document.getElementById('qty');
+      const qty = elQtyField ? parseInt(elQtyField.value) || 1 : 1;
+      const unitType = selectedOption ? selectedOption.dataset.unit : '-';
+      const finishingCut = elFinishingCut && elFinishingCut.checked ? 1 : 0;
+      const finishingDie = elFinishingDie && elFinishingDie.checked ? 1 : 0;
+      const formElement = document.getElementById('addItemForm');
+      const orderItemId = formElement ? formElement.dataset.orderItemId || null : null;
 
       // 2. TANGKAP VARIABEL BARU (Data Pekerjaan & Kegagalan)date
-      const nomorator = $('#nomorator').val().trim();
-      const customer_name = $('#customer_name').val().trim();
-      const machine_id = $('#machine_id').val();
-      const loss_burden = $('#loss_burden').val().trim();
-      const date = $('#date').val();
-      const info = $('#info').val().trim();
+      const nomoratorField = document.getElementById('nomorator');
+      const customerNameField = document.getElementById('customer_name');
+      const machineIdField = document.getElementById('machine_id');
+      const lossBurdenField = document.getElementById('loss_burden');
+      const dateField = document.getElementById('date');
+      const infoField = document.getElementById('info');
+      const nomorator = nomoratorField ? nomoratorField.value.trim() : '';
+      const customer_name = customerNameField ? customerNameField.value.trim() : '';
+      const machine_id = machineIdField ? machineIdField.value : '';
+      const loss_burden = lossBurdenField ? lossBurdenField.value.trim() : '';
+      const date = dateField ? dateField.value : '';
+      const info = infoField ? infoField.value.trim() : '';
 
-      // Menangkap array dari checkbox yang dicentang
-      const failure_design = $('input[name="failure_design[]"]:checked').map(function(){ return $(this).val(); }).get();
-      const failure_print = $('input[name="failure_print[]"]:checked').map(function(){ return $(this).val(); }).get();
-      const failure_finishing = $('input[name="failure_finishing[]"]:checked').map(function(){ return $(this).val(); }).get();
-      const failure_cause = $('input[name="failure_cause[]"]:checked').map(function(){ return $(this).val(); }).get();
+      function getCheckedValues(selector) {
+          return Array.from(document.querySelectorAll(selector))
+              .filter(el => el.checked)
+              .map(el => el.value);
+      }
+
+      const failure_design = getCheckedValues('input[name="failure_design[]"]');
+      const failure_print = getCheckedValues('input[name="failure_print[]"]');
+      const failure_finishing = getCheckedValues('input[name="failure_finishing[]"]');
+      const failure_cause = getCheckedValues('input[name="failure_cause[]"]');
       
-      // Menangkap nilai input "Lainnya" jika dicentang
       let failure_cause_other = '';
-      if ($('#cause_lainnya_check').is(':checked')) {
-          failure_cause_other = $('#failure_cause_other').val().trim();
+      const causeLainnyaCheck = document.getElementById('cause_lainnya_check');
+      const failureCauseOtherField = document.getElementById('failure_cause_other');
+      if (causeLainnyaCheck && causeLainnyaCheck.checked && failureCauseOtherField) {
+          failure_cause_other = failureCauseOtherField.value.trim();
       }
 
       // Validasi sederhana memastikan form pekerjaan sudah diisi
@@ -821,16 +882,23 @@ $jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DT
       if (jenis === 'LASER A3') {
         ukuranStr = 'A3+';
       } else if (selectedJudulName === 'TRANSFERPAPER' || selectedJudulName.includes('PRINT PRES')) {
-        panjang = parseFloat($('#panjangSublim').val()) || 0;
-        lebar = parseFloat($('#lebarSublim').val()) || 0;
+        const panjangSublimField = document.getElementById('panjangSublim');
+        const lebarSublimField = document.getElementById('lebarSublim');
+        panjang = panjangSublimField ? parseFloat(panjangSublimField.value) || 0 : 0;
+        lebar = lebarSublimField ? parseFloat(lebarSublimField.value) || 0 : 0;
         
       } else if (jenis === 'JERSEY') {
-        ukuranStr = $('#ukuranJersey').val();
-        $('.finishing-jersey:checked').each(function () {
-          finishingJersey.push($(this).val());
+        const ukuranJerseyField = document.getElementById('ukuranJersey');
+        ukuranStr = ukuranJerseyField ? ukuranJerseyField.value : '-';
+        document.querySelectorAll('.finishing-jersey:checked').forEach(el => {
+          finishingJersey.push(el.value);
         });
-      } else if ($('#ukuranDropdownRow').is(':visible')) {
-        ukuranStr = $('#ukuranDropdown').val();
+      } else {
+        const ukuranDropdownRowEl = document.getElementById('ukuranDropdownRow');
+        if (ukuranDropdownRowEl && ukuranDropdownRowEl.style.display !== 'none') {
+          const ukuranDropdown = document.getElementById('ukuranDropdown');
+          ukuranStr = ukuranDropdown ? ukuranDropdown.value : '-';
+        }
       }
 
       const selectedFinishing = finishing !== '-' ? finishing : '';
@@ -839,14 +907,12 @@ $jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DT
         finalJudul = `${selectedJudulName} ${selectedFinishing}`.trim();
       }
 
-      // Nama produk lengkap = judul + ukuran (jika ada)
       let namaProdukLengkap = finalJudul.trim();
       if (ukuranStr && ukuranStr !== '-') {
         namaProdukLengkap += ` ${ukuranStr.trim()}`;
       }
-      const unni = $('#judul option:selected').data('name');
-      if(unni.includes('BAHAN') && unitType == 'PCS'){
-        
+      const selectedJudulDataName = selectedOption ? selectedOption.dataset.name : '';
+      if (selectedJudulDataName.includes('BAHAN') && unitType == 'PCS') {
         selectedJudulName = selectedJudulName + '/KG';
       }
 
@@ -866,20 +932,22 @@ $jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DT
         }
 
         const typeEncoded = encodeURIComponent(jenis);
-        $.getJSON(`get_products.php?store_id=${store_id}&type=${typeEncoded}`, function (data) {
-          const produk = data.find(p => p.name.trim().toUpperCase() === namaProdukLengkap.toUpperCase());
+        fetch(`../routes/?action=get_product&type=${typeEncoded}`)
+          .then(res => res.json())
+          .then(data => {
+            const produk = data.data.find(p => p.name.trim().toUpperCase() === namaProdukLengkap.toUpperCase());
 
-          if (!produk) {
-            Swal.fire({
-              icon: 'error',
-              title: 'Produk tidak ditemukan',
-              text: `Tidak ada produk dengan nama "${namaProdukLengkap}"`,
-            });
-            return;
-          }
+            if (!produk) {
+              Swal.fire({
+                icon: 'error',
+                title: 'Produk tidak ditemukan',
+                text: `Tidak ada produk dengan nama "${namaProdukLengkap}"`,
+              });
+              return;
+            }
 
-          prosesTambahItem(produk.product_id, namaProdukLengkap, ukuranStr);
-        });
+            prosesTambahItem(produk.product_id, namaProdukLengkap, ukuranStr);
+          });
       } else {
         prosesTambahItem(selectedJudulId, selectedJudulName, ukuranStr);
       }
@@ -888,7 +956,7 @@ $jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DT
         function prosesTambahItem(productId, judulFinal, ukuranFinal) {
           const dataPost = {
             // Data Lama
-            user_id: $('#user_id').val(),
+            user_id: document.getElementById('user_id') ? document.getElementById('user_id').value : '',
             product_id: productId,
             judul: judulFinal,
             size: ukuranFinal,
@@ -916,35 +984,32 @@ $jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DT
             failure_cause_other: failure_cause_other
           };
 
-          if ($('#enableDiskon').is(':checked')) {
-            dataPost.diskon = parseFloat($('#diskonInput').val()) || 0;
+          const enableDiskonEl = document.getElementById('enableDiskon');
+          if (enableDiskonEl && enableDiskonEl.checked) {
+            const diskonInputEl = document.getElementById('diskonInput');
+            dataPost.diskon = parseFloat(diskonInputEl?.value || '0') || 0;
           }
           if (orderItemId) dataPost.order_item_id = orderItemId;
 
-          $.post("add_failure_items.php", dataPost, function (response) {
-            const data = typeof response === "string" ? JSON.parse(response) : response;
+          fetch('add_failure_items.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataPost)
+          })
+          .then(response => response.text())
+          .then(text => {
+            const data = text ? JSON.parse(text) : {};
             if (data.success) {
-              location.reload();
-              const jenisValue = $('#jenis').val();
-              const judulValue = $('#judul').val();
-              $('#addItemForm')[0].reset();
-              $('#addItemForm').removeAttr('data-order-item-id');
-              $('#ukuranDropdownRow').hide();
-              $('#enableDiskon').prop('checked', false);
-              $('#diskonInput').val('').hide();
-              $('#diskonWrapper').hide();
-              $('#jenis').val(jenisValue).trigger('change');
-              setTimeout(() => {
-                $('#judul').val(judulValue).trigger('change');
-              }, 300);
+              window.location.reload();
             } else {
               alert("Gagal tambah/update item: " + data.message);
             }
-          }).fail(function (xhr) {
+          })
+          .catch(xhr => {
             Swal.fire({
               icon: 'error',
               title: 'Gagal!',
-              text: xhr.responseText || 'Terjadi kesalahan.',
+              text: xhr.message || 'Terjadi kesalahan.',
               confirmButtonText: 'Tutup'
            });
           });

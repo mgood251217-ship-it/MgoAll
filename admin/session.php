@@ -27,6 +27,17 @@ if (isset($_SESSION['user']['user_id']) &&
     $storeAddress = startEnk('dek', $_SESSION['user']['store_address']);
     $storeLogo = startEnk('dek', $_SESSION['user']['store_logo']);
     // $mode = (int)startEnk('dek', $_SESSION['user']['mode']);
+
+    $GLOBALS['user_id'] = $user_id;
+    $GLOBALS['store_id'] = $store_id;
+    $GLOBALS['role'] = $role;
+    $GLOBALS['username'] = $username;
+    $GLOBALS['initial'] = $initial;
+    $GLOBALS['name'] = $name;
+    $GLOBALS['foto'] = $foto;
+    $GLOBALS['storeName'] = $storeName;
+    $GLOBALS['storeAddress'] = $storeAddress;
+    $GLOBALS['storeLogo'] = $storeLogo;
 } elseif (
     isset($_COOKIE['user_user_id']) &&
     isset($_COOKIE['user_username']) &&
@@ -50,6 +61,17 @@ if (isset($_SESSION['user']['user_id']) &&
     $storeAddress = startEnk('dek', $_COOKIE['store_address']);
     $storeLogo = startEnk('dek', $_COOKIE['store_logo']);
     // $mode = startEnk('dek', $_COOKIE['user_mode']);
+
+    $GLOBALS['user_id'] = $user_id;
+    $GLOBALS['store_id'] = $store_id;
+    $GLOBALS['role'] = $role;
+    $GLOBALS['username'] = $username;
+    $GLOBALS['initial'] = $initial;
+    $GLOBALS['name'] = $name;
+    $GLOBALS['foto'] = $foto;
+    $GLOBALS['storeName'] = $storeName;
+    $GLOBALS['storeAddress'] = $storeAddress;
+    $GLOBALS['storeLogo'] = $storeLogo;
 
     // Validasi hasil dekripsi
     if ($user_id && $store_id && $role && $username && $initial && $name) {

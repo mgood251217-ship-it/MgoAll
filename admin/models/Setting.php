@@ -30,6 +30,7 @@ class Setting{
     public function getUserSettingByUserId($id){
         $stmt = $this->koneksi->prepare("SELECT * FROM user_setting WHERE user_id = ?");
         $stmt->bind_param("i", $id);
+        $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         return $result;

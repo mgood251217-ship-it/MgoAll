@@ -18,7 +18,7 @@ $storeModel = new Store($koneksi);
 $locationController = new LocationController($koneksi);
 $locations = $locationController->index();
 
-$mesinList = $storeModel->getMachineByStore_id($store_id);
+$mesinList = $storeModel->getMachineByStoreId($store_id);
 
 ?>
 
@@ -87,7 +87,7 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
                           'icon' => get_icon('delete', ['class' => 'me-1']),
                           'text' => 'Hapus',
                           'color' => 'danger',
-                          'action_url' => 'store_action.php?action=delete_user',
+                          'action_url' => '../routes/?action=delete_user',
                           'form_class' => 'delete-user-form',
                           'hidden_inputs' => [
                               'user_id' => 'user_id',
@@ -328,7 +328,7 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
         e.preventDefault();
         const formData = new FormData(this);
 
-        fetch('store_action.php?action=create_machine', {
+        fetch('../routes/?action=create_machine', {
             method: 'POST',
             body: formData
         })
@@ -381,12 +381,12 @@ $mesinList = $storeModel->getMachineByStore_id($store_id);
 
   document.getElementById('addUserForm').addEventListener('submit', function (e) {
     e.preventDefault();
-    sendFormData(this, 'store_action.php?action=create_user', 'addUserModal');
+    sendFormData(this, '../routes/?action=create_user', 'addUserModal');
   });
 
   document.getElementById('editUserForm').addEventListener('submit', function (e) {
     e.preventDefault();
-    sendFormData(this, 'store_action.php?action=update_user', 'editUserModal');
+    sendFormData(this, '../routes/?action=update_user', 'editUserModal');
   });
 
   document.querySelectorAll('.delete-user-form').forEach(form => {
@@ -477,7 +477,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           formData.append('store', 'set_location');
 
           try {
-            const res = await fetch('store_action.php?action=set_location', {
+            const res = await fetch('../routes/?action=set_location', {
               method: 'POST',
               body: formData
             });

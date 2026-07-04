@@ -1,33 +1,86 @@
 <?php
 require_once '../connect.php';
 require_once '../global_functions.php';
-require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/controllers/OrderController.php';
 require_once BASE_PATH . '/controllers/SettingController.php';
 require_once BASE_PATH . '/controllers/PaymentController.php';
+require_once BASE_PATH . '/controllers/UserController.php';
+require_once BASE_PATH . '/controllers/LocationController.php';
+require_once BASE_PATH . '/controllers/StoreController.php';
 require_once BASE_PATH . '/models/Order.php';
 require_once BASE_PATH . '/models/Product.php';
 require_once BASE_PATH . '/functions/helpers.php';
+require_once BASE_PATH . '/functions/Otp.php';
+require_once BASE_PATH . "/functions/setInfo.php";
+require_once BASE_PATH . '/controllers/ProductController.php';
+require_once BASE_PATH . '/controllers/AuthController.php';
 
+$authController = new AuthController($koneksi);
+$productController = new ProductController($koneksi);
 $productModel = new Product($koneksi);
 $orderModel = new Order($koneksi);
 $orderController = new OrderController($koneksi);
 $settingController = new SettingController($koneksi);
 $paymentController = new PaymentController($koneksi);
+$userController = new UserController($koneksi);
+$locationController = new LocationController($koneksi);
 
-$order = $_GET['order'] ?? '';
+$action = $_GET['action'] ?? '';
+if ($action != 'login'){
+    require_once BASE_PATH . '/session.php';
+}
 
-switch ($order) {
+switch ($action) {
+    case 'login':
+        $auth = new AuthController($koneksi);
+        $auth->login();
+        break;
+    case 'logout':
+        $auth = new AuthController($koneksi);
+        $auth->logout();
+        break;
+    case 'theme':
+        $settingController = new SettingController($koneksi);
+        $settingController->changeTheme();
+        break;
+    case 'update_user':
+        $userController->updateUser();
+        break;
+    case 'create_user':
+        $userController->addUser();
+        break;
+    case 'delete_user':
+        $userController->deleteUser();
+        break;
+    case 'set_location':
+        $locationController->setLocation();
+        break;
+    case 'create_machine':
+        $storeController->createMachine();
+        break;
+        // product
+    case 'create_product':
+        $productController->createProduct();
+        break;
+    case 'update_stock':
+        $productController->updateStock();
+        break;
+    case 'update_product':
+        $productController->updateProduct();
+        break;
+    case 'delete_product':
+        $productController->deleteProduct();
+        break;
     case 'save_note':
         $orderController->saveNote('CTM');
         break;
-    case 'create':
+    case 'create_order':
         $orderController->create();
         break;
-    case 'update':
+    case 'update_order':
         $orderController->update();
         break;
-    case 'delete':
+    case 'delete_order':
         $orderController->delete();
         break;
     case 'create_item':
@@ -73,8 +126,6 @@ switch ($order) {
         break;
     case 'limit':
         $settingController->limit();
-        header("Location: index");
-        exit;
         break;
     case 'get_order_items':
         $order_id = (int)($_GET['order_id'] ?? 0);

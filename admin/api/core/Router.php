@@ -19,20 +19,43 @@ class Router
 	}
 
 	public function dispatch(string $action): void {
+		global $koneksi;
 		if (!isset($this->routes[$action])) {
 			Response::error('Action tidak ditemukan.', 404);
 		}
 
 		$route = $this->routes[$action];
-
-		Middleware::handle($route['middlewares']);
-
-		$controller = new $route['controller']($GLOBALS['koneksi']);
-
-		if (!method_exists($controller, $route['method'])) {
-			Response::error('Method tidak ditemukan.', 404);
+		if (in_array('auth', $route['middlewares'])) {
+			require_once BASE_PATH . '/session.php';
 		}
 
-		$controller->{$route['method']}();
+		$controller = new $route['controller']($koneksi);
+
+		$result = call_user_func([$controller, $route['method']]);
+
+		// Controller lama sudah mengirim JSON sendiri
+		if ($result === null) {
+			return;
+		}
+
+		// Controller mengembalikan array
+		if (is_array($result)) {
+			Response::success('Success', $result);
+		}
+
+		// Controller mengembalikan string
+		if (is_string($result)) {
+			Response::success($result);
+		}
+
+		// Controller mengembalikan boolean
+		if (is_bool($result)) {
+			$result
+				? Response::success()
+				: Response::error('Gagal');
+		}
+
+		// Selain itu kirim apa adanya
+		Response::success('Success', (array) $result);
 	}
 }

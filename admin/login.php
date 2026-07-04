@@ -11,7 +11,7 @@ if (AuthController::checkSession()) {
 }
 
 $site_key   = "6LegPm0sAAAAACMlVF_Q0hQmj2cRMXNl2Pj8pldB";
-$is_localhost = in_array($_SERVER['HTTP_HOST'], ['localhost', '127.0.0.1', '::1']);
+$is_localhost = in_array($_SERVER['HTTP_HOST'], ['localhost', '192.168.100.110', '127.0.0.1', '::1']);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -344,7 +344,7 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
 
     const formData = new FormData(this);
 
-    fetch('<?= BASE_URL ?>/action.php?action=login', {
+    fetch('routes/?action=login', {
         method: 'POST',
         body: formData
     })

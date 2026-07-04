@@ -26,12 +26,13 @@ if ($is_admin_like || $is_all_access) {
 $search_text = trim($_GET['search'] ?? '');
 $start_date = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
 $end_date = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
+$user_setting = $settingModel->getUserSettingByUserId($user_id);
 
-$customerLimit = (float)$settingModel->getOneValue($user_id, 'customer_limit');
-$preview_print = (float)$settingModel->getOneValue($user_id, 'preview_print');
+$customerLimit = (float)$user_setting['customer_limit'] ?? 0;
+$preview_print = (float)$user_setting['preview_print'] ?? 0;
 
 $usersInitial = $userModel->getUsersInitial($store_id);
-$dataOrder = $orderController->index();
+$dataOrder = $orderController->index($is_all_access, $system, $search_text, $start_date, $end_date, $customerLimit, $usersInitial);
 $ordersOnline = $dataOrder['online'];
 $ordersOffline = $dataOrder['offline'];
 
@@ -407,7 +408,7 @@ $ordersOffline = $dataOrder['offline'];
         $htmlModalEditOrder = renderModal([
             'id'        => 'editOrderModal',
             'title'     => 'Edit Order',
-            'action'    => 'order_action.php?order=update',
+            'action'    => '../routes/?action=update_order',
             'layout'        => 'horizontal',
             'label_width'   => 'col-sm-4',
             'input_width'   => 'col-sm-8',
@@ -505,7 +506,7 @@ $ordersOffline = $dataOrder['offline'];
         $htmlModalProsesMassal = renderModal([
           'id'            => 'modalProsesMassal',
           'form_id'       => 'formProsesMassal',
-            'action'        => 'order_action.php?order=process',
+            'action'        => '../routes/?action=process',
             'title'         => '🛠 Proses Status Order Massal',
             'header_class'  => 'bg-primary text-white',
             'btn_color'     => 'success w-100" id="submitBtnMassal" disabled="disabled',
@@ -662,7 +663,7 @@ document.querySelectorAll('.order-row').forEach(row => {
     tooltip.style.display = 'block';
 
     timeout = setTimeout(() => {
-      fetch(`order_action.php?order=get_order_items&order_id=${orderId}`)
+      fetch(`../routes/?action=get_order_items&order_id=${orderId}`)
         .then(res => res.json())
         .then(res => {
           if (res.data.items.length === 0) {
@@ -760,7 +761,7 @@ document.addEventListener('keydown', function (e) {
 document.getElementById('confirmDeleteBtn').addEventListener('click', function () {
   const orderId = window.selectedRow.dataset.orderId;
   let keteranganHapus = document.querySelector("[name='keterangan_hapus']").value;
-  fetch('order_action.php?order=delete', {
+  fetch('../routes/?action=delete_order', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `order_id=${encodeURIComponent(orderId)}&keterangan_hapus=${keteranganHapus}`
@@ -804,7 +805,7 @@ addOrderBtn.addEventListener('click', (e) => {
     
     const formData = new FormData(addOrderForm);
     
-    fetch('order_action.php?order=create', {
+    fetch('../routes/?action=create_order', {
         method: 'POST',
         body: formData
     })
@@ -858,7 +859,7 @@ document.getElementById('limitForm').addEventListener('change', function (e) {
   const formData = new FormData(this);
   formData.submit = true;
 
-  fetch('order_action.php?order=limit', {
+  fetch('../routes/?action=limit', {
     method: 'POST',
     body: formData
   }).then(response => response.json())
@@ -880,7 +881,7 @@ document.querySelectorAll('.btn-edit').forEach(button => {
   button.addEventListener('click', function () {
     document.getElementById('edit-id').value = this.dataset.id;
  
-    fetch('order_action.php?order=get_order&order_id=' + this.dataset.id)
+    fetch('../routes/?action=get_order&order_id=' + this.dataset.id)
     .then(response => response.json())
     .then(data => {
       document.getElementById('edit-nomorator').value = data.data.nomorator;
@@ -1057,7 +1058,7 @@ nominalInput.addEventListener('input', function(e) {
 
       showGlobalLoading();
 
-      fetch('order_action.php?order=payment', {
+      fetch('../routes/?action=payment', {
         method: 'POST',
         body: formData,
       })
@@ -1133,7 +1134,7 @@ nominalInput.addEventListener('input', function(e) {
     const val = customerInput.value.toUpperCase();
     clearTimeout(timerDebounce);
     timerDebounce = setTimeout(() => {
-      fetch('order_action.php?order=get_history&name='+ val)
+      fetch('../routes/?action=get_history&name='+ val)
       .then(response => {
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -1237,7 +1238,7 @@ document.addEventListener('DOMContentLoaded', function () {
 document.getElementById('previewPrintForm').addEventListener('submit', function (e) {
   e.preventDefault();
   const formData = new FormData(this);
-  fetch('order_action.php?order=preview_print', {
+  fetch('../routes/?action=preview_print', {
     method: 'POST',
     body: formData
   })

@@ -3,7 +3,6 @@ require_once BASE_PATH . '/models/Order.php';
 require_once BASE_PATH . '/models/User.php';
 require_once BASE_PATH . '/models/Project.php';
 require_once BASE_PATH . '/models/Product.php';
-require_once BASE_PATH . '/models/Stock.php';
 require_once BASE_PATH . '/models/Activity.php';
 require_once BASE_PATH . '/models/Payment.php';
 require_once BASE_PATH . '/functions/helpers.php';
@@ -14,7 +13,6 @@ class MeterController {
     private $userModel;
     private $projectModel;
     private $productModel;
-    private $stockModel;
     private $paymentModel;
     private $activityModel;
 
@@ -24,7 +22,6 @@ class MeterController {
         $this->userModel = new User($koneksi);
         $this->projectModel = new Project($koneksi);
         $this->productModel = new Product($koneksi);
-        $this->stockModel = new Stock($koneksi);
         $this->paymentModel = new Payment($koneksi);
         $this->activityModel = new Activity($koneksi);
     }

@@ -1,61 +1,81 @@
 <?php
 // add_failure_item.php
 require_once '../connect.php';
-require_once 'functions.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/models/Product.php';
 require_once BASE_PATH . '/models/Order.php';
-require_once BASE_PATH . '/models/Stock.php';
+require_once BASE_PATH . '/models/Failure.php';
+require_once BASE_PATH . '/controllers/OrderController.php';
 
 header('Content-Type: application/json');
 
+$request = $_POST;
+if (empty($request)) {
+    $rawInput = trim(file_get_contents('php://input'));
+    if ($rawInput !== '') {
+        $decodedInput = json_decode($rawInput, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decodedInput)) {
+            $request = $decodedInput;
+        }
+    }
+}
+
+function requestValue(array $request, string $key, $default = null) {
+    return array_key_exists($key, $request) ? $request[$key] : $default;
+}
+
+function requestArray(array $request, string $key): array {
+    $value = requestValue($request, $key, []);
+    if (is_array($value)) {
+        return $value;
+    }
+    if ($value === '' || $value === null) {
+        return [];
+    }
+    return explode(',', (string) $value);
+}
+
+$orderController = new OrderController($koneksi);
 $productModel = new Product($koneksi);
+$failureModel = new Failure($koneksi);
 $orderModel = new Order($koneksi);
-$stockModel = new Stock($koneksi);
 
-$user_id_fail  = isset($_POST['user_id']) ? (int)$_POST['user_id'] : 0;
-$order_id   = isset($_POST['order_id']) ? (int)$_POST['order_id'] : 0;
-$product_id = isset($_POST['product_id']) ? (int)$_POST['product_id'] : 0;
-$diskon     = 0;
-$judul = trim($_POST['judul'] ?? '');
-$size = trim($_POST['size'] ?? '-');
-$quantity = (int)($_POST['quantity'] ?? 1);
-$finishing = trim($_POST['finishing'] ?? '-');
-$panjang = (float)($_POST['panjang'] ?? 0);
-$lebar = (float)($_POST['lebar'] ?? 0);
-$finishing_cut = ($_POST['finishing_cut'] ?? '') == '1';
-$finishing_die = ($_POST['finishing_die'] ?? '') == '1';
-$finishing_jersey = $_POST['finishing_jersey'] ?? [];
-$kiloan = (float)($_POST['kiloan'] ?? 0);
-$nomorator = trim($_POST['nomorator'] ?? '');
-$customer_name = trim($_POST['customer_name'] ?? '');
-$machine_id = (int)($_POST['machine_id'] ?? 0);
-$loss_burden = trim($_POST['loss_burden'] ?? '');
-$info = trim($_POST['info'] ?? '');
-$date = date("Y-m-d", strtotime($_POST['date']));
+global $user_id;
+global $store_id;
 
-$failure_design = isset($_POST['failure_design']) && is_array($_POST['failure_design']) ? implode(',', $_POST['failure_design']) : '';
-$failure_print = isset($_POST['failure_print']) && is_array($_POST['failure_print']) ? implode(',', $_POST['failure_print']) : '';
-$failure_finishing = isset($_POST['failure_finishing']) && is_array($_POST['failure_finishing']) ? implode(',', $_POST['failure_finishing']) : '';
-$failure_cause = isset($_POST['failure_cause']) && is_array($_POST['failure_cause']) ? implode(',', $_POST['failure_cause']) : '';
-$failure_cause_other = trim($_POST['failure_cause_other'] ?? '');
+$user_id_fail  = (int) requestValue($request, 'user_id', $user_id ?? 0);
+$order_id      = (int) requestValue($request, 'order_id', 0);
+$product_id    = (int) requestValue($request, 'product_id', 0);
+$diskon        = 0;
+$judul         = trim((string) requestValue($request, 'judul', ''));
+$size          = trim((string) requestValue($request, 'size', '-'));
+$quantity      = (int) requestValue($request, 'quantity', 1);
+$finishing     = trim((string) requestValue($request, 'finishing', '-'));
+$panjang       = (float) requestValue($request, 'panjang', 0);
+$lebar         = (float) requestValue($request, 'lebar', 0);
+$finishing_cut = (string) requestValue($request, 'finishing_cut', '') === '1';
+$finishing_die = (string) requestValue($request, 'finishing_die', '') === '1';
+$finishing_jersey = requestArray($request, 'finishing_jersey');
+$kiloan        = (float) requestValue($request, 'kiloan', 0);
+$nomorator     = trim((string) requestValue($request, 'nomorator', ''));
+$customer_name = trim((string) requestValue($request, 'customer_name', ''));
+$machine_id    = (int) requestValue($request, 'machine_id', 0);
+$loss_burden   = trim((string) requestValue($request, 'loss_burden', ''));
+$info          = trim((string) requestValue($request, 'info', ''));
+$dateRaw       = trim((string) requestValue($request, 'date', ''));
+$date          = $dateRaw !== '' ? date('Y-m-d', strtotime($dateRaw)) : date('Y-m-d');
+
+$failure_design = implode(',', requestArray($request, 'failure_design'));
+$failure_print = implode(',', requestArray($request, 'failure_print'));
+$failure_finishing = implode(',', requestArray($request, 'failure_finishing'));
+$failure_cause = implode(',', requestArray($request, 'failure_cause'));
+$failure_cause_other = trim((string) requestValue($request, 'failure_cause_other', ''));
 
 if ($panjang > 0 && $lebar > 0) {
     $size = "{$panjang}x{$lebar}";
 }
 
-if ($product_id === 0) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Product ID tidak valid.']);
-    exit;
-}
-
 $product = $productModel->getProductById($product_id);
-if (!$product) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Produk tidak ditemukan di database.']);
-    exit;
-}
 
 $product_type = $product['type'];
 $unit_type = $product['unit_type'];
@@ -71,80 +91,39 @@ if ($panjang > 0 && $lebar > 0) {
     $stok_butuh = $quantity;
 }
 
-$finishing_ids = [];
-$finishing_additional_price = 0;
-
-if ($finishing_cut) {
-    $finishing_type = ($product_type === 'INDOOR') ? 'FINISHING INDOOR' : 'FINISHING LASER A3';
-    addFinishing('KISS CUT', $store_id, $finishing_type, $koneksi, $finishing_ids, $finishing_additional_price, $panjang, $lebar, $product_type);
-}
-
-if ($finishing_die) {
-    $finishing_type = ($product_type === 'INDOOR') ? 'FINISHING INDOOR' : 'FINISHING LASER A3';
-    addFinishing('DIE CUT', $store_id, $finishing_type, $koneksi, $finishing_ids, $finishing_additional_price, $panjang, $lebar, $product_type);
-}
-
-if (str_contains($product_name, 'BAHAN') && $unit_type == 'PCS' && $kiloan != 0) {
-    $size = strval($kiloan) . ' KG';
-} elseif($product_type == 'JERSEY'){
-    $finishing_ids = array_unique(
-        array_merge($finishing_ids, $finishing_jersey)
-    );
-}
-
-if ($finishing !== '-' && is_numeric($finishing)) {
-    $finishing_ids[] = (int)$finishing;
-}
-
+$fData = $orderController->finishingData($finishing, $finishing_jersey, $finishing_cut, $finishing_die, $product_type, $panjang, $lebar);
+$finishing_ids = $fData['ids'] ?? [];
+$finishing_price = $fData['price'] ?? 0;
 $finishing_str = count($finishing_ids) ? implode(',', $finishing_ids) : '-';
 
-$sqlInsert = "INSERT INTO failure 
-    (user_id, store_id, nomorator, customer_name, machine_id, product_id, judul, size, quantity, finishing, date, failure_design, failure_print, failure_finishing, failure_cause, failure_cause_other, loss_burden, info) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+$data = [
+    'user_id_fail' => $user_id_fail,
+    'store_id' => $store_id,
+    'nomorator' => $nomorator,
+    'customer_name' => $customer_name,
+    'machine_id' => $machine_id,
+    'product_id' => $product_id,
+    'judul' => $judul,
+    'size' => $size,
+    'quantity' => $quantity,
+    'finishing_str' => $finishing_str,
+    'date' => $date,
+    'failure_design' => $failure_design,
+    'failure_print' => $failure_print,
+    'failure_finishing' => $failure_finishing,
+    'failure_cause' => $failure_cause,
+    'failure_cause_other' => $failure_cause_other,
+    'loss_burden' => $loss_burden,
+    'info' => $info
+];
 
-$stmtInsert = $koneksi->prepare($sqlInsert);
-
-if (!$stmtInsert) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Kesalahan Struktur SQL: ' . $koneksi->error]);
-    exit;
-}
-
-$stmtInsert->bind_param(
-    "iissiisssissssssss", 
-    $user_id_fail, 
-    $store_id, 
-    $nomorator, 
-    $customer_name, 
-    $machine_id, 
-    $product_id, 
-    $judul, 
-    $size, 
-    $quantity, 
-    $finishing_str, 
-    $date,
-    $failure_design,
-    $failure_print,
-    $failure_finishing,
-    $failure_cause,
-    $failure_cause_other,
-    $loss_burden,
-    $info
-);
-
-if ($stmtInsert->execute()) {
+if ($failureModel->createFailure($data)) {
     if ($unit_type !== '~') {
-        $stmtUpdate = $koneksi->prepare("UPDATE stock SET quantity = quantity - ? WHERE product_id = ? AND store_id = ?");
-        $stmtUpdate->bind_param("dii", $stok_butuh, $product_id, $store_id);
-        $stmtUpdate->execute();
-        $stmtUpdate->close();
+        $productModel->updateStock($product_id, $stok_butuh);
     }
-
     echo json_encode(['success' => true, 'message' => 'Item berhasil ditambahkan.']);
 } else {
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Gagal Insert Data: ' . $stmtInsert->error]);
+    echo json_encode(['success' => false, 'message' => 'Gagal Insert Data: ']);
 }
-
-$stmtInsert->close();
 ?>
