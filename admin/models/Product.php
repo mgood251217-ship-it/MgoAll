@@ -149,6 +149,35 @@ class Product{
         $stmt->close();
         return $success;
     }
+
+    public function countProducts($store_id, $search){
+        $search_param = "%" . $search . "%";
+
+        $stmt = $this->koneksi->prepare("SELECT COUNT(*) as total FROM products WHERE store_id = ? AND name LIKE ?");
+
+        $stmt->bind_param("is", $store_id, $search_param);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        return $result['total'] ?? 0;
+    }
+
+    public function getProductByPagination($store_id, $page, $search, $limit){
+        $offset = ($page - 1) * $limit;
+        $search_param = "%" . $search . "%";
+        
+        $stmt = $this->koneksi->prepare("SELECT * FROM products WHERE store_id = ? AND name LIKE ? ORDER BY product_id DESC LIMIT ? OFFSET ?");
+        $stmt->bind_param("isii", $store_id, $search_param, $limit, $offset);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        return $result ?? [];
+    }
+
+
+
     
 }
 ?>

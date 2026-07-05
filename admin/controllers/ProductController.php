@@ -30,6 +30,30 @@ class ProductController {
         return $this->productModel->getProductByStoreId($store_id);
     }
 
+    public function getProductByPagination(){
+        global $store_id;
+
+        $page = (int)($_GET['page'] ?? 1);
+        $search = $_GET['search'] ?? '';
+        $limit = (int)($_GET['limit'] ?? 25);
+
+        $data = $this->productModel->getProductByPagination(
+            $store_id,
+            $page,
+            $search,
+            $limit
+        );
+
+        $total = $this->productModel->countProducts($store_id, $search);
+        $totalPages = ceil($total / $limit);
+
+        return [
+            "data" => $data,
+            "total_pages" => $totalPages,
+            "total" => $total
+        ];
+    }
+
     public function createProduct() {
         header('Content-Type: application/json');
         $data = $this->requestData();
