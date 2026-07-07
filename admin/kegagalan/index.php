@@ -1,4 +1,5 @@
 <?php
+//failure.php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Modal.php';
@@ -8,7 +9,9 @@ require_once BASE_PATH . '/components/Loading.php';
 require_once BASE_PATH . '/components/Icon.php';
 require_once BASE_PATH . '/models/User.php';
 require_once BASE_PATH . '/models/Store.php';
+require_once BASE_PATH . '/models/Product.php';
 
+$productModel = new Product($koneksi);
 $userModel = new User($koneksi);
 $storeModel = new Store($koneksi);
 $start_date = $_GET['start_date'] ?? date('Y-m-d');
@@ -19,7 +22,7 @@ $machines = $storeModel->getMachineByStoreId($store_id);
 
 $sql = "SELECT f.*, m.name AS nama_mesin, m.type AS machine_type 
         FROM failure f 
-        LEFT JOIN machine m ON f.machine_id = m.machine_id 
+        LEFT JOIN machine m ON f.machine_id = m.machine_id
         WHERE f.store_id = ? AND f.date BETWEEN ? AND ?
         ORDER BY f.date DESC";
 
@@ -56,14 +59,11 @@ function getFinishingFailedPrice(string $finishing_ids, $size, mysqli $koneksi):
 }
 
 function getSatuanHarga($product_id, $size, $finishing, $koneksi){
-
-  $ketProduct = $koneksi->prepare('SELECT type, name, unit_type, failed_price FROM products WHERE product_id = ?');
-  $ketProduct->bind_param('i', $product_id);
-  $ketProduct->execute();
-  $keterangan = $ketProduct->get_result()->fetch_assoc();
+  global $productModel;
+  $keterangan = $productModel->getProductById($product_id);
 
   $unit_type = $keterangan['unit_type'];
-  $type = $keterangan['type'];
+  $type = $keterangan['category'];
   $reasonable_price = $keterangan['failed_price'];
   $product_name = $keterangan['name'];
   $finishing_price = getFinishingFailedPrice($finishing, $size, $koneksi);
@@ -73,7 +73,7 @@ function getSatuanHarga($product_id, $size, $finishing, $koneksi){
       if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $size, $match)) {
         $p = floatval($match[1]);
         $l = floatval($match[2]);
-        if ($keterangan['type'] == 'DTF') {
+        if ($keterangan['category'] == 'DTF') {
           $hargaSatuan = $p * ((float)$reasonable_price += $finishing_price);
         }else {
           $hargaSatuan = $p * $l * ((float)$reasonable_price += $finishing_price);
@@ -102,7 +102,7 @@ function getSatuanHarga($product_id, $size, $finishing, $koneksi){
   return $hargaSatuan;
 }
 
-$jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DTF','STAMP', 'MERCENDISE', 'MERCENDISE AKRILIK', 'JERSEY', 'AKRILIK', 'KARTU NAMA', 'CETAKAN'];
+$categories = $productModel->getCategoryByStoreId($store_id);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -208,13 +208,10 @@ $jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DT
                             'class' => 'text-white mb-1 me-1',
                             'onclick' => [
                                 'function' => 'bukaModalEditInfo',
-                                // Fitur baru: param_fields berupa array, otomatis menjadi: 
-                                // bukaModalEditInfo('1', 'Teks Info');
                                 'param_fields' => ['failure_id', 'info'] 
                             ]
                         ],
                         [
-                            // Fitur baru: Tipe Link (<a> tag) yang memiliki fungsi confirm()
                             'type'        => 'link',
                             'icon'        => get_icon('delete', ['class' => 'me-1']),
                             'text'        => 'Hapus',
@@ -331,11 +328,11 @@ $jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DT
 
                                         <div class="row">
                                           <div class="col-6 mb-2">
-                                              <label for="jenis" class="form-label mb-1">Jenis Produk</label>
-                                              <select id="jenis" name="jenis" class="form-select form-select-sm select2" required>
-                                                  <option value="" selected>-- Pilih Jenis --</option>
-                                                  <?php foreach ($jenisList as $jenis): ?>
-                                                  <option value="<?= htmlspecialchars($jenis) ?>"><?= htmlspecialchars($jenis) ?></option>
+                                              <label for="kategori" class="form-label mb-1">Kategori Produk</label>
+                                              <select id="kategori" name="kategori" class="form-select form-select-sm select2" required>
+                                                  <option value="" selected>-- Pilih Kategori --</option>
+                                                  <?php foreach ($categories as $c): ?>
+                                                  <option data-name="<?= htmlspecialchars($c['name']) ?>" value="<?= htmlspecialchars($c['category_id']) ?>" data-name="<?= htmlspecialchars($c['name']) ?>"><?= htmlspecialchars($c['name']) ?></option>
                                                   <?php endforeach; ?>
                                               </select>
                                           </div>
@@ -347,51 +344,68 @@ $jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DT
                                               </select>
                                           </div>
                                         </div>
-                                        <div class="row mb-2" id="ukuranInputs" style="display:none;">
-                                            <div class="col-6">
-                                                <label class="form-label mb-1">Panjang (m)</label>
-                                                <input type="number" step="0.01" min="0" id="panjang" class="form-control form-control-sm" placeholder="P">
+                                        <div class="row mb-3" id="ukuranInputs" style="display:none;">
+                                            <label class="col-sm-2 col-form-label">Ukuran</label>
+                                            <div class="col-sm-5">
+                                                <input type="number" step="0.01" min="0" id="panjang" class="form-control" placeholder="Panjang (m)">
                                             </div>
-                                            <div class="col-6">
-                                                <label class="form-label mb-1">Lebar (m)</label>
-                                                <input type="number" step="0.01" min="0" id="lebar" class="form-control form-control-sm" placeholder="L">
+                                            <div class="col-sm-5">
+                                                <input type="number" step="0.01" min="0" id="lebar" class="form-control" placeholder="Lebar (m)">
                                             </div>
                                         </div>
-                                        
-                                        <div class="mb-2" id="ukuranJerseyRow" style="display:none;">
-                                            <label for="ukuranJersey" class="form-label mb-1">Ukuran Jersey</label>
-                                            <select id="ukuranJersey" name="ukuran_jersey" class="form-select form-select-sm select2">
-                                                <option value="">-- Pilih --</option>
-                                                <option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option><option value="XXL">XXL</option>
+                                        <div class="row mb-3" id="ukuranJerseyRow" style="display:none;">
+                                          <label for="ukuranJersey" class="col-sm-2 col-form-label">Ukuran</label>
+                                          <div class="col-sm-10">
+                                            <select id="ukuranJersey" name="ukuran_jersey" class="form-select select2">
+                                              <option value="">-- Pilih Ukuran --</option>
+                                              <option value="XS">XS</option>
+                                              <option value="S">S</option>
+                                              <option value="M">M</option>
+                                              <option value="L">L</option>
+                                              <option value="XL">XL</option>
+                                              <option value="2XL">2XL</option>
+                                              <option value="3XL">3XL</option>
+                                              <option value="4XL">4XL</option>
+                                              <option value="5XL">5XL</option>
                                             </select>
+                                          </div>
+                                        </div>
+                                        <div class="row mb-3" id="bahanSublim" style="display:none;">
+                                            <label class="col-sm-2 col-form-label">Kiloan</label>
+                                            <div class="col-sm-10">
+                                                <input type="number" step="0.01" min="0" id="kiloan" class="form-control" placeholder="Berat (kg)">
+                                            </div>
+                                        </div>
+                                        <div class="row mb-3" id="settingDesain" style="display:none;">
+                                            <label class="col-sm-2 col-form-label">Waktu</label>
+                                            <div class="col-sm-10">
+                                                <input type="number" min="00:00" max="23:59" id="waktu" class="form-control" placeholder="Price / Menit">
+                                            </div>
+                                        </div>
+                                        <div class="row mb-3" id="ukuranDropdownRow" style="display:none;">
+                                          <label for="ukuranDropdown" class="col-sm-2 col-form-label">Ukuran</label>
+                                          <div class="col-sm-10">
+                                            <select id="ukuranDropdown" name="ukuran_variasi" class="form-select select2">
+                                              <option value="">-- Pilih Ukuran --</option>
+                                            </select>
+                                          </div>
+                                        </div>
+                                        <div class="row mb-3" id="ukuranSublimRow" style="display:none;">
+                                          <label for="ukuranSublim" class="col-sm-2 col-form-label">Ukuran</label>
+                                          <div class="col-sm-5">
+                                              <input type="number" step="0.01" min="0" id="panjangSublim" name="panjang_sublim" class="form-control" placeholder="Panjang (m)">
+                                          </div>
+                                          <div class="col-sm-5">
+                                            <select id="lebarSublim" name="lebar_sublim" class="form-select select2">
+                                              <option value="">-- Lebar Bahan --</option>
+                                              <option value="1.1">1.1</option>
+                                              <option value="1.2">1.2</option>
+                                              <option value="1.5">1.5</option>
+                                              <option value="1.6">1.6</option>
+                                              <option value="1.8">1.8</option>
+                                            </select>
+                                          </div>
                                         </div> 
-                                        
-                                        <div class="mb-2" id="bahanSublim" style="display:none;">
-                                            <label class="form-label mb-1">Kiloan</label>
-                                            <input type="number" step="0.01" min="0" id="kiloan" class="form-control form-control-sm" placeholder="Berat (kg)">
-                                        </div>
-                                        
-                                        <div class="mb-2" id="ukuranDropdownRow" style="display:none;">
-                                            <label for="ukuranDropdown" class="form-label mb-1">Ukuran</label>
-                                            <select id="ukuranDropdown" name="ukuran_variasi" class="form-select form-select-sm select2">
-                                                <option value="">-- Pilih --</option>
-                                            </select>
-                                        </div>
-                                        
-                                        <div class="row mb-2" id="ukuranSublimRow" style="display:none;">
-                                            <div class="col-6">
-                                                <label class="form-label mb-1">Panjang</label>
-                                                <input type="number" step="0.01" min="0" id="panjangSublim" name="panjang_sublim" class="form-control form-control-sm" placeholder="(m)">
-                                            </div>
-                                            <div class="col-6">
-                                                <label class="form-label mb-1">Lebar</label>
-                                                <select id="lebarSublim" name="lebar_sublim" class="form-select form-select-sm select2">
-                                                    <option value="">-- Lebar --</option>
-                                                    <option value="1.1">1.1</option><option value="1.2">1.2</option><option value="1.5">1.5</option><option value="1.6">1.6</option><option value="1.8">1.8</option>
-                                                </select>
-                                            </div>
-                                        </div>
-
                                         <div class="row">
                                             <div class="col-4 mb-2">
                                                 <label for="qty" class="form-label mb-1">Qty Gagal</label>
@@ -399,20 +413,7 @@ $jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DT
                                             </div>
                                             <div class="col-8 mb-2" id="finishingRow">
                                                 <label class="form-label mb-1">Finishing</label>
-                                                <select id="finishing" name="finishing" class="form-select form-select-sm mb-1">
-                                                    <option value="">-- Finishing --</option>
-                                                </select>
-                                                <div id="finishingJersey" class="d-flex flex-wrap gap-2" style="display:none;"></div>
-                                                <div id="cutDieCheckboxes" class="d-flex align-items-center gap-2 mt-1" style="display:none;">
-                                                    <div class="form-check form-check-sm me-1">
-                                                        <input class="form-check-input" type="checkbox" id="finishingCut" name="finishing_cut" value="1">
-                                                        <label class="form-check-label" style="font-size: 12px;">KISS CUT</label>
-                                                    </div>
-                                                    <div class="form-check form-check-sm">
-                                                        <input class="form-check-input" type="checkbox" id="finishingDie" name="finishing_die" value="1">
-                                                        <label class="form-check-label" style="font-size: 12px;">DIE CUT</label>
-                                                    </div>
-                                                </div>
+                                                <div id="finishing" class="d-flex flex-wrap gap-2 mb-1"></div>
                                             </div>
                                         </div>
                                     </div>
@@ -512,50 +513,51 @@ $jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DT
     
   </div>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="<?= BASE_URL ?>/assets/js/jquery-3.7.1.min.js"></script>
   <script>
 
 document.addEventListener('DOMContentLoaded', function () {
 
   const elMainContent = document.getElementById('main-content');
-  const elJenis       = document.getElementById('jenis');
-  const elJudul       = document.getElementById('judul');
-  const elPanjang     = document.getElementById('panjang');
-  const elLebar       = document.getElementById('lebar');
-  const elQty         = document.getElementById('qty');
-  const elFinishing   = document.getElementById('finishing');
-  const elBtnTambah   = document.getElementById('btnTambah');
+  const elKategori = document.getElementById('kategori');
+  const elJudul = document.getElementById('judul');
+  const elPanjang = document.getElementById('panjang');
+  const elLebar = document.getElementById('lebar');
+  const elQty = document.getElementById('qty');
+  const elFinishing = document.getElementById('finishing');
+  const elBtnTambah = document.getElementById('btnTambah');
   const elEnableDiskon = document.getElementById('enableDiskon');
   const elDiskonInput = document.getElementById('diskonInput');
   const bahanSublim = document.getElementById('bahanSublim');
   const ukuranInputs = document.getElementById('ukuranInputs');
   const finishingRow = document.getElementById('finishingRow');
   const elUkuranJersey = document.getElementById('ukuranJersey');
-  const elFinishingJersey = document.getElementById('finishingJersey');
-  const elFinishingCut = document.getElementById('finishingCut');
-  const elFinishingDie = document.getElementById('finishingDie');
   const elKiloan = document.getElementById('kiloan');
   const elWaktu = document.getElementById('waktu');
+  const size = document.getElementById('ukuranDropdown');
   let ukuranMap = {};
 
-  function loadProdukByJenis(jenis, typeFinishing = '') {
+  function getKategoriName() {
+      if (!elKategori) return '';
+      const opt = elKategori.options[elKategori.selectedIndex];
+      return opt ? (opt.dataset.name || '') : '';
+  }
+
+  function loadProdukByKategori(kategoriId, kategoriName) {
       if (elJudul) {
-          elJudul.innerHTML = '<option value="">-- Pilih Judul --</option>';
+          $(elJudul).empty().append('<option value="">-- Pilih Judul --</option>').trigger('change');
       }
       ukuranMap = {};
       const seen = new Set();
 
-      fetch(`../routes/?action=get_product&store_id=${store_id}&type=${encodeURIComponent(jenis)}`)
+      fetch(`../routes/?action=get_product&category_id=${encodeURIComponent(kategoriId)}`)
           .then(response => response.json())
           .then(data => {
               data.data.forEach(product => {
                   let nameOnly = product.name;
-
-                  if (jenis === 'PAKET INDOOR OUTDOOR') {
+                  if (kategoriName === 'PAKET INDOOR OUTDOOR') {
                       nameOnly = nameOnly.replace(/\s*\d+(\.\d+)?\s*[x×X]\s*\d+(\.\d+)?/gi, '').trim();
-                  } else if (jenis === 'KARTU NAMA') {
-                      nameOnly = nameOnly.replace(/\s+(GLOSSY|DOFF)\s*$/i, '').trim();
                   }
-
                   const ukuranMatch = product.name.match(/(\d+(\.\d+)?\s*[x×X]\s*\d+(\.\d+)?)/i);
                   const ukuran = ukuranMatch ? ukuranMatch[0].replace(/×/gi, 'x') : null;
 
@@ -577,110 +579,45 @@ document.addEventListener('DOMContentLoaded', function () {
               });
           });
 
-      if (elFinishing) {
-          elFinishing.innerHTML = '<option value="">-- Pilih Finishing --</option>';
-          elFinishing.style.display = '';
-      }
-      if (elFinishingJersey) elFinishingJersey.style.display = 'none';
-      if (elUkuranJersey) elUkuranJersey.value = '';
+      if (elUkuranJersey) $(elUkuranJersey).val('').trigger('change');
       if (elKiloan) elKiloan.value = '';
       if (elWaktu) elWaktu.value = '';
+      loadFinishingOptions(kategoriId);
+  }
 
-      if (jenis === 'KARTU NAMA') {
-          const options = ['DOFF', 'GLOSSY'];
-          options.forEach(val => {
-              const opt = document.createElement('option');
-              opt.value = val;
-              opt.textContent = val;
-              if (elFinishing) elFinishing.appendChild(opt);
-          });
-          return;
+  function loadFinishingOptions(kategoriId) {
+      if (elFinishing) {
+          elFinishing.innerHTML = '';
       }
 
-      if (typeFinishing) {
-          fetch(`../routes/?action=get_product&store_id=${store_id}&type=${encodeURIComponent(typeFinishing)}`)
+      if (kategoriId) {
+          fetch(`../routes/?action=get_finishing&category_id=${encodeURIComponent(kategoriId)}`)
               .then(response => response.json())
               .then(data => {
                   const seenFinishing = new Set();
-
-                  if (jenis === 'JERSEY') {
-                      if (elFinishing) elFinishing.style.display = 'none';
-                      if (elFinishingJersey) {
-                          elFinishingJersey.style.display = 'flex';
-                          elFinishingJersey.innerHTML = '';
+                  data.data.forEach(finishingItem => {
+                      if (!seenFinishing.has(finishingItem.name)) {
+                          seenFinishing.add(finishingItem.name);
+                          elFinishing.insertAdjacentHTML('beforeend', `
+                              <div class="form-check">
+                                  <input class="form-check-input finishing-checkbox" type="checkbox" value="${finishingItem.finishing_id}" data-name="${finishingItem.name}">
+                                  <label class="form-check-label">${finishingItem.name}</label>
+                              </div>
+                          `);
                       }
-
-                      data.data.forEach(product => {
-                          if (!seenFinishing.has(product.name)) {
-                              seenFinishing.add(product.name);
-                              elFinishingJersey.insertAdjacentHTML('beforeend', `
-                                  <div class="form-check">
-                                      <input class="form-check-input finishing-jersey" type="checkbox" name="finishing_jersey[]" value="${product.product_id}" data-price="${product.price}">
-                                      <label class="form-check-label">${product.name}</label>
-                                  </div>
-                              `);
-                          }
-                      });
-                  } else {
-                      data.data.forEach(product => {
-                          if (!seenFinishing.has(product.name)) {
-                              seenFinishing.add(product.name);
-                              const opt = document.createElement('option');
-                              opt.value = product.product_id;
-                              opt.dataset.name = product.name;
-                              opt.dataset.price = product.price;
-                              opt.textContent = product.name;
-                              if (elFinishing) elFinishing.appendChild(opt);
-                          }
-                      });
-                  }
+                  });
               });
-      } else {
-          if (elFinishing) {
-              elFinishing.insertAdjacentHTML('beforeend', '<option value="-">-</option>');
-          }
       }
   }
 
-
-  function toggleFinishingDisplay(jenis) {
-      const cutDie = document.getElementById('cutDieCheckboxes');
+  function toggleFinishingDisplay(kategoriName) {
       const row = document.getElementById('finishingRow');
-      
       if (row) row.style.display = '';
-      if (cutDie) cutDie.style.display = 'none';
-      if (elFinishingCut && elFinishingCut.parentElement) elFinishingCut.parentElement.style.display = 'none';
-      if (elFinishingDie && elFinishingDie.parentElement) elFinishingDie.parentElement.style.display = 'none';
-      if (elFinishingCut) elFinishingCut.checked = false;
-      if (elFinishingDie) elFinishingDie.checked = false;
-
-      switch (jenis) {
-          case 'LASER A3':
-              if (cutDie) cutDie.style.display = 'flex';
-              if (elFinishingCut && elFinishingCut.parentElement) elFinishingCut.parentElement.style.display = '';
-              if (elFinishingDie && elFinishingDie.parentElement) elFinishingDie.parentElement.style.display = '';
-              break;
-
-          case 'INDOOR':
-              if (cutDie) cutDie.style.display = 'flex';
-              if (elFinishingCut && elFinishingCut.parentElement) elFinishingCut.parentElement.style.display = '';
-              break;
-
-          case 'OUTDOOR':
-          case 'SUBLIM':
-          case 'AKRILIK':
-              break;
-
-          case 'JERSEY':
-              if (cutDie) cutDie.style.display = 'none';
-              if (elFinishingCut) elFinishingCut.checked = false;
-              if (elFinishingDie) elFinishingDie.checked = false;
-              break;
-
+      
+      switch (kategoriName) {
           case 'PAKET INDOOR OUTDOOR':
               if (row) row.style.display = 'none';
               return;
-
           case 'STAMP':
           case 'MERCENDISE':
           case 'MERCENDISE AKRILIK':
@@ -688,130 +625,50 @@ document.addEventListener('DOMContentLoaded', function () {
               if (elFinishing) elFinishing.innerHTML = '';
               return;
       }
-
-      if (jenis === 'AKRILIK') {
-          if (elPanjang) elPanjang.placeholder = 'Panjang (cm)';
-          if (elLebar) elLebar.placeholder = 'Lebar (cm)';
-      } else {
-          if (elPanjang) elPanjang.placeholder = 'Panjang (m)';
-          if (elLebar) elLebar.placeholder = 'Lebar (m)';
-      }
-
-      if (jenis === 'DTF') {
-          if (elLebar) {
-              elLebar.value = '0.58';
-              elLebar.readOnly = true;
-          }
-          if (elPanjang) {
-              elPanjang.value = '';
-              elPanjang.readOnly = false;
-          }
-      } else {
-          if (elLebar) {
-              elLebar.value = '';
-              elLebar.readOnly = false;
-          }
-          if (elPanjang) {
-              elPanjang.value = '';
-              elPanjang.readOnly = false;
-          }
-      }
   }
 
-
-  if (elJenis) {
-      elJenis.addEventListener('change', function () {
-          const jenis = this.value;
-          toggleFinishingDisplay(jenis);
-
-          let finishingType = '';
-          if (['OUTDOOR', 'INDOOR', 'KAIN', 'JERSEY', 'AKRILIK', 'LASER A3'].includes(jenis)) {
-              finishingType = `FINISHING ${jenis}`;
-          }
-          loadProdukByJenis(jenis, finishingType);
+  if (elKategori) {
+      elKategori.addEventListener('change', function () {
+          const kategoriId = this.value;
+          const kategoriName = getKategoriName();
+          toggleFinishingDisplay(kategoriName);
+          loadProdukByKategori(kategoriId, kategoriName);
+          updateUkuranView(kategoriName);
+          
       });
   }
-
-  function updateUkuranView(name) {
-    const jenis = elJenis ? elJenis.value : '';
-    const selectedOption = elJudul ? elJudul.options[elJudul.selectedIndex] : null;
-    const unit = selectedOption ? selectedOption.dataset.unit : '';
-    const judul = selectedOption ? selectedOption.dataset.name : '';
-
-    ['ukuranSublimRow', 'ukuranInputs', 'ukuranJerseyRow', 'bahanSublim'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = 'none';
-    });
-
-    if (name.includes('TRANSFERPAPER') || name.includes('PRINT PRES')) {
-        const subRow = document.getElementById('ukuranSublimRow');
-        if (subRow && subRow.closest('.row')) subRow.closest('.row').style.display = '';
-    } else if (jenis === 'JERSEY') {
-        const jerRow = document.getElementById('ukuranJersey');
-        if (jerRow && jerRow.closest('.row')) jerRow.closest('.row').style.display = '';
-    } else if (unit === 'M2' || unit === 'CM2') {
-        const inpRow = document.getElementById('ukuranInputs');
-        if (inpRow && inpRow.closest('.row')) inpRow.closest('.row').style.display = '';
-    } else if (jenis === 'JASA' && (judul === 'SETTING' || judul === 'POTONG AKRILIK')) {
-        const setRow = document.getElementById('settingDesain');
-        if (setRow && setRow.closest('.row')) setRow.closest('.row').style.display = '';
-    }
-
-    if (judul.includes('BAHAN') && unit === 'PCS') {
-        if (bahanSublim) bahanSublim.style.display = '';
-        if (ukuranInputs) ukuranInputs.style.display = 'none';
-        if (finishingRow) finishingRow.style.display = 'none';
-    }
-  }
-
 
   if (elJudul) {
       elJudul.addEventListener('change', function () {
           const selectedOption = this.options[this.selectedIndex];
-          const name = selectedOption ? selectedOption.dataset.name : '';
+          const name = (selectedOption && selectedOption.dataset && selectedOption.dataset.name) ? selectedOption.dataset.name : '';
           const ukuranList = ukuranMap[name] || [];
           const ukuranDropdown = document.getElementById('ukuranDropdown');
           const ukuranDropdownRow = document.getElementById('ukuranDropdownRow');
+          console.log(ukuranList);
+          
 
           if (ukuranList.length > 0) {
               if (ukuranDropdown) {
-                  ukuranDropdown.innerHTML = '<option value="">-- Pilih Ukuran --</option>';
+                  (ukuranDropdown).empty().append('<option value="">-- Pilih Ukuran --</option>');
                   ukuranList.forEach(uk => {
-                      ukuranDropdown.insertAdjacentHTML('beforeend', `<option value="${uk}">${uk}</option>`);
+                      (ukuranDropdown).append(`<option value="${uk}">${uk}</option>`);
                   });
+                  (ukuranDropdown).trigger('change');
               }
               if (ukuranDropdownRow) ukuranDropdownRow.style.display = '';
           } else {
               if (ukuranDropdownRow) ukuranDropdownRow.style.display = 'none';
           }
-
           updateUkuranView(name);
       });
   }
 
-
   if (elBtnTambah) {
       elBtnTambah.addEventListener('click', function () {
-          const jenis = elJenis ? elJenis.value : '';
+          const kategoriName = getKategoriName();
           const selectedOption = elJudul ? elJudul.options[elJudul.selectedIndex] : null;
           const selectedJudul = selectedOption ? selectedOption.dataset.name : '';
-          const selectedFinishing = (elFinishing && elFinishing.value) ? elFinishing.value.trim().toUpperCase() : '';
-
-          if (jenis === 'KARTU NAMA') {
-              const fullName = (selectedJudul + ' ' + selectedFinishing).trim().toUpperCase();
-              
-              fetch(`../routes/?action=get_product&store_id=${store_id}&type=KARTU NAMA`)
-                  .then(res => res.json())
-                  .then(dataProduk => {
-                      const produkCocok = dataProduk.data.find(p => p.name.trim().toUpperCase() === fullName);
-                      if (!produkCocok) {
-                          Swal.fire({ icon: 'error', title: 'Produk tidak ditemukan', text: `Tidak ada produk dengan nama "${fullName}"`, confirmButtonText: 'Tutup' });
-                          return;
-                      }
-                      if (typeof submitTambahItem === 'function') submitTambahItem(produkCocok.product_id);
-                  });
-              return;
-          }
 
           if (typeof submitTambahItem === 'function') {
               submitTambahItem(elJudul ? elJudul.value : '');
@@ -819,33 +676,67 @@ document.addEventListener('DOMContentLoaded', function () {
       });
   }
 
+  function updateUkuranView(name) {
+      const nameStr = name ? String(name) : '';
+      const kategori = getKategoriName();
+      const selectedOption = elJudul ? elJudul.options[elJudul.selectedIndex] : null;
+      const unit = (selectedOption && selectedOption.dataset.unit) ? selectedOption.dataset.unit : '';
+      const judul = (selectedOption && selectedOption.dataset.name) ? selectedOption.dataset.name : '';
+      const idsToHide = ['ukuranSublimRow', 'ukuranInputs', 'ukuranJersey', 'bahanSublim', 'settingDesain'];
+      idsToHide.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+              const rowWrapper = el.closest('.row');
+              if (rowWrapper) rowWrapper.style.display = 'none';
+              else el.style.display = 'none';
+          }
+      });
+      
 
-      function submitTambahItem() {
-      // 1. TANGKAP VARIABEL LAMA
-      const jenis = elJenis ? elJenis.value : '';
-      const selectedJudulId = elJudul ? elJudul.value : '';
+      if (nameStr.includes('TRANSFERPAPER') || nameStr.includes('PRINT PRES')) {
+          const subRow = document.getElementById('ukuranSublimRow');
+          if (subRow && subRow.closest('.row')) subRow.closest('.row').style.display = '';
+      } else if (kategori === 'JERSEY') {
+          const jerRow = document.getElementById('ukuranJersey');
+          if (jerRow && jerRow.closest('.row')) jerRow.closest('.row').style.display = '';
+      } else if (unit === 'M2' || unit === 'CM2') {
+          const inpRow = document.getElementById('ukuranInputs');
+          if (inpRow && inpRow.closest('.row')) inpRow.closest('.row').style.display = '';
+      } else if (kategori === 'JASA' && (judul === 'SETTING' || judul === 'POTONG AKRILIK')) {
+          const setRow = document.getElementById('settingDesain');
+          if (setRow && setRow.closest('.row')) setRow.closest('.row').style.display = '';
+      }
+
+      if (judul.includes('BAHAN') && unit === 'PCS') {
+          if (bahanSublim) bahanSublim.style.display = '';
+          if (ukuranInputs) ukuranInputs.style.display = 'none';
+          if (finishingRow) finishingRow.style.display = 'none';
+      }
+  }
+
+
+    function submitTambahItem(productIdToPost = null) {
+      const kategoriName = getKategoriName();
+      const selectedJudulId = productIdToPost || (elJudul ? elJudul.value : '');
       const selectedOption = elJudul ? elJudul.options[elJudul.selectedIndex] : null;
       let selectedJudulName = selectedOption ? selectedOption.dataset.name : '';
-      let finishing = elFinishing ? elFinishing.value : '-';
-      let finishingJersey = [];
-      let panjang = elPanjang ? parseFloat(elPanjang.value) || 0 : 0;
-      let lebar = elLebar ? parseFloat(elLebar.value) || 0 : 0;
-      let kiloan = elKiloan ? parseFloat(elKiloan.value) || 0 : 0;
+      
+      const finishingIds = Array.from(document.querySelectorAll('.finishing-checkbox:checked')).map(cb => cb.value);
+      let finishingStr = finishingIds.length > 0 ? finishingIds.join(',') : '-';
+      
       const elQtyField = document.getElementById('qty');
       const qty = elQtyField ? parseInt(elQtyField.value) || 1 : 1;
-      const unitType = selectedOption ? selectedOption.dataset.unit : '-';
-      const finishingCut = elFinishingCut && elFinishingCut.checked ? 1 : 0;
-      const finishingDie = elFinishingDie && elFinishingDie.checked ? 1 : 0;
+      
       const formElement = document.getElementById('addItemForm');
       const orderItemId = formElement ? formElement.dataset.orderItemId || null : null;
 
-      // 2. TANGKAP VARIABEL BARU (Data Pekerjaan & Kegagalan)date
       const nomoratorField = document.getElementById('nomorator');
       const customerNameField = document.getElementById('customer_name');
       const machineIdField = document.getElementById('machine_id');
       const lossBurdenField = document.getElementById('loss_burden');
       const dateField = document.getElementById('date');
       const infoField = document.getElementById('info');
+      
       const nomorator = nomoratorField ? nomoratorField.value.trim() : '';
       const customer_name = customerNameField ? customerNameField.value.trim() : '';
       const machine_id = machineIdField ? machineIdField.value : '';
@@ -871,106 +762,51 @@ document.addEventListener('DOMContentLoaded', function () {
           failure_cause_other = failureCauseOtherField.value.trim();
       }
 
-      // Validasi sederhana memastikan form pekerjaan sudah diisi
       if (!nomorator || !customer_name || !machine_id || !info) {
           Swal.fire({ icon: 'warning', title: 'Data Belum Lengkap', text: 'Nomorator, Customer, dan Mesin wajib diisi!' });
           return;
       }
 
-      // 3. LOGIKA PENENTUAN UKURAN (Lama)
-      let ukuranStr = '-';
-      if (jenis === 'LASER A3') {
-        ukuranStr = 'A3+';
-      } else if (selectedJudulName === 'TRANSFERPAPER' || selectedJudulName.includes('PRINT PRES')) {
-        const panjangSublimField = document.getElementById('panjangSublim');
-        const lebarSublimField = document.getElementById('lebarSublim');
-        panjang = panjangSublimField ? parseFloat(panjangSublimField.value) || 0 : 0;
-        lebar = lebarSublimField ? parseFloat(lebarSublimField.value) || 0 : 0;
-        
-      } else if (jenis === 'JERSEY') {
-        const ukuranJerseyField = document.getElementById('ukuranJersey');
-        ukuranStr = ukuranJerseyField ? ukuranJerseyField.value : '-';
-        document.querySelectorAll('.finishing-jersey:checked').forEach(el => {
-          finishingJersey.push(el.value);
-        });
-      } else {
-        const ukuranDropdownRowEl = document.getElementById('ukuranDropdownRow');
-        if (ukuranDropdownRowEl && ukuranDropdownRowEl.style.display !== 'none') {
-          const ukuranDropdown = document.getElementById('ukuranDropdown');
-          ukuranStr = ukuranDropdown ? ukuranDropdown.value : '-';
-        }
-      }
+      let namaProdukLengkap = selectedJudulName.trim();
 
-      const selectedFinishing = finishing !== '-' ? finishing : '';
-      let finalJudul = selectedJudulName;
-      if (jenis === 'KARTU NAMA' && selectedFinishing) {
-        finalJudul = `${selectedJudulName} ${selectedFinishing}`.trim();
-      }
+      if (kategoriName === 'PAKET INDOOR OUTDOOR' || kategoriName === 'KARTU NAMA') {
+        let nameToFind = selectedJudulName.trim();
 
-      let namaProdukLengkap = finalJudul.trim();
-      if (ukuranStr && ukuranStr !== '-') {
-        namaProdukLengkap += ` ${ukuranStr.trim()}`;
-      }
-      const selectedJudulDataName = selectedOption ? selectedOption.dataset.name : '';
-      if (selectedJudulDataName.includes('BAHAN') && unitType == 'PCS') {
-        selectedJudulName = selectedJudulName + '/KG';
-      }
-
-      // 4. PENCARIAN PRODUK KHUSUS (Lama)
-      if (jenis === 'PAKET INDOOR OUTDOOR' || jenis === 'KARTU NAMA') {
-        let namaProdukLengkap = selectedJudulName.trim();
-
-        if (jenis === 'KARTU NAMA' && selectedFinishing && selectedFinishing !== '-') {
-          const upperJudul = selectedJudulName.toUpperCase();
-          const upperFinishing = selectedFinishing.toUpperCase();
-
-          if (!upperJudul.includes(upperFinishing)) {
-            namaProdukLengkap += ` ${selectedFinishing}`;
-          }
-        } else if (jenis === 'PAKET INDOOR OUTDOOR' && ukuranStr && ukuranStr !== '-') {
-          namaProdukLengkap += ` ${ukuranStr.trim()}`;
-        }
-
-        const typeEncoded = encodeURIComponent(jenis);
-        fetch(`../routes/?action=get_product&type=${typeEncoded}`)
-          .then(res => res.json())
-          .then(data => {
-            const produk = data.data.find(p => p.name.trim().toUpperCase() === namaProdukLengkap.toUpperCase());
-
-            if (!produk) {
-              Swal.fire({
-                icon: 'error',
-                title: 'Produk tidak ditemukan',
-                text: `Tidak ada produk dengan nama "${namaProdukLengkap}"`,
-              });
-              return;
+        if (kategoriName === 'KARTU NAMA') {
+          const checkedFinishingEl = document.querySelector('.finishing-checkbox:checked');
+          const selectedFinishing = checkedFinishingEl ? checkedFinishingEl.dataset.name.trim().toUpperCase() : '';
+          if (selectedFinishing && selectedFinishing !== '-') {
+            const upperJudul = selectedJudulName.toUpperCase();
+            const upperFinishing = selectedFinishing.toUpperCase();
+            if (!upperJudul.includes(upperFinishing)) {
+              nameToFind += ` ${selectedFinishing}`;
             }
-
-            prosesTambahItem(produk.product_id, namaProdukLengkap, ukuranStr);
-          });
+          }
+        } 
+        
+        namaProdukLengkap = nameToFind;
       } else {
-        prosesTambahItem(selectedJudulId, selectedJudulName, ukuranStr);
+        prosesTambahItem(selectedJudulId, namaProdukLengkap);
       }
 
-        // 5. FUNGSI EKSEKUSI AJAX PENGIRIMAN DATA
-        function prosesTambahItem(productId, judulFinal, ukuranFinal) {
+        function prosesTambahItem(productId, judulFinal) {
+          let panjang = parseFloat(elPanjang?.value) || 0;
+          let lebar = parseFloat(elLebar?.value) || 0;
+          if (selectedJudulName.includes('TRANSFERPAPER') || selectedJudulName.includes('PRINT PRES')) {
+              panjang = parseFloat(document.getElementById('panjangSublim')?.value) || 0;
+              lebar = parseFloat(document.getElementById('lebarSublim')?.value) || 0;
+          }
           const dataPost = {
-            // Data Lama
             user_id: document.getElementById('user_id') ? document.getElementById('user_id').value : '',
             product_id: productId,
             judul: judulFinal,
-            size: ukuranFinal,
             quantity: qty,
-            finishing: finishing,
-            finishing_jersey: finishingJersey,
+            finishing: finishingStr,
             panjang: panjang,
             lebar: lebar,
-            kiloan: kiloan,
-            unit_type: unitType,
-            finishing_cut: finishingCut,
-            finishing_die: finishingDie,
-
-            // TAMBAHAN: Data Baru Dimasukkan ke payload AJAX
+            kiloan: parseFloat(elKiloan?.value) || 0,
+            waktu: parseFloat(elWaktu?.value) || 0,
+            size : size?.value,
             nomorator: nomorator,
             customer_name: customer_name,
             machine_id: machine_id,
@@ -984,11 +820,6 @@ document.addEventListener('DOMContentLoaded', function () {
             failure_cause_other: failure_cause_other
           };
 
-          const enableDiskonEl = document.getElementById('enableDiskon');
-          if (enableDiskonEl && enableDiskonEl.checked) {
-            const diskonInputEl = document.getElementById('diskonInput');
-            dataPost.diskon = parseFloat(diskonInputEl?.value || '0') || 0;
-          }
           if (orderItemId) dataPost.order_item_id = orderItemId;
 
           fetch('add_failure_items.php', {
@@ -1083,109 +914,109 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-	<script>
-	document.getElementById('btnExportExcel').addEventListener('click', async () => {
-	  const workbook = new ExcelJS.Workbook();
-	  const toko   = "<?= addslashes($storeName ?? 'Nama Toko') ?>";
-	  const alamat = "<?= addslashes($storeAddress ?? 'Alamat Toko') ?>";
-	  const startDate = "<?= $start_date ?? '' ?>";
-	  const endDate   = "<?= $end_date ?? '' ?>";
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script>
+    document.getElementById('btnExportExcel').addEventListener('click', async () => {
+      const workbook = new ExcelJS.Workbook();
+      const toko   = "<?= addslashes($storeName ?? 'Nama Toko') ?>";
+      const alamat = "<?= addslashes($storeAddress ?? 'Alamat Toko') ?>";
+      const startDate = "<?= $start_date ?? '' ?>";
+      const endDate   = "<?= $end_date ?? '' ?>";
 
-	  const table = document.getElementById("tableGagal");
-	  if (!table) return;
+      const table = document.getElementById("tableGagal");
+      if (!table) return;
 
-	  const thElements = [...table.querySelectorAll("thead th")];
-	  const headers = thElements.map(th => th.innerText.trim()).slice(0, -1);
+      const thElements = [...table.querySelectorAll("thead th")];
+      const headers = thElements.map(th => th.innerText.trim()).slice(0, -1);
 
-	  const allRows = [];
-	  table.querySelectorAll("tbody tr").forEach(tr => {
-	    const tdElements = [...tr.querySelectorAll("td")];
-	    if (tdElements.length > 0) {
-	      const rowData = tdElements.map(td => td.innerText.trim()).slice(0, -1);
-	      allRows.push(rowData);
-	    }
-	  });
+      const allRows = [];
+      table.querySelectorAll("tbody tr").forEach(tr => {
+        const tdElements = [...tr.querySelectorAll("td")];
+        if (tdElements.length > 0) {
+          const rowData = tdElements.map(td => td.innerText.trim()).slice(0, -1);
+          allRows.push(rowData);
+        }
+      });
 
-	  const IDX_OPERATOR = 4;
-	  const dataOperator = {};
+      const IDX_OPERATOR = 4;
+      const dataOperator = {};
 
-	  allRows.forEach(row => {
-	    const operatorName = row[IDX_OPERATOR] && row[IDX_OPERATOR] !== '-' ? row[IDX_OPERATOR] : "Tanpa Operator";
-	    if (!dataOperator[operatorName]) {
-	      dataOperator[operatorName] = [];
-	    }
-	    dataOperator[operatorName].push(row);
-	  });
+      allRows.forEach(row => {
+        const operatorName = row[IDX_OPERATOR] && row[IDX_OPERATOR] !== '-' ? row[IDX_OPERATOR] : "Tanpa Operator";
+        if (!dataOperator[operatorName]) {
+          dataOperator[operatorName] = [];
+        }
+        dataOperator[operatorName].push(row);
+      });
 
-	  function createSheet(sheetName, dataRows) {
-	    const sheet = workbook.addWorksheet(sheetName.substring(0, 31));
-	    let r = 1;
+      function createSheet(sheetName, dataRows) {
+        const sheet = workbook.addWorksheet(sheetName.substring(0, 31));
+        let r = 1;
 
-	    sheet.mergeCells(`A${r}:N${r}`);
-	    sheet.getCell(`A${r}`).value = toko;
-	    sheet.getCell(`A${r}`).font = { bold: true, size: 16 };
-	    sheet.getCell(`A${r}`).alignment = { horizontal: 'center' };
-	    r++;
+        sheet.mergeCells(`A${r}:N${r}`);
+        sheet.getCell(`A${r}`).value = toko;
+        sheet.getCell(`A${r}`).font = { bold: true, size: 16 };
+        sheet.getCell(`A${r}`).alignment = { horizontal: 'center' };
+        r++;
 
-	    sheet.mergeCells(`A${r}:N${r}`);
-	    sheet.getCell(`A${r}`).value = alamat;
-	    sheet.getCell(`A${r}`).alignment = { horizontal: 'center' };
-	    r++;
+        sheet.mergeCells(`A${r}:N${r}`);
+        sheet.getCell(`A${r}`).value = alamat;
+        sheet.getCell(`A${r}`).alignment = { horizontal: 'center' };
+        r++;
 
-	    sheet.mergeCells(`A${r}:N${r}`);
-	    sheet.getCell(`A${r}`).value = `Periode ${startDate} s.d ${endDate}`;
-	    sheet.getCell(`A${r}`).alignment = { horizontal: 'center' };
-	    r += 2;
+        sheet.mergeCells(`A${r}:N${r}`);
+        sheet.getCell(`A${r}`).value = `Periode ${startDate} s.d ${endDate}`;
+        sheet.getCell(`A${r}`).alignment = { horizontal: 'center' };
+        r += 2;
 
-	    const headerRow = sheet.addRow(headers);
-	    headerRow.font = { bold: true };
-	    headerRow.eachCell(cell => {
-	      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCE5FF' } };
-	      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-	      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-	    });
+        const headerRow = sheet.addRow(headers);
+        headerRow.font = { bold: true };
+        headerRow.eachCell(cell => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCE5FF' } };
+          cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        });
 
-	    dataRows.forEach((rowData, index) => {
-	      rowData[0] = index + 1;
-	      const row = sheet.addRow(rowData);
-	      row.eachCell(cell => {
-		cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-		cell.alignment = { vertical: 'middle', wrapText: true }; 
-	      });
-	    });
+        dataRows.forEach((rowData, index) => {
+          rowData[0] = index + 1;
+          const row = sheet.addRow(rowData);
+          row.eachCell(cell => {
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        cell.alignment = { vertical: 'middle', wrapText: true }; 
+          });
+        });
 
-	    sheet.columns = [
-	      { width: 5 },  // No
-	      { width: 15 }, // Tanggal
-	      { width: 15 }, // Nomorator
-	      { width: 20 }, // Customer
-	      { width: 20 }, // Operator
-	      { width: 25 }, // Mesin
-	      { width: 25 }, // Judul
-	      { width: 15 }, // Ukuran
-	      { width: 8 },  // Qty
-	      { width: 25 }, // Finishing
-	      { width: 35 }, // Detail Gagal
-	      { width: 18 }, // Kerugian
-	      { width: 15 }, // Beban
-	      { width: 25 }  // Keterangan
-	    ];
-	  }
+        sheet.columns = [
+          { width: 5 },  // No
+          { width: 15 }, // Tanggal
+          { width: 15 }, // Nomorator
+          { width: 20 }, // Customer
+          { width: 20 }, // Operator
+          { width: 25 }, // Mesin
+          { width: 25 }, // Judul
+          { width: 15 }, // Ukuran
+          { width: 8 },  // Qty
+          { width: 25 }, // Finishing
+          { width: 35 }, // Detail Gagal
+          { width: 18 }, // Kerugian
+          { width: 15 }, // Beban
+          { width: 25 }  // Keterangan
+        ];
+      }
 
-	  createSheet("Semua Data", allRows);
+      createSheet("Semua Data", allRows);
 
-	  Object.keys(dataOperator).forEach(operator => {
-	    createSheet(operator, dataOperator[operator]);
-	  });
+      Object.keys(dataOperator).forEach(operator => {
+        createSheet(operator, dataOperator[operator]);
+      });
 
-	  const buffer = await workbook.xlsx.writeBuffer();
-	  saveAs(
-	    new Blob([buffer]),
-	    `Laporan_Gagal_${startDate}_sd_${endDate}.xlsx`
-	  );
-	});
-	</script>
+      const buffer = await workbook.xlsx.writeBuffer();
+      saveAs(
+        new Blob([buffer]),
+        `Laporan_Gagal_${startDate}_sd_${endDate}.xlsx`
+      );
+    });
+    </script>
 
 </body>
 </html>

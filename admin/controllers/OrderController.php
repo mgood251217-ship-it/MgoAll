@@ -369,7 +369,7 @@ class OrderController {
         $outdoorGroups = [];
 
         foreach ($result as $row) {
-            $type = $row['type'];
+            $type = $row['category'];
             $unit_type = $row['unit_type'] ?? '';
             $product_name = $row['product_name'];
             
@@ -831,7 +831,7 @@ class OrderController {
                 if ($fid === 0) continue;
 
                 $fin_product = $this->productModel->getProductById($fid);
-                $fin_type = strtoupper($fin_product['type'] ?? '');
+                $fin_type = strtoupper($fin_product['category'] ?? '');
 
                 $stok_kembali_fin = $quantity;
 

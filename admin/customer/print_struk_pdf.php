@@ -32,7 +32,7 @@ $customer_name_clean = strtoupper(preg_replace('/[^A-Za-z0-9]/', '_', $order['cu
 $outdoor = [];
 $luas_kurang_dari_satu = [];
 foreach ($order_items_raw as $item) {
-    if (strtoupper($item['type'] ?? '') === 'OUTDOOR' && $item['product_id']) {
+    if (strtoupper($item['category'] ?? '') === 'OUTDOOR' && $item['product_id']) {
         $pid = $item['product_id'];
         $luas = preg_match('/^([\d.]+)[xX]([\d.]+)$/', $item['size'], $m) ? ($m[1] * $m[2]) : 0;
         $pad = max(($item['price'] ?? 0) - ($item['diskon'] ?? 0), 0);
@@ -64,7 +64,7 @@ $filename = "{$customer_name_clean}_{$initial}_{$tanggal}_{$nomorator}.pdf";
 $logo_url = BASE_URL . '/assets/img/store/' . ($store["logo_print"] ?: $store['logo']);
 
 ?>
-<!DOCTYPE html>
+<!DOCcategory html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -139,7 +139,7 @@ $logo_url = BASE_URL . '/assets/img/store/' . ($store["logo_print"] ?: $store['l
         $pid = $item['product_id'] ?? null;
         $hide_price = false; $custom_price = null;
 
-        if (strtoupper($item['type'] ?? '') === 'OUTDOOR' && isset($luas_kurang_dari_satu[$pid])) {
+        if (strtoupper($item['category'] ?? '') === 'OUTDOOR' && isset($luas_kurang_dari_satu[$pid])) {
             if (in_array($pid, $printed_price_for)) $hide_price = true;
             else { $custom_price = $luas_kurang_dari_satu[$pid]; $printed_price_for[] = $pid; }
         }

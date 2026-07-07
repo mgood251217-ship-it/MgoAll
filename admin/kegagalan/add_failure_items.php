@@ -77,7 +77,7 @@ if ($panjang > 0 && $lebar > 0) {
 
 $product = $productModel->getProductById($product_id);
 
-$product_type = $product['type'];
+$product_type = $product['category'];
 $unit_type = $product['unit_type'];
 $product_name = $product['name'];
 $product_price = $product['price'];

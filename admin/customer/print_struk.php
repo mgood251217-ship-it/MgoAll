@@ -22,7 +22,7 @@ $order_items_raw = $orderModel->getOrderItemsWithDetails($order_id);
 $outdoor = [];
 $luas_kurang_dari_satu = [];
 foreach ($order_items_raw as $item) {
-    if (strtoupper($item['type'] ?? '') === 'OUTDOOR' && $item['product_id']) {
+    if (strtoupper($item['category'] ?? '') === 'OUTDOOR' && $item['product_id']) {
         $pid = $item['product_id'];
         $luas = preg_match('/^([\d.]+)[xX]([\d.]+)$/', $item['size'], $m) ? ($m[1] * $m[2]) : 0;
         $pad = max(($item['price'] ?? 0) - ($item['diskon'] ?? 0), 0);
@@ -45,7 +45,7 @@ foreach ($paymentModel->getPaymentByOrderId($order_id) as $pay) {
 $noted = $orderModel->getNoteOrder((object)['order_id' => $order_id, 'note_for' => 'CTM']);
 $printed_price_for = [];
 ?>
-<!DOCTYPE html>
+<!DOCcategory html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
@@ -102,7 +102,7 @@ $printed_price_for = [];
     $pid = $item['product_id'] ?? null;
     $hide_price = false; $custom_price = null;
 
-    if (strtoupper($item['type'] ?? '') === 'OUTDOOR' && isset($luas_kurang_dari_satu[$pid])) {
+    if (strtoupper($item['category'] ?? '') === 'OUTDOOR' && isset($luas_kurang_dari_satu[$pid])) {
         if (in_array($pid, $printed_price_for)) $hide_price = true;
         else { $custom_price = $luas_kurang_dari_satu[$pid]; $printed_price_for[] = $pid; }
     }

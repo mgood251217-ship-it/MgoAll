@@ -167,7 +167,7 @@ class Order {
                 c.name AS category, 
                 p.unit_type, 
                 p.price, 
-                UPPER(COALESCE(c.name, '')) AS type,
+                UPPER(COALESCE(c.name, '')) AS category,
                 COALESCE(doi.diskon, 0) AS diskon,
                 COALESCE(
                     (SELECT GROUP_CONCAT(fp.name SEPARATOR ' ') 
