@@ -31,12 +31,16 @@ class OrderController {
 
         $deadline_input = $_POST['deadline'] ?? '';
         $user_id = $_POST['user_id'] ?? 0;
+        $system = $_POST['system'] ?? 'OFFLINE';
+        if ($system != 'OFFLINE' && $system != 'ONLINE') {
+            $system = 'OFFLINE';
+        }
 
         $data = new stdClass();
         $data->order_id = (int)($_POST['order_id'] ?? 0);
         $data->store_id = $store_id;
         $data->user_id = $user_id;
-        $data->system = ($this->userModel->getOneValue($user_id, 'role') === 'ONLINE') ? 'ONLINE' : 'OFFLINE';
+        $data->system = $system;
             
         if ($data->order_id > 0) {
             $data->nomorator = trim($_POST['nomorator'] ?? '');
@@ -55,10 +59,23 @@ class OrderController {
         return $data;
     }
 
-    public function index($is_all_access, $system, $search_text, $start_date, $end_date, $customerLimit, $usersInitial) {
+    public function index() {
+        global $store_id, $koneksi, $role, $user_id;
 
-        global $store_id;
-        global $koneksi;
+        $search_text = trim($_GET['search'] ?? '');
+        $start_date = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
+        $end_date = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
+
+        $is_admin_like = in_array($role, ['SETTING']);
+        $is_all_access = in_array($role, ['PRODUKSI', 'MANAGER', 'ADMIN']);
+        $system = ($is_admin_like || $is_all_access) ? 'OFFLINE' : 'ONLINE';
+
+        $settingModel = new Setting($koneksi);
+        $user_setting = $settingModel->getUserSettingByUserId($user_id);
+        $customerLimit = (float)($user_setting['customer_limit'] ?? 0);
+
+        $userModel = new User($koneksi);
+        $usersInitial = $userModel->getUsersInitial($store_id);
 
         $all_orders = $this->orderModel->getFilteredOrders(
             $is_all_access, $search_text, $store_id, $customerLimit, $start_date, $end_date, $system
@@ -345,136 +362,6 @@ class OrderController {
         }
     }
 
-    public function finishingData($input_finishing, $jersey_ids, $use_cut, $use_die, $product_type, $panjang, $lebar) {
-        global $store_id;
-
-        $finishing_ids = [];
-
-        if ($input_finishing !== '-' && !empty($input_finishing)) {
-            $ids = explode(',', $input_finishing);
-            foreach ($ids as $id) {
-                if (is_numeric(trim($id))) $finishing_ids[] = (int)trim($id);
-            }
-        }
-
-        if (!empty($jersey_ids) && is_array($jersey_ids)) {
-            $finishing_ids = array_merge($finishing_ids, array_map('intval', $jersey_ids));
-        }
-
-        $searchFinishingId = function($name) use ($store_id, $product_type) {
-            $type = ($product_type === 'INDOOR') ? 'FINISHING INDOOR' : 'FINISHING LASER A3';
-            $stmt = $this->koneksi->prepare("SELECT product_id FROM products WHERE type = ? AND name = ? AND store_id = ?");
-            $stmt->bind_param("ssi", $type, $name, $store_id);
-            $stmt->execute();
-            $res = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
-            return $res ? (int)$res['product_id'] : null;
-        };
-
-        if ($use_cut) {
-            $id = $searchFinishingId('KISS CUT');
-            if ($id) $finishing_ids[] = $id;
-        }
-        if ($use_die) {
-            $id = $searchFinishingId('DIE CUT');
-            if ($id) $finishing_ids[] = $id;
-        }
-
-        $unique_ids = array_unique($finishing_ids);
-        $total_price = 0;
-        $required_stocks = [];
-
-        if (!empty($unique_ids)) {
-            $placeholders = implode(',', array_fill(0, count($unique_ids), '?'));
-            $types = str_repeat('i', count($unique_ids));
-            
-            $stmt = $this->koneksi->prepare("SELECT product_id, name, unit_type, price FROM products WHERE product_id IN ($placeholders)");
-            $stmt->bind_param($types, ...$unique_ids);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            
-            while ($row = $result->fetch_assoc()) {
-                $pid = (int)$row['product_id'];
-                $price = (float)$row['price'];
-                
-                $qty = 1;
-                if ((float)$panjang > 0 && (float)$lebar > 0) {
-                    $qty = (float)$panjang * (float)$lebar;
-                }
-
-                $total_price += $price;
-
-                if ($row['unit_type'] !== '~') {
-                    $required_stocks[] = [
-                        'product_id' => $pid,
-                        'qty' => $qty
-                    ];
-                }
-            }
-            $stmt->close();
-        }
-
-        return [
-            'ids' => $unique_ids,
-            'price' => $total_price,
-            'stocks' => $required_stocks
-        ];
-    }
-
-    public function calculatePricingDetails($product, $base_price, $finishing_price, $quantity, $panjang, $lebar, $waktu, $kiloan, $size) {
-        
-        $unit = $base_price + $finishing_price;
-        
-        $name = $product['name'] ?? '';
-        $type = $product['type'] ?? '';
-        $unit_type = $product['unit_type'] ?? '';
-
-        if ($unit_type === 'M2') {
-            $unit *= ($type === 'DTF') ? $panjang : ($panjang * $lebar);
-        }
-
-        if ($unit_type === 'CM2') {
-            $unit *= ($panjang * $lebar);
-        }
-
-        if ($unit_type === 'PCS' && str_contains($name, 'BAHAN') && $kiloan != 0) {
-            $unit *= $kiloan;
-            $size = "{$kiloan} KG";
-        }
-
-        if ($type === 'JASA') {
-            if ($name === 'SETTING') {
-                $waktu = max(15, $waktu);
-                $jam = floor($waktu / 60);
-                $sisa_menit = $waktu % 60;
-                $size = ($waktu >= 60) ? "{$jam} Jam {$sisa_menit} Menit" : "{$waktu} Menit";
-                $unit *= ($waktu / 60);
-            }
-
-            if ($name === 'POTONG AKRILIK') {
-                $unit *= $waktu;
-                $size = "{$waktu} MENIT";
-            }
-        }
-
-        if ($type === 'JERSEY') {
-            $extra_charge = ['5XL' => 50000, '4XL' => 40000, '3XL' => 30000, '2XL' => 20000, 'XL' => 10000];
-            $unit += $extra_charge[$size] ?? 0;
-        }
-
-        $amount = $unit * $quantity;
-
-        if ($type === 'AKRILIK' && $name === 'PRINT UV' && $amount < 7500) {
-            $amount = 7500;
-        }
-
-        return (object)[
-            'unit'   => $unit,
-            'size'   => $size,
-            'amount' => $amount
-        ];
-    }
-
     public function orderTotal($id) {
         $result = $this->orderModel->getOrderItemsWithDetails($id);
 
@@ -569,12 +456,12 @@ class OrderController {
             return ['error' => 'Produk tidak ditemukan', 'status' => 404];
         }
 
-        if ($product['type'] === 'PAKET INDOOR OUTDOOR') {
+        if ($product['category'] === 'PAKET INDOOR OUTDOOR') {
             $nama_pencarian = trim($judul . ' ' . $size);
             $produk_baru = $this->productModel->getProductByNameAndStore($nama_pencarian, $store_id);
             
             if ($produk_baru) {
-                $product_id = $produk_baru['id'] ?? $produk_baru['product_id'];
+                $product_id = $produk_baru['product_id'] ?? $produk_baru['product_id'];
                 $product = $produk_baru;
             } else {
                 return ['error' => "Produk paket ($nama_pencarian) tidak ditemukan", 'status' => 404];
@@ -586,13 +473,10 @@ class OrderController {
 
         $finishing = trim($data['finishing'] ?? '-');
         $waktu = (float)($data['waktu'] ?? 0);
-        $finishing_cut = ($data['finishing_cut'] ?? '') == '1';
-        $finishing_die = ($data['finishing_die'] ?? '') == '1';
-        $finishing_jersey = $data['finishingJersey'] ?? $data['finishing_jersey'] ?? [];
         $kiloan = (float)($data['kiloan'] ?? 0);
 
         $stok_butuh = 0;
-        if ($product['type'] === 'DTF' && $panjang > 0) {
+        if ($product['category'] === 'DTF' && $panjang > 0) {
             $stok_butuh = $panjang * $quantity;
         } elseif ($panjang > 0 && $lebar > 0) {
             $stok_butuh = $panjang * $lebar * $quantity;
@@ -602,7 +486,7 @@ class OrderController {
             $stok_butuh = $quantity;
         }
 
-        $fData = $this->finishingData($finishing, $finishing_jersey, $finishing_cut, $finishing_die, $product['type'], $panjang, $lebar);
+        $fData = $this->finishingData($finishing, $panjang, $lebar);
         $finishing_ids = $fData['ids'] ?? [];
         $finishing_price = $fData['price'] ?? 0;
         $finishing_str = count($finishing_ids) ? implode(',', $finishing_ids) : '-';
@@ -611,7 +495,7 @@ class OrderController {
         if (!empty($fData['stocks'])) {
             foreach ($fData['stocks'] as $f_stock) {
                 $finishing_to_reduce[] = [
-                    'product_id' => $f_stock['product_id'],
+                    'finishing_id' => $f_stock['finishing_id'],
                     'qty' => (float)$f_stock['qty'] * $quantity
                 ];
             }
@@ -640,117 +524,255 @@ class OrderController {
         ];
     }
 
+    public function finishingData($input_finishing, $panjang, $lebar) {
+        try {
+            $finishing_ids = [];
+
+            if ($input_finishing !== '-' && !empty($input_finishing)) {
+                $ids = explode(',', $input_finishing);
+                foreach ($ids as $id) {
+                    if (is_numeric(trim($id))) {
+                        $finishing_ids[] = (int)trim($id);
+                    }
+                }
+            }
+
+            $unique_ids = array_values(array_unique($finishing_ids));
+            $total_price = 0;
+            $required_stocks = [];
+
+            if (!empty($unique_ids)) {
+                $placeholders = implode(',', array_fill(0, count($unique_ids), '?'));
+                $types = str_repeat('i', count($unique_ids));
+                
+                $stmt = $this->koneksi->prepare("SELECT finishing_id, name, unit_type, price FROM finishings WHERE finishing_id IN ($placeholders)");
+                
+                if (!$stmt) {
+                    throw new Exception("Query Prepare Error: " . $this->koneksi->error);
+                }
+
+                $stmt->bind_param($types, ...$unique_ids);
+                
+                if (!$stmt->execute()) {
+                    throw new Exception("Query Execute Error: " . $stmt->error);
+                }
+                
+                $result = $stmt->get_result();
+                
+                while ($row = $result->fetch_assoc()) {
+                    $pid = (int)$row['finishing_id'];
+                    $price = (float)$row['price'];
+                    
+                    $qty = 1;
+                    if ((float)$panjang > 0 && (float)$lebar > 0) {
+                        $qty = (float)$panjang * (float)$lebar;
+                    }
+
+                    $total_price += $price;
+
+                    if ($row['unit_type'] !== '~') {
+                        $required_stocks[] = [
+                            'finishing_id' => $pid,
+                            'qty' => $qty
+                        ];
+                    }
+                }
+                $stmt->close();
+            }
+
+            return [
+                'ids' => $unique_ids,
+                'price' => $total_price,
+                'stocks' => $required_stocks
+            ];
+            
+        } catch (Throwable $e) {
+            throw new Exception("finishingData Error: " . $e->getMessage() . " on line " . $e->getLine());
+        }
+    }
+
+    public function calculatePricingDetails($product, $base_price, $finishing_price, $quantity, $panjang, $lebar, $waktu, $kiloan, $size) {
+        try {
+            $unit = $base_price + $finishing_price;
+            
+            $name = $product['name'] ?? '';
+            $category = $product['category'] ?? '';
+            $unit_type = $product['unit_type'] ?? '';
+
+            if ($unit_type === 'M2') {
+                $unit *= ($category === 'DTF') ? $panjang : ($panjang * $lebar);
+            }
+
+            if ($unit_type === 'CM2') {
+                $unit *= ($panjang * $lebar);
+            }
+
+            if ($unit_type === 'PCS' && str_contains($name, 'BAHAN') && $kiloan != 0) {
+                $unit *= $kiloan;
+                $size = "{$kiloan} KG";
+            }
+
+            if ($category === 'JASA') {
+                if ($name === 'SETTING') {
+                    $waktu = max(15, $waktu);
+                    $jam = floor($waktu / 60);
+                    $sisa_menit = $waktu % 60;
+                    $size = ($waktu >= 60) ? "{$jam} Jam {$sisa_menit} Menit" : "{$waktu} Menit";
+                    $unit *= ($waktu / 60);
+                }
+
+                if ($name === 'POTONG AKRILIK') {
+                    $unit *= $waktu;
+                    $size = "{$waktu} MENIT";
+                }
+            }
+
+            if ($category === 'JERSEY') {
+                $extra_charge = ['5XL' => 50000, '4XL' => 40000, '3XL' => 30000, '2XL' => 20000, 'XL' => 10000];
+                $unit += $extra_charge[$size] ?? 0;
+            }
+
+            $amount = $unit * $quantity;
+
+            if ($category === 'AKRILIK' && $name === 'PRINT UV' && $amount < 7500) {
+                $amount = 7500;
+            }
+
+            return (object)[
+                'unit'   => $unit,
+                'size'   => $size,
+                'amount' => $amount
+            ];
+            
+        } catch (Throwable $e) {
+            throw new Exception("calculatePricingDetails Error: " . $e->getMessage() . " on line " . $e->getLine());
+        }
+    }
+
     public function fullPrice() {
         global $store_id;
 
-        $input = json_decode(file_get_contents('php://input'), true);
-        $data = $input ?: $_POST;
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $data = $input ?: $_POST;
 
-        if (empty($data['product_id'])) {
-            send_json_response(false, 'Product ID tidak valid.');
+            if (empty($data['product_id'])) {
+                send_json_response(false, 'Product ID tidak valid.');
+                exit;
+            }
+
+            $itemData = $this->_prepareItemData($data, $store_id);
+
+            if (isset($itemData['error'])) {
+                send_json_response(false, $itemData['error']);
+                exit;
+            }
+
+            send_json_response(true, 'Berhasil menghitung harga total', ['total' => $itemData['amount']]);
+            exit;
+            
+        } catch (Throwable $e) {
+            send_json_response(false, 'Debug fullPrice: ' . $e->getMessage());
             exit;
         }
-
-        $itemData = $this->_prepareItemData($data, $store_id);
-
-        if (isset($itemData['error'])) {
-            send_json_response(false, $itemData['error']);
-            exit;
-        }
-
-        send_json_response(true, 'Berhasil menghitung harga total', ['total' => $itemData['amount']]);
-        exit;
     }
 
     public function createItem() {
         global $store_id;
 
-        $input = json_decode(file_get_contents('php://input'), true);
-        $data = $input ?: $_POST;
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $data = $input ?: $_POST;
 
-        $itemData = $this->_prepareItemData($data, $store_id);
+            $itemData = $this->_prepareItemData($data, $store_id);
 
-        if (isset($itemData['error'])) {
-            http_response_code($itemData['status']);
-            send_json_response(false, $itemData['error']);
-            exit;
-        }
+            if (isset($itemData['error'])) {
+                http_response_code($itemData['status'] ?? 400);
+                send_json_response(false, $itemData['error']);
+                exit;
+            }
 
-        $product = $itemData['product'];
-        $stok_butuh = $itemData['stok_butuh'];
+            $product = $itemData['product'];
+            $stok_butuh = $itemData['stok_butuh'];
 
-        $existing_stock = $this->productModel->getStockByProductId($product['product_id']);
-        if ($product['unit_type'] !== '~' && $existing_stock < $stok_butuh) {
-            http_response_code(400);
-            send_json_response(false, 'Stock Barang Utama tidak mencukupi');
-            exit;
-        }
-
-        foreach ($itemData['finishing_to_reduce'] as $f_reduce) {
-            $f_existing = $this->productModel->getStockByProductId($f_reduce['product_id']);
-            if ($f_existing < $f_reduce['qty']) {
+            $existing_stock = $this->productModel->getStockByProductId($product['product_id']);
+            if ($product['unit_type'] !== '~' && $existing_stock < $stok_butuh) {
                 http_response_code(400);
-                send_json_response(false, 'Stock Finishing tidak mencukupi');
+                send_json_response(false, 'Stock Barang Utama tidak mencukupi');
                 exit;
             }
-        }
 
-        $data_item = (object)[
-            'store_id' => $store_id,
-            'order_id' => $itemData['order_id'],
-            'product_id' => $itemData['product_id'], 
-            'judul' => $itemData['judul'],
-            'size' => $itemData['size'],
-            'quantity' => $itemData['quantity'],
-            'unit' => $itemData['unit'],
-            'amount' => $itemData['amount'],
-            'finishing_str' => $itemData['finishing_str']
-        ];
-
-        $rowExist = $this->orderModel->cekOrderItem($itemData['order_id'], $itemData['judul'], $itemData['finishing_str'], $itemData['size']);
-        
-        if ($rowExist) {
-            $data_item->quantity = $rowExist['quantity'] + $itemData['quantity'];
-            $data_item->amount = $itemData['unit'] * $data_item->quantity;
-            $data_item->id = $rowExist['order_item_id'];
-
-            if ($this->orderModel->updateOrderItem($data_item)) {
-                if ($product['unit_type'] !== '~') {
-                    $this->productModel->reduceStock($stok_butuh, $itemData['product_id']);
+            foreach ($itemData['finishing_to_reduce'] as $f_reduce) {
+                $f_existing = $this->productModel->getFinishingStockByProductId($f_reduce['finishing_id']);
+                if ($f_existing < $f_reduce['qty']) {
+                    http_response_code(400);
+                    send_json_response(false, 'Stock Finishing tidak mencukupi');
+                    exit;
                 }
-                foreach ($itemData['finishing_to_reduce'] as $f_reduce) {
-                    $this->productModel->reduceStock($f_reduce['qty'], $f_reduce['product_id']);
-                }
+            }
 
-                $this->orderTotal($itemData['order_id']);
-                $this->paymentStatus($itemData['order_id']);
-                
-                send_json_response(true, 'Item berhasil diperbarui.');
-                exit;
+            $data_item = (object)[
+                'store_id' => $store_id,
+                'order_id' => $itemData['order_id'],
+                'product_id' => $itemData['product_id'], 
+                'judul' => $itemData['judul'],
+                'size' => $itemData['size'],
+                'quantity' => $itemData['quantity'],
+                'unit' => $itemData['unit'],
+                'amount' => $itemData['amount'],
+                'finishing_str' => $itemData['finishing_str']
+            ];
+
+            $rowExist = $this->orderModel->cekOrderItem($itemData['order_id'], $itemData['judul'], $itemData['finishing_str'], $itemData['size']);
+            
+            if ($rowExist) {
+                $data_item->quantity = $rowExist['quantity'] + $itemData['quantity'];
+                $data_item->amount = $itemData['unit'] * $data_item->quantity;
+                $data_item->id = $rowExist['order_item_id'];
+
+                if ($this->orderModel->updateOrderItem($data_item)) {
+                    if ($product['unit_type'] !== '~') {
+                        $this->productModel->reduceStock($stok_butuh, $itemData['product_id']);
+                    }
+                    foreach ($itemData['finishing_to_reduce'] as $f_reduce) {
+                        $this->productModel->reduceFinishingStock($f_reduce['qty'], $f_reduce['finishing_id']);
+                    }
+
+                    $this->orderTotal($itemData['order_id']);
+                    $this->paymentStatus($itemData['order_id']);
+                    
+                    send_json_response(true, 'Item berhasil diperbarui.');
+                    exit;
+                } else {
+                    http_response_code(500);
+                    send_json_response(false, 'Gagal memperbarui item');
+                    exit;
+                }
             } else {
-                http_response_code(500);
-                send_json_response(false, 'Gagal memperbarui item');
-                exit;
-            }
-        } else {
-            if ($this->orderModel->createOrderItem($data_item)) {
-                if ($product['unit_type'] !== '~') {
-                    $this->productModel->reduceStock($stok_butuh, $itemData['product_id']);
-                }
-                foreach ($itemData['finishing_to_reduce'] as $f_reduce) {
-                    $this->productModel->reduceStock($f_reduce['qty'], $f_reduce['product_id']);
-                }
+                if ($this->orderModel->createOrderItem($data_item)) {
+                    if ($product['unit_type'] !== '~') {
+                        $this->productModel->reduceStock($stok_butuh, $itemData['product_id']);
+                    }
+                    foreach ($itemData['finishing_to_reduce'] as $f_reduce) {
+                        $this->productModel->reduceFinishingStock($f_reduce['qty'], $f_reduce['finishing_id']);
+                    }
 
-                $this->orderTotal($itemData['order_id']);
-                $this->paymentStatus($itemData['order_id']);
-                
-                send_json_response(true, 'Item berhasil ditambahkan.');
-                exit;
-            } else {
-                http_response_code(500);
-                send_json_response(false, 'Gagal menambahkan item');
-                exit;
+                    $this->orderTotal($itemData['order_id']);
+                    $this->paymentStatus($itemData['order_id']);
+                    
+                    send_json_response(true, 'Item berhasil ditambahkan.');
+                    exit;
+                } else {
+                    http_response_code(500);
+                    send_json_response(false, 'Gagal menambahkan item');
+                    exit;
+                }
             }
+            
+        } catch (Throwable $e) {
+            http_response_code(500);
+            send_json_response(false, 'Debug createItem: ' . $e->getMessage());
+            exit;
         }
     }
 
@@ -782,7 +804,7 @@ class OrderController {
 
         $product = $this->productModel->getProductById($product_id);
         $unit_type = $product['unit_type'] ?? '';
-        $type = $product['type'] ?? '';
+        $type = $product['category'] ?? '';
 
         $stok_kembali = $quantity;
         $panjang = 0;
@@ -800,7 +822,7 @@ class OrderController {
             $stok_kembali = round((($panjang + 5) * ($lebar + 5)) / 10000 * $quantity, 4);
         }
 
-        $this->productModel->updateStock($product_id, $stok_kembali);
+        $this->productModel->addStock($product_id, $stok_kembali);
 
         if ($finishing_ids !== '-') {
             $finishing_array = explode(',', $finishing_ids);
@@ -821,7 +843,7 @@ class OrderController {
                     $stok_kembali_fin = $panjang_meter * $lebar_meter * $quantity;
                 }
 
-                $this->productModel->updateStock($fid, $stok_kembali_fin);
+                $this->productModel->addFinishingStock($fid, $stok_kembali_fin);
             }
         }
 
@@ -848,7 +870,7 @@ class OrderController {
         });
 
         $items = array_map(fn($row) => array_merge($row, [
-            'type'         => $row['type'] ?? '',
+            'category'         => $row['category'] ?? '',
             'product_name' => $row['product_name'] ?? '',
         ]), $items_raw);
 

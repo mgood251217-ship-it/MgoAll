@@ -14,8 +14,9 @@ class ProductController {
         
         $data = new stdClass();
         $data->id               = $_POST['product_id'] ?? 0;
+        $data->finishing_id     = $_POST['finishing_id'] ?? 0;
         $data->store_id         = $store_id ?? 0;
-        $data->type             = $_POST['type'] ?? '';
+        $data->category_id      = $_POST['category_id'] ?? '';
         $data->name             = $_POST['name'] ?? '';
         $data->price            = $_POST['price'] ?? '';
         $data->unit             = $_POST['unit_type'] ?? '';
@@ -66,6 +67,18 @@ class ProductController {
         exit;
     }
 
+    public function createFinishing() {
+        header('Content-Type: application/json');
+        $data = $this->requestData();
+        
+        if ($this->productModel->createFinishing($data)) {
+            send_json_response(true, 'Finishing berhasil ditambahkan.');
+        } else {
+            send_json_response(false, 'Gagal menambahkan finishing.');
+        }
+        exit;
+    }
+
     public function updateProduct() {
         header('Content-Type: application/json');
         $data = $this->requestData();
@@ -74,6 +87,18 @@ class ProductController {
             send_json_response(true, 'Produk berhasil diperbarui.');
         } else {
             send_json_response(false, 'Gagal memperbarui produk.');
+        }
+        exit;
+    }
+
+    public function updateFinishing() {
+        header('Content-Type: application/json');
+        $data = $this->requestData();
+        
+        if ($this->productModel->updateFinishing($data)) {
+            send_json_response(true, 'Finishing berhasil diperbarui.');
+        } else {
+            send_json_response(false, 'Gagal memperbarui finishing.');
         }
         exit;
     }
@@ -91,12 +116,38 @@ class ProductController {
         exit;
     }
 
+    public function deleteFinishing() {
+        header('Content-Type: application/json');
+        $data = new stdClass();
+        $data->id = $_POST['product_id'] ?? 0;
+        
+        if ($this->productModel->deleteFinishingById($data)) {
+            send_json_response(true, 'Produk berhasil dihapus.');
+        } else {
+            send_json_response(false, 'Gagal menghapus produk.');
+        }
+        exit;
+    }
+
     public function updateStock() {
         header('Content-Type: application/json');
         $id       = $_POST['product_id'] ?? 0;
         $quantity = $_POST['quantity'] ?? 0;
 
         if ($this->productModel->updateStock($id, $quantity)) {
+            send_json_response(true, 'Stok berhasil diperbarui.');
+        } else {
+            send_json_response(false, 'Gagal memperbarui stok.');
+        }
+        exit;
+    }
+
+    public function updateStockFinishing() {
+        header('Content-Type: application/json');
+        $id       = $_POST['finishing_id'] ?? 0;
+        $quantity = $_POST['quantity'] ?? 0;
+
+        if ($this->productModel->updateStockFinishing($id, $quantity)) {
             send_json_response(true, 'Stok berhasil diperbarui.');
         } else {
             send_json_response(false, 'Gagal memperbarui stok.');

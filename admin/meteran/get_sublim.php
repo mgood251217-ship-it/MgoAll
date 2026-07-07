@@ -13,8 +13,9 @@ if (!empty($order_ids)) {
     $queryStr = "
         SELECT p.product_id, p.name, oi.size, oi.quantity 
         FROM products p 
+        JOIN categories c ON p.category_id = c.category_id
         LEFT JOIN order_items oi ON p.product_id = oi.product_id AND oi.order_id IN ($in)
-        WHERE p.type = 'SUBLIM' AND p.store_id = ? 
+        WHERE c.name = 'SUBLIM' AND p.store_id = ? 
         AND (p.name LIKE '%TRANSFERPAPER%' OR p.name LIKE '%PRINT PRES%')
     ";
 

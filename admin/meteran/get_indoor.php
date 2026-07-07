@@ -12,10 +12,11 @@ if (!empty($order_ids)) {
     $params = array_merge($order_ids, [$store_id]);
 
     $queryStr = "
-        SELECT p.product_id, p.name, p.type, oi.size, oi.quantity 
+        SELECT p.product_id, p.name, c.name AS category, oi.size, oi.quantity 
         FROM products p 
+        JOIN categories c ON p.category_id = c.category_id
         LEFT JOIN order_items oi ON p.product_id = oi.product_id AND oi.order_id IN ($in)
-        WHERE p.type IN ('INDOOR', 'PAKET INDOOR OUTDOOR') AND p.store_id = ?
+        WHERE c.name IN ('INDOOR', 'PAKET INDOOR OUTDOOR') AND p.store_id = ?
     ";
 
     $stmt = $koneksi->prepare($queryStr);
@@ -32,7 +33,7 @@ if (!empty($order_ids)) {
 
     foreach ($all_data as $row) {
         $name = $row['name'];
-        $type = $row['type'];
+        $type = $row['category'];
         
         if ($type === 'INDOOR') {
             if (!isset($product_data_assoc[$name])) {

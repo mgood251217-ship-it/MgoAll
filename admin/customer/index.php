@@ -17,22 +17,15 @@ $orderController = new OrderController($koneksi);
 $is_admin_like = in_array($role, ['SETTING']);
 $is_all_access = in_array($role, ['PRODUKSI', 'MANAGER', 'ADMIN']);
 
-if ($is_admin_like || $is_all_access) {
-    $system = 'OFFLINE';
-} else {
-    $system = 'ONLINE';
-}
+$system = ($role == 'ONLINE' ? 'ONLINE' : 'OFFLINE');
 
-$search_text = trim($_GET['search'] ?? '');
-$start_date = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
-$end_date = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
 $user_setting = $settingModel->getUserSettingByUserId($user_id);
 
 $customerLimit = (float)$user_setting['customer_limit'] ?? 0;
 $preview_print = (float)$user_setting['preview_print'] ?? 0;
 
 $usersInitial = $userModel->getUsersInitial($store_id);
-$dataOrder = $orderController->index($is_all_access, $system, $search_text, $start_date, $end_date, $customerLimit, $usersInitial);
+$dataOrder = $orderController->index();
 $ordersOnline = $dataOrder['online'];
 $ordersOffline = $dataOrder['offline'];
 
@@ -371,7 +364,7 @@ $ordersOffline = $dataOrder['offline'];
             ]
         ];
 
-        if ($role === 'ONLINE') {
+        if ($role != 'ADMIN' && $role != 'MANAGER') {
             $addOrderInputs[] = [
                 'type'  => 'hidden',
                 'name'  => 'user_id',
@@ -392,6 +385,28 @@ $ordersOffline = $dataOrder['offline'];
                 'required' => true
             ];
         }
+
+        if ($role == 'ONLINE') {
+          $addOrderInputs[] = [
+              'type'     => 'select',
+              'name'     => 'system',
+              'label'    => 'Sistem',
+              'options'  => ['OFFLINE' => 'OFFLINE', 'ONLINE' => 'ONLINE'],
+              'custom_attr' => 'readonly',
+              'required' => true
+          ];
+        }else {
+          $addOrderInputs[] = [
+              'type'     => 'select',
+              'name'     => 'system',
+              'label'    => 'Sistem',
+              'options'  => ['ONLINE' => 'ONLINE', 'OFFLINE' => 'OFFLINE'],
+              'custom_attr' => 'readonly',
+              'required' => true
+          ];
+        }
+
+
 
         $htmlModalAddOrder = renderModal([
             'id'            => 'addOrderModal',

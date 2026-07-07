@@ -1,6 +1,7 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/models/Product.php';
 require_once BASE_PATH . '/models/Order.php';
 require_once BASE_PATH . '/models/Store.php'; 
 require_once BASE_PATH . '/models/Payment.php';
@@ -11,6 +12,7 @@ $order_id = (int)startEnk('dek', $_GET['id']);
 $orderModel = new Order($koneksi);
 $storeModel = new Store($koneksi);
 $paymentModel = new Payment($koneksi);
+$productModel = new Product($koneksi);
 
 if($paymentModel->getPaidByOrderId($order_id) && !$administrator){
   header("Location: " . BASE_URL . "/customer/");
@@ -27,12 +29,9 @@ if ($order['store_id'] != $store_id){
   header('Location : index');
   exit;
 }
-
-$jenisList = ['OUTDOOR','INDOOR', 'PAKET INDOOR OUTDOOR','LASER A3','SUBLIM','DTF','STAMP', 'MERCENDISE', 'MERCENDISE AKRILIK', 'JERSEY', 'AKRILIK', 'KARTU NAMA', 'CETAKAN', 'JASA'];
+$categories = $productModel->getCategoryByStoreId($store_id);
 $resultStores = $storeModel->getStoreForMaklun($store_id);
 ?>
-
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -43,10 +42,10 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
     <script src="<?= BASE_URL ?>/assets/js/jquery-3.7.1.min.js"></script>
       <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/select2.min.css">
     <script src="<?= BASE_URL ?>/assets/js/select2.min.js"></script>
-    
     <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/select2-bootstrap4.min.css">
     <script>
         const store_id = <?= (int) $store_id ?>;
+        const categoriesList = <?= json_encode($categories) ?>;
     </script>
     <style>
     .dark-mode-select{
@@ -78,16 +77,13 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
         background-color: white !important;
         color: black !important;
     }
-
     </style>
 </head>
 <body>
   <div id="main-wrapper">
     <?php include BASE_PATH . '/navbar.php'; ?>
-
     <div id="main-content" <?= (isset($mode) && $mode === 1) ? 'class="dark-mode"' : '' ?>>
       <?php include BASE_PATH . '/sidebar.php'; ?>
-
       <div id="page-content-wrapper">
         <div class="container-fluid py-4 px-2">
           <div class="row align-items-start">
@@ -108,22 +104,19 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
                 <h4 class="mb-3">Tambah Item</h4>
                 <form id="addItemForm" class="d-flex flex-column">
                   <input type="hidden" name="order_id" value="<?= sanitize($order_id) ?>">
-
                   <div class="row mb-3">
-                      <label for="jenis" class="col-sm-2 col-form-label">Jenis</label>
+                      <label for="kategori" class="col-sm-2 col-form-label">Kategori</label>
                       <div class="col-sm-10">
-                      <select id="jenis" name="jenis" class="form-select select2" required>
-                        <option value="" selected>-- Pilih Jenis --</option>
-                        <?php foreach ($jenisList as $jenis): ?>
-                          <option value="<?= sanitize($jenis) ?>">
-                            <?= sanitize($jenis) ?>
+                      <select id="kategori" name="kategori" class="form-select select2" required>
+                        <option value="" selected>-- Pilih Kategori --</option>
+                        <?php foreach ($categories as $category): ?>
+                          <option value="<?= sanitize($category['category_id']) ?>" data-name="<?= sanitize($category['name']) ?>">
+                            <?= sanitize($category['name']) ?>
                           </option>
                         <?php endforeach; ?>
                       </select>
-
                       </div>
                   </div>
-
                   <div class="row mb-3">
                       <label for="judul" class="col-sm-2 col-form-label">Judul</label>
                       <div class="col-sm-10">
@@ -132,7 +125,6 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
                           </select>
                       </div>
                   </div>
-
                   <div class="row mb-3" id="ukuranInputs" style="display:none;">
                       <label class="col-sm-2 col-form-label">Ukuran</label>
                       <div class="col-sm-5">
@@ -142,7 +134,6 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
                           <input type="number" step="0.01" min="0" id="lebar" class="form-control" placeholder="Lebar (m)">
                       </div>
                   </div>
-                  <!-- Untuk JERSEY -->
                   <div class="row mb-3" id="ukuranJerseyRow" style="display:none;">
                     <label for="ukuranJersey" class="col-sm-2 col-form-label">Ukuran</label>
                     <div class="col-sm-10">
@@ -160,21 +151,18 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
                       </select>
                     </div>
                   </div>
-
                   <div class="row mb-3" id="bahanSublim" style="display:none;">
                       <label class="col-sm-2 col-form-label">Kiloan</label>
                       <div class="col-sm-10">
                           <input type="number" step="0.01" min="0" id="kiloan" class="form-control" placeholder="Berat (kg)">
                       </div>
                   </div>
-
                   <div class="row mb-3" id="settingDesain" style="display:none;">
                       <label class="col-sm-2 col-form-label">Waktu</label>
                       <div class="col-sm-10">
                           <input type="number" min="00:00" max="23:59" id="waktu" class="form-control" placeholder="Price / Menit">
                       </div>
                   </div>
-
                   <div class="row mb-3" id="ukuranDropdownRow" style="display:none;">
                     <label for="ukuranDropdown" class="col-sm-2 col-form-label">Ukuran</label>
                     <div class="col-sm-10">
@@ -183,7 +171,6 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
                       </select>
                     </div>
                   </div>
-
                   <div class="row mb-3" id="ukuranSublimRow" style="display:none;">
                     <label for="ukuranSublim" class="col-sm-2 col-form-label">Ukuran</label>
                     <div class="col-sm-5">
@@ -200,42 +187,18 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
                       </select>
                     </div>
                   </div> 
-                
                   <div class="row mb-3">
                       <label for="qty" class="col-sm-2 col-form-label">Qty</label>
                       <div class="col-sm-10">
                           <input type="number" id="qty" name="qty" class="form-control" min="1" required>
                       </div>
                   </div>
-
                   <div class="row mb-4" id="finishingRow">
                       <label class="col-sm-2 col-form-label">Finishing</label>
-
                       <div class="col-sm-10">
-
-                          <select id="finishing" name="finishing" class="form-select mb-2" style="max-width:200px;">
-                              <option value="">-- Pilih Finishing --</option>
-                          </select>
-
-                          <div id="finishingJersey" class="d-flex flex-wrap gap-3" style="display:none;">
-
-                          </div>
-
-                          <div id="cutDieCheckboxes" class="d-flex align-items-center gap-2" style="display:none;">
-                              <div class="form-check me-2">
-                                  <input class="form-check-input" type="checkbox" id="finishingCut" name="finishing_cut" value="1">
-                                  <label class="form-check-label">KISS CUT</label>
-                              </div>
-                              <div class="form-check">
-                                  <input class="form-check-input" type="checkbox" id="finishingDie" name="finishing_die" value="1">
-                                  <label class="form-check-label">DIE CUT</label>
-                              </div>
-                          </div>
-
+                          <div id="finishing" class="d-flex flex-wrap gap-3 mb-2"></div>
                       </div>
                   </div>
-
-                  
                   <div class="row mb-5 align-items-center">
                     <div class="col-auto">
                       <div class="form-check">
@@ -259,12 +222,10 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
                       </button>
                     </div>
                   </div>
-
                 </form>
                 <div id="priceDisplay" style="margin-top:10px; font-weight:bold;">Total Harga: Rp 0</div>
               </div>
             </div>
-
             <div class="col-md-7">
               <div class="row mb-4">
                 <div class="col-md-4">
@@ -307,9 +268,7 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
                 <form id="addNote">
                   <div class="mb-3">
                     <label for="exampleFormControlTextarea1" class="form-label">Catatan untuk konsumen 📝</label>
-                    <textarea class="form-control mb-3" id="exampleFormControlTextarea1" rows="3" name="note"
-                    placeholder="!Hanya untuk konsumen, Untuk Operator ada di transaksi detil"
-                    ></textarea>
+                    <textarea class="form-control mb-3" id="exampleFormControlTextarea1" rows="3" name="note" placeholder="!Hanya untuk konsumen, Untuk Operator ada di transaksi detil"></textarea>
                     <input type="hidden" name="order_id" value="<?= $order_id ?>">
                     <button type="submit" class="btn btn-primary p-2">Update Catatan </button>
                   </div>
@@ -320,34 +279,35 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
         </div>
       </div>
     </div>
-
     <?php include BASE_PATH . '/footer.php'; ?>
   </div>
-
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-  
 document.addEventListener('DOMContentLoaded', function () {
   const elMainContent = document.getElementById('main-content');
-  const elJenis       = document.getElementById('jenis');
-  const elJudul       = document.getElementById('judul');
-  const elPanjang     = document.getElementById('panjang');
-  const elLebar       = document.getElementById('lebar');
-  const elQty         = document.getElementById('qty');
-  const elFinishing   = document.getElementById('finishing');
-  const elBtnTambah   = document.getElementById('btnTambah');
+  const elKategori = document.getElementById('kategori');
+  const elJudul = document.getElementById('judul');
+  const elPanjang = document.getElementById('panjang');
+  const elLebar = document.getElementById('lebar');
+  const elQty = document.getElementById('qty');
+  const elFinishing = document.getElementById('finishing');
+  const elBtnTambah = document.getElementById('btnTambah');
   const elEnableDiskon = document.getElementById('enableDiskon');
   const elDiskonInput = document.getElementById('diskonInput');
   const bahanSublim = document.getElementById('bahanSublim');
   const ukuranInputs = document.getElementById('ukuranInputs');
   const finishingRow = document.getElementById('finishingRow');
   const elUkuranJersey = document.getElementById('ukuranJersey');
-  const elFinishingJersey = document.getElementById('finishingJersey');
-  const elFinishingCut = document.getElementById('finishingCut');
-  const elFinishingDie = document.getElementById('finishingDie');
   const elKiloan = document.getElementById('kiloan');
   const elWaktu = document.getElementById('waktu');
+  const size = document.getElementById('ukuranDropdown');
   let ukuranMap = {};
+
+  function getKategoriName() {
+      if (!elKategori) return '';
+      const opt = elKategori.options[elKategori.selectedIndex];
+      return opt ? (opt.dataset.name || '') : '';
+  }
 
   function loadOrderItems() {
       fetch(`../routes/?action=get_order_items&order_id=<?= (int)$order_id ?>`)
@@ -356,11 +316,10 @@ document.addEventListener('DOMContentLoaded', function () {
               const items = res.data.items;
               const total = res.data.total;
               const diskonPerProduk = res.data.diskon_per_produk || {};
-              
               const tbody = document.querySelector('#orderItemsTable tbody');
               tbody.innerHTML = '';
-
               const itemsByJudul = {};
+              
               items.forEach(item => {
                   if (!itemsByJudul[item.judul]) itemsByJudul[item.judul] = [];
                   itemsByJudul[item.judul].push(item);
@@ -372,14 +331,13 @@ document.addEventListener('DOMContentLoaded', function () {
                       tbody.insertAdjacentHTML('beforeend', `
                           <tr class="order-item-row" 
                               data-order-item-id="${item.order_item_id}"
-                              data-jenis="${item.type || ''}"
+                              data-kategori="${item.type || ''}"
                               data-judul="${item.product_name || item.judul}"
                               data-qty="${item.quantity}"
                               data-unit="${item.unit}"
                               data-size="${item.size || ''}"
                               data-finishing="${item.finishing || ''}"
-                              data-finishing-utama="${item.finishing_utama || ''}"
-                              data-finishing-kissdie="${item.finishingkissdie || ''}">
+                              data-finishing-utama="${item.finishing_utama || ''}">
                               <td>${item.judul}</td>
                               <td>${item.finishing_names || '-'}</td>
                               <td>${item.size || '-'}</td>
@@ -410,7 +368,6 @@ document.addEventListener('DOMContentLoaded', function () {
                   select.addEventListener('change', (e) => {
                       const maklunStoreId = e.target.value;
                       const orderItemId = select.dataset.orderItemId;
-
                       fetch('../routes/?action=maklun', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -432,17 +389,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
               document.querySelectorAll('.order-item-row').forEach(row => {
                   row.addEventListener('dblclick', function () {
-                      const jenis = this.dataset.jenis;
+                      const kategoriValue = this.dataset.kategori;
                       const judul = this.dataset.judul;
                       const qty = this.dataset.qty;
                       const size = this.dataset.size;
                       const finishing = this.dataset.finishing;
-                      const finishingKissdie = this.dataset.finishingKissdie;
+                      const orderItemId = this.dataset.orderItemId;
+                      
+                      document.getElementById('addItemForm').setAttribute('data-order-item-id', orderItemId);
 
-                      const elJenis = document.getElementById('jenis');
-                      if (elJenis) {
-                          elJenis.value = jenis;
-                          elJenis.dispatchEvent(new Event('change', { bubbles: true }));
+                      const elKategoriLocal = document.getElementById('kategori');
+                      if (elKategoriLocal && kategoriValue) {
+                          let matchedOpt = null;
+                          Array.from(elKategoriLocal.options).forEach(opt => {
+                              if (opt.value === kategoriValue || opt.dataset.name === kategoriValue) {
+                                  matchedOpt = opt.value;
+                              }
+                          });
+                          if (matchedOpt) {
+                              $(elKategoriLocal).val(matchedOpt).trigger('change');
+                          }
                       }
 
                       setTimeout(() => {
@@ -450,40 +416,21 @@ document.addEventListener('DOMContentLoaded', function () {
                               const options = Array.from(elJudul.options);
                               const optionMatch = options.find(opt => opt.text.trim().toLowerCase() === judul.trim().toLowerCase());
                               if (optionMatch) {
-                                  elJudul.value = optionMatch.value;
-                                  elJudul.dispatchEvent(new Event('change', { bubbles: true }));
+                                  $(elJudul).val(optionMatch.value).trigger('change');
                               }
                           }
 
                           if (finishing && elFinishing) {
                               const finishingNames = finishing.toString().split(',').map(s => s.trim().toLowerCase());
-                              let hasMatch = false;
-
-                              Array.from(elFinishing.options).forEach(opt => {
-                                  const text = opt.text.trim().toLowerCase();
-                                  if (finishingNames.includes(text)) {
-                                      opt.selected = true;
-                                      hasMatch = true;
-                                  } else {
-                                      opt.selected = false;
-                                  }
+                              document.querySelectorAll('.finishing-checkbox').forEach(cb => {
+                                  const text = (cb.dataset.name || '').toLowerCase();
+                                  const val = (cb.value || '').toLowerCase();
+                                  cb.checked = finishingNames.includes(text) || finishingNames.includes(val);
                               });
-
-                              if (!hasMatch) elFinishing.value = "";
-                              elFinishing.dispatchEvent(new Event('change', { bubbles: true }));
-                          } else if (elFinishing) {
-                              elFinishing.value = "";
-                              elFinishing.dispatchEvent(new Event('change', { bubbles: true }));
-                          }
-                          if (finishingKissdie && finishingKissdie.toUpperCase() === 'KISS CUT') {
-                              if (elFinishingCut) elFinishingCut.checked = true;
-                              if (elFinishingDie) elFinishingDie.checked = false;
-                          } else if (finishingKissdie && finishingKissdie.toUpperCase() === 'DIE CUT') {
-                              if (elFinishingDie) elFinishingDie.checked = true;
-                              if (elFinishingCut) elFinishingCut.checked = false;
+                              updatePricePreview();
                           } else {
-                              if (elFinishingCut) elFinishingCut.checked = false;
-                              if (elFinishingDie) elFinishingDie.checked = false;
+                              document.querySelectorAll('.finishing-checkbox').forEach(cb => cb.checked = false);
+                              updatePricePreview();
                           }
                       }, 300);
 
@@ -493,7 +440,6 @@ document.addEventListener('DOMContentLoaded', function () {
                           const sizeParts = size.split('x').map(s => parseFloat(s.trim()));
                           if (elPanjang) elPanjang.value = sizeParts[0];
                           if (elLebar) elLebar.value = sizeParts[1];
-                          
                           const elUkuranInputs = document.getElementById('ukuranInputs');
                           if (elUkuranInputs) elUkuranInputs.style.display = 'flex';
                       }
@@ -527,25 +473,21 @@ document.addEventListener('DOMContentLoaded', function () {
           });
   }
 
-  function loadProdukByJenis(jenis, typeFinishing = '') {
+  function loadProdukByKategori(kategoriId, kategoriName) {
       if (elJudul) {
-          elJudul.innerHTML = '<option value="">-- Pilih Judul --</option>';
+          $(elJudul).empty().append('<option value="">-- Pilih Judul --</option>').trigger('change');
       }
       ukuranMap = {};
       const seen = new Set();
 
-      fetch(`../routes/?action=get_product&store_id=${store_id}&type=${encodeURIComponent(jenis)}`)
+      fetch(`../routes/?action=get_product&category_id=${encodeURIComponent(kategoriId)}`)
           .then(response => response.json())
           .then(data => {
               data.data.forEach(product => {
                   let nameOnly = product.name;
-
-                  if (jenis === 'PAKET INDOOR OUTDOOR') {
+                  if (kategoriName === 'PAKET INDOOR OUTDOOR') {
                       nameOnly = nameOnly.replace(/\s*\d+(\.\d+)?\s*[x×X]\s*\d+(\.\d+)?/gi, '').trim();
-                  } else if (jenis === 'KARTU NAMA') {
-                      nameOnly = nameOnly.replace(/\s+(GLOSSY|DOFF)\s*$/i, '').trim();
                   }
-
                   const ukuranMatch = product.name.match(/(\d+(\.\d+)?\s*[x×X]\s*\d+(\.\d+)?)/i);
                   const ukuran = ukuranMatch ? ukuranMatch[0].replace(/×/gi, 'x') : null;
 
@@ -567,110 +509,53 @@ document.addEventListener('DOMContentLoaded', function () {
               });
           });
 
-      if (elFinishing) {
-          elFinishing.innerHTML = '<option value="">-- Pilih Finishing --</option>';
-          elFinishing.style.display = '';
-      }
-      if (elFinishingJersey) elFinishingJersey.style.display = 'none';
-      if (elUkuranJersey) elUkuranJersey.value = '';
+      if (elUkuranJersey) $(elUkuranJersey).val('').trigger('change');
       if (elKiloan) elKiloan.value = '';
       if (elWaktu) elWaktu.value = '';
+      loadFinishingOptions(kategoriId);
+  }
 
-      if (jenis === 'KARTU NAMA') {
-          const options = ['DOFF', 'GLOSSY'];
-          options.forEach(val => {
-              const opt = document.createElement('option');
-              opt.value = val;
-              opt.textContent = val;
-              if (elFinishing) elFinishing.appendChild(opt);
-          });
-          return;
+  function loadFinishingOptions(kategori) {
+      if (elFinishing) {
+          elFinishing.innerHTML = '';
+          elFinishing.style.display = 'flex';
       }
 
-      if (typeFinishing) {
-          fetch(`../routes/?action=get_product&store_id=${store_id}&type=${encodeURIComponent(typeFinishing)}`)
+      if (kategori) {
+          fetch(`../routes/?action=get_finishing&category_id=${encodeURIComponent(kategori)}`)
               .then(response => response.json())
               .then(data => {
                   const seenFinishing = new Set();
-
-                  if (jenis === 'JERSEY') {
-                      if (elFinishing) elFinishing.style.display = 'none';
-                      if (elFinishingJersey) {
-                          elFinishingJersey.style.display = 'flex';
-                          elFinishingJersey.innerHTML = '';
+                  data.data.forEach(finishing => {
+                      if (!seenFinishing.has(finishing.name)) {
+                          seenFinishing.add(finishing.name);
+                          elFinishing.insertAdjacentHTML('beforeend', `
+                              <div class="form-check">
+                                  <input class="form-check-input finishing-checkbox" type="checkbox" value="${finishing.finishing_id}" data-name="${finishing.name}" data-price="${finishing.price}">
+                                  <label class="form-check-label">${finishing.name}</label>
+                              </div>
+                          `);
                       }
-
-                      data.data.forEach(product => {
-                          if (!seenFinishing.has(product.name)) {
-                              seenFinishing.add(product.name);
-                              elFinishingJersey.insertAdjacentHTML('beforeend', `
-                                  <div class="form-check">
-                                      <input class="form-check-input finishing-jersey" type="checkbox" name="finishing_jersey[]" value="${product.product_id}" data-price="${product.price}">
-                                      <label class="form-check-label">${product.name}</label>
-                                  </div>
-                              `);
-                          }
-                      });
-                  } else {
-                      data.data.forEach(product => {
-                          if (!seenFinishing.has(product.name)) {
-                              seenFinishing.add(product.name);
-                              const opt = document.createElement('option');
-                              opt.value = product.product_id;
-                              opt.dataset.name = product.name;
-                              opt.dataset.price = product.price;
-                              opt.textContent = product.name;
-                              if (elFinishing) elFinishing.appendChild(opt);
-                          }
-                      });
-                  }
+                  });
               });
-      } else {
-          if (elFinishing) {
-              elFinishing.insertAdjacentHTML('beforeend', '<option value="-">-</option>');
-          }
       }
   }
 
-
-  function toggleFinishingDisplay(jenis) {
-      const cutDie = document.getElementById('cutDieCheckboxes');
+  function toggleFinishingDisplay(kategori) {
       const row = document.getElementById('finishingRow');
-      
       if (row) row.style.display = '';
-      if (cutDie) cutDie.style.display = 'none';
-      if (elFinishingCut && elFinishingCut.parentElement) elFinishingCut.parentElement.style.display = 'none';
-      if (elFinishingDie && elFinishingDie.parentElement) elFinishingDie.parentElement.style.display = 'none';
-      if (elFinishingCut) elFinishingCut.checked = false;
-      if (elFinishingDie) elFinishingDie.checked = false;
 
-      switch (jenis) {
+      switch (kategori) {
           case 'LASER A3':
-              if (cutDie) cutDie.style.display = 'flex';
-              if (elFinishingCut && elFinishingCut.parentElement) elFinishingCut.parentElement.style.display = '';
-              if (elFinishingDie && elFinishingDie.parentElement) elFinishingDie.parentElement.style.display = '';
-              break;
-
           case 'INDOOR':
-              if (cutDie) cutDie.style.display = 'flex';
-              if (elFinishingCut && elFinishingCut.parentElement) elFinishingCut.parentElement.style.display = '';
-              break;
-
           case 'OUTDOOR':
           case 'SUBLIM':
           case 'AKRILIK':
-              break;
-
           case 'JERSEY':
-              if (cutDie) cutDie.style.display = 'none';
-              if (elFinishingCut) elFinishingCut.checked = false;
-              if (elFinishingDie) elFinishingDie.checked = false;
               break;
-
           case 'PAKET INDOOR OUTDOOR':
               if (row) row.style.display = 'none';
               return;
-
           case 'STAMP':
           case 'MERCENDISE':
           case 'MERCENDISE AKRILIK':
@@ -679,7 +564,7 @@ document.addEventListener('DOMContentLoaded', function () {
               return;
       }
 
-      if (jenis === 'AKRILIK') {
+      if (kategori === 'AKRILIK') {
           if (elPanjang) elPanjang.placeholder = 'Panjang (cm)';
           if (elLebar) elLebar.placeholder = 'Lebar (cm)';
       } else {
@@ -687,7 +572,7 @@ document.addEventListener('DOMContentLoaded', function () {
           if (elLebar) elLebar.placeholder = 'Lebar (m)';
       }
 
-      if (jenis === 'DTF') {
+      if (kategori === 'DTF') {
           if (elLebar) {
               elLebar.value = '0.58';
               elLebar.readOnly = true;
@@ -708,99 +593,79 @@ document.addEventListener('DOMContentLoaded', function () {
       }
   }
 
+  if (elKategori) {
+      elKategori.addEventListener('change', () => {
+          if (elJudul) elJudul.focus();
+      });
+  }
 
-    if (elJenis) {
-        elJenis.addEventListener('change', () => {
-            if (elJudul) elJudul.focus();
-        });
-    }
-
-    if (elJudul) {
-        elJudul.addEventListener('change', () => {
-            if (elPanjang && elPanjang.offsetParent !== null) {
-                elPanjang.focus();
-            } else if (elQty) {
-                elQty.focus();
-            }
-        });
-    }
-
-    if (elPanjang) {
-        elPanjang.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === '*' || e.key === 'PageDown') {
-                e.preventDefault();
-                if (elLebar) elLebar.focus();
-            } else if (e.key === 'PageUp') {
-                e.preventDefault();
-                if (elJudul) elJudul.focus();
-            }
-        });
-    }
-
-    if (elLebar) {
-        elLebar.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === 'PageDown') {
-                e.preventDefault();
-                if (elQty) elQty.focus();
-            } else if (e.key === 'PageUp') {
-                e.preventDefault();
-                if (elPanjang) elPanjang.focus();
-            }
-        });
-    }
-
-    if (elQty) {
-        elQty.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' || e.key === '=') {
-                e.preventDefault();
-                if (elBtnTambah) elBtnTambah.click();
-                setTimeout(() => {
-                    if (elJenis) elJenis.focus();
-                }, 100);
-            } else if (e.key === 'PageDown') {
-                e.preventDefault();
-                if (elFinishing) elFinishing.focus();
-            } else if (e.key === 'PageUp') {
-                e.preventDefault();
-                if (elLebar) elLebar.focus();
-            }
-        });
-    }
-
-    if (elFinishing) {
-        elFinishing.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                if (elBtnTambah) elBtnTambah.click();
-                setTimeout(() => {
-                    if (elJenis) elJenis.focus();
-                }, 100);
-            } else if (e.key === 'PageUp') {
-                e.preventDefault();
-                if (elQty) elQty.focus();
-            }
-        });
-    }
-
-  if (elJenis) {
-      elJenis.addEventListener('change', function () {
-          const jenis = this.value;
-          toggleFinishingDisplay(jenis);
-
-          let finishingType = '';
-          if (['OUTDOOR', 'INDOOR', 'SUBLIM', 'JERSEY', 'AKRILIK', 'LASER A3'].includes(jenis)) {
-              finishingType = `FINISHING ${jenis}`;
+  if (elJudul) {
+      elJudul.addEventListener('change', () => {
+          if (elPanjang && elPanjang.offsetParent !== null) {
+              elPanjang.focus();
+          } else if (elQty) {
+              elQty.focus();
           }
-          loadProdukByJenis(jenis, finishingType);
+      });
+  }
+
+  if (elPanjang) {
+      elPanjang.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === '*' || e.key === 'PageDown') {
+              e.preventDefault();
+              if (elLebar) elLebar.focus();
+          } else if (e.key === 'PageUp') {
+              e.preventDefault();
+              if (elJudul) elJudul.focus();
+          }
+      });
+  }
+
+  if (elLebar) {
+      elLebar.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === 'PageDown') {
+              e.preventDefault();
+              if (elQty) elQty.focus();
+          } else if (e.key === 'PageUp') {
+              e.preventDefault();
+              if (elPanjang) elPanjang.focus();
+          }
+      });
+  }
+
+  if (elQty) {
+      elQty.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === '=') {
+              e.preventDefault();
+              if (elBtnTambah) elBtnTambah.click();
+              setTimeout(() => {
+                  if (elKategori) elKategori.focus();
+              }, 100);
+          } else if (e.key === 'PageDown') {
+              e.preventDefault();
+              if (elFinishing) elFinishing.focus();
+          } else if (e.key === 'PageUp') {
+              e.preventDefault();
+              if (elLebar) elLebar.focus();
+          }
+      });
+  }
+
+  if (elKategori) {
+      elKategori.addEventListener('change', function () {
+          const kategoriId = this.value;
+          const kategoriName = getKategoriName();
+          toggleFinishingDisplay(kategoriName);
+          loadProdukByKategori(kategoriId, kategoriName);
       });
   }
 
   function updateUkuranView(name) {
-      const jenis = elJenis ? elJenis.value : '';
+      const nameStr = name ? String(name) : '';
+      const kategori = getKategoriName();
       const selectedOption = elJudul ? elJudul.options[elJudul.selectedIndex] : null;
-      const unit = selectedOption ? selectedOption.dataset.unit : '';
-      const judul = selectedOption ? selectedOption.dataset.name : '';
-
+      const unit = (selectedOption && selectedOption.dataset.unit) ? selectedOption.dataset.unit : '';
+      const judul = (selectedOption && selectedOption.dataset.name) ? selectedOption.dataset.name : '';
       const idsToHide = ['ukuranSublimRow', 'ukuranInputs', 'ukuranJersey', 'bahanSublim', 'settingDesain'];
       idsToHide.forEach(id => {
           const el = document.getElementById(id);
@@ -811,16 +676,16 @@ document.addEventListener('DOMContentLoaded', function () {
           }
       });
 
-      if (name.includes('TRANSFERPAPER') || name.includes('PRINT PRES')) {
+      if (nameStr.includes('TRANSFERPAPER') || nameStr.includes('PRINT PRES')) {
           const subRow = document.getElementById('ukuranSublimRow');
           if (subRow && subRow.closest('.row')) subRow.closest('.row').style.display = '';
-      } else if (jenis === 'JERSEY') {
+      } else if (kategori === 'JERSEY') {
           const jerRow = document.getElementById('ukuranJersey');
           if (jerRow && jerRow.closest('.row')) jerRow.closest('.row').style.display = '';
       } else if (unit === 'M2' || unit === 'CM2') {
           const inpRow = document.getElementById('ukuranInputs');
           if (inpRow && inpRow.closest('.row')) inpRow.closest('.row').style.display = '';
-      } else if (jenis === 'JASA' && (judul === 'SETTING' || judul === 'POTONG AKRILIK')) {
+      } else if (kategori === 'JASA' && (judul === 'SETTING' || judul === 'POTONG AKRILIK')) {
           const setRow = document.getElementById('settingDesain');
           if (setRow && setRow.closest('.row')) setRow.closest('.row').style.display = '';
       }
@@ -832,61 +697,38 @@ document.addEventListener('DOMContentLoaded', function () {
       }
   }
 
-
   if (elJudul) {
-      elJudul.addEventListener('change', function () {
+      $(elJudul).on('change', function () {
           const selectedOption = this.options[this.selectedIndex];
-          const name = selectedOption ? selectedOption.dataset.name : '';
+          const name = (selectedOption && selectedOption.dataset && selectedOption.dataset.name) ? selectedOption.dataset.name : '';
           const ukuranList = ukuranMap[name] || [];
           const ukuranDropdown = document.getElementById('ukuranDropdown');
           const ukuranDropdownRow = document.getElementById('ukuranDropdownRow');
 
           if (ukuranList.length > 0) {
               if (ukuranDropdown) {
-                  ukuranDropdown.innerHTML = '<option value="">-- Pilih Ukuran --</option>';
+                  $(ukuranDropdown).empty().append('<option value="">-- Pilih Ukuran --</option>');
                   ukuranList.forEach(uk => {
-                      ukuranDropdown.insertAdjacentHTML('beforeend', `<option value="${uk}">${uk}</option>`);
+                      $(ukuranDropdown).append(`<option value="${uk}">${uk}</option>`);
                   });
+                  $(ukuranDropdown).trigger('change');
               }
               if (ukuranDropdownRow) ukuranDropdownRow.style.display = '';
           } else {
               if (ukuranDropdownRow) ukuranDropdownRow.style.display = 'none';
           }
-
           updateUkuranView(name);
       });
   }
 
   if (elBtnTambah) {
       elBtnTambah.addEventListener('click', function () {
-          const jenis = elJenis ? elJenis.value : '';
-          const selectedOption = elJudul ? elJudul.options[elJudul.selectedIndex] : null;
-          const selectedJudul = selectedOption ? selectedOption.dataset.name : '';
-          const selectedFinishing = (elFinishing && elFinishing.value) ? elFinishing.value.trim().toUpperCase() : '';
-
-          if (jenis === 'KARTU NAMA') {
-              const fullName = (selectedJudul + ' ' + selectedFinishing).trim().toUpperCase();
-              
-              fetch(`../routes/?action=get_product&store_id=${store_id}&type=KARTU NAMA`)
-                  .then(res => res.json())
-                  .then(dataProduk => {
-                      const produkCocok = dataProduk.data.find(p => p.name.trim().toUpperCase() === fullName);
-                      if (!produkCocok) {
-                          Swal.fire({ icon: 'error', title: 'Produk tidak ditemukan', text: `Tidak ada produk dengan nama "${fullName}"`, confirmButtonText: 'Tutup' });
-                          return;
-                      }
-                      if (typeof submitTambahItem === 'function') submitTambahItem(produkCocok.product_id);
-                  });
-              return;
-          }
-
           if (typeof submitTambahItem === 'function') {
               submitTambahItem(elJudul ? elJudul.value : '');
           }
       });
   }
 
-  
   if (elEnableDiskon) {
       elEnableDiskon.addEventListener('change', function () {
           elDiskonInput.style.display = this.checked ? 'block' : 'none';
@@ -896,49 +738,38 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function submitTambahItem(productId) {
     const elForm = document.getElementById('addItemForm');
-    const jenis = elJenis ? elJenis.value : '';
-    const selectedJudulName = elJudul && elJudul.options[elJudul.selectedIndex] ? elJudul.options[elJudul.selectedIndex].dataset.name : '';
-    const unitType = elJudul && elJudul.options[elJudul.selectedIndex] ? elJudul.options[elJudul.selectedIndex].dataset.unit : '-';
+    const kategori = getKategoriName();
+    const selectedOpt = elJudul?.options[elJudul.selectedIndex];
+    const selectedJudulName = selectedOpt?.dataset?.name || '';
     
-    let finishingJersey = [];
-    let panjang = parseFloat(elPanjang ? elPanjang.value : 0) || 0;
-    let lebar = parseFloat(elLebar ? elLebar.value : 0) || 0;
-    let ukuranStr = '-';
-    if (jenis === 'LASER A3') {
-        ukuranStr = 'A3+';
-    } else if (selectedJudulName.includes('TRANSFERPAPER') || selectedJudulName.includes('PRINT PRES')) {
-        panjang = parseFloat(document.getElementById('panjangSublim').value) || 0;
-        lebar = parseFloat(document.getElementById('lebarSublim').value) || 0;
-    } else if (jenis === 'JERSEY') {
-        ukuranStr = document.getElementById('ukuranJersey').value;
-        document.querySelectorAll('.finishing-jersey:checked').forEach(c => finishingJersey.push(c.value));
-    } else if (document.getElementById('ukuranDropdownRow').style.display !== 'none') {
-        ukuranStr = document.getElementById('ukuranDropdown').value;
+    let panjang = parseFloat(elPanjang?.value) || 0;
+    let lebar = parseFloat(elLebar?.value) || 0;
+    if (selectedJudulName.includes('TRANSFERPAPER') || selectedJudulName.includes('PRINT PRES')) {
+        panjang = parseFloat(document.getElementById('panjangSublim')?.value) || 0;
+        lebar = parseFloat(document.getElementById('lebarSublim')?.value) || 0;
     }
+
+    const finishingIds = Array.from(document.querySelectorAll('.finishing-checkbox:checked')).map(cb => cb.value);
 
     const dataPost = {
         order_id: "<?= (int)$order_id ?>",
         product_id: productId,
         judul: selectedJudulName,
-        size: ukuranStr,
-        quantity: parseInt(elQty ? elQty.value : 1) || 1,
-        finishing: elFinishing ? elFinishing.value || '-' : '-',
-        finishing_jersey: finishingJersey,
+        quantity: parseInt(elQty?.value) || 1,
+        finishing: finishingIds.join(','),
         panjang: panjang,
         lebar: lebar,
-        kiloan: parseFloat(elKiloan ? elKiloan.value : 0) || 0,
-        waktu: parseFloat(elWaktu ? elWaktu.value : 0) || 0,
-        unit_type: unitType,
-        finishing_cut: document.getElementById('finishingCut').checked ? 1 : 0,
-        finishing_die: document.getElementById('finishingDie').checked ? 1 : 0,
+        kiloan: parseFloat(elKiloan?.value) || 0,
+        waktu: parseFloat(elWaktu?.value) || 0,
+        size : size?.value
     };
 
-    if (elEnableDiskon && elEnableDiskon.checked) {
-        dataPost.diskon = parseFloat(elDiskonInput.value) || 0;
+    if (elEnableDiskon?.checked) {
+        dataPost.diskon = parseFloat(elDiskonInput?.value) || 0;
     }
     const orderItemId = elForm.getAttribute('data-order-item-id');
     if (orderItemId) dataPost.order_item_id = orderItemId;
-
+    
     eksekusiTambahItem(dataPost);
   }
 
@@ -958,7 +789,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (data.success) {
             loadOrderItems();
             document.getElementById('addItemForm').reset();
-            document.getElementById('jenis').dispatchEvent(new Event('change'));
+            document.getElementById('addItemForm').removeAttribute('data-order-item-id');
+            document.querySelectorAll('.finishing-checkbox').forEach(cb => cb.checked = false);
+            $(document.getElementById('kategori')).trigger('change');
         } else {
             showAlert('error', data.message);
         }
@@ -976,9 +809,7 @@ document.addEventListener('DOMContentLoaded', function () {
       if (e.target && e.target.classList.contains('btn-delete')) {
           const row = e.target.closest('tr');
           const orderItemId = row.dataset.orderItemId;
-          
           if (!orderItemId) return;
-
           fetch('../routes/?action=delete_item', {
               method: 'POST',
               headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -996,24 +827,14 @@ document.addEventListener('DOMContentLoaded', function () {
       }
   });
 
-  if (elFinishingCut) {
-      elFinishingCut.addEventListener('change', function () {
-          if (this.checked) elFinishingDie.checked = false;
-      });
-  }
-
-  if (elFinishingDie) {
-      elFinishingDie.addEventListener('change', function () {
-          if (this.checked) elFinishingCut.checked = false;
-      });
-  }
-
   function loadNote() {
       const orderId = <?= (int)$order_id ?>;
       fetch(`../routes/?action=get_note&order_id=${orderId}`)
           .then(res => res.json())
           .then(response => {
               document.getElementById('noteDisplay').innerHTML = `<div class="alert alert-success" role="alert">${response.data.note}</div>`;
+          }).catch(err => {
+            document.getElementById('noteDisplay').innerHTML = ``;
           });
   }
 
@@ -1022,7 +843,6 @@ document.addEventListener('DOMContentLoaded', function () {
       elAddNote.addEventListener('submit', function (e) {
           e.preventDefault();
           const formData = new URLSearchParams(new FormData(this));
-
           fetch('../routes/?action=save_note', {
               method: 'POST',
               body: formData
@@ -1037,119 +857,71 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   loadNote();
 
-  function getFinishingList() {
-      let list = [];
-      if (elFinishing && elFinishing.value && elFinishing.value !== '-') {
-          list = elFinishing.value.split(',').map(f => f.trim()).filter(f => f !== '');
+  function updatePricePreview() {
+      if (!elJudul) return;
+      const judulValue = elJudul.value || '';
+      const kategoriValue = elKategori ? elKategori.value : '';
+      const qtyValue = elQty ? elQty.value : '';
+      if (!judulValue.trim() || !kategoriValue.trim() || !qtyValue.trim()) return;
+
+      const selectedOption = elJudul.options[elJudul.selectedIndex];
+      const judulAsli = selectedOption?.dataset?.name || '';
+      const kategoriAsli = getKategoriName();
+      
+      let panjangAsli = elPanjang ? parseFloat(elPanjang.value) || 0 : 0;
+      let lebarAsli = elLebar ? parseFloat(elLebar.value) || 0 : 0;
+      if ((judulAsli.includes('TRANSFERPAPER') || judulAsli.includes('PRINT PRES')) && kategoriAsli === 'SUBLIM' ) {
+          panjangAsli = parseFloat(document.getElementById('lebarSublim')?.value) || 0;
+          lebarAsli = parseFloat(document.getElementById('panjangSublim')?.value) || 0;
       }
-      if (elFinishingCut && elFinishingCut.checked) {
-          list.push('kiss_cut');
-      } else if (elFinishingDie && elFinishingDie.checked) {
-          list.push('die_cut');
-      }
-      return list;
-  }
 
-    function updatePricePreview() {
-        if (!elJudul) {
-            console.error('Element #judul tidak ditemukan');
-            return;
-        }
-        const judulValue = elJudul.value || '';
-        const jenisValue = elJenis ? elJenis.value : '';
-        const qtyValue = elQty ? elQty.value : '';
-        if (!judulValue.trim() || !jenisValue.trim() || !qtyValue.trim()) {
-            return;
-        }
-        const selectedOption = elJudul.options[elJudul.selectedIndex];
-        let judulAsli = '';
-        let unitType = '-';
-        if (selectedOption && selectedOption.dataset) {
-            judulAsli = selectedOption.dataset.name || '';
-            unitType = selectedOption.dataset.unit || '-';
-        }
-        let jenisAsli = elJenis ? elJenis.value : '';
-        let panjangAsli = elPanjang ? parseFloat(elPanjang.value) || 0 : 0;
-        let lebarAsli = elLebar ? parseFloat(elLebar.value) || 0 : 0;
-        if ((judulAsli.includes('TRANSFERPAPER') || judulAsli.includes('PRINT PRES')) && jenisAsli === 'SUBLIM' ) {
-            panjangAsli = parseFloat(document.getElementById('lebarSublim')?.value) || 0;
-            lebarAsli = parseFloat(document.getElementById('panjangSublim')?.value) || 0;
-        }
+      const finishingIds = Array.from(document.querySelectorAll('.finishing-checkbox:checked')).map(cb => cb.value);
 
-        let finishingJersey = [];
-        if (jenisAsli === 'JERSEY') {
-            document.querySelectorAll('.finishing-jersey:checked').forEach(item => {
-                finishingJersey.push(item.value);
-            });
-        }
-        let finishingList = [];
-        if (typeof getFinishingList === 'function') {
-            finishingList = getFinishingList();
-        }
-        const dataPost = {
-            order_id: "<?= (int)$order_id ?>",
-            product_id: elJudul.value,
-            judul: judulAsli,
-            size: document.getElementById('ukuranDropdown') && document.getElementById('ukuranDropdown').style.display !== 'none'
-                ? document.getElementById('ukuranDropdown').value
-                : '-',
-            quantity: parseInt(elQty?.value) || 1,
-            finishing: finishingList.join(',') || '-',
-            finishingJersey: finishingJersey,
-            panjang: panjangAsli,
-            lebar: lebarAsli,
-            kiloan: parseFloat(elKiloan?.value) || 0,
-            waktu: parseFloat(elWaktu?.value) || 0,
-            ukuranJersey: elUkuranJersey?.value || '',
-            unit_type: unitType,
-            diskon: elEnableDiskon && elEnableDiskon.checked
-                ? parseFloat(elDiskonInput?.value) || 0
-                : 0
-        };
-        
-        fetch('../routes/?action=price', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(dataPost)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('HTTP Error ' + response.status + ' ' + response.statusText );
-            }
-            return response.json();
-        })
-        .then(response => {
-            const priceDisplay = document.getElementById('priceDisplay');
-            if (response.success) {
-                if (priceDisplay) {
-                    priceDisplay.textContent ='Total Harga: Rp ' +Number(response.data.total || 0).toLocaleString('id-ID');
-                }
-            } else {
-                if (priceDisplay) {
-                    priceDisplay.textContent = response.message || '';
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Update harga gagal:', error);
-            const priceDisplay = document.getElementById('priceDisplay');
-            if (priceDisplay) {
-                priceDisplay.textContent = 'Gagal koneksi server';
-            }
-        });
-    }  
+      const dataPost = {
+          order_id: "<?= (int)$order_id ?>",
+          product_id: elJudul.value,
+          judul: judulAsli,
+          quantity: parseInt(elQty?.value) || 1,
+          finishing: finishingIds.join(','),
+          panjang: panjangAsli,
+          lebar: lebarAsli,
+          kiloan: parseFloat(elKiloan?.value) || 0,
+          waktu: parseFloat(elWaktu?.value) || 0,
+          ukuranJersey: elUkuranJersey?.value || '',
+          diskon: elEnableDiskon?.checked ? parseFloat(elDiskonInput?.value) || 0 : 0,
+          size : size?.value
+      };
+      
+      fetch('../routes/?action=price', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dataPost)
+      })
+      .then(response => {
+          if (!response.ok) throw new Error('HTTP Error');
+          return response.json();
+      })
+      .then(response => {
+          const priceDisplay = document.getElementById('priceDisplay');
+          if (priceDisplay) {
+              priceDisplay.textContent = response.success ? 'Total Harga: Rp ' + Number(response.data.total || 0).toLocaleString('id-ID') : (response.message || '');
+          }
+      })
+      .catch(() => {
+          const priceDisplay = document.getElementById('priceDisplay');
+          if (priceDisplay) priceDisplay.textContent = 'Gagal koneksi server';
+      });
+  }  
 
-
-  const inputsToWatch = ['jenis', 'judul', 'ukuranDropdown', 'finishing', 'panjang', 'lebar', 'kiloan', 'waktu', 'ukuranJersey', 'qty', 'enableDiskon', 'lebarSublim', 'panjangSublim', 'diskonInput', 'finishingCut', 'finishingDie'];
+  const inputsToWatch = ['kategori', 'judul', 'ukuranDropdown', 'panjang', 'lebar', 'kiloan', 'waktu', 'ukuranJersey', 'qty', 'enableDiskon', 'lebarSublim', 'panjangSublim', 'diskonInput'];
   inputsToWatch.forEach(id => {
       const el = document.getElementById(id);
       if (el) el.addEventListener('change', updatePricePreview);
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) el.addEventListener('keyup', updatePricePreview);
   });
+  
   document.addEventListener('change', (e) => {
-      if (e.target.classList.contains('finishing-jersey')) updatePricePreview();
+      if (e.target.classList.contains('finishing-checkbox')) updatePricePreview();
   });
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -1158,9 +930,7 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   loadOrderItems();
-
 });
-
 </script>
   </body>
   </html>

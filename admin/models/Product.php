@@ -7,23 +7,48 @@ class Product{
     }
 
     public function createProduct ($data) {
-        $stmt = $this->koneksi->prepare("INSERT INTO products (store_id, type, name, price, unit_type, reasonable_price, failed_price) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("issssss", $data->store_id, $data->type, $data->name, $data->price, $data->unit, $data->reasonable_price, $data->failed_price);
+        $stmt = $this->koneksi->prepare("INSERT INTO products (store_id, category_id, name, price, unit_type, reasonable_price, failed_price) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("iisssss", $data->store_id, $data->category_id, $data->name, $data->price, $data->unit, $data->reasonable_price, $data->failed_price);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function createFinishing ($data) {
+        $stmt = $this->koneksi->prepare("INSERT INTO finishings (store_id, category_id, name, price, unit_type, reasonable_price, failed_price) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("iisssss", $data->store_id, $data->category_id, $data->name, $data->price, $data->unit, $data->reasonable_price, $data->failed_price);
         $success = $stmt->execute();
         $stmt->close();
         return $success;
     }
  
     public function updateProduct ($data) {
-        $stmt = $this->koneksi->prepare("UPDATE products SET type = ?, name = ?, price = ?, unit_type = ?, reasonable_price = ?, failed_price = ? WHERE product_id = ? LIMIT 1");
-        $stmt->bind_param("ssssssi", $data->type, $data->name, $data->price, $data->unit, $data->reasonable_price, $data->failed_price, $data->id);
+        $stmt = $this->koneksi->prepare("UPDATE products SET category_id = ?, name = ?, price = ?, unit_type = ?, reasonable_price = ?, failed_price = ? WHERE product_id = ? LIMIT 1");
+        $stmt->bind_param("isssssi", $data->category_id, $data->name, $data->price, $data->unit, $data->reasonable_price, $data->failed_price, $data->id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function updateFinishing ($data) {
+        $stmt = $this->koneksi->prepare("UPDATE finishings SET category_id = ?, name = ?, price = ?, unit_type = ?, reasonable_price = ?, failed_price = ? WHERE finishing_id = ? LIMIT 1");
+        $stmt->bind_param("isssssi", $data->category_id, $data->name, $data->price, $data->unit, $data->reasonable_price, $data->failed_price, $data->finishing_id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;
     }
 
     public function getProductByStoreId ($store_id){
-        $stmt = $this->koneksi->prepare("SELECT * FROM products WHERE store_id = ?");
+        $stmt = $this->koneksi->prepare("
+            SELECT
+                p.*,
+                c.name AS category
+            FROM products p
+            LEFT JOIN categories c
+                ON c.category_id = p.category_id
+            WHERE p.store_id = ?
+            LIMIT 1
+        ");
         $stmt->bind_param('i', $store_id);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -32,13 +57,23 @@ class Product{
         return $data;
     }
 
-    public function getProductById ($id){
-        $stmt = $this->koneksi->prepare("SELECT * FROM products WHERE product_id = ? LIMIT 1");
+    public function getProductById($id) {
+        $stmt = $this->koneksi->prepare("
+            SELECT
+                p.*,
+                c.name AS category
+            FROM products p
+            LEFT JOIN categories c
+                ON c.category_id = p.category_id
+            WHERE p.product_id = ?
+            LIMIT 1
+        ");
         $stmt->bind_param('i', $id);
         $stmt->execute();
         $result = $stmt->get_result();
         $data = $result->fetch_assoc();
         $stmt->close();
+
         return $data;
     }
 
@@ -53,8 +88,60 @@ class Product{
         return $products;
     }
 
+    public function getFinishingByStoreId($store_id){
+        $stmt = $this->koneksi->prepare("
+            SELECT
+                f.*,
+                c.name AS category
+            FROM finishings f
+            LEFT JOIN categories c
+                ON c.category_id = f.category_id
+            WHERE f.store_id = ?
+        ");
+        $stmt->bind_param('i', $store_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $finishings = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        return $finishings;
+    }
+
+    public function getCategoryByStoreId($store_id){
+        $stmt = $this->koneksi->prepare("SELECT * FROM categories WHERE store_id = ?");
+        $stmt->bind_param('i', $store_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $caregories = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        return $caregories;
+    }
+
+    public function getProductByCategoryId($category_id){
+        $stmt = $this->koneksi->prepare("SELECT * FROM products WHERE category_id = ?");
+        $stmt->bind_param('i', $category_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $products = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        return $products;
+    }
+
+    public function getFinishingByCategoryId($category_id){
+        $stmt = $this->koneksi->prepare("SELECT * FROM finishings WHERE category_id = ?");
+        $stmt->bind_param('i', $category_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $finishings = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        return $finishings;
+    }
+
     public function getProductByNameAndStore($name, $store_id) {
-        $stmt = $this->koneksi->prepare("SELECT * FROM products WHERE name = ? AND store_id = ? LIMIT 1");
+        $stmt = $this->koneksi->prepare("SELECT p.*, c.name AS category FROM products p LEFT JOIN categories c ON c.category_id = p.category_id WHERE p.name = ? AND p.store_id = ? LIMIT 1");
         $stmt->bind_param("si", $name, $store_id);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
@@ -76,6 +163,14 @@ class Product{
 
     public function deleteProductById($data){
         $stmt = $this->koneksi->prepare("DELETE FROM products WHERE product_id = ? LIMIT 1");
+        $stmt->bind_param('i', $data->id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function deleteFinishingById($data){
+        $stmt = $this->koneksi->prepare("DELETE FROM finishings WHERE finishing_id = ? LIMIT 1");
         $stmt->bind_param('i', $data->id);
         $success = $stmt->execute();
         $stmt->close();
@@ -134,6 +229,14 @@ class Product{
         return $success;
     }
 
+    public function updateStockFinishing($id, $quantity) {
+        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = ? WHERE finishing_id = ?");
+        $stmt->bind_param("di", $quantity, $id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
     public function getStockByProductId($product_id) {
         $stmt = $this->koneksi->prepare("SELECT stock FROM products WHERE product_id = ? LIMIT 1");
         $stmt->bind_param("i", $product_id);
@@ -142,9 +245,41 @@ class Product{
         return $result ? (float)$result['stock'] : 0;
     }
 
+    public function getFinishingStockByProductId($finishing_id) {
+        $stmt = $this->koneksi->prepare("SELECT stock FROM finishings WHERE finishing_id = ? LIMIT 1");
+        $stmt->bind_param("i", $finishing_id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        return $result ? (float)$result['stock'] : 0;
+    }
+
     public function reduceStock($quantity, $product_id) {
         $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock - ? WHERE product_id = ?");
         $stmt->bind_param("di", $quantity, $product_id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function reduceFinishingStock($quantity, $finishing_id) {
+        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock - ? WHERE finishing_id = ?");
+        $stmt->bind_param("di", $quantity, $finishing_id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function addStock($quantity, $product_id) {
+        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock + ? WHERE product_id = ?");
+        $stmt->bind_param("di", $quantity, $product_id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function addFinishingStock($quantity, $finishing_id) {
+        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock + ? WHERE finishing_id = ?");
+        $stmt->bind_param("di", $quantity, $finishing_id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;
@@ -166,8 +301,15 @@ class Product{
     public function getProductByPagination($store_id, $page, $search, $limit){
         $offset = ($page - 1) * $limit;
         $search_param = "%" . $search . "%";
+        $stmt = $this->koneksi->prepare("
+            SELECT p.*, c.name AS category 
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.category_id
+            WHERE p.store_id = ? AND p.name LIKE ? 
+            ORDER BY p.product_id DESC 
+            LIMIT ? OFFSET ?
+        ");
         
-        $stmt = $this->koneksi->prepare("SELECT * FROM products WHERE store_id = ? AND name LIKE ? ORDER BY product_id DESC LIMIT ? OFFSET ?");
         $stmt->bind_param("isii", $store_id, $search_param, $limit, $offset);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);

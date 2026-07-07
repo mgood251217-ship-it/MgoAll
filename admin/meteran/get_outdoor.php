@@ -7,7 +7,12 @@ $max_rows = 0;
 $total_all_m2_outdoor = 0;
 
 if (!empty($order_ids)) {
-    $stmt = $koneksi->prepare("SELECT product_id, name, type FROM products WHERE type IN ('OUTDOOR', 'PAKET INDOOR OUTDOOR') AND store_id = ?");
+    $stmt = $koneksi->prepare("
+        SELECT p.product_id, p.name, c.name AS category 
+        FROM products p 
+        JOIN categories c ON p.category_id = c.category_id 
+        WHERE c.name IN ('OUTDOOR', 'PAKET INDOOR OUTDOOR') AND p.store_id = ?
+    ");
     $stmt->bind_param("i", $store_id);
     $stmt->execute();
     $all_products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -17,7 +22,7 @@ if (!empty($order_ids)) {
     $paket_products = [];
     
     foreach ($all_products as $p) {
-        if ($p['type'] === 'OUTDOOR') {
+        if ($p['category'] === 'OUTDOOR') {
             $outdoor_products[] = $p;
         } else {
             $paket_products[] = $p;

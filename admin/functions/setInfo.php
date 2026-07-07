@@ -45,7 +45,7 @@ function setInfo($user, $dataStore)
     $stmt->execute();
     $result = $stmt->get_result();
     if ($result && $row = $result->fetch_assoc()) {
-        $mode = (int)$row['mode'];
+        $mode = (int)$row['mode'] ?? 0;
     }
     $stmt->close();
     setUserSession($user, $dataStore['name'], $dataStore['address'], $dataStore['logo'], $mode);

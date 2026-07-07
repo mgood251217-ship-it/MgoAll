@@ -62,17 +62,32 @@ switch ($action) {
     case 'create_product':
         $productController->createProduct();
         break;
+    case 'create_pfinishing':
+        $productController->createFinishing();
+        break;
     case 'update_stock':
         $productController->updateStock();
+        break;
+    case 'update_stock_finishing':
+        $productController->updateStockFinishing();
         break;
     case 'update_product':
         $productController->updateProduct();
         break;
+    case 'update_finishing':
+        $productController->updateFinishing();
+        break;
     case 'delete_product':
         $productController->deleteProduct();
         break;
+    case 'delete_finishing':
+        $productController->deleteFinishing();
+        break;
     case 'save_note':
         $orderController->saveNote('CTM');
+        break;
+    case 'get_orders':
+        $orderController->index();
         break;
     case 'create_order':
         $orderController->create();
@@ -94,11 +109,19 @@ switch ($action) {
         $order = $orderModel->getOrderById($id);
         send_json_response(true, 'Order retrieved successfully.', $order);
         break;
+    case 'get_category':
+        $categories = $productModel->getCategoryByStoreId($store_id);
+        send_json_response(true, 'categories retrieved successfully.', $categories);
+        break;
     case 'get_product':
-        $type = $_GET['type'] ?? '';
-        $data = (object)['type' => $type, 'store_id' => $store_id];
-        $products = $productModel->getProductByTypeAndStoreId($data);
+        $category_id = $_GET['category_id'] ?? '';
+        $products = $productModel->getProductByCategoryId($category_id);
         send_json_response(true, 'Products retrieved successfully.', $products);
+        break;
+    case 'get_finishing':
+        $category_id = $_GET['category_id'] ?? '';
+        $finishings = $productModel->getFinishingByCategoryId($category_id);
+        send_json_response(true, 'finishings retrieved successfully.', $finishings);
         break;
     case 'get_note':
         $order_id = $_GET['order_id'] ?? 0;

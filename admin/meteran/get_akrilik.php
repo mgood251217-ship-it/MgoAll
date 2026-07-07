@@ -4,9 +4,15 @@ require_once 'get_order_ids.php';
 $products = [];
 $product_data = [];
 $max_rows = 0;
+$total_all_m2_akrilik = 0;
 
 if (!empty($order_ids)) {
-    $stmt = $koneksi->prepare("SELECT product_id, name FROM products WHERE type = 'AKRILIK' AND store_id = ?");
+    $stmt = $koneksi->prepare("
+        SELECT p.product_id, p.name 
+        FROM products p
+        JOIN categories c ON p.category_id = c.category_id
+        WHERE c.name = 'AKRILIK' AND p.store_id = ?
+    ");
     $stmt->bind_param("i", $store_id);
     $stmt->execute();
     $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);

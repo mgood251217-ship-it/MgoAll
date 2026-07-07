@@ -33,7 +33,7 @@ class Setting{
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        return $result;
+        return $result ?? [];
     }
 
     public function cekUserSetting($id){

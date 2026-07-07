@@ -17,9 +17,10 @@ if (!empty($order_ids)) {
     $query = "
         SELECT p.name, COALESCE(SUM(oi.quantity), 0) AS total_qty
         FROM products p
+        JOIN categories c ON p.category_id = c.category_id
         LEFT JOIN order_items oi 
           ON oi.product_id = p.product_id AND oi.order_id IN ($order_placeholders)
-        WHERE p.type = 'MERCENDISE'
+        WHERE c.name = 'MERCENDISE'
           AND p.store_id = ?
           AND ($like_sql)
         GROUP BY p.name
@@ -92,7 +93,8 @@ if (empty($order_ids)) {
         SELECT COALESCE(SUM(oi.quantity),0) AS total_qty_stamp
         FROM order_items oi
         JOIN products p ON oi.product_id = p.product_id
-        WHERE p.type = 'STAMP' AND oi.order_id IN ($in)
+        JOIN categories c ON p.category_id = c.category_id
+        WHERE c.name = 'STAMP' AND oi.order_id IN ($in)
     ";
 
     $stmt = $koneksi->prepare($queryStr);

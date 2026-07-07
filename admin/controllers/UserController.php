@@ -107,7 +107,7 @@ class UserController {
         global $store_id, $picture;
         $data = $this->requestData();
 
-        if ($this->userModel->checkUserStore($store_id) == 1 || $data->role != 'MANAGER') {
+        if ($this->userModel->checkUserStore($store_id) == 1) {
             send_json_response(false, "Tidak bisa menghapus user terakhir.");
             exit;
         }

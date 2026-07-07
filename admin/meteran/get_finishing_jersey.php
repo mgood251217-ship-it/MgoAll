@@ -6,11 +6,12 @@ if (empty($order_ids)) {
 } else {
 
     $stmt = $koneksi->prepare("
-        SELECT product_id, name
-        FROM products
-        WHERE type = 'FINISHING JERSEY'
-        AND store_id = ?
-        ORDER BY name
+        SELECT p.product_id, p.name
+        FROM products p
+        JOIN categories c ON p.category_id = c.category_id
+        WHERE c.name = 'FINISHING JERSEY'
+        AND p.store_id = ?
+        ORDER BY p.name
     ");
     $stmt->bind_param("i", $store_id);
     $stmt->execute();

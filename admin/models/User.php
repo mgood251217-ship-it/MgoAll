@@ -31,7 +31,7 @@ class User{
     }
 
     public function getUsersInitial($store_id) {
-        $stmt = $this->koneksi->prepare("SELECT user_id, initial FROM users WHERE store_id = ?");
+        $stmt = $this->koneksi->prepare("SELECT user_id, initial FROM users WHERE store_id = ? AND is_deleted = 0");
         $stmt->bind_param("i", $store_id);
         $stmt->execute();
         $userResult = $stmt->get_result();
@@ -56,7 +56,7 @@ class User{
     }
 
     public function getUsersByStoreId($id){
-        $stmt = $this->koneksi->prepare("SELECT user_id, name, username, role, initial, picture, store_id FROM users WHERE store_id = ?");
+        $stmt = $this->koneksi->prepare("SELECT user_id, name, username, role, initial, picture, store_id FROM users WHERE store_id = ? AND is_deleted = 0");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -65,7 +65,7 @@ class User{
     }
 
     public function getUserByUsername($username){
-        $stmt = $this->koneksi->prepare("SELECT user_id, username, name, store_id, initial, role, picture FROM users WHERE LOWER(username) = ?");
+        $stmt = $this->koneksi->prepare("SELECT user_id, username, name, store_id, initial, role, picture FROM users WHERE LOWER(username) = ? AND is_deleted = 0");
         $stmt->bind_param("s", $username);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -75,7 +75,7 @@ class User{
     }
 
     public function getUserAuthData($username) {
-        $stmt = $this->koneksi->prepare("SELECT password, store_id FROM users WHERE LOWER(username) = ?");
+        $stmt = $this->koneksi->prepare("SELECT password, store_id FROM users WHERE LOWER(username) = ? AND is_deleted = 0");
         $stmt->bind_param("s", $username);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -85,7 +85,7 @@ class User{
     }
 
     public function checkUser ($username) {
-        $stmt = $this->koneksi->prepare("SELECT 1 FROM users WHERE username = ?");
+        $stmt = $this->koneksi->prepare("SELECT 1 FROM users WHERE username = ? AND is_deleted = 0");
         $stmt->bind_param("s", $username);
         $stmt->execute();
         $stmt->store_result();
@@ -95,7 +95,7 @@ class User{
     }
 
     public function checkValidOperator($user_id, $store_id) {
-        $stmt = $this->koneksi->prepare("SELECT user_id FROM users WHERE user_id = ? AND store_id = ?");
+        $stmt = $this->koneksi->prepare("SELECT user_id FROM users WHERE user_id = ? AND store_id = ? AND is_deleted = 0");
         $stmt->bind_param("ii", $user_id, $store_id);
         $stmt->execute();
         $stmt->store_result();
@@ -105,7 +105,7 @@ class User{
     }
 
     public function checkDuplicateUser ($data) {
-        $stmt = $this->koneksi->prepare("SELECT 1 FROM users WHERE username = ? AND user_id != ?");
+        $stmt = $this->koneksi->prepare("SELECT 1 FROM users WHERE username = ? AND user_id != ? ");
         $stmt->bind_param("si", $data->username, $data->user_id);
         $stmt->execute();
         $stmt->store_result();
@@ -115,17 +115,16 @@ class User{
     }
 
     public function checkUserStore ($id) {
-        $stmt = $this->koneksi->prepare("SELECT user_id FROM users WHERE store_id = ?");
+        $stmt = $this->koneksi->prepare("SELECT COUNT(*) AS total FROM users WHERE store_id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
-        $stmt->store_result();
-        $exists = $stmt->num_rows();
+        $result = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        return $exists;
+        return isset($result['total']) ? (int)$result['total'] : 0;
     }
 
     public function deleteUserById($id){
-        $stmt = $this->koneksi->prepare("DELETE FROM users WHERE user_id = ? LIMIT 1");
+        $stmt = $this->koneksi->prepare("UPDATE users SET is_deleted = 1 WHERE user_id = ? LIMIT 1");
         $stmt->bind_param("i", $id);
         $success = $stmt->execute();
         $stmt->close();

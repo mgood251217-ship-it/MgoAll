@@ -66,7 +66,7 @@ $router->add(
 );
 
 $router->add(
-    'orders',
+    'get_orders',
     OrderController::class,
     'index',
     [

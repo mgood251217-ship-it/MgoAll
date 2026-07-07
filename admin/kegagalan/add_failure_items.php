@@ -91,7 +91,7 @@ if ($panjang > 0 && $lebar > 0) {
     $stok_butuh = $quantity;
 }
 
-$fData = $orderController->finishingData($finishing, $finishing_jersey, $finishing_cut, $finishing_die, $product_type, $panjang, $lebar);
+$fData = $orderController->finishingData($finishing, $panjang, $lebar);
 $finishing_ids = $fData['ids'] ?? [];
 $finishing_price = $fData['price'] ?? 0;
 $finishing_str = count($finishing_ids) ? implode(',', $finishing_ids) : '-';

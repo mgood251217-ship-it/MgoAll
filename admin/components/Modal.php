@@ -64,7 +64,7 @@ function renderModal($modalConfig = []) {
                                             <option value="">-- Pilih --</option>
                                         <?php endif; ?>
                                         <?php foreach ($input['options'] ?? [] as $optValue => $optLabel): ?>
-                                            <option value="<?= $optValue ?>"><?= $optLabel ?></option>
+                                            <option value="<?= $optValue ?>" selected><?= $optLabel ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 <?php else: ?>

@@ -164,10 +164,10 @@ class Order {
             SELECT 
                 oi.*, 
                 p.name AS product_name, 
-                p.type, 
+                c.name AS category, 
                 p.unit_type, 
                 p.price, 
-                UPPER(COALESCE(p.type, '')) AS type,
+                UPPER(COALESCE(c.name, '')) AS type,
                 COALESCE(doi.diskon, 0) AS diskon,
                 COALESCE(
                     (SELECT GROUP_CONCAT(fp.name SEPARATOR ' ') 
@@ -177,9 +177,10 @@ class Order {
                 ) AS finishing_names
             FROM order_items oi
             LEFT JOIN products p ON oi.product_id = p.product_id
+            LEFT JOIN categories c ON p.category_id = c.category_id
             LEFT JOIN diskon_order_items doi ON doi.order_id = oi.order_id AND doi.product_id = oi.product_id
             WHERE oi.order_id = ?
-        "); 
+        ");
         $stmt->bind_param("i", $order_id);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
