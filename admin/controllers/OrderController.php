@@ -166,7 +166,7 @@ class OrderController {
         ];
     }
 
-    public function create() {
+    public function create() { 
         header('Content-Type: application/json');
         date_default_timezone_set('Asia/Jakarta');
 
@@ -266,28 +266,22 @@ class OrderController {
 
     public function update() {
         $data = $this->requestData();
-        $data->system = trim($_POST['sistem'] ?? 'OFFLINE');
 
-        if ($data->order_id === 0 || $data->store_id === 0 || $data->user_id === 0 || empty($data->nomorator) || empty($data->customer_name)) {
-            $_SESSION['error'] = "Data tidak lengkap.";
-            header("Location: index");
+        if ($data->order_id === 0 || $data->store_id === 0 || $data->user_id === 0 || empty($data->customer_name)) {
+            send_json_response(false, 'Tidak lengkap');
             exit;
         }
 
         if (!$this->userModel->checkValidOperator($data->user_id, $data->store_id)) {
-            $_SESSION['error'] = "Operator tidak valid.";
-            header("Location: index");
+            send_json_response(false, 'Tidak valid');
             exit;
         }
 
         if ($this->orderModel->updateOrder($data)) {
-            $_SESSION['success'] = "Order berhasil diperbarui.";
+            send_json_response(true, 'Berhasil edit order');
         } else {
-            $_SESSION['error'] = "Gagal memperbarui order.";
+            send_json_response(false, 'Gagal edit order');
         }
-
-        header("Location: index");
-        exit;
     }
 
     public function delete() {
@@ -344,7 +338,8 @@ class OrderController {
         return $this->activityModel->createActivity($data);
     }
 
-    public function saveNote($note_for) {
+    public function createNote() {
+        $note_for = 'CTM';
         $order_id = (int)($_POST['order_id'] ?? 0);
         $note = trim($_POST['note'] ?? '');
 
@@ -858,7 +853,8 @@ class OrderController {
         }
     }
 
-    public function get_order_items($order_id){
+    public function orderDetail(){
+        $order_id = (int)($_GET['order_id'] ?? 0);
         $total = $this->orderModel->getOneValue($order_id, 'total');
         $items_raw = $this->orderModel->getOrderItemsWithDetails($order_id);
         $diskon_per_produk = [];

@@ -1,15 +1,9 @@
 <?php
 
-class Router
-{
+class Router {
 	private array $routes = [];
 
-	public function add(
-		string $action,
-		string $controller,
-		string $method,
-		array $middlewares = []
-	): void {
+	public function add( $action, $controller, $method, $middlewares = [] ) {
 
 		$this->routes[$action] = [
 			'controller' => $controller,
@@ -18,7 +12,7 @@ class Router
 		];
 	}
 
-	public function dispatch(string $action): void {
+	public function dispatch($action) {
 		global $koneksi;
 		if (!isset($this->routes[$action])) {
 			Response::error('Action tidak ditemukan.', 404);
@@ -30,7 +24,6 @@ class Router
 		}
 
 		$controller = new $route['controller']($koneksi);
-
 		$result = call_user_func([$controller, $route['method']]);
 
 		// Controller lama sudah mengirim JSON sendiri

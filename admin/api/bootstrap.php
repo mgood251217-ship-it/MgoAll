@@ -11,10 +11,6 @@ require_once BASE_PATH . '/functions/helpers.php';
 require_once BASE_PATH . '/functions/setInfo.php';
 require_once BASE_PATH . '/functions/Otp.php';
 
-foreach (glob(BASE_PATH . '/models/*.php') as $file) {
-	require_once $file;
-}
-
 foreach (glob(BASE_PATH . '/controllers/*.php') as $file) {
 	require_once $file;
 }

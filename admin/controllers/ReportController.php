@@ -27,7 +27,10 @@ class ReportController {
         $this->activityModel = new Activity($koneksi);
     }
 
-    public function allDetailOrderByIntervalDate($store_id, $start_date, $end_date){
+    public function allDetailOrderByIntervalDate(){
+        global $store_id;
+        $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
+        $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
         $items = $this->orderModel->getDetailedOrderByIntervalDate($store_id, $start_date, $end_date);
 
         $all_finishing_ids = [];
@@ -69,8 +72,8 @@ class ReportController {
             'product' => $produkData
         ];
     }
-
-    public function piutang($store_id){
+    public function piutang(){
+        global $store_id;
         $total_hutang = 0;
 
         $query = "
@@ -117,7 +120,10 @@ class ReportController {
             'total' => $total_hutang
         ];
     }
-    public function transactionsCapture($store_id, $start_date, $end_date) {
+    public function transactionsCapture() {
+        global $store_id;
+        $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
+        $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
         $sqlTransaksi = "
             SELECT 
                 p.order_id,

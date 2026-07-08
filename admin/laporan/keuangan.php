@@ -14,7 +14,7 @@ $financeController = new FinanceController($koneksi);
 $start_date = $_GET['start_date'] ?? date('Y-m-d');
 $end_date = $_GET['end_date'] ?? date('Y-m-d');
 
-$data = $financeController->finance($store_id, $start_date, $end_date);
+$data = $financeController->finance();
 $dataFinance = $data['finance'];
 $dataPengeluaran = $data['expenditure'];
 $dataPemasukan = $data['income'];

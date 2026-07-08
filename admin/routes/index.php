@@ -24,6 +24,7 @@ $settingController = new SettingController($koneksi);
 $paymentController = new PaymentController($koneksi);
 $userController = new UserController($koneksi);
 $locationController = new LocationController($koneksi);
+$storeController = new StoreController($koneksi);
 
 $action = $_GET['action'] ?? '';
 if ($action != 'login'){
@@ -44,13 +45,13 @@ switch ($action) {
         $settingController->changeTheme();
         break;
     case 'update_user':
-        $userController->updateUser();
+        $userController->update();
         break;
     case 'create_user':
-        $userController->addUser();
+        $userController->create();
         break;
     case 'delete_user':
-        $userController->deleteUser();
+        $userController->delete();
         break;
     case 'set_location':
         $locationController->setLocation();
@@ -84,7 +85,7 @@ switch ($action) {
         $productController->deleteFinishing();
         break;
     case 'save_note':
-        $orderController->saveNote('CTM');
+        $orderController->createNote();
         break;
     case 'get_orders':
         $orderController->index();
@@ -151,8 +152,7 @@ switch ($action) {
         $settingController->limit();
         break;
     case 'get_order_items':
-        $order_id = (int)($_GET['order_id'] ?? 0);
-        $orderController->get_order_items($order_id);
+        $orderController->orderDetail();
         break;
     case 'preview_print':
         $settingController->updatePreviewPrint();

@@ -10,7 +10,7 @@ $reportController = new ReportController($koneksi);
 $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
 $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
 
-$rekap = $reportController->transactionsCapture($store_id, $start_date, $end_date);
+$rekap = $reportController->transactionsCapture();
 
 $dataPelunasan = $rekap['pelunasan']['data'];
 $tfPelunasan            = $rekap['pelunasan']['total_tf'];

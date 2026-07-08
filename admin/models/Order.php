@@ -15,8 +15,8 @@ class Order {
     }
 
     public function updateOrder($data) {
-        $stmt = $this->koneksi->prepare("UPDATE orders SET nomorator = ?, customer_name = ?, nomor = ?, deadline = ?, user_id = ?, store_id = ?, date = ?, system = ? WHERE order_id = ?");
-        $stmt->bind_param("ssssiissi", $data->nomorator, $data->customer_name, $data->nomor, $data->deadline, $data->user_id, $data->store_id, $data->date, $data->system, $data->order_id);
+        $stmt = $this->koneksi->prepare("UPDATE orders SET customer_name = ?, nomor = ?, deadline = ?, user_id = ?, store_id = ?, date = ?, system = ? WHERE order_id = ?");
+        $stmt->bind_param("sssiissi", $data->customer_name, $data->nomor, $data->deadline, $data->user_id, $data->store_id, $data->date, $data->system, $data->order_id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;
@@ -169,6 +169,7 @@ class Order {
                 p.price, 
                 UPPER(COALESCE(c.name, '')) AS category,
                 COALESCE(doi.diskon, 0) AS diskon,
+                COALESCE(s.name, '') AS maklun_store,
                 COALESCE(
                     (SELECT GROUP_CONCAT(fp.name SEPARATOR ' ') 
                      FROM products fp 
@@ -176,6 +177,7 @@ class Order {
                     ), '-'
                 ) AS finishing_names
             FROM order_items oi
+            LEFT JOIN stores s ON oi.maklun = s.store_id
             LEFT JOIN products p ON oi.product_id = p.product_id
             LEFT JOIN categories c ON p.category_id = c.category_id
             LEFT JOIN diskon_order_items doi ON doi.order_id = oi.order_id AND doi.product_id = oi.product_id

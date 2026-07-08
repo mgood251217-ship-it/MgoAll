@@ -68,7 +68,10 @@ class FinanceController {
         send_json_response(true, 'Berhasil menghapus transfer');
     }
 
-    public function finance($store_id, $start_date, $end_date){
+    public function finance(){
+        global $store_id;
+        $start_date = $_GET['start_date'] ?? date('Y-m-d');
+        $end_date = $_GET['end_date'] ?? date('Y-m-d');
         $data = $this->financeModel->getFinanceByIntervalDate($store_id, $start_date, $end_date);
         $dataFinance = [];
         foreach ($data as $row) {
@@ -85,7 +88,7 @@ class FinanceController {
             'expenditure' => $dataPengeluaran,
             'income' => $dataPemasukan
         ];
-    }
+    } 
 
     public function refreshFinance($store_id, $date) {
         try {
@@ -96,65 +99,37 @@ class FinanceController {
             $omset_online  = 0;
             $cash          = 0;
             $transfer      = 0;
-            $pengeluaran   = 0;
-            $income_id = 0 ;
-            $nominalOld = 0 ;
-            $count = 0;
 
-            $payments    = [];
-            $allOrderIds = [];
-
-            $stmt = $this->koneksi->prepare("SELECT * FROM payment WHERE date BETWEEN ? AND ?");
-            $stmt->bind_param("ss", $start, $end);
+            $stmt = $this->koneksi->prepare("
+                SELECT 
+                    p.nominal,
+                    p.payment_method,
+                    (LENGTH(p.order_id) - LENGTH(REPLACE(p.order_id, ',', '')) + 1) AS id_count,
+                    o.system
+                FROM payment p
+                INNER JOIN orders o 
+                    ON FIND_IN_SET(o.order_id, p.order_id) > 0
+                    AND o.store_id = ?
+                WHERE p.date BETWEEN ? AND ?
+            ");
+            $stmt->bind_param("iss", $store_id, $start, $end);
             $stmt->execute();
-            $result = $stmt->get_result();
-
-            while ($row = $result->fetch_assoc()) {
-                $payments[] = $row;
-                $ids = explode(',', $row['order_id']);
-                foreach ($ids as $id) {
-                    $id = trim($id);
-                    if ($id !== '') {
-                        $allOrderIds[$id] = (int)$id;
-                    }
-                }
-            }
+            $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             $stmt->close();
 
-            $ordersLookup = [];
-            if (!empty($allOrderIds)) {
-                $inClause = implode(',', $allOrderIds);
-                $stmt = $this->koneksi->prepare("SELECT order_id, system FROM orders WHERE order_id IN ($inClause) AND store_id = ?");
-                $stmt->bind_param("i", $store_id);
-                $stmt->execute();
-                $res = $stmt->get_result();
-                
-                while ($o = $res->fetch_assoc()) {
-                    $ordersLookup[$o['order_id']] = $o['system'];
+            foreach ($rows as $row) {
+                $perOrder = $row['nominal'] / max((int)$row['id_count'], 1);
+
+                if ($row['system'] === 'OFFLINE') {
+                    $omset_offline += $perOrder;
+                } else {
+                    $omset_online += $perOrder;
                 }
-                $stmt->close();
-            }
 
-            foreach ($payments as $payment) {
-                $ids      = explode(',', $payment['order_id']);
-                $countIds = count($ids);
-                $perOrder = $payment['nominal'] / max($countIds, 1);
-
-                foreach ($ids as $vid) {
-                    $vid = trim($vid);
-                    if (isset($ordersLookup[$vid])) {
-                        if ($ordersLookup[$vid] === 'OFFLINE') {
-                            $omset_offline += $perOrder;
-                        } else {
-                            $omset_online += $perOrder;
-                        }
-
-                        if ($payment['payment_method'] === 'CASH') {
-                            $cash += $perOrder;
-                        } else {
-                            $transfer += $perOrder;
-                        }
-                    }
+                if ($row['payment_method'] === 'CASH') {
+                    $cash += $perOrder;
+                } else {
+                    $transfer += $perOrder;
                 }
             }
 
@@ -170,6 +145,9 @@ class FinanceController {
 
             $saldoPrev = $saldoPrev ?? 0;
             $infoSaldo = "INPUT SALDO OTOMATIS " . $date;
+
+            $income_id  = 0;
+            $nominalOld = 0;
 
             $stmt = $this->koneksi->prepare("SELECT income_id, nominal FROM income WHERE store_id = ? AND information = ? AND DATE(date) = ? LIMIT 1");
             $stmt->bind_param("iss", $store_id, $infoSaldo, $date);
@@ -191,7 +169,6 @@ class FinanceController {
             }
 
             $pemasukan_lain = 0;
-            
             $stmt = $this->koneksi->prepare("SELECT IFNULL(SUM(nominal),0) FROM income WHERE store_id = ? AND DATE(date) = ? AND information NOT LIKE 'INPUT SALDO OTOMATIS%'");
             $stmt->bind_param("is", $store_id, $date);
             $stmt->execute();
@@ -199,6 +176,7 @@ class FinanceController {
             $stmt->fetch();
             $stmt->close();
 
+            $pengeluaran = 0;
             $stmt = $this->koneksi->prepare("SELECT IFNULL(SUM(nominal),0) FROM expenditures WHERE store_id = ? AND DATE(date) = ?");
             $stmt->bind_param("is", $store_id, $date);
             $stmt->execute();
@@ -208,6 +186,7 @@ class FinanceController {
 
             $saldo = $saldoPrev + $cash + $pemasukan_lain - $pengeluaran;
 
+            $count = 0;
             $stmt = $this->koneksi->prepare("SELECT COUNT(*) FROM finance WHERE store_id = ? AND date = ?");
             $stmt->bind_param("is", $store_id, $date);
             $stmt->execute();

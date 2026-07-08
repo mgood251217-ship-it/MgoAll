@@ -7,7 +7,7 @@ require_once BASE_PATH . '/functions/helpers.php';
 
 $reportController = new ReportController($koneksi);
 
-$data = $reportController->piutang($store_id);
+$data = $reportController->piutang();
 $total_hutang = $data['total']; 
 $dataPiutang = $data['data'];
 

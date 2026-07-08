@@ -518,7 +518,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function loadFinishingOptions(kategori) {
       if (elFinishing) {
           elFinishing.innerHTML = '';
-          elFinishing.style.display = 'flex';
+          elFinishing.style.display = 'flex'; 
       }
 
       if (kategori) {
@@ -761,7 +761,7 @@ document.addEventListener('DOMContentLoaded', function () {
         lebar: lebar,
         kiloan: parseFloat(elKiloan?.value) || 0,
         waktu: parseFloat(elWaktu?.value) || 0,
-        size : size?.value
+        size : size?.value || elUkuranJersey?.value
     };
 
     if (elEnableDiskon?.checked) {
@@ -889,7 +889,7 @@ document.addEventListener('DOMContentLoaded', function () {
           waktu: parseFloat(elWaktu?.value) || 0,
           ukuranJersey: elUkuranJersey?.value || '',
           diskon: elEnableDiskon?.checked ? parseFloat(elDiskonInput?.value) || 0 : 0,
-          size : size?.value
+          size : size?.value || elUkuranJersey?.value
       };
       
       fetch('../routes/?action=price', {

@@ -422,8 +422,8 @@ $ordersOffline = $dataOrder['offline'];
 
         $htmlModalEditOrder = renderModal([
             'id'        => 'editOrderModal',
+            'form_id'       => 'editOrderForm',
             'title'     => 'Edit Order',
-            'action'    => '../routes/?action=update_order',
             'layout'        => 'horizontal',
             'label_width'   => 'col-sm-4',
             'input_width'   => 'col-sm-8',
@@ -482,8 +482,8 @@ $ordersOffline = $dataOrder['offline'];
                 ],
                 [
                     'type'              => 'select',
-                    'name'              => 'sistem',
-                    'id'                => 'edit-sistem',
+                    'name'              => 'system',
+                    'id'                => 'edit-system',
                     'label'             => 'Sistem',
                     'options'           => ['OFFLINE' => 'OFFLINE', 'ONLINE' => 'ONLINE'],
                     'required'          => true,
@@ -853,6 +853,30 @@ addOrderBtn.addEventListener('click', (e) => {
         alert('Terjadi kesalahan sistem.');
     });
 });
+
+document.getElementById('editOrderForm')?.addEventListener('submit', function (e) {
+  e.preventDefault();
+  const formData = new FormData(this);
+  formData.submit = true;
+
+  fetch('../routes/?action=update_order', {
+    method: 'POST',
+    body: formData
+  }).then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showAlert('success', 'Berhasil Update');
+      setTimeout(() => {
+        location.reload();
+      }, 3000);
+    } else {
+      showAlert('error', 'Gagal memperbarui limit: ' + data.message);
+    }
+  }).catch(error => {
+    showAlert('error', 'Terjadi kesalahan sistem.');
+  });
+})
+
 const previewPrintSetting = <?= $preview_print ?>;
 function printStruk(order_id) {
   const url = `print_struk?order_id=${order_id}`;
@@ -907,7 +931,7 @@ document.querySelectorAll('.btn-edit').forEach(button => {
       const formattedDate = rawDate.replace(' ', 'T').slice(0, 16);
       document.getElementById('edit-date').value = formattedDate;
       document.getElementById('edit-user_id').value = data.data.user_id;
-      document.getElementById('edit-sistem').value = data.data.system;
+      document.getElementById('edit-system').value = data.data.system;
 
       new bootstrap.Modal(document.getElementById('editOrderModal')).show();
     })

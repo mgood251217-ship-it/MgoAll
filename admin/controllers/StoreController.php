@@ -26,5 +26,11 @@ class StoreController {
 
     }
 
+    public function machines(){
+        global $store_id;
+        $machines = $this->storeModel->getMachineByStoreId($store_id);
+        send_json_response(true, "Berhasil mengambil data mesin", $machines);
+    }
+
 }
 ?>

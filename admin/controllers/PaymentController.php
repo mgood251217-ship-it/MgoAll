@@ -121,7 +121,7 @@ class PaymentController {
 
     }
 
-    public function updatePayment(){
+    public function update(){
         global $store_id;
 
         if (!isset($_SESSION['admin_logged_in'])) {

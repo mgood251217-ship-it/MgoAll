@@ -31,7 +31,7 @@ class UserController {
         return $data;
     }
 
-    public function updateUser() {
+    public function create() {
         header('Content-Type: application/json');
         $data = $this->requestData();
         $errors = [];
@@ -68,7 +68,7 @@ class UserController {
         exit;
     }
 
-    public function addUser() {
+    public function update() {
         header('Content-Type: application/json');
         $data = $this->requestData();
         $errors = [];
@@ -102,7 +102,7 @@ class UserController {
         exit;
     }
 
-    public function deleteUser() {
+    public function delete() {
         header('Content-Type: application/json');
         global $store_id, $picture;
         $data = $this->requestData();
@@ -124,6 +124,12 @@ class UserController {
             send_json_response(false, "Gagal menghapus user.");
         }
         exit;
+    }
+
+    public function getInitial(){
+        global $store_id;
+        $usersInitial = $this->userModel->getUsersInitial($store_id);
+        send_json_response(true, "Berhasil mengambil Initial", $usersInitial);
     }
 
 }

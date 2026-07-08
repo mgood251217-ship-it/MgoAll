@@ -27,7 +27,7 @@ switch ($action) {
         $financeController->deleteTf();
         break;
     case 'update_payment':
-        $paymentController->updatePayment();
+        $paymentController->update();
         break;
     case 'delete_payment':
         $paymentController->delete();

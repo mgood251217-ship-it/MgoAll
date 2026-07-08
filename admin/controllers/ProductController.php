@@ -31,6 +31,16 @@ class ProductController {
         return $this->productModel->getProductByStoreId($store_id);
     }
 
+    public function getFinishing() {
+        global $store_id;
+        return $this->productModel->getFinishingByStoreId($store_id);
+    }
+
+    public function getCategory() {
+        global $store_id;
+        return $this->productModel->getCategoryByStoreId($store_id);
+    }
+
     public function getProductByPagination(){
         global $store_id;
 
@@ -119,12 +129,12 @@ class ProductController {
     public function deleteFinishing() {
         header('Content-Type: application/json');
         $data = new stdClass();
-        $data->id = $_POST['product_id'] ?? 0;
+        $data->id = $_POST['finishing_id'] ?? 0;
         
         if ($this->productModel->deleteFinishingById($data)) {
-            send_json_response(true, 'Produk berhasil dihapus.');
+            send_json_response(true, 'Finishing berhasil dihapus.');
         } else {
-            send_json_response(false, 'Gagal menghapus produk.');
+            send_json_response(false, 'Gagal menghapus finishing.');
         }
         exit;
     }
