@@ -762,7 +762,7 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
       const no = tds[0].innerText.trim();
       const ket = tds[1].innerText.trim();
       const nominal = parseInt(tds[2].innerText.replace(/Rp\s?|-|\./g, '').trim()) || 0;
-      const tanggal = tds[3].innerText.trim();
+      const tanggal = tds[4].innerText.trim();
 
       const row = sheet.addRow([no, ket, nominal, tanggal]);
       row.getCell(3).numFmt = '#,##0';

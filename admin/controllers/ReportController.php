@@ -122,8 +122,9 @@ class ReportController {
     }
     public function transactionsCapture() {
         global $store_id;
-        $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
-        $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
+        global $start_date;
+        global $end_date;
+
         $sqlTransaksi = "
             SELECT 
                 p.order_id,

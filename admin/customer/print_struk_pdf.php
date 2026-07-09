@@ -111,7 +111,7 @@ $logo_url = BASE_URL . '/assets/img/store/' . ($store["logo_print"] ?: $store['l
       <tr>
         <td style="width:80%; vertical-align:top;">
           
-          <table style="width:100%; table-layout: fixed;">
+          <table style="width:100%; table-layout: fixed; font-size: 13px">
             <colgroup>
               <col style="width: 75px;">
               <col style="width: auto;">

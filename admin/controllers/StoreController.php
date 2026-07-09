@@ -32,5 +32,11 @@ class StoreController {
         send_json_response(true, "Berhasil mengambil data mesin", $machines);
     }
 
+    public function storeName(){
+        global $store_id;
+        $stores = $this->storeModel->getStoreForMaklun($store_id);
+        send_json_response(true, "Berhasil mengambil data mesin", $stores);
+    }
+
 }
 ?>

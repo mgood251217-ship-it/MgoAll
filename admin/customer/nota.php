@@ -770,19 +770,22 @@ document.addEventListener('DOMContentLoaded', function () {
     const orderItemId = elForm.getAttribute('data-order-item-id');
     if (orderItemId) dataPost.order_item_id = orderItemId;
     
+    
     eksekusiTambahItem(dataPost);
   }
 
   function eksekusiTambahItem(dataPost) {
+    const formData = new FormData();
+
+    Object.entries(dataPost).forEach(([key, value]) => {
+        formData.append(key, value);
+    });
     const btn = document.getElementById('btnTambah');
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading...';
     btn.disabled = true;
     fetch("../routes/?action=create_item", { 
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(dataPost)
+        body: formData
     })
     .then(res => res.json())
     .then(data => {
@@ -891,11 +894,16 @@ document.addEventListener('DOMContentLoaded', function () {
           diskon: elEnableDiskon?.checked ? parseFloat(elDiskonInput?.value) || 0 : 0,
           size : size?.value || elUkuranJersey?.value
       };
+
+        const formData = new FormData();
+
+        Object.entries(dataPost).forEach(([key, value]) => {
+            formData.append(key, value);
+        });
       
       fetch('../routes/?action=price', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(dataPost)
+          body: formData
       })
       .then(response => {
           if (!response.ok) throw new Error('HTTP Error');

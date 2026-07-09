@@ -1,4 +1,6 @@
 <?php
+
+use LDAP\Result;
 class Order {
     private $koneksi;
 
@@ -109,11 +111,13 @@ class Order {
         return $result;
     }
 
-    public function getLatestCustomerNote($order_id, $note_for) {
-        $stmt = $this->koneksi->prepare("SELECT note_order_id FROM note_orders WHERE order_id = ? AND note_for = ? ORDER BY note_order_id DESC LIMIT 1");
-        $stmt->bind_param("is", $order_id, $note_for);
+    public function getLatestCustomerNote($order_id) {
+        $stmt = $this->koneksi->prepare("SELECT * FROM note_orders WHERE order_id = ? AND note_for = 'CTM' ORDER BY note_order_id DESC LIMIT 1");
+        $stmt->bind_param("i", $order_id);
         $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
+        $result = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $result ?? [];
     }
 
     public function updateNote($note_order_id, $note) {
@@ -171,9 +175,9 @@ class Order {
                 COALESCE(doi.diskon, 0) AS diskon,
                 COALESCE(s.name, '') AS maklun_store,
                 COALESCE(
-                    (SELECT GROUP_CONCAT(fp.name SEPARATOR ' ') 
-                     FROM products fp 
-                     WHERE FIND_IN_SET(fp.product_id, REPLACE(oi.finishing, ' ', '')) > 0
+                    (SELECT GROUP_CONCAT(f.name SEPARATOR ' ') 
+                     FROM finishings f
+                     WHERE FIND_IN_SET(f.finishing_id, REPLACE(oi.finishing, ' ', '')) > 0
                     ), '-'
                 ) AS finishing_names
             FROM order_items oi

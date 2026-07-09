@@ -527,7 +527,7 @@ $ordersOffline = $dataOrder['offline'];
             'btn_color'     => 'success w-100" id="submitBtnMassal" disabled="disabled',
             'btn_text'      => '💾 Simpan',
             'inputs'        => [
-                ['type' => 'hidden', 'name' => 'order_ids', 'id' => 'massOrderIds'],
+                ['type' => 'hidden', 'name' => 'order_id', 'id' => 'massOrderIds'],
                 ['type' => 'hidden', 'name' => 'status', 'id' => 'statusInputMassal']
             ],
             'custom_bottom' => <<<HTML

@@ -31,6 +31,18 @@ class ProductController {
         return $this->productModel->getProductByStoreId($store_id);
     }
 
+    public function getProductByCategory(){
+        $category_id = $_GET['category_id'] ?? '';
+        $products = $this->productModel->getProductByCategoryId($category_id);
+        send_json_response(true, 'Products retrieved successfully.', $products);
+    }
+
+    public function getFinishingByCategory(){
+        $category_id = $_GET['category_id'] ?? '';
+        $finishings = $this->productModel->getFinishingByCategoryId($category_id);
+        send_json_response(true, 'Products retrieved successfully.', $finishings);
+    }
+
     public function getFinishing() {
         global $store_id;
         return $this->productModel->getFinishingByStoreId($store_id);

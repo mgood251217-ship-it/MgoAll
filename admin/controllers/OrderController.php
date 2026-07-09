@@ -344,7 +344,7 @@ class OrderController {
         $note = trim($_POST['note'] ?? '');
 
         if ($order_id && $note !== '') {
-            $existing = $this->orderModel->getLatestCustomerNote($order_id, $note_for);
+            $existing = $this->orderModel->getLatestCustomerNote($order_id);
 
             if ($existing) {
                 $this->orderModel->updateNote((int)$existing['note_order_id'], $note);
@@ -857,6 +857,8 @@ class OrderController {
         $order_id = (int)($_GET['order_id'] ?? 0);
         $total = $this->orderModel->getOneValue($order_id, 'total');
         $items_raw = $this->orderModel->getOrderItemsWithDetails($order_id);
+        $note = $this->orderModel->getLatestCustomerNote($order_id);
+
         $diskon_per_produk = [];
 
         array_walk($items_raw, function($row) use (&$diskon_per_produk) {
@@ -867,20 +869,21 @@ class OrderController {
 
         $items = array_map(fn($row) => array_merge($row, [
             'category'         => $row['category'] ?? '',
-            'product_name' => $row['product_name'] ?? '',
+            'product_name' => $row['product_name'] ?? ''
         ]), $items_raw);
 
         send_json_response(true, 'Berhasil mengambil data item', [
             'total' => $total,
             'items' => $items,
-            'diskon_per_produk' => $diskon_per_produk
+            'diskon_per_produk' => $diskon_per_produk,
+            'note' => $note['note']
         ]);
     }
 
     public function updateProject(){
         date_default_timezone_set('Asia/Jakarta');
 ;
-        $order_ids = $_POST['order_ids'] ?? '';
+        $order_ids = $_POST['order_id'] ?? '';
 
         if ($order_ids) {
             if (!is_array($order_ids)) {
@@ -901,8 +904,7 @@ class OrderController {
             }
         }
 
-        header("Location: index");
-        exit;
+        send_json_response(true, "Berhasil Update Prosess");
     }
 
     public function createNoteDetail() {

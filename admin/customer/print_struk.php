@@ -78,7 +78,7 @@ $printed_price_for = [];
 <table style="width:100%; table-layout: fixed;">
   <tr>
     <td style="width:80%; vertical-align:top;">
-      <table style="width: 90%; margin: 0 auto;">
+      <table style="width: 90%; margin: 0 auto; font-size: 13px">
         <tr><td width="25%">Tanggal</td><td>: <?= format_tanggal_id($order['date']) ?></td></tr>
         <tr><td>Kepada Yth</td><td>: <?= sanitize($order['customer_name']) ?></td></tr>
         <tr><td>Nota No.</td><td>: <?= sanitize($order['nomorator']) ?></td></tr>
