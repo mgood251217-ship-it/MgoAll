@@ -876,7 +876,7 @@ class OrderController {
             'total' => $total,
             'items' => $items,
             'diskon_per_produk' => $diskon_per_produk,
-            'note' => $note['note']
+            'note' => $note['note'] ?? ''
         ]);
     }
 

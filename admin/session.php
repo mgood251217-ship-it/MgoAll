@@ -102,7 +102,6 @@ if (isset($_SESSION['admin_logged_in']['administrator_id'])) {
   $administrator = false;
 }
 
-
 $stmt = $koneksi->prepare("SELECT user_id FROM users WHERE user_id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();

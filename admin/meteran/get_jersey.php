@@ -1,37 +1,13 @@
 <?php
-require_once 'get_order_ids.php';
+require_once '../connect.php';
+require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/controllers/MeterController.php';
 
-$product_data_jersey = [];
+$meterController = new MeterController($koneksi);
 
-if (!empty($order_ids)) {
-    $in = implode(',', array_fill(0, count($order_ids), '?'));
-    $types = str_repeat('i', count($order_ids)) . 'i';
-    $params = array_merge($order_ids, [$store_id]);
-
-    $queryStr = "
-        SELECT p.name, COALESCE(SUM(oi.quantity), 0) AS total_qty
-        FROM products p
-        JOIN categories c ON p.category_id = c.category_id
-        LEFT JOIN order_items oi ON p.product_id = oi.product_id AND oi.order_id IN ($in)
-        WHERE c.name = 'JERSEY' AND p.store_id = ?
-        GROUP BY p.product_id, p.name
-    ";
-
-    $stmt = $koneksi->prepare($queryStr);
-    if (!$stmt) die("Query error: " . $koneksi->error);
-
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
-    $res = $stmt->get_result();
-
-    while ($row = $res->fetch_assoc()) {
-        $product_data_jersey[] = [
-            'name' => $row['name'],
-            'total_qty' => (int)$row['total_qty']
-        ];
-    }
-    $stmt->close();
-}
+$jersey = $meterController->getJersey();
+$product_data_jersey = $jersey['product_data'];
+$total_qty_all_jersey = $jersey['total_all_qty']; 
 ?>
 
 <div class="table-responsive mb-3">
@@ -50,13 +26,6 @@ if (!empty($order_ids)) {
     </tbody>
 </table>
 </div>
-
-<?php
-$total_qty_all_jersey = 0;
-foreach ($product_data_jersey as $product) {
-    $total_qty_all_jersey += $product['total_qty'];
-}
-?>
 
 <div class="mt-3">
 <table class="table table-bordered" style="max-width:500px; font-weight:bold;">

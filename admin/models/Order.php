@@ -326,6 +326,7 @@ class Order {
         $stmt->execute();
         $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        return $result;
+        $order_ids = array_column($result, 'order_id');
+        return $order_ids;
     }
 }

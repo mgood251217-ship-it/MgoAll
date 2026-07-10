@@ -36,8 +36,8 @@ if (!empty($orderIds)) {
     $itemQuery = $koneksi->prepare("
         SELECT order_id, judul, finishing, size, quantity, unit, amount,
                (SELECT GROUP_CONCAT(fp.name SEPARATOR ', ') 
-                FROM products fp 
-                WHERE FIND_IN_SET(fp.product_id, REPLACE(order_items.finishing, ' ', '')) > 0
+                FROM finishings fp 
+                WHERE FIND_IN_SET(fp.finishing_id, REPLACE(order_items.finishing, ' ', '')) > 0
                ) AS finishing_names
         FROM order_items 
         WHERE order_id IN ($placeholders)

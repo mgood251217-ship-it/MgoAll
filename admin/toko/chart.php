@@ -2,42 +2,42 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 
-$query_order = "
-    SELECT 
-        DATE(o.date) AS tanggal,
-        COUNT(o.order_id) AS jumlah_order
-    FROM orders o
-    WHERE o.store_id = $store_id
-      AND o.date >= CURDATE() - INTERVAL 30 DAY
-    GROUP BY tanggal
-    ORDER BY tanggal ASC
-";
-
-$result_order = mysqli_query($koneksi, $query_order);
+$stmtOrder = $koneksi->prepare(
+  "SELECT DATE(o.date) AS tanggal, COUNT(o.order_id) AS jumlah_order
+   FROM orders o
+   WHERE o.store_id = ?
+     AND o.date >= CURDATE() - INTERVAL 30 DAY
+   GROUP BY tanggal
+   ORDER BY tanggal ASC"
+);
+$stmtOrder->bind_param('i', $store_id);
+$stmtOrder->execute();
+$orderRows = $stmtOrder->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmtOrder->close();
 
 $orders_by_date = [];
-while ($row = mysqli_fetch_assoc($result_order)) {
-    $orders_by_date[$row['tanggal']] = (int)$row['jumlah_order'];
+foreach ($orderRows as $row) {
+  $orders_by_date[$row['tanggal']] = (int)$row['jumlah_order'];
 }
 
-$query_payment = "
-    SELECT 
-        DATE(p.date) AS tanggal,
-        SUM(p.nominal) AS total_order
-    FROM payment p
-    JOIN orders o ON o.order_id = p.order_id
-    WHERE o.store_id = $store_id
-      AND p.date >= CURDATE() - INTERVAL 30 DAY
-    GROUP BY tanggal
-    ORDER BY tanggal ASC
-";
-
-$result_payment = mysqli_query($koneksi, $query_payment);
+$stmtPayment = $koneksi->prepare(
+  "SELECT DATE(p.date) AS tanggal, SUM(p.nominal) AS total_order
+   FROM payment p
+   JOIN orders o ON o.order_id = p.order_id
+   WHERE o.store_id = ?
+     AND p.date >= CURDATE() - INTERVAL 30 DAY
+   GROUP BY tanggal
+   ORDER BY tanggal ASC"
+);
+$stmtPayment->bind_param('i', $store_id);
+$stmtPayment->execute();
+$paymentRows = $stmtPayment->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmtPayment->close();
 
 // Simpan hasil total pembayaran
 $payments_by_date = [];
-while ($row = mysqli_fetch_assoc($result_payment)) {
-    $payments_by_date[$row['tanggal']] = (int)$row['total_order'];
+foreach ($paymentRows as $row) {
+  $payments_by_date[$row['tanggal']] = (int)$row['total_order'];
 }
 
 // --- Gabungkan semua tanggal ---
@@ -57,69 +57,79 @@ foreach ($all_dates as $tanggal) {
 
 
 // --- QUERY 1 TAHUN TERAKHIR (bulanan) ---
-$query_365 = "
-    SELECT 
-        DATE_FORMAT(p.date, '%Y-%m') AS bulan, 
-        COUNT(DISTINCT o.order_id) AS jumlah_order,
-        SUM(p.nominal) AS total_order
-    FROM orders o
-    JOIN payment p ON o.order_id = p.order_id
-    WHERE o.store_id = $store_id 
-      AND p.date >= CURDATE() - INTERVAL 1 YEAR
-    GROUP BY bulan
-    ORDER BY bulan ASC
-";
 
-$result_365 = mysqli_query($koneksi, $query_365);
+
+$stmt365 = $koneksi->prepare(
+  "SELECT DATE_FORMAT(p.date, '%Y-%m') AS bulan, COUNT(DISTINCT o.order_id) AS jumlah_order, SUM(p.nominal) AS total_order
+   FROM orders o
+   JOIN payment p ON o.order_id = p.order_id
+   WHERE o.store_id = ?
+     AND p.date >= CURDATE() - INTERVAL 1 YEAR
+   GROUP BY bulan
+   ORDER BY bulan ASC"
+);
+$stmt365->bind_param('i', $store_id);
+$stmt365->execute();
+$rows365 = $stmt365->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt365->close();
 
 $data_bulan_365 = [];
 $data_jumlah_365 = [];
 $data_total_365 = [];
 
-while ($row = mysqli_fetch_assoc($result_365)) {
-    $data_bulan_365[] = $row['bulan'];
-    $data_jumlah_365[] = (int)$row['jumlah_order'];
-    $data_total_365[] = (int)$row['total_order'];
+foreach ($rows365 as $row) {
+  $data_bulan_365[] = $row['bulan'];
+  $data_jumlah_365[] = (int)$row['jumlah_order'];
+  $data_total_365[] = (int)$row['total_order'];
 }
 
-// Total 30 hari
-$q_total30 = "
-    SELECT SUM(p.nominal) AS total30 
-    FROM orders o
-    JOIN payment p ON o.order_id = p.order_id
-    WHERE o.store_id = $store_id 
-      AND p.date >= CURDATE() - INTERVAL 30 DAY
-";
 
-$total30 = mysqli_fetch_assoc(mysqli_query($koneksi, $q_total30))['total30'] ?? 0;
+$stmtTotal30 = $koneksi->prepare(
+    "SELECT SUM(p.nominal) AS total30
+     FROM orders o
+     JOIN payment p ON o.order_id = p.order_id
+     WHERE o.store_id = ?
+       AND p.date >= CURDATE() - INTERVAL 30 DAY"
+);
+$stmtTotal30->bind_param('i', $store_id);
+$stmtTotal30->execute();
+$total30Row = $stmtTotal30->get_result()->fetch_assoc();
+$stmtTotal30->close();
+$total30 = $total30Row['total30'] ?? 0;
 
 // Total hari ini
-$q_today = "
-    SELECT SUM(p.nominal) AS total_today 
-    FROM orders o
-    JOIN payment p ON o.order_id = p.order_id
-    WHERE o.store_id = $store_id 
-      AND DATE(p.date) = CURDATE()
-";
+
+$stmtToday = $koneksi->prepare(
+    "SELECT SUM(p.nominal) AS total_today
+     FROM orders o
+     JOIN payment p ON o.order_id = p.order_id
+     WHERE o.store_id = ?
+       AND DATE(p.date) = CURDATE()"
+);
+$stmtToday->bind_param('i', $store_id);
+$stmtToday->execute();
+$todayRow = $stmtToday->get_result()->fetch_assoc();
+$stmtToday->close();
+$total_today = $todayRow['total_today'] ?? 0;
 
 
-$total_today = mysqli_fetch_assoc(mysqli_query($koneksi, $q_today))['total_today'] ?? 0;
 
-// Customer dengan total tertinggi
-$q_top_customer = "
-    SELECT o.customer_name, SUM(p.nominal) AS total 
-    FROM orders o
-    JOIN payment p ON o.order_id = p.order_id
-    WHERE o.store_id = $store_id 
-      AND p.date >= CURDATE() - INTERVAL 30 DAY
-    GROUP BY o.customer_name
-    ORDER BY total DESC
-    LIMIT 1
-";
-
-$row_top = mysqli_fetch_assoc(mysqli_query($koneksi, $q_top_customer));
-$top_customer = $row_top['customer_name'] ?? '-';
-$top_total = $row_top['total'] ?? 0;
+$stmtTop = $koneksi->prepare(
+    "SELECT o.customer_name, SUM(p.nominal) AS total
+     FROM orders o
+     JOIN payment p ON o.order_id = p.order_id
+     WHERE o.store_id = ?
+       AND p.date >= CURDATE() - INTERVAL 30 DAY
+     GROUP BY o.customer_name
+     ORDER BY total DESC
+     LIMIT 1"
+);
+$stmtTop->bind_param('i', $store_id);
+$stmtTop->execute();
+$topRow = $stmtTop->get_result()->fetch_assoc();
+$stmtTop->close();
+$top_customer = $topRow['customer_name'] ?? '-';
+$top_total = $topRow['total'] ?? 0;
 
 $darkModeClass = ($mode === 1) ? 'dark-mode' : '';
 

@@ -29,6 +29,7 @@ $router->add('products_by_category', ProductController::class, 'getProductByCate
 $router->add('create_product', ProductController::class, 'createProduct', ['auth']);
 $router->add('update_product', ProductController::class, 'updateProduct', ['auth']);
 $router->add('delete_product', ProductController::class, 'deleteProduct', ['auth']);
+$router->add('update_stock_product', ProductController::class, 'updateStock', ['auth']);
 $router->add('pagination_products', ProductController::class, 'getProductByPagination', ['auth']);
 // Finishing 
 $router->add('finishings', ProductController::class, 'getFinishing', ['auth']);
@@ -36,6 +37,7 @@ $router->add('finishing_by_category', ProductController::class, 'getFinishingByC
 $router->add('create_finishing', ProductController::class, 'createFinishing', ['auth']);
 $router->add('update_finishing', ProductController::class, 'updateFinishing', ['auth']);
 $router->add('delete_finishing', ProductController::class, 'deleteFinishing', ['auth']);
+$router->add('update_stock_finishing', ProductController::class, 'updateStockFinishing', ['auth']);
 // Category
 $router->add('categories', ProductController::class, 'getCategory', ['auth']);
 
@@ -48,7 +50,7 @@ $router->add('delete_order', OrderController::class, 'delete', ['auth']);
 $router->add('order_detail', OrderController::class, 'orderDetail', ['auth']);
 $router->add('item_price', OrderController::class, 'fullPrice', ['auth']);
 $router->add('create_order_item', OrderController::class, 'createItem', ['auth']);
-$router->add('delete_item', OrderController::class, 'deleteItem', ['auth']);
+$router->add('delete_order_item', OrderController::class, 'deleteItem', ['auth']);
 $router->add('full_price_item', OrderController::class, 'fullPrice', ['auth']);
 // Project
 $router->add('update_project', OrderController::class, 'updateProject', ['auth']);

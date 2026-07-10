@@ -1,77 +1,14 @@
 <?php
-require_once 'get_order_ids.php';
+require_once '../connect.php';
+require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/controllers/MeterController.php';
 
-$products = [];
-$product_data = [];
-$max_rows = 0;
-$total_all_m2_akrilik = 0;
+$meterController = new MeterController($koneksi);
 
-if (!empty($order_ids)) {
-    $stmt = $koneksi->prepare("
-        SELECT p.product_id, p.name 
-        FROM products p
-        JOIN categories c ON p.category_id = c.category_id
-        WHERE c.name = 'AKRILIK' AND p.store_id = ?
-    ");
-    $stmt->bind_param("i", $store_id);
-    $stmt->execute();
-    $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
-
-    $productId_to_name = [];
-    $product_data_assoc = [];
-
-    foreach ($products as $akrilik) {
-        $productId_to_name[$akrilik['product_id']] = $akrilik['name'];
-        $product_data_assoc[$akrilik['name']] = [
-            'name' => $akrilik['name'],
-            'rows' => []
-        ];
-    }
-
-    $valid_product_ids = array_keys($productId_to_name);
-
-    if (!empty($valid_product_ids)) {
-        $in_orders = implode(',', array_fill(0, count($order_ids), '?'));
-        $in_products = implode(',', array_fill(0, count($valid_product_ids), '?'));
-
-        $types = str_repeat('i', count($order_ids)) . str_repeat('i', count($valid_product_ids));
-        $params = array_merge($order_ids, $valid_product_ids);
-
-        $queryStr = "SELECT product_id, size, quantity FROM order_items WHERE order_id IN ($in_orders) AND product_id IN ($in_products)";
-        $query = $koneksi->prepare($queryStr);
-        if (!$query) die("Query error: " . $koneksi->error);
-        
-        $query->bind_param($types, ...$params);
-        $query->execute();
-        $res = $query->get_result();
-
-        while ($row = $res->fetch_assoc()) {
-            $pid = $row['product_id'];
-            $display_name = $productId_to_name[$pid];
-
-            $size = $row['size'];
-            $qty = (int)$row['quantity'];
-            
-            if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $size, $match)) {
-                $p = floatval($match[1]);
-                $l = floatval($match[2]);
-                $m2 = $p * $l * $qty;
-
-                $product_data_assoc[$display_name]['rows'][] = ['p' => $p, 'l' => $l, 'qty' => $qty, 'm2' => $m2];
-            }
-        }
-        $query->close();
-    }
-
-    $product_data = array_values($product_data_assoc);
-    foreach ($product_data as $product) {
-        $count_rows = count($product['rows']);
-        if ($count_rows > $max_rows) {
-            $max_rows = $count_rows;
-        }
-    }
-}
+$akrilik = $meterController->getAkrilik();
+$product_data = $akrilik['product_data'];
+$max_rows = $akrilik['max_rows'];
+$total_all_m2_akrilik = $akrilik['total_all_m2']; 
 ?>
 
 <div class="excel-container" id="table-container" >

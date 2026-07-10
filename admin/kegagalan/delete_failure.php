@@ -1,6 +1,5 @@
 <?php
 require_once '../connect.php';
-require_once 'functions.php';
 
 header('Content-Type: application/json');
 require_once BASE_PATH . '/session.php';
