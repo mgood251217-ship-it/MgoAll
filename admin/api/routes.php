@@ -15,6 +15,7 @@ $router->add('delete_user', UserController::class, 'delete', ['auth']);
 $router->add('get_initial', UserController::class, 'getInitial', ['auth']);
 
 // Store Controller
+$router->add('store', StoreController::class, 'store', ['auth']);
 $router->add('machines', StoreController::class, 'machines', ['auth']);
 $router->add('create_machine', StoreController::class, 'createMachine', ['auth']);
 $router->add('store_names', StoreController::class, 'storeName', ['auth']);
@@ -64,6 +65,7 @@ $router->add('locations', LocationController::class, 'index', ['auth']);
 $router->add('create_payment', PaymentController::class, 'create', ['auth']);
 $router->add('update_payment', PaymentController::class, 'update', ['auth']);
 $router->add('delete_payment', PaymentController::class, 'delete', ['auth']);
+$router->add('order_payment', PaymentController::class, 'orderPayment', ['auth']);
 
 // Finance Controller
 $router->add('finance', FinanceController::class, 'finance', ['auth']);

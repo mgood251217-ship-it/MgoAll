@@ -858,6 +858,7 @@ class OrderController {
         $total = $this->orderModel->getOneValue($order_id, 'total');
         $items_raw = $this->orderModel->getOrderItemsWithDetails($order_id);
         $note = $this->orderModel->getLatestCustomerNote($order_id);
+        $order = $this->orderModel->getOrderById($order_id);
 
         $diskon_per_produk = [];
 
@@ -873,6 +874,7 @@ class OrderController {
         ]), $items_raw);
 
         send_json_response(true, 'Berhasil mengambil data item', [
+            'order' => $order,
             'total' => $total,
             'items' => $items,
             'diskon_per_produk' => $diskon_per_produk,

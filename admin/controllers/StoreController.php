@@ -9,6 +9,12 @@ class StoreController {
         $this->storeModel = new Store($koneksi);
     }
 
+    public function store(){
+        global $store_id;
+        $store = $this->storeModel->getStoreById($store_id);
+        send_json_response(true, "Berhasil mengambil data Store", $store);
+    }
+
     public function createMachine(){
         global $store_id;
         $data = (object)[

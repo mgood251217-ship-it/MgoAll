@@ -63,7 +63,7 @@ switch ($action) {
     case 'create_product':
         $productController->createProduct();
         break;
-    case 'create_pfinishing':
+    case 'create_finishing':
         $productController->createFinishing();
         break;
     case 'update_stock':

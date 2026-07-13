@@ -256,5 +256,24 @@ class PaymentController {
 
     }
 
+    public function orderPayment(){
+        $order_id = $_GET['order_id'] ?? 0;
+        $total = $this->orderModel->getOneValue($order_id, 'total');
+        $payments = $this->paymentModel->getPaymentByOrderId($order_id);
+        $paid = $this->paymentModel->getPaidByOrderId($order_id);
+
+        $is_lunas = false;
+        if ((int)$paid >= $total) {
+            $is_lunas = true;
+        };
+
+        return [
+            'payments' => $payments,
+            'paid' => $paid,
+            'is_lunas' => $is_lunas
+        ];
+
+    }
+
 }
 ?>

@@ -32,7 +32,6 @@ $total_all_m2_sublim = $sublim['total_all_m2'];
             $total_m2_product = 0;
             foreach ($product['rows'] as $row):
             $total_m2_product += $row['m2'];
-            $total_all_m2_sublim += $row['m2'];
         ?>
             <tr>
             <td><?= $row['p'] ?></td>
