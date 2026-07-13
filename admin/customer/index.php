@@ -195,7 +195,7 @@ $ordersOffline = $dataOrder['offline'];
                                     <button type="submit" class="btn btn-sm btn-success">Buka</button>
                                   </form> ';
                     }
-                    $html .= '<button class="btn btn-sm btn-primary btn-edit" data-id="' . $row['order_id'] . '" data-enk="' . $row['order_enk'] . '" data-paid="' . $row['total_paid'] . '">Edit</button> ';
+                    $html .= '<button class="btn btn-sm btn-primary btn-edit" data-id="' . $row['order_id'] . '" data-enk="' . $row['order_enk'] . '" data-total="' . $row['total'] . '">Edit</button> ';
                     if (!$row['is_lunas']) {
                         $html .= '<button class="btn btn-sm btn-danger btn-pay" data-order-id="' . $row['order_id'] . '">Bayar</button> ';
                     }else {
@@ -739,10 +739,10 @@ document.addEventListener('dblclick', function (e) {
   if (!editBtn) return;
 
   const encryptedId = editBtn.dataset.enk;
-  const isPaid = editBtn.dataset.paid;
+  const total = editBtn.dataset.total;
   const access = '<?= $access ?>';
 
-  if (isPaid > 0 && access !== 'all') {
+  if (total > 0 && access !== 'all') {
     showAlert('error', 'Tidak dapat membuka nota');
   }else{
     const form = document.createElement('form');

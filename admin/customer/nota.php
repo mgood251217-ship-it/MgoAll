@@ -14,7 +14,8 @@ $storeModel = new Store($koneksi);
 $paymentModel = new Payment($koneksi);
 $productModel = new Product($koneksi);
 
-if($paymentModel->getPaidByOrderId($order_id) && !$administrator){
+
+if((int)$orderModel->getOneValue($order_id, 'total') > 0 && !$administrator){
   header("Location: " . BASE_URL . "/customer/");
   exit;
 }
