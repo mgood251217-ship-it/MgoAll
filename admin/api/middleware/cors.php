@@ -2,7 +2,7 @@
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
-$allowedOrigins = [ 'http://localhost:5173' ];
+$allowedOrigins = ["http://localhost:51730", "http://localhost:5173"];
 
 if (in_array($origin, $allowedOrigins, true)) {
 	header("Access-Control-Allow-Origin: {$origin}");

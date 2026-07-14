@@ -9,7 +9,7 @@ $meterController = new MeterController($koneksi);
 $outdoor = $meterController->getOutdoor();
 $product_data = $outdoor['product_data'];
 $total_m2_product = $outdoor['total_m2_product'];
-$total_all_m2_outdoor = $outdoor['total_all_m2_outdoor'];
+$total_all_m2_outdoor = $outdoor['total_all_m2'];
 $max_rows = $outdoor['max_rows'];
 
 ?>

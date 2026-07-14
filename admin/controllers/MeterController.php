@@ -143,7 +143,7 @@ class MeterController {
         return [
             'product_data' => $product_data,
             'max_rows' => $max_rows,
-            'total_all_m2_outdoor' => $total_all_m2_outdoor,
+            'total_all_m2' => $total_all_m2_outdoor,
             'total_m2_product' => $total_m2_product
         ];
     }

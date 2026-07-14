@@ -83,6 +83,20 @@ $router->add('synn_finance', FinanceController::class, 'syncFinanceInterval', ['
 $router->add('all_detail_order', ReportController::class, 'allDetailOrderByIntervalDate', ['auth']);
 $router->add('piutang', ReportController::class, 'piutang', ['auth']);
 $router->add('transactions_capture', ReportController::class, 'transactionsCapture', ['auth']);
+$router->add('order_analysis', ReportController::class, 'orderAnalysis', ['auth']);
 
+// Meter Controller
+$router->add('meter_outdoor', MeterController::class, 'getOutdoor', ['auth']);
+$router->add('meter_indoor', MeterController::class, 'getIndoor', ['auth']);
+$router->add('meter_jersey', MeterController::class, 'getJersey', ['auth']);
+$router->add('meter_akrilik', MeterController::class, 'getAkrilik', ['auth']);
+$router->add('meter_laser', MeterController::class, 'getLaser', ['auth']);
+$router->add('meter_merchandise', MeterController::class, 'getMerchandise', ['auth']);
+$router->add('meter_sublim', MeterController::class, 'getSublim', ['auth']);
+$router->add('meter_mercendise_akrilik', MeterController::class, 'getMercendiseAkrilik', ['auth']);
+$router->add('meter_dtf', MeterController::class, 'getDtf', ['auth']);
+$router->add('meter_cetakan', MeterController::class, 'getCetakan', ['auth']);
+$router->add('meter_bahan_sublim', MeterController::class, 'getBahanSublim', ['auth']);
+$router->add('meter_finishing_jersey', MeterController::class, 'getFinishingJersey', ['auth']);
 
 return $router;

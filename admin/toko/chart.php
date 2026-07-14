@@ -1,6 +1,7 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/controllers/ReportController.php';
 
 $stmtOrder = $koneksi->prepare(
   "SELECT DATE(o.date) AS tanggal, COUNT(o.order_id) AS jumlah_order
@@ -54,10 +55,6 @@ foreach ($all_dates as $tanggal) {
     $data_jumlah[] = $orders_by_date[$tanggal] ?? 0;
     $data_total[]  = $payments_by_date[$tanggal] ?? 0;
 }
-
-
-// --- QUERY 1 TAHUN TERAKHIR (bulanan) ---
-
 
 $stmt365 = $koneksi->prepare(
   "SELECT DATE_FORMAT(p.date, '%Y-%m') AS bulan, COUNT(DISTINCT o.order_id) AS jumlah_order, SUM(p.nominal) AS total_order

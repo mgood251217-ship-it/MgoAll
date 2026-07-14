@@ -26,6 +26,7 @@ class ReportController {
         $this->paymentModel = new Payment($koneksi);
         $this->activityModel = new Activity($koneksi);
     }
+    
 
     public function allDetailOrderByIntervalDate(){
         global $store_id;
@@ -122,8 +123,8 @@ class ReportController {
     }
     public function transactionsCapture() {
         global $store_id;
-        global $start_date;
-        global $end_date;
+        $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
+        $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
 
         $sqlTransaksi = "
             SELECT 
@@ -306,6 +307,115 @@ class ReportController {
                 'total_bulan_tf'      => $total_rekap_tf,
                 'total_bulan_cash'    => $total_rekap_cash,
                 'total_transaksi_all' => $total_rekap_transaksi
+            ]
+        ];
+    }
+
+    public function orderAnalysis(){
+        global $store_id;
+
+        $data_tanggal = [];
+        $data_jumlah = [];
+        $data_total = [];
+        $data_bulan_365 = [];
+        $data_jumlah_365 = [];
+        $data_total_365 = [];
+
+        $stmtChart30 = $this->koneksi->prepare(
+            "SELECT
+                DATE(o.date) AS tanggal,
+                COUNT(DISTINCT o.order_id) AS jumlah_order,
+                COALESCE(SUM(p.nominal),0) AS total_order
+            FROM orders o
+            LEFT JOIN payment p ON p.order_id = o.order_id
+            WHERE o.store_id = ?
+                AND o.date >= CURDATE() - INTERVAL 30 DAY
+            GROUP BY tanggal
+            ORDER BY tanggal ASC"
+        );
+        $stmtChart30->bind_param('i', $store_id);
+        $stmtChart30->execute();
+        $rows30 = $stmtChart30->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmtChart30->close();
+
+        foreach ($rows30 as $row) {
+            $data_tanggal[] = $row['tanggal'];
+            $data_jumlah[] = (int)$row['jumlah_order'];
+            $data_total[] = (int)$row['total_order'];
+        }
+
+        $stmt365 = $this->koneksi->prepare(
+            "SELECT
+                DATE_FORMAT(p.date, '%Y-%m') AS bulan,
+                COUNT(DISTINCT o.order_id) AS jumlah_order,
+                SUM(p.nominal) AS total_order
+            FROM orders o
+            JOIN payment p ON o.order_id = p.order_id
+            WHERE o.store_id = ?
+                AND p.date >= CURDATE() - INTERVAL 1 YEAR
+            GROUP BY bulan
+            ORDER BY bulan ASC"
+        );
+        $stmt365->bind_param('i', $store_id);
+        $stmt365->execute();
+        $rows365 = $stmt365->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt365->close();
+
+        foreach ($rows365 as $row) {
+            $data_bulan_365[] = $row['bulan'];
+            $data_jumlah_365[] = (int)$row['jumlah_order'];
+            $data_total_365[] = (int)$row['total_order'];
+        }
+
+        $stmtSummary = $this->koneksi->prepare(
+            "SELECT
+                SUM(CASE WHEN p.date >= CURDATE() - INTERVAL 30 DAY THEN p.nominal ELSE 0 END ) AS total30,
+                SUM(CASE WHEN DATE(p.date) = CURDATE() THEN p.nominal ELSE 0 END ) AS total_today
+            FROM payment p
+            JOIN orders o ON o.order_id = p.order_id
+            WHERE o.store_id = ?"
+        );
+        $stmtSummary->bind_param('i', $store_id);
+        $stmtSummary->execute();
+        $summaryRow = $stmtSummary->get_result()->fetch_assoc();
+        $stmtSummary->close();
+
+        $total30 = (int)($summaryRow['total30'] ?? 0);
+        $total_today = (int)($summaryRow['total_today'] ?? 0);
+
+        $stmtTop = $this->koneksi->prepare(
+            "SELECT
+                o.customer_name,
+                SUM(p.nominal) AS total
+            FROM orders o
+            JOIN payment p ON o.order_id = p.order_id
+            WHERE o.store_id = ?
+                AND p.date >= CURDATE() - INTERVAL 30 DAY
+            GROUP BY o.customer_name
+            ORDER BY total DESC
+            LIMIT 1"
+        );
+        $stmtTop->bind_param('i', $store_id);
+        $stmtTop->execute();
+        $topRow = $stmtTop->get_result()->fetch_assoc();
+        $stmtTop->close();
+
+        return [
+            'chart_30' => [
+                'tanggal' => $data_tanggal,
+                'jumlah' => $data_jumlah,
+                'total' => $data_total
+            ],
+            'chart_365' => [
+                'bulan' => $data_bulan_365,
+                'jumlah' => $data_jumlah_365,
+                'total' => $data_total_365
+            ],
+            'summary' => [
+                'total_30' => $total30,
+                'total_today' => $total_today,
+                'top_customer' => $topRow['customer_name'] ?? '-',
+                'top_total' => (int)($topRow['total'] ?? 0)
             ]
         ];
     }
