@@ -3,6 +3,9 @@ require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/functions/helpers.php';
 require_once BASE_PATH . '/components/Alert.php';
+require_once BASE_PATH . '/controllers/ReportController.php';
+
+$reportController = new ReportController($koneksi);
 
 $scrl_id = $_GET['scrl_id'] ?? '';
 $access = startEnk('dek', $_COOKIE['admin_access'] ?? '');
@@ -10,73 +13,14 @@ $access = startEnk('dek', $_COOKIE['admin_access'] ?? '');
 $start_date = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
 $end_date = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
 
-$sql = "SELECT o.order_id, o.nomorator, o.nomor, o.customer_name, o.date, o.total, o.system, u.name AS operator
-        FROM orders o
-        LEFT JOIN users u ON o.user_id = u.user_id
-        WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
-        ORDER BY o.system ASC, o.order_id DESC";
+$transactionsDetail = $reportController->transactionsDetail();
 
-$stmt = $koneksi->prepare($sql);
-$stmt->bind_param("iss", $store_id, $start_date, $end_date);
-$stmt->execute();
-$orders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$orders = $transactionsDetail['orders'];
+$itemsByOrder = $transactionsDetail['itemsByOrder'];
+$paymentsByOrder = $transactionsDetail['paymentsByOrder'];
+$transfersByOrder = $transactionsDetail['transfersByOrder'];
+$notesByOrder = $transactionsDetail['notesByOrder'];
 
-$itemsByOrder = [];
-$paymentsByOrder = [];
-$transfersByOrder = [];
-$notesByOrder = [];
-
-$orderIds = array_column($orders, 'order_id');
-
-if (!empty($orderIds)) {
-    $placeholders = implode(',', array_fill(0, count($orderIds), '?'));
-    $types = str_repeat('i', count($orderIds));
-    
-    $itemQuery = $koneksi->prepare("
-        SELECT order_id, judul, finishing, size, quantity, unit, amount,
-               (SELECT GROUP_CONCAT(fp.name SEPARATOR ', ') 
-                FROM finishings fp 
-                WHERE FIND_IN_SET(fp.finishing_id, REPLACE(order_items.finishing, ' ', '')) > 0
-               ) AS finishing_names
-        FROM order_items 
-        WHERE order_id IN ($placeholders)
-    ");
-    $itemQuery->bind_param($types, ...$orderIds);
-    $itemQuery->execute();
-    $items = $itemQuery->get_result()->fetch_all(MYSQLI_ASSOC);
-    foreach ($items as $item) {
-        $itemsByOrder[$item['order_id']][] = $item;
-    }
-    $itemQuery->close();
-
-    $paymentQuery = $koneksi->prepare("SELECT order_id, payment_id, date, nominal, payment_method, status FROM payment WHERE order_id IN ($placeholders)");
-    $paymentQuery->bind_param($types, ...$orderIds);
-    $paymentQuery->execute();
-    $payments = $paymentQuery->get_result()->fetch_all(MYSQLI_ASSOC);
-    foreach ($payments as $payment) {
-        $paymentsByOrder[$payment['order_id']][] = $payment;
-    }
-    $paymentQuery->close();
-
-    $transferQuery = $koneksi->prepare("SELECT order_id, transfer_id, img FROM transfers WHERE order_id IN ($placeholders)");
-    $transferQuery->bind_param($types, ...$orderIds);
-    $transferQuery->execute();
-    $transfers = $transferQuery->get_result()->fetch_all(MYSQLI_ASSOC);
-    foreach ($transfers as $transfer) {
-        $transfersByOrder[$transfer['order_id']][] = $transfer;
-    }
-    $transferQuery->close();
-
-    $noteQuery = $koneksi->prepare("SELECT order_id, note FROM note_orders WHERE order_id IN ($placeholders) AND note_for = 'OP'");
-    $noteQuery->bind_param($types, ...$orderIds);
-    $noteQuery->execute();
-    $notes = $noteQuery->get_result()->fetch_all(MYSQLI_ASSOC);
-    foreach ($notes as $note) {
-        $notesByOrder[$note['order_id']] = $note['note'];
-    }
-    $noteQuery->close();
-}
 ?>
 
 <!DOCTYPE html>

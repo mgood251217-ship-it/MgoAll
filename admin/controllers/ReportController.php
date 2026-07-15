@@ -420,4 +420,73 @@ class ReportController {
         ];
     }
 
+    public function transactionsDetail(){
+        global $store_id;
+        $start_date = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
+        $end_date = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
+
+        $stmt = $this->koneksi->prepare("SELECT o.order_id, o.nomorator, o.nomor, o.customer_name, o.date, o.total, o.system, u.name AS operator
+                FROM orders o
+                LEFT JOIN users u ON o.user_id = u.user_id
+                WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
+                ORDER BY o.system ASC, o.order_id DESC");
+        $stmt->bind_param("iss", $store_id, $start_date, $end_date);
+        $stmt->execute();
+        $orders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        $itemsByOrder = [];
+        $paymentsByOrder = [];
+        $transfersByOrder = [];
+        $notesByOrder = [];
+
+        $orderIds = array_column($orders, 'order_id');
+
+        if (!empty($orderIds)) {
+
+            $ids = implode(',', array_map('intval', $orderIds));
+
+            $items = $this->koneksi->query("
+                SELECT order_id, judul, finishing, size, quantity, unit, amount,
+                    ( SELECT GROUP_CONCAT(fp.name SEPARATOR ', ')
+                        FROM finishings fp
+                        WHERE FIND_IN_SET(fp.finishing_id, REPLACE(order_items.finishing, ' ', ''))
+                    ) AS finishing_names
+                FROM order_items
+                WHERE order_id IN ($ids)
+            ")->fetch_all(MYSQLI_ASSOC);
+
+            foreach ($items as $item) {
+                $itemsByOrder[$item['order_id']][] = $item;
+            }
+
+            $payments = $this->koneksi->query(" SELECT * FROM payment WHERE order_id IN ($ids) ")->fetch_all(MYSQLI_ASSOC);
+
+            foreach ($payments as $payment) {
+                $paymentsByOrder[$payment['order_id']][] = $payment;
+            }
+
+            $transfers = $this->koneksi->query("SELECT order_id, transfer_id, img FROM transfers WHERE order_id IN ($ids) ")->fetch_all(MYSQLI_ASSOC);
+
+            foreach ($transfers as $transfer) {
+                $transfersByOrder[$transfer['order_id']][] = $transfer;
+            }
+
+            $notes = $this->koneksi->query(" SELECT order_id, note FROM note_orders WHERE note_for = 'OP' AND order_id IN ($ids) ")->fetch_all(MYSQLI_ASSOC);
+
+            foreach ($notes as $note) {
+                $notesByOrder[$note['order_id']] = $note['note'];
+            }
+        }
+
+        return [
+            'orders' => $orders,
+            'itemsByOrder' => $itemsByOrder,
+            'paymentsByOrder' => $paymentsByOrder,
+            'transfersByOrder' => $transfersByOrder,
+            'notesByOrder' => $notesByOrder
+        ];
+
+    }
+
 }
