@@ -31,7 +31,7 @@ class UserController {
         return $data;
     }
 
-    public function create() {
+    public function update() {
         header('Content-Type: application/json');
         $data = $this->requestData();
         $errors = [];
@@ -68,7 +68,7 @@ class UserController {
         exit;
     }
 
-    public function update() {
+    public function create() {
         header('Content-Type: application/json');
         $data = $this->requestData();
         $errors = [];
