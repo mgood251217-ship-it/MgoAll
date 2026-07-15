@@ -58,6 +58,20 @@ class Store{
         $result = $stmt->execute();
         return $result;
     }
+
+    public function updateMachine($data){
+        $stmt = $this->koneksi->prepare("UPDATE machine SET name = ?, type = ? WHERE machine_id = ?");
+        $stmt->bind_param("ssi", $data->name, $data->type, $data->machine_id);
+        $result = $stmt->execute();
+        return $result;
+    }
+
+    public function deleteMachine($id){
+        $stmt = $this->koneksi->prepare("DELETE FROM machine WHERE machine_id = ?");
+        $stmt->bind_param("i", $id);
+        $result = $stmt->execute();
+        return $result;
+    }
     
 }
 

@@ -18,6 +18,8 @@ $router->add('get_initial', UserController::class, 'getInitial', ['auth']);
 $router->add('store', StoreController::class, 'store', ['auth']);
 $router->add('machines', StoreController::class, 'machines', ['auth']);
 $router->add('create_machine', StoreController::class, 'createMachine', ['auth']);
+$router->add('update_machine', StoreController::class, 'updateMachine', ['auth']);
+$router->add('delete_machine', StoreController::class, 'deleteMachine', ['auth']);
 $router->add('store_names', StoreController::class, 'storeName', ['auth']);
 
 // Setting Controller
