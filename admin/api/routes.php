@@ -55,6 +55,7 @@ $router->add('item_price', OrderController::class, 'fullPrice', ['auth']);
 $router->add('create_order_item', OrderController::class, 'createItem', ['auth']);
 $router->add('delete_order_item', OrderController::class, 'deleteItem', ['auth']);
 $router->add('full_price_item', OrderController::class, 'fullPrice', ['auth']);
+$router->add('update_maklun', OrderController::class, 'updateMaklun', ['auth']);
 // Project
 $router->add('update_project', OrderController::class, 'updateProject', ['auth']);
 // Note

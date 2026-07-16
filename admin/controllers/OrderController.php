@@ -940,4 +940,14 @@ class OrderController {
         }
     }
 
+    public function updateMaklun(){
+        $data = (object) ['store_id_maklun' => $_POST['store_id'] ?? 0, 'order_item_id' => $_POST['order_item_id'] ?? 0];
+
+        if ($this->orderModel->updateMaklun($data)) {
+            send_json_response(true, 'Maklun updated successfully.');
+        } else {
+            send_json_response(false, 'Failed to update Maklun.');
+        }
+    }
+
 }

@@ -10,170 +10,163 @@ $end_date_f   = $_GET['end_date'] ?? date('Y-m-d');
 $start_date = $start_date_f . ' 00:00:00';
 $end_date   = $end_date_f . ' 23:59:59';
 
-$sqlMaklunan = "
-SELECT
-    oi.order_item_id,
-    oi.judul,
-    oi.product_id,
-    oi.size,
-    oi.quantity,
-    oi.finishing,
-    o.store_id,
-    o.date
-FROM order_items oi
-JOIN orders o ON o.order_id = oi.order_id
-WHERE
-    oi.maklun = ?
-    AND o.date BETWEEN ? AND ?
-ORDER BY  o.date ASC
-";
-
-$stmtMaklunan = $koneksi->prepare($sqlMaklunan);
+$stmtMaklunan = $koneksi->prepare("
+  SELECT
+      oi.order_item_id, oi.judul, oi.product_id, oi.size, oi.quantity, oi.finishing,
+      o.store_id, o.date,
+      p.name AS product_name, p.unit_type, p.reasonable_price,
+      c.name AS category,
+      s.name AS branch_name
+  FROM order_items oi
+  JOIN orders o ON o.order_id = oi.order_id
+  LEFT JOIN products p ON p.product_id = oi.product_id
+  LEFT JOIN categories c ON c.category_id = p.category_id
+  LEFT JOIN stores s ON s.store_id = o.store_id
+  WHERE oi.maklun = ? AND o.date BETWEEN ? AND ? ORDER BY o.date ASC
+  ");
 $stmtMaklunan->bind_param("iss", $store_id, $start_date, $end_date);
 $stmtMaklunan->execute();
 $dataMaklunMasuk = $stmtMaklunan->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmtMaklunan->close();
 
-$sqlNgemaklun = "
-SELECT
-    oi.order_item_id,
-    oi.judul,
-    oi.maklun,
-    oi.product_id,
-    oi.size,
-    oi.quantity,
-    oi.finishing,
-    o.date
-FROM order_items oi
-JOIN orders o ON o.order_id = oi.order_id
-WHERE
-    o.store_id = ?
-    AND oi.maklun != 0
-    AND o.date BETWEEN ? AND ?
-ORDER BY  o.date ASC
-";
-
-$stmtNgemaklun = $koneksi->prepare($sqlNgemaklun);
+$stmtNgemaklun = $koneksi->prepare("
+  SELECT
+      oi.order_item_id, oi.judul, oi.maklun, oi.product_id, oi.size, oi.quantity, oi.finishing,
+      o.date,
+      p.name AS product_name, p.unit_type, p.reasonable_price,
+      c.name AS category,
+      s.name AS branch_name
+  FROM order_items oi
+  JOIN orders o ON o.order_id = oi.order_id
+  LEFT JOIN products p ON p.product_id = oi.product_id
+  LEFT JOIN categories c ON c.category_id = p.category_id
+  LEFT JOIN stores s ON s.store_id = oi.maklun
+  WHERE o.store_id = ? AND oi.maklun != 0 AND o.date BETWEEN ? AND ? ORDER BY o.date ASC
+  ");
 $stmtNgemaklun->bind_param("iss", $store_id, $start_date, $end_date);
 $stmtNgemaklun->execute();
 $dataMaklunKeluar = $stmtNgemaklun->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmtNgemaklun->close();
 
-function getFinishingReasonablePrice(string $finishing_ids, $size, mysqli $koneksi): int {
-    if ($finishing_ids === '-' || empty($finishing_ids)) {
-        return 0;
-    }
-
-    $total = 0;
-    $ids = explode(',', $finishing_ids);
-
-    foreach ($ids as $fid) {
-        $fid = trim($fid);
-        if (ctype_digit($fid)) {
-          $ketProduct = $koneksi->prepare('SELECT reasonable_price, unit_type FROM products WHERE product_id = ?');
-          $ketProduct->bind_param('i', $fid);
-          $ketProduct->execute();
-          $keterangan = $ketProduct->get_result()->fetch_assoc();
-          $harga = (int)$keterangan['reasonable_price'];
-          
-          $total += $harga;
+$all_finishing_ids = [];
+foreach (array_merge($dataMaklunMasuk, $dataMaklunKeluar) as $row) {
+    if (!empty($row['finishing']) && $row['finishing'] !== '-') {
+        $ids = explode(',', $row['finishing']);
+        foreach ($ids as $id) {
+            $clean_id = trim($id);
+            if (ctype_digit($clean_id)) {
+                $all_finishing_ids[$clean_id] = true;
+            }
         }
     }
-
-    return $total;
 }
 
-function getSatuanHarga($product_id, $size, $finishing, $koneksi){
-  if ($product_id == 0 ) {
-    return 0;
-  }
+$finishing_names_map = [];
+$finishing_prices_map = [];
 
-  $ketProduct = $koneksi->prepare('SELECT type, name, unit_type, reasonable_price FROM products WHERE product_id = ?');
-  $ketProduct->bind_param('i', $product_id);
-  $ketProduct->execute();
-  $keterangan = $ketProduct->get_result()->fetch_assoc();
+if (!empty($all_finishing_ids)) {
+    $ids_array = array_keys($all_finishing_ids);
+    $placeholders = implode(',', array_fill(0, count($ids_array), '?'));
+    $types = str_repeat('i', count($ids_array));
 
-  $unit_type = $keterangan['unit_type'];
-  $type = $keterangan['type'];
-  $reasonable_price = (int)$keterangan['reasonable_price'];
-  $product_name = $keterangan['name'];
-  $finishing_price = getFinishingReasonablePrice($finishing, $size, $koneksi);
-  $hargaSatuan = 0;
-  
-  if ($product_id != 0) {
-    if ($unit_type == 'M2') {
-      if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $size, $match)) {
-        $p = floatval($match[1]);
-        $l = floatval($match[2]);
-        if ($keterangan['type'] == 'DTF') {
-          $hargaSatuan = $p * ((float)$reasonable_price += $finishing_price);
-        } else {
-          $hargaSatuan = $p * $l * ((float)$reasonable_price += $finishing_price);
-        }
-      }
-    } elseif ($unit_type == 'PCS') {
-      $hargaSatuan += (float)$reasonable_price += $finishing_price;
-      if($type == 'JERSEY'){
-        $harga_jersey = 0;
-        if ($size === '5XL') {
-            $harga_jersey += 40000;
-        } elseif ($size === '4XL') {
-            $harga_jersey += 30000;
-        } elseif ($size === '3XL') {
-            $harga_jersey += 20000;
-        } elseif ($size === '2XL') {
-            $harga_jersey += 10000;
-        }
-        $hargaSatuan += $harga_jersey;
-      } elseif ($type == 'SUBLIM' && str_contains($product_name, 'BAHAN')) {
-        $kata = explode(" ", $size);
-        $hargaSatuan *= (float)$kata[0];
-      }
-    } elseif ($product_name == 'POTONG AKRILIK') {
-        $hargaSatuan += (float)$reasonable_price += $finishing_price;
-        $kata = explode(" ", $size);
-        $hargaSatuan *= (float)$kata[0];
+    $stmtF = $koneksi->prepare("SELECT finishing_id, name FROM finishings WHERE finishing_id IN ($placeholders)");
+    $stmtF->bind_param($types, ...$ids_array);
+    $stmtF->execute();
+    $resF = $stmtF->get_result();
+    while ($rF = $resF->fetch_assoc()) {
+        $finishing_names_map[$rF['finishing_id']] = $rF['name'];
     }
-  }
-  return $hargaSatuan;
+    $stmtF->close();
+
+    $stmtP = $koneksi->prepare("SELECT product_id, reasonable_price FROM products WHERE product_id IN ($placeholders)");
+    $stmtP->bind_param($types, ...$ids_array);
+    $stmtP->execute();
+    $resP = $stmtP->get_result();
+    while ($rP = $resP->fetch_assoc()) {
+        $finishing_prices_map[$rP['product_id']] = (int)$rP['reasonable_price'];
+    }
+    $stmtP->close();
 }
 
-function getBranchName(int $ambilStore, mysqli $koneksi) {
-  $stmtBranch = $koneksi->prepare("SELECT name FROM stores WHERE store_id = ?");
-  $stmtBranch->bind_param("i", $ambilStore);
-  $stmtBranch->execute();
-  $resultBranch = $stmtBranch->get_result();
-  $branch = $resultBranch->fetch_assoc();
-  $branchName = $branch['name'] ?? 'Nama Toko';
-  $stmtBranch->close();
-  return $branchName;
+function processMaklunData(&$dataArray, $finishing_names_map, $finishing_prices_map) {
+    foreach ($dataArray as &$row) {
+        $finishing_price = 0;
+        $f_names = [];
+
+        if (!empty($row['finishing']) && $row['finishing'] !== '-') {
+            $ids = explode(',', $row['finishing']);
+            foreach ($ids as $id) {
+                $clean_id = trim($id);
+                if (isset($finishing_names_map[$clean_id])) {
+                    $f_names[] = $finishing_names_map[$clean_id];
+                }
+                if (isset($finishing_prices_map[$clean_id])) {
+                    $finishing_price += $finishing_prices_map[$clean_id];
+                }
+            }
+        }
+        $row['finishing_names_str'] = !empty($f_names) ? implode(', ', $f_names) : '-';
+
+        $hargaSatuan = 0;
+        if (!empty($row['product_id']) && $row['product_id'] != 0) {
+            $unit_type = $row['unit_type'] ?? '';
+            $type = $row['category'] ?? '';
+            $product_name = $row['product_name'] ?? '';
+            $reasonable_price = (float)($row['reasonable_price'] ?? 0);
+            $size = $row['size'] ?? '';
+            
+            $base_price_plus_finishing = $reasonable_price + $finishing_price;
+
+            if ($unit_type === 'M2') {
+                if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $size, $match)) {
+                    $p = floatval($match[1]);
+                    $l = floatval($match[2]);
+                    if ($type === 'DTF') {
+                        $hargaSatuan = $p * $base_price_plus_finishing;
+                    } else {
+                        $hargaSatuan = $p * $l * $base_price_plus_finishing;
+                    }
+                }
+            } elseif ($unit_type === 'PCS') {
+                $hargaSatuan = $base_price_plus_finishing;
+                
+                if ($type === 'JERSEY') {
+                    $harga_jersey = 0;
+                    if ($size === '5XL') {
+                        $harga_jersey += 50000;
+                    } elseif ($size === '4XL') {
+                        $harga_jersey += 40000;
+                    } elseif ($size === '3XL') {
+                        $harga_jersey += 30000;
+                    } elseif ($size === '2XL') {
+                        $harga_jersey += 20000;
+                    } elseif ($size === 'XL') {
+                        $harga_jersey += 10000;
+                    }
+                    $hargaSatuan += $harga_jersey;
+                } elseif ($type === 'SUBLIM' && str_contains((string)$product_name, 'BAHAN')) {
+                    $kata = explode(" ", $size);
+                    if (isset($kata[0]) && is_numeric($kata[0])) {
+                        $hargaSatuan *= (float)$kata[0];
+                    }
+                }
+            } elseif ($product_name === 'POTONG AKRILIK') {
+                $hargaSatuan = $base_price_plus_finishing;
+                $kata = explode(" ", $size);
+                if (isset($kata[0]) && is_numeric($kata[0])) {
+                    $hargaSatuan *= (float)$kata[0];
+                }
+            }
+        }
+        
+        $row['harga_satuan_calc'] = $hargaSatuan;
+        $row['jumlah_harga_calc'] = $hargaSatuan * (float)($row['quantity'] ?? 0);
+    }
 }
 
-function getFinishingNames($finishing, mysqli $koneksi){
-  $finishing_ids = array_filter(array_map('intval', explode(',', $finishing)));
-  if (!empty($finishing_ids)) {
-      $placeholders = implode(',', array_fill(0, count($finishing_ids), '?'));
-      $types = str_repeat('i', count($finishing_ids));
-      $sqlF = "SELECT product_id, name FROM products WHERE product_id IN ($placeholders)";
-      $stmtF = $koneksi->prepare($sqlF);
+processMaklunData($dataMaklunMasuk, $finishing_names_map, $finishing_prices_map);
+processMaklunData($dataMaklunKeluar, $finishing_names_map, $finishing_prices_map);
 
-      if ($stmtF) {
-          $stmtF->bind_param($types, ...$finishing_ids);
-          $stmtF->execute();
-          $resF = $stmtF->get_result();
-          $all_names = [];
-
-          while ($rF = $resF->fetch_assoc()) {
-              $name = $rF['name'];
-              $all_names[] = $name;
-          }
-          $stmtF->close();
-
-          $finishing_names = implode(', ', $all_names);
-          return $finishing_names;
-      }
-  } else {
-    return '-';
-  }
-}
 ?>
 
 <!DOCTYPE html>
@@ -211,32 +204,11 @@ function getFinishingNames($finishing, mysqli $koneksi){
               ['header' => 'No', 'type' => 'number'],
               ['header' => 'Judul', 'field' => 'judul'],
               ['header' => 'Ukuran', 'field' => 'size'],
-              [
-                  'header' => 'Finishing',
-                  'render' => function($row) use ($koneksi) {
-                      return getFinishingNames($row['finishing'], $koneksi);
-                  }
-              ],
+              ['header' => 'Finishing', 'field' => 'finishing_names_str'],
               ['header' => 'Qty', 'field' => 'quantity'],
-              [
-                  'header' => 'Satuan',
-                  'render' => function($row) use ($koneksi) {
-                      return getSatuanHarga($row['product_id'], $row['size'], $row['finishing'], $koneksi);
-                  }
-              ],
-              [
-                  'header' => 'Jumlah',
-                  'render' => function($row) use ($koneksi) {
-                      $satuan = getSatuanHarga($row['product_id'], $row['size'], $row['finishing'], $koneksi);
-                      return $satuan * $row['quantity'];
-                  }
-              ],
-              [
-                  'header' => 'Dari Cabang',
-                  'render' => function($row) use ($koneksi) {
-                      return getBranchName($row['store_id'], $koneksi);
-                  }
-              ],
+              ['header' => 'Satuan', 'field' => 'harga_satuan_calc'],
+              ['header' => 'Jumlah', 'field' => 'jumlah_harga_calc'],
+              ['header' => 'Dari Cabang', 'field' => 'branch_name'],
               [
                   'header' => 'Tanggal',
                   'render' => function($row) {
@@ -254,32 +226,11 @@ function getFinishingNames($finishing, mysqli $koneksi){
               ['header' => 'No', 'type' => 'number'],
               ['header' => 'Judul', 'field' => 'judul'],
               ['header' => 'Ukuran', 'field' => 'size'],
-              [
-                  'header' => 'Finishing',
-                  'render' => function($row) use ($koneksi) {
-                      return getFinishingNames($row['finishing'], $koneksi);
-                  }
-              ],
+              ['header' => 'Finishing', 'field' => 'finishing_names_str'],
               ['header' => 'Qty', 'field' => 'quantity'],
-              [
-                  'header' => 'Satuan',
-                  'render' => function($row) use ($koneksi) {
-                      return getSatuanHarga($row['product_id'], $row['size'], $row['finishing'], $koneksi);
-                  }
-              ],
-              [
-                  'header' => 'Jumlah',
-                  'render' => function($row) use ($koneksi) {
-                      $satuan = getSatuanHarga($row['product_id'], $row['size'], $row['finishing'], $koneksi);
-                      return $satuan * $row['quantity'];
-                  }
-              ],
-              [
-                  'header' => 'Ke Cabang',
-                  'render' => function($row) use ($koneksi) {
-                      return getBranchName($row['maklun'], $koneksi);
-                  }
-              ],
+              ['header' => 'Satuan', 'field' => 'harga_satuan_calc'],
+              ['header' => 'Jumlah', 'field' => 'jumlah_harga_calc'],
+              ['header' => 'Ke Cabang', 'field' => 'branch_name'],
               [
                   'header' => 'Tanggal',
                   'render' => function($row) {
