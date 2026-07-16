@@ -2,11 +2,16 @@
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
-$allowedOrigins = ["http://localhost:51730", "http://localhost:5173"];
+$allowedOrigins = [
+	"http://localhost:51730",
+	"http://localhost:5173",
+	"https://mgood.my.id",
+];
 
 if (in_array($origin, $allowedOrigins, true)) {
 	header("Access-Control-Allow-Origin: {$origin}");
 	header("Access-Control-Allow-Credentials: true");
+	header("Vary: Origin");
 }
 
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");

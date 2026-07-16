@@ -32,14 +32,15 @@ $stmt = $koneksi->prepare("
 ");
 $stmt->bind_param("ssiss", $today, $today, $store_id, $startMonth, $endMonth);
 $stmt->execute();
-$stmt->bind_result($jumlahPaymentHarian, $pendapatanHarian, $jumlahPaymentBulanan, $pendapatanBulanan, $cashTotal, $tfTotal);
-$stmt->fetch();
+$row = $stmt->get_result()->fetch_assoc() ?? [];
 $stmt->close();
 
-$pendapatanHarian = (int)$pendapatanHarian;
-$pendapatanBulanan = (int)$pendapatanBulanan;
-$cashTotal = (int)$cashTotal;
-$tfTotal = (int)$tfTotal;
+$jumlahPaymentHarian = (int)($row['jml_harian'] ?? 0);
+$pendapatanHarian = (int)($row['nom_harian'] ?? 0);
+$jumlahPaymentBulanan = (int)($row['jml_bulanan'] ?? 0);
+$pendapatanBulanan = (int)($row['nom_bulanan'] ?? 0);
+$cashTotal = (int)($row['cash_total'] ?? 0);
+$tfTotal = (int)($row['tf_total'] ?? 0);
 
 $product_ids = [];
 $stmt = $koneksi->prepare("
@@ -56,34 +57,45 @@ $stmt = $koneksi->prepare("
 ");
 $stmt->bind_param("iss", $store_id, $startMonth, $endMonth);
 $stmt->execute();
-$stmt->bind_result($pid, $prod_name, $qty, $omset);
+$rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 
-while ($stmt->fetch()) {
+foreach ($rows as $row) {
+    $pid = (int)$row['product_id'];
+    $prod_name = $row['name'];
+    $qty = (int)$row['total_qty'];
+    $omset = (int)$row['total_omset'];
+
     $product_ids[] = $pid;
-    
+
     if (count($digunakan_short) < 3) {
         $digunakan_short[] = $prod_name;
     }
 
-    $total_qty_all_products += (int)$qty;
-    if ((int)$qty > $max_qty) {
-        $max_qty = (int)$qty;
+    $total_qty_all_products += $qty;
+
+    if ($qty > $max_qty) {
+        $max_qty = $qty;
         $top_product_name = $prod_name;
     }
 
-    $totalOmsetSemuaProduk += (int)$omset;
-    if ((int)$omset > $topSalesOmset) {
-        $topSalesOmset = (int)$omset;
+    $totalOmsetSemuaProduk += $omset;
+
+    if ($omset > $topSalesOmset) {
+        $topSalesOmset = $omset;
         $topSalesName = $prod_name;
     }
 }
-$stmt->close();
 
 $not_in = !empty($product_ids) ? implode(',', array_map('intval', $product_ids)) : '0';
-$q = "SELECT name FROM products WHERE store_id = $store_id AND product_id NOT IN ($not_in) LIMIT 3";
-$r = $koneksi->query($q);
-while ($d = $r->fetch_assoc()) {
-    $tidak_short[] = $d['name'];
+$stmt = $koneksi->prepare("SELECT name FROM products WHERE store_id = ? AND product_id NOT IN ($not_in) LIMIT 3");
+$stmt->bind_param("i", $store_id);
+$stmt->execute();
+$rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
+
+foreach ($rows as $row) {
+    $tidak_short[] = $row['name'];
 }
 
 $stmt = $koneksi->prepare("
@@ -111,9 +123,11 @@ $total_hutang = (int)$total_hutang;
 $stmt = $koneksi->prepare("SELECT omset_offline, omset_online FROM finance WHERE store_id=? ORDER BY date DESC LIMIT 1");
 $stmt->bind_param("i", $store_id);
 $stmt->execute();
-$stmt->bind_result($omset_offline, $omset_online);
-$stmt->fetch();
+$row = $stmt->get_result()->fetch_assoc() ?? [];
 $stmt->close();
+
+$omset_offline = (int)($row['omset_offline'] ?? 0);
+$omset_online = (int)($row['omset_online'] ?? 0);
 
 $stmt = $koneksi->prepare("
     SELECT u.name FROM projects p
@@ -124,10 +138,10 @@ $stmt = $koneksi->prepare("
 ");
 $stmt->bind_param("iss", $store_id, $startMonth, $endMonth);
 $stmt->execute();
-if ($stmt->fetch()) {
-    $topUserName = $stmt->bind_result($name) ? $name : $topUserName;
-}
+$row = $stmt->get_result()->fetch_assoc() ?? [];
 $stmt->close();
+
+$topUserName = $row['name'] ?? '-';
 
 $stmt = $koneksi->prepare("
     SELECT u.name FROM orders o
@@ -138,10 +152,10 @@ $stmt = $koneksi->prepare("
 ");
 $stmt->bind_param("iss", $store_id, $startMonth, $endMonth);
 $stmt->execute();
-if ($stmt->fetch()) {
-    $topKonsumenName = $stmt->bind_result($name) ? $name : $topKonsumenName;
-}
+$row = $stmt->get_result()->fetch_assoc() ?? [];
 $stmt->close();
+
+$topKonsumenName = $row['name'] ?? '-';
 ?>
 
 <!DOCTYPE html>

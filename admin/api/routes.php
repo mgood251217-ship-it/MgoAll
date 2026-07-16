@@ -83,6 +83,7 @@ $router->add('delete_Tf', FinanceController::class, 'deleteTf', ['auth']);
 $router->add('synn_finance', FinanceController::class, 'syncFinanceInterval', ['auth']);
 
 // Report Controller
+$router->add('report', ReportController::class, 'index', ['auth']);
 $router->add('all_detail_order', ReportController::class, 'allDetailOrderByIntervalDate', ['auth']);
 $router->add('piutang', ReportController::class, 'piutang', ['auth']);
 $router->add('transactions_capture', ReportController::class, 'transactionsCapture', ['auth']);

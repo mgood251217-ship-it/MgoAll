@@ -84,18 +84,26 @@ function setUserSession($user, $storeName, $storeAddress, $storeLogo, $mode)
 function setUserCookie($user, $storeName, $storeAddress, $storeLogo, $mode)
 {
     $expire = time() + (1 * 24 * 60 * 60);
-    $path   = '/';
 
-    setcookie('user_user_id', startEnk('enk', $user['user_id']), $expire, $path, "", true, true);
-    setcookie('user_username', startEnk('enk', $user['username']), $expire, $path, "", true, true);
-    setcookie('user_name', startEnk('enk', $user['name']), $expire, $path, "", true, true);
-    setcookie('user_initial', startEnk('enk', $user['initial']), $expire, $path, "", true, true);
-    setcookie('user_store_id', startEnk('enk', $user['store_id']), $expire, $path, "", true, true);
-    setcookie('user_role', startEnk('enk', $user['role']), $expire, $path, "", true, true);
-    setcookie('user_foto', startEnk('enk', $user['picture']), $expire, $path, "", true, true);
+    $options = [
+        'expires'  => $expire,
+        'path'     => '/',
+        'domain'   => '',
+        'secure'   => true,
+        'httponly' => true,
+        'samesite' => 'None',
+    ];
 
-    setcookie('store_name', startEnk('enk', $storeName), $expire, $path, "", true, true);
-    setcookie('store_address', startEnk('enk', $storeAddress), $expire, $path, "", true, true);
-    setcookie('store_logo', startEnk('enk', $storeLogo), $expire, $path, "", true, true);
-    setcookie('user_mode', startEnk('enk', $mode), $expire, $path, "", true, true);
+    setcookie('user_user_id', startEnk('enk', $user['user_id']), $options);
+    setcookie('user_username', startEnk('enk', $user['username']), $options);
+    setcookie('user_name', startEnk('enk', $user['name']), $options);
+    setcookie('user_initial', startEnk('enk', $user['initial']), $options);
+    setcookie('user_store_id', startEnk('enk', $user['store_id']), $options);
+    setcookie('user_role', startEnk('enk', $user['role']), $options);
+    setcookie('user_foto', startEnk('enk', $user['picture']), $options);
+
+    setcookie('store_name', startEnk('enk', $storeName), $options);
+    setcookie('store_address', startEnk('enk', $storeAddress), $options);
+    setcookie('store_logo', startEnk('enk', $storeLogo), $options);
+    setcookie('user_mode', startEnk('enk', $mode), $options);
 }

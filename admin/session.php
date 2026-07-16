@@ -1,5 +1,11 @@
 <?php
-session_start();
+ini_set('session.cookie_samesite', 'None');
+ini_set('session.cookie_secure', 1);
+ini_set('session.cookie_httponly', 1);
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once BASE_PATH . '/functions/helpers.php';
 require_once BASE_PATH . '/connect.php';
 global $koneksi;

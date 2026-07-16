@@ -572,8 +572,6 @@ document.getElementById('addFinishingForm')?.addEventListener('submit', function
     body: formData
   }).then(response => response.json())
   .then(data => {
-    console.log(formData);
-    
     if (data.success) {
       showAlert('success', data.message);
       refreshTable();

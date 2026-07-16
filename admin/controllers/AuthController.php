@@ -13,6 +13,9 @@ class AuthController {
     }
 
     public function session(){
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         if (!self::checkSession()) {
             Response::error('Belum login.', 401);
         }
@@ -88,22 +91,42 @@ class AuthController {
         date_default_timezone_set('Asia/Jakarta');
         $date = date("Y-m-d H:i:s");
 
-        $secret_key = "6LegPm0sAAAAAD028ehVM8ZVd1yn_cXLN2rNEkDA";
-        $is_localhost = in_array($_SERVER['HTTP_HOST'], ['localhost', '127.0.0.1', '::1']);
+        $secret_key = "6LfKclYtAAAAAKEHLpfWAOv_riDy4PJOtleE0Pw9";
+        $is_localhost = isLocalhostRequest();
 
         if (!$is_localhost) {
             if (empty($recaptcha_response)) {
                 send_json_response(false, "reCAPTCHA tidak valid!");
                 exit;
-            } else {
-                $verify_url = "https://www.google.com/recaptcha/api/siteverify";
-                $response = file_get_contents($verify_url . "?secret=" . $secret_key . "&response=" . $recaptcha_response);
-                $response_keys = json_decode($response, true);
+            }
 
-                if (!$response_keys['success'] || $response_keys['score'] < 0.5 || $response_keys['action'] !== 'login') {
-                    send_json_response(false, "Aktivitas mencurigakan terdeteksi!");
-                    exit;
-                }
+            $verify_url = "https://www.google.com/recaptcha/api/siteverify";
+            $context = stream_context_create([
+                'http' => ['timeout' => 5]
+            ]);
+            $response = @file_get_contents(
+                $verify_url . "?secret=" . $secret_key . "&response=" . urlencode($recaptcha_response),
+                false,
+                $context
+            );
+
+            if ($response === false) {
+                send_json_response(false, "Gagal memverifikasi reCAPTCHA. Coba lagi.");
+                exit;
+            }
+
+            $response_keys = json_decode($response, true);
+
+            if (
+                !is_array($response_keys) ||
+                empty($response_keys['success']) ||
+                !isset($response_keys['score']) ||
+                $response_keys['score'] < 0.5 ||
+                !isset($response_keys['action']) ||
+                $response_keys['action'] !== 'login'
+            ) {
+                send_json_response(false, "Aktivitas mencurigakan terdeteksi!");
+                exit;
             }
         }
 
@@ -113,7 +136,7 @@ class AuthController {
 
             if (password_verify($password, $userAuth['password'])) {
                 $fullUserData = $this->userModel->getUserByUsername($username_input);
-                
+
                 setInfo($fullUserData, $dataStore);
                 insertActivity($fullUserData['user_id'], $address, $date);
 
@@ -127,7 +150,6 @@ class AuthController {
             send_json_response(false, "Username atau password salah!");
             exit;
         }
-        
     }
 
     public static function logout() {

@@ -16,7 +16,7 @@ class ProductController {
         $data->id               = $_POST['product_id'] ?? 0;
         $data->finishing_id     = $_POST['finishing_id'] ?? 0;
         $data->store_id         = $store_id ?? 0;
-        $data->category_id      = $_POST['category_id'] ?? '';
+        $data->category_id      = $_POST['category_id'] ?? 0;
         $data->name             = $_POST['name'] ?? '';
         $data->price            = $_POST['price'] ?? '';
         $data->unit             = $_POST['unit_type'] ?? '';

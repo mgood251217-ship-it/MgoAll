@@ -10,8 +10,8 @@ if (AuthController::checkSession()) {
     exit;
 }
 
-$site_key   = "6LegPm0sAAAAACMlVF_Q0hQmj2cRMXNl2Pj8pldB";
-$is_localhost = in_array($_SERVER['HTTP_HOST'], ['localhost', '192.168.100.110', '127.0.0.1', '::1']);
+$site_key   = "6LfKclYtAAAAAD9zWKtWXNNl-n3hahu0GmNXthVE";
+$is_localhost = isLocalhostRequest();
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -297,7 +297,7 @@ $is_localhost = in_array($_SERVER['HTTP_HOST'], ['localhost', '192.168.100.110',
                         <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response">
                         <?php endif; ?>
 
-                        <button type="submit" >Login</button>
+                        <button type="submit" >Login</button> 
                     </form>
                 </div>
             </div>

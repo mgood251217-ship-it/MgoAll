@@ -27,6 +27,184 @@ class ReportController {
         $this->activityModel = new Activity($koneksi);
     }
     
+    public function index(){
+        global $store_id;
+
+        $startMonth  = date('Y-m-01 00:00:00');
+        $endMonth    = date('Y-m-t 23:59:59');
+        $today       = date('Y-m-d');
+
+        $cashTotal = $tfTotal = $jumlahPaymentHarian = $jumlahPaymentBulanan = 0;
+        $pendapatanHarian = $pendapatanBulanan = $total_qty_all_products = 0;
+        $max_qty = $totalOmsetSemuaProduk = $topSalesOmset = 0;
+        $jumlah_pelanggan_belum_bayar = $total_hutang = $omset_offline = $omset_online = 0;
+
+        $top_product_name = $topSalesName = $topUserName = $topKonsumenName = '-';
+
+        $digunakan_short = [];
+        $tidak_short = [];
+
+        $stmt = $this->koneksi->prepare("
+            SELECT 
+                SUM(CASE WHEN DATE(p.date) = ? THEN 1 ELSE 0 END) AS jml_harian,
+                SUM(CASE WHEN DATE(p.date) = ? THEN p.nominal ELSE 0 END) AS nom_harian,
+                COUNT(p.payment_id) AS jml_bulanan,
+                SUM(p.nominal) AS nom_bulanan,
+                SUM(CASE WHEN UPPER(p.payment_method) = 'CASH' THEN p.nominal ELSE 0 END) AS cash_total,
+                SUM(CASE WHEN UPPER(p.payment_method) IN ('TF', 'TRANSFER') THEN p.nominal ELSE 0 END) AS tf_total
+            FROM payment p
+            JOIN orders o ON p.order_id = o.order_id
+            WHERE o.store_id = ? AND p.date BETWEEN ? AND ?
+        ");
+        $stmt->bind_param("ssiss", $today, $today, $store_id, $startMonth, $endMonth);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc() ?? [];
+        $stmt->close();
+
+        $jumlahPaymentHarian = (int)($row['jml_harian'] ?? 0);
+        $pendapatanHarian = (int)($row['nom_harian'] ?? 0);
+        $jumlahPaymentBulanan = (int)($row['jml_bulanan'] ?? 0);
+        $pendapatanBulanan = (int)($row['nom_bulanan'] ?? 0);
+        $cashTotal = (int)($row['cash_total'] ?? 0);
+        $tfTotal = (int)($row['tf_total'] ?? 0);
+
+        $product_ids = [];
+        $stmt = $this->koneksi->prepare("
+            SELECT 
+                p.product_id,
+                p.name, 
+                SUM(oi.quantity) AS total_qty,
+                SUM(CASE WHEN p.unit_type <> '~' THEN oi.amount ELSE 0 END) AS total_omset
+            FROM order_items oi
+            JOIN orders o ON oi.order_id = o.order_id
+            JOIN products p ON p.product_id = oi.product_id
+            WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
+            GROUP BY p.product_id, p.name
+        ");
+        $stmt->bind_param("iss", $store_id, $startMonth, $endMonth);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        foreach ($rows as $row) {
+            $pid = (int)$row['product_id'];
+            $prod_name = $row['name'];
+            $qty = (int)$row['total_qty'];
+            $omset = (int)$row['total_omset'];
+
+            $product_ids[] = $pid;
+
+            if (count($digunakan_short) < 3) {
+                $digunakan_short[] = $prod_name;
+            }
+
+            $total_qty_all_products += $qty;
+
+            if ($qty > $max_qty) {
+                $max_qty = $qty;
+                $top_product_name = $prod_name;
+            }
+
+            $totalOmsetSemuaProduk += $omset;
+
+            if ($omset > $topSalesOmset) {
+                $topSalesOmset = $omset;
+                $topSalesName = $prod_name;
+            }
+        }
+
+        $not_in = !empty($product_ids) ? implode(',', array_map('intval', $product_ids)) : '0';
+        $stmt = $this->koneksi->prepare("SELECT name FROM products WHERE store_id = ? AND product_id NOT IN ($not_in) LIMIT 3");
+        $stmt->bind_param("i", $store_id);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        foreach ($rows as $row) {
+            $tidak_short[] = $row['name'];
+        }
+
+        $stmt = $this->koneksi->prepare("
+            SELECT 
+                COUNT(CASE WHEN IFNULL(p.lunas, 0) = 0 AND o.total > IFNULL(p.total_dp, 0) THEN 1 END),
+                SUM(CASE WHEN IFNULL(p.lunas, 0) = 0 AND o.total > IFNULL(p.total_dp, 0) THEN (o.total - IFNULL(p.total_dp, 0)) ELSE 0 END)
+            FROM orders o
+            LEFT JOIN (
+                SELECT order_id, 
+                    SUM(CASE WHEN status='DP' THEN nominal ELSE 0 END) AS total_dp,
+                    MAX(CASE WHEN status='LUNAS' THEN 1 ELSE 0 END) AS lunas
+                FROM payment GROUP BY order_id
+            ) p ON p.order_id = o.order_id
+            WHERE o.store_id = ?
+        ");
+        $stmt->bind_param("i", $store_id);
+        $stmt->execute();
+        $stmt->bind_result($jumlah_pelanggan_belum_bayar, $total_hutang);
+        $stmt->fetch();
+        $stmt->close();
+
+        $jumlah_pelanggan_belum_bayar = (int)$jumlah_pelanggan_belum_bayar;
+        $total_hutang = (int)$total_hutang;
+
+        $stmt = $this->koneksi->prepare("SELECT omset_offline, omset_online FROM finance WHERE store_id=? ORDER BY date DESC LIMIT 1");
+        $stmt->bind_param("i", $store_id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc() ?? [];
+        $stmt->close();
+
+        $omset_offline = (int)($row['omset_offline'] ?? 0);
+        $omset_online = (int)($row['omset_online'] ?? 0);
+
+        $stmt = $this->koneksi->prepare("
+            SELECT u.name FROM projects p
+            JOIN users u ON p.user_id = u.user_id
+            WHERE u.store_id=? AND p.process='DIAMBIL' AND p.date BETWEEN ? AND ?
+            GROUP BY p.user_id
+            ORDER BY COUNT(*) DESC LIMIT 1
+        ");
+        $stmt->bind_param("iss", $store_id, $startMonth, $endMonth);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc() ?? [];
+        $stmt->close();
+
+        $topUserName = $row['name'] ?? '-';
+
+        $stmt = $this->koneksi->prepare("
+            SELECT u.name FROM orders o
+            JOIN users u ON o.user_id=u.user_id
+            WHERE u.store_id=? AND o.date BETWEEN ? AND ?
+            GROUP BY o.user_id
+            ORDER BY COUNT(*) DESC LIMIT 1
+        ");
+        $stmt->bind_param("iss", $store_id, $startMonth, $endMonth);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc() ?? [];
+        $stmt->close();
+
+        $topKonsumenName = $row['name'] ?? '-';
+
+        return [
+            'cashTotal' => $cashTotal,
+            'tfTotal' => $tfTotal,
+            'jumlahPembayaranHarian' => $jumlahPaymentHarian,
+            'jumlahPembayaranBulanan' => $jumlahPaymentBulanan,
+            'omsetHarian' => $pendapatanHarian,
+            'omsetBulanan' => $pendapatanBulanan,
+            'productSold' => $total_qty_all_products,
+            'piutang' => $jumlah_pelanggan_belum_bayar,
+            'totalHutang' => $total_hutang,
+            'omsetOffline' => $omset_offline,
+            'omsetOnline' => $omset_online,
+            'topProductName' => $top_product_name,
+            'topProductQty' => $max_qty,
+            'topSalesName' => $topSalesName,
+            'topSalesOmset' => $topSalesOmset,
+            'topUserName' => $topUserName,
+            'topCustomerName' => $topKonsumenName,
+            'usedItem' => $digunakan_short,
+            'unusedItem' => $tidak_short
+        ];
+    }
 
     public function allDetailOrderByIntervalDate(){
         global $store_id;

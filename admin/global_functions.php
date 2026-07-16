@@ -241,4 +241,9 @@ function refreshFinance($store_id, $date) {
     $stmt->execute();
     $stmt->close();
 }
+
+function isLocalhostRequest() {
+    return in_array($_SERVER['HTTP_HOST'], ['localhost', '192.168.100.110', '127.0.0.1', '::1']);
+}
 ?>
+
