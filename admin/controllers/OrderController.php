@@ -713,8 +713,8 @@ class OrderController {
                 'judul' => $itemData['judul'],
                 'size' => $itemData['size'],
                 'quantity' => $itemData['quantity'],
-                'unit' => $itemData['unit'],
-                'amount' => $itemData['amount'],
+                'unit' => round($itemData['unit'], 2),
+                'amount' => round($itemData['amount'], 2),
                 'finishing_str' => $itemData['finishing_str']
             ];
 
@@ -722,7 +722,7 @@ class OrderController {
             
             if ($rowExist) {
                 $data_item->quantity = $rowExist['quantity'] + $itemData['quantity'];
-                $data_item->amount = $itemData['unit'] * $data_item->quantity;
+                $data_item->amount = round($itemData['unit'] * $data_item->quantity, 2);
                 $data_item->id = $rowExist['order_item_id'];
 
                 if ($this->orderModel->updateOrderItem($data_item)) {
