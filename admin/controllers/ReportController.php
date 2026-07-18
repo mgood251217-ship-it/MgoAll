@@ -233,7 +233,9 @@ class ReportController {
             }
         }
 
-        $produkData = [];
+        $transaksi_konsumen = [];
+        $transaksi_item = [];
+
         foreach ($items as $item) {
             $finishing_names = [];
             if (!empty($item['finishing'])) {
@@ -244,11 +246,17 @@ class ReportController {
                 }
             }
             $item['finishing_names'] = implode(', ', $finishing_names);
-            $produkData[$item['customer_name']][] = $item;
+            
+            $customer = !empty($item['customer_name']) ? $item['customer_name'] : 'Tanpa Nama';
+            $transaksi_konsumen[$customer][] = $item;
+
+            $nama_item = !empty($item['judul']) ? $item['judul'] : 'Item Tidak Diketahui';
+            $transaksi_item[$nama_item][] = $item;
         }
 
         return [
-            'product' => $produkData
+            'transaksi_konsumen' => $transaksi_konsumen,
+            'transaksi_item' => $transaksi_item
         ];
     }
     public function piutang(){
