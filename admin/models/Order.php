@@ -307,7 +307,13 @@ class Order {
     }
 
     public function getDetailedOrderByIntervalDate($store_id, $start_date, $end_date){
-        $stmt = $this->koneksi->prepare("SELECT i.*, o.nomorator, o.customer_name, o.date, o.order_id, p.price, p.name AS product_name
+        $stmt = $this->koneksi->prepare("SELECT i.*, o.nomorator, o.customer_name, o.date, o.order_id, p.price, p.name AS product_name,
+                COALESCE(
+                    (SELECT GROUP_CONCAT(f.name SEPARATOR ' ') 
+                     FROM finishings f
+                     WHERE FIND_IN_SET(f.finishing_id, REPLACE(i.finishing, ' ', '')) > 0
+                    ), '-'
+                ) AS finishing_names
                 FROM order_items i
                 INNER JOIN orders o ON i.order_id = o.order_id
                 LEFT JOIN products p ON i.product_id = p.product_id

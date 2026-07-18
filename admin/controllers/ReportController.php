@@ -212,41 +212,10 @@ class ReportController {
         $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
         $items = $this->orderModel->getDetailedOrderByIntervalDate($store_id, $start_date, $end_date);
 
-        $all_finishing_ids = [];
-        foreach ($items as $item) {
-            if (!empty($item['finishing'])) {
-                foreach (explode(',', $item['finishing']) as $id) {
-                    $all_finishing_ids[$id] = true;
-                }
-            }
-        }
-
-        $finishing_map = [];
-        if (!empty($all_finishing_ids)) {
-            $ids = array_keys($all_finishing_ids);
-            $placeholders = implode(',', array_fill(0, count($ids), '?'));
-
-            $finishing_data = $this->productModel->getProductByPlaceholders($placeholders, $ids);
-            
-            foreach ($finishing_data as $row) {
-                $finishing_map[$row['product_id']] = $row['name'];
-            }
-        }
-
         $transaksi_konsumen = [];
         $transaksi_item = [];
 
         foreach ($items as $item) {
-            $finishing_names = [];
-            if (!empty($item['finishing'])) {
-                foreach (explode(',', $item['finishing']) as $fid) {
-                    if (isset($finishing_map[$fid])) {
-                        $finishing_names[] = $finishing_map[$fid];
-                    }
-                }
-            }
-            $item['finishing_names'] = implode(', ', $finishing_names);
-            
             $customer = !empty($item['customer_name']) ? $item['customer_name'] : 'Tanpa Nama';
             $transaksi_konsumen[$customer][] = $item;
 
@@ -259,6 +228,7 @@ class ReportController {
             'transaksi_item' => $transaksi_item
         ];
     }
+    
     public function piutang(){
         global $store_id;
         $total_hutang = 0;
