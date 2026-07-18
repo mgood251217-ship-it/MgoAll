@@ -13,9 +13,6 @@ class AuthController {
     }
 
     public function session(){
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
         if (!self::checkSession()) {
             Response::error('Belum login.', 401);
         }
