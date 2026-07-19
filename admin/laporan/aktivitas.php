@@ -2,11 +2,10 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
-require_once BASE_PATH . '/models/Activity.php';
+require_once BASE_PATH . '/controllers/ReportController.php';
 
-$activityModel = new Activity($koneksi);
-$activity = $activityModel->getActivitiesByStoreId($store_id);
-
+$reportController = new ReportController($koneksi);
+$activity = $reportController->activity();
 
 $htmlTableAktivitas = renderTable([
     'data'        => $activity,
@@ -103,22 +102,21 @@ $htmlTableAktivitas = renderTable([
     <?php include BASE_PATH . '/sidebar.php'; ?>
 
     <div id="page-content-wrapper">
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="mb-0">Log Aktivitas</h1>
-        <input type="text" id="searchInput" class="form-control" placeholder="Cari Nama Barang..." style="max-width: 250px;">
-      </div>
-      <?php if (empty($activity)): ?>
-        <div class="alert alert-warning">Belum ada aktivitas</div>
-      <?php else: ?>
-        <div class="table-responsive">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <h5>Daftar Aktivitas</h5>
-          <button id="toggleAll" class="btn btn-sm btn-success">✅ Cek Semua</button>
-        </div>
-              <?= $htmlTableAktivitas ?>
-          </div>
+      <?php require 'summary_cards.php'; ?>
 
-      <?php endif; ?>
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">Transaksi per Item</h1>
+        <?php $showExport = true; include BASE_PATH . '/interval_date.php'; ?>
+      </div>
+      <div class="table-responsive">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5>Daftar Aktivitas</h5>
+        <button id="toggleAll" class="btn btn-sm btn-success">✅ Cek Semua</button>
+      </div>
+            <?= $htmlTableAktivitas ?>
+        </div>
+
+
     </div>
   </div>
 

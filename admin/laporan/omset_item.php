@@ -2,15 +2,12 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
-require_once BASE_PATH . '/models/Finance.php';
 require_once BASE_PATH . '/functions/helpers.php';
+require_once BASE_PATH . '/controllers/ReportController.php';
 
-$financeModel = new Finance($koneksi);
+$reportController = new ReportController($koneksi);
 
-$start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
-$end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
-
-$dataOmsetPerItem = $financeModel->getOmsetItemByIntervalDate($store_id, $start_date, $end_date);
+$dataOmsetPerItem = $reportController->omsetItem();
 
 $htmlTableOmsetPerItem = renderTable([
     'id'          => 'omsetPerItem',

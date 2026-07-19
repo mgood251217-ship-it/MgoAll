@@ -34,9 +34,9 @@ class Activity {
         return $success;
     }
 
-    public function getActivitiesByStoreId($id){
-        $stmt = $this->koneksi->prepare("SELECT activity_id, title, message, information, order_id, date, done FROM activity WHERE store_id = ?");
-        $stmt->bind_param("i", $id);
+    public function getActivitiesByStoreId($id, $start_date, $end_date){
+        $stmt = $this->koneksi->prepare("SELECT activity_id, title, message, information, order_id, date, done FROM activity WHERE store_id = ? AND date BETWEEN ? AND ?");
+        $stmt->bind_param("iss", $id, $start_date, $end_date);
         $stmt->execute();
         $result = $stmt->get_result();
         $data = $result->fetch_all(MYSQLI_ASSOC);

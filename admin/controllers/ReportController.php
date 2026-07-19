@@ -5,6 +5,7 @@ require_once BASE_PATH . '/models/Project.php';
 require_once BASE_PATH . '/models/Product.php';
 
 require_once BASE_PATH . '/models/Activity.php';
+require_once BASE_PATH . '/models/Finance.php';
 require_once BASE_PATH . '/models/Payment.php';
 require_once BASE_PATH . '/functions/helpers.php';
 
@@ -16,6 +17,7 @@ class ReportController {
     private $productModel;
     private $paymentModel;
     private $activityModel;
+    private $financeModel;
 
     public function __construct($koneksi) {
         $this->koneksi = $koneksi;
@@ -25,6 +27,7 @@ class ReportController {
         $this->productModel = new Product($koneksi);
         $this->paymentModel = new Payment($koneksi);
         $this->activityModel = new Activity($koneksi);
+        $this->financeModel = new Finance($koneksi);
     }
     
     public function index(){
@@ -641,6 +644,133 @@ class ReportController {
             'paymentsByOrder' => $paymentsByOrder,
             'transfersByOrder' => $transfersByOrder,
             'notesByOrder' => $notesByOrder
+        ];
+
+    }
+
+    public function omsetItem(){
+        global $store_id;
+        $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
+        $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
+
+        $dataOmsetPerItem = $this->financeModel->getOmsetItemByIntervalDate($store_id, $start_date, $end_date);
+        return $dataOmsetPerItem;
+    }
+
+    public function productUsed() {
+        global $store_id;
+        $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
+        $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
+
+        $dataPemakaian = $this->productModel->getMaterialUsageByIntervalDate($store_id, $start_date, $end_date);
+        return $dataPemakaian;
+    }
+
+    public function activity() {
+        global $store_id;
+        $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
+        $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
+
+        $activity = $this->activityModel->getActivitiesByStoreId($store_id, $start_date, $end_date);
+        return $activity;
+    }
+
+    public function statistics(){
+        global $store_id;
+
+        $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
+        $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
+        $users = $this->userModel->getUsersInitial($store_id);
+
+        $receiverCounts = [];
+        $pickupCounts   = [];
+        $settingCounts  = [];
+        $omsetPerUser   = [];
+
+        $stmtOrders = $this->koneksi->prepare("
+            SELECT o.user_id, COUNT(*) as total 
+            FROM orders o
+            WHERE o.store_id = ? AND DATE(o.date) BETWEEN ? AND ?
+            GROUP BY o.user_id
+        ");
+        $stmtOrders->bind_param("iss", $store_id, $start_date, $end_date);
+        $stmtOrders->execute();
+        $resOrders = $stmtOrders->get_result()->fetch_all(MYSQLI_ASSOC);
+        foreach ($resOrders as $row) {
+            if (isset($users[$row['user_id']])) {
+                $receiverCounts[$row['user_id']] = (int)$row['total'];
+            }
+        }
+        $stmtOrders->close();
+
+        $stmtHitung = $this->koneksi->prepare("
+            SELECT p.user_id, COUNT(*) as total 
+            FROM projects p
+            JOIN users u ON p.user_id = u.user_id
+            WHERE u.store_id = ? AND DATE(p.date) BETWEEN ? AND ? AND p.process = 'DIAMBIL'
+            GROUP BY p.user_id
+        ");
+        $stmtHitung->bind_param("iss", $store_id, $start_date, $end_date);
+        $stmtHitung->execute();
+        $resHitung = $stmtHitung->get_result()->fetch_all(MYSQLI_ASSOC);
+        foreach ($resHitung as $row) {
+            if (isset($users[$row['user_id']])) {
+                $pickupCounts[$row['user_id']] = (int)$row['total'];
+            }
+        }
+        $stmtHitung->close();
+
+        $stmtSetting = $this->koneksi->prepare("
+            SELECT o.user_id, COUNT(DISTINCT o.order_id) AS total
+            FROM orders o
+            JOIN order_items oi ON oi.order_id = o.order_id
+            JOIN products p ON p.product_id = oi.product_id
+            WHERE o.store_id = ?
+            AND p.store_id = ?
+            AND p.name = 'SETTING'
+            AND o.date BETWEEN ? AND ?
+            GROUP BY o.user_id
+        ");
+        $stmtSetting->bind_param( "iiss", $store_id, $store_id, $start_date, $end_date);
+
+        $stmtSetting->execute();
+        $resSetting = $stmtSetting->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmtSetting->close();
+
+        foreach ($resSetting as $row) {
+            if (isset($users[$row['user_id']])) {
+                $settingCounts[$row['user_id']] = (int)$row['total'];
+            }
+        }
+
+        $stmt = $this->koneksi->prepare("
+            SELECT p.nominal, p.order_id, o.order_id, o.user_id
+            FROM payment p
+            JOIN orders o
+                ON FIND_IN_SET(o.order_id, p.order_id)
+            WHERE p.store_id = ? AND o.store_id = ? AND p.date BETWEEN ? AND ?
+        ");
+
+        $stmt->bind_param("iiss", $store_id, $store_id, $start_date, $end_date);
+
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        foreach ($result as $row) {
+            $jumlahOrder = substr_count($row['order_id'], ',') + 1;
+            $nominal = $row['nominal'] / $jumlahOrder;
+            if (!isset($omsetPerUser[$row['user_id']])) {
+                $omsetPerUser[$row['user_id']] = 0;
+            }
+            $omsetPerUser[$row['user_id']] += $nominal;
+        }
+        return [
+            'users' => $users,
+            'receiverCounts' => $receiverCounts,
+            'pickupCounts' => $pickupCounts,
+            'settingCounts' => $settingCounts,
+            'omsetPerUser' => $omsetPerUser
         ];
 
     }

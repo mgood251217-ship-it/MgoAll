@@ -2,14 +2,10 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
-require_once BASE_PATH . '/models/Product.php';
+require_once BASE_PATH . '/controllers/ReportController.php';
 
-$productModel = new Product($koneksi);
-
-$start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
-$end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
-
-$dataPemakaian = $productModel->getMaterialUsageByIntervalDate($store_id, $start_date, $end_date);
+$reportController = new ReportController($koneksi);
+$dataPemakaian = $reportController->productUsed();
 
 $htmlTablePemakaian = renderTable([
     'id'          => 'tabelPemakaian',

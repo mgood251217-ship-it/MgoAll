@@ -89,6 +89,10 @@ $router->add('all_detail_order', ReportController::class, 'allDetailOrderByInter
 $router->add('piutang', ReportController::class, 'piutang', ['auth']);
 $router->add('transactions_capture', ReportController::class, 'transactionsCapture', ['auth']);
 $router->add('order_analysis', ReportController::class, 'orderAnalysis', ['auth']);
+$router->add('omset_item', ReportController::class, 'omsetItem', ['auth']);
+$router->add('product_used', ReportController::class, 'productUsed', ['auth']);
+$router->add('activity', ReportController::class, 'activity', ['auth']);
+$router->add('statistics', ReportController::class, 'statistics', ['auth']);
  
 // Meter Controller
 $router->add('meter_outdoor', MeterController::class, 'getOutdoor', ['auth']);
