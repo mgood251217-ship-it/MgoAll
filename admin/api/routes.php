@@ -93,6 +93,7 @@ $router->add('omset_item', ReportController::class, 'omsetItem', ['auth']);
 $router->add('product_used', ReportController::class, 'productUsed', ['auth']);
 $router->add('activity', ReportController::class, 'activity', ['auth']);
 $router->add('statistics', ReportController::class, 'statistics', ['auth']);
+$router->add('order_archive', ReportController::class, 'orderArchive', ['auth']);
  
 // Meter Controller
 $router->add('meter_outdoor', MeterController::class, 'getOutdoor', ['auth']);

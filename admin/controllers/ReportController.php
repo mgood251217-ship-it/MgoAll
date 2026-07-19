@@ -775,4 +775,54 @@ class ReportController {
 
     }
 
+    public function orderArchive() {
+        global $store_id;
+
+        $start_date = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
+        $end_date = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
+
+        $archive = $this->orderModel->getOrderArchive($store_id, $start_date, $end_date);
+
+        $result = [];
+
+        foreach ($archive as $row) {
+            $orderId = $row['order_id'];
+
+            if (!isset($result[$orderId])) {
+                $result[$orderId] = $row;
+                $result[$orderId]['items'] = [];
+            }
+
+            if ($row['deleted_order_item_id'] !== null) {
+                $result[$orderId]['items'][] = [
+                    'deleted_order_item_id' => $row['deleted_order_item_id'],
+                    'order_item_id'         => $row['order_item_id'],
+                    'product_id'            => $row['product_id'],
+                    'judul'                 => $row['judul'],
+                    'finishing'             => $row['finishing'],
+                    'finishing_names'       => $row['finishing_names'],
+                    'size'                  => $row['size'],
+                    'quantity'              => $row['quantity'],
+                    'unit'                  => $row['unit'],
+                    'amount'                => $row['amount']
+                ];
+            }
+
+            unset(
+                $result[$orderId]['deleted_order_item_id'],
+                $result[$orderId]['order_item_id'],
+                $result[$orderId]['product_id'],
+                $result[$orderId]['judul'],
+                $result[$orderId]['finishing'],
+                $result[$orderId]['finishing_names'],
+                $result[$orderId]['size'],
+                $result[$orderId]['quantity'],
+                $result[$orderId]['unit'],
+                $result[$orderId]['amount']
+            );
+        }
+
+        return $result;
+    }
+
 }

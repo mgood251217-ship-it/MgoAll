@@ -326,6 +326,35 @@ class Order {
         return $result ?? [];
     }
 
+    public function getOrderArchive($store_id, $start_date, $end_date) {
+        $stmt = $this->koneksi->prepare("
+                SELECT
+                    do.*,
+                    doi.*,
+                    a.name AS deleted_by_name,
+                    COALESCE(
+                        (
+                            SELECT GROUP_CONCAT(f.name SEPARATOR ' ')
+                            FROM finishings f
+                            WHERE FIND_IN_SET(f.finishing_id, REPLACE(doi.finishing, ' ', '')) > 0
+                        ),
+                        '-'
+                    ) AS finishing_names
+                FROM deleted_orders do
+                LEFT JOIN deleted_order_items doi
+                    ON doi.order_id = do.order_id
+                LEFT JOIN administrator a
+                    ON a.administrator_id = do.deleted_by
+                WHERE do.store_id = ?
+                AND do.deleted_at BETWEEN ? AND ?
+                ORDER BY do.deleted_at DESC, doi.deleted_order_item_id;");
+        $stmt->bind_param("iss", $store_id, $start_date, $end_date);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $result ?? [];
+    }
+
     public function getOrderIdsByIntervalDate($store_id, $start_date, $end_date){
         $stmt = $this->koneksi->prepare("SELECT order_id FROM orders WHERE store_id = ? AND date BETWEEN ? AND ?");
         $stmt->bind_param("iss", $store_id, $start_date, $end_date);
