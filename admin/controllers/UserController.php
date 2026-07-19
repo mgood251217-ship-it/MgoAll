@@ -56,7 +56,7 @@ class UserController {
         }
 
         if (!empty($errors)) {
-            send_json_response(false, "Terjadi kesalahan saat memperbarui user.", $errors);
+            send_json_response(false, $errors);
             exit;
         }
 
