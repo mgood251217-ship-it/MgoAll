@@ -20,7 +20,7 @@ class FinanceController {
         $date = date('Y-m-d H:i:s');
  
         $storeNames = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
-        $uploadDir = BASE_PATH . "/assets/img/buktitf/$storeNames/";
+        $uploadDir = folder(BASE_PATH . "/assets/img/buktitf/", $storeName, $date);
 
         if ( !empty($_FILES['picture']['name']) && $_FILES['picture']['error'] === 0){
             $result = compress( $_FILES['picture'], $uploadDir );
@@ -56,20 +56,29 @@ class FinanceController {
         global $storeName;
 
         $transfer_id = (int)$_POST['transfer_id'];
-        $row = $this->financeModel->getTfById($transfer_id);
+        $transfer = $this->financeModel->getTfById($transfer_id);
 
-        $storeName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
-        $imgPath = BASE_PATH . '/assets/img/buktitf/' . $storeName. "/" . $row['img'];
+        $urlDynamic = folder(BASE_URL . '/assets/img/buktitf/', $storeName, $transfer['date']) . $transfer['img'];
+        $storeFolder = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
+        $urlFallback = BASE_URL . '/assets/img/buktitf/' . $storeFolder . '/' . $transfer['img'];
+
+        $pathDynamic = str_replace(BASE_URL, BASE_PATH, $urlDynamic);
+        $pathFallback = str_replace(BASE_URL, BASE_PATH, $urlFallback);
 
         $this->financeModel->deleteTf($transfer_id);
 
-        if (file_exists($imgPath)) unlink($imgPath);
+        if (file_exists($pathDynamic)) {
+            unlink($pathDynamic);
+        }elseif (file_exists($pathFallback)) {
+            unlink($pathFallback);
+        }
 
-        send_json_response(true, 'Berhasil menghapus transfer');
+        send_json_response(true, 'Berhasil menghapus transfer', $pathDynamic . '&&&' . $pathFallback);
     }
 
     public function finance(){
         global $store_id;
+        global $storeName;
         $start_date = $_GET['start_date'] ?? date('Y-m-d');
         $end_date = $_GET['end_date'] ?? date('Y-m-d');
         $data = $this->financeModel->getFinanceByIntervalDate($store_id, $start_date, $end_date);
@@ -81,6 +90,16 @@ class FinanceController {
         }
 
         $dataPengeluaran = $this->financeModel->getExpenditureByIntervalDate($store_id, $start_date, $end_date);
+
+        foreach ($dataPengeluaran as $key => $data) {
+            $url = folder(BASE_URL . '/assets/img/bukti/', $storeName, $data['date']);
+            if ($data['img']) {
+                $dataPengeluaran[$key]['img_link'] = $url . $data['img'];
+            }else{
+                $dataPengeluaran[$key]['img_link'] = '';
+            }
+            
+        }
 
         $dataPemasukan = $this->financeModel->getIncomeByIntervalDate($store_id, $start_date, $end_date);
         return [

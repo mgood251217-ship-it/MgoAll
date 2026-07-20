@@ -151,9 +151,7 @@ $dataPemasukan = $data['income'];
                   [
                       'header' => 'Foto',
                       'render' => function($row) use ($storeName) {
-                          $stName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
-                          $fDate  = date('Y/m/d', strtotime($row['date']));
-                          $imgUrl = BASE_URL . "/assets/img/bukti/{$stName}/{$fDate}/" . sanitize($row['img']);
+                          $imgUrl = sanitize($row['img_link']);
                           
                           return empty($row['img']) 
                               ? '<img src="'.BASE_URL.'/assets/img/noproof.png" style="height:30px;">' 

@@ -14,7 +14,7 @@ class Response
 			'success' => $success,
 			'message' => $message,
 			'data' => $data
-		]);
+		], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 		exit;
 	}
 

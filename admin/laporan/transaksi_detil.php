@@ -214,11 +214,11 @@ $notesByOrder = $transactionsDetail['notesByOrder'];
 
                   if (!empty($fotos)) {
                     foreach ($fotos as $f) {
-                      $imgUrl = BASE_URL . '/assets/img/buktitf/'. $storeNameUpload . "/" . $f['img'];
+                      $imgUrl = $f['img_link'];
                     ?>
                     <div class="conimg position-relative d-inline-block me-2 mb-2" id="img-<?= $f['transfer_id'] ?>">
                       <img src="<?= $imgUrl ?>" onclick="showImageModal('<?= $imgUrl ?>')" alt="Bukti Transfer" class="payimg rounded img-fluid shadow-sm border" style="object-fit: cover; max-height: 120px;">
-                      <button type="button" class="btn btn-sm btn-light rounded-circle shadow-sm btn-delete-img position-absolute top-0 end-0 m-1" data-transfer-id="<?= $f['transfer_id'] ?>">
+                      <button type="button" class="btn btn-sm btn-light rounded-circle shadow-sm btn-delete-img position-absolute top-0 end-0 m-1" data-transfer-id="<?= $f['transfer_id'] ?> data-transfer-date="<?= $f['date'] ?>">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16">
                           <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
                         </svg>  
@@ -434,13 +434,16 @@ $notesByOrder = $transactionsDetail['notesByOrder'];
 <script>
 let access = '<?= $access ?>';
 var hapusFoto = 0;
+var hapusDate = '';
 document.addEventListener('click', function(e) {
   if (e.target.closest('.btn-delete-img')) {
     const button = e.target.closest('.btn-delete-img');
     const transferId = button.getAttribute('data-transfer-id');
+    const transferDate = button.getAttribute('data-transfer-date');
       const modal = new bootstrap.Modal(document.getElementById('confirmDeleteTFModal'));
       modal.show();
     hapusFoto = transferId;
+    hapusDate = transferDate
   }
 });
 
@@ -451,7 +454,7 @@ document.addEventListener('click', function(e) {
     fetch('finance_action.php?action=delete_tf', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `transfer_id=${hapusFoto}`
+      body: `transfer_id=${hapusFoto}&date=${hapusDate}`
     })
     .then(response => response.json())
     .then(data => {

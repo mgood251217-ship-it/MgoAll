@@ -3,7 +3,7 @@
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
-require_once BASE_PATH . '/controllers/ReportC  ontroller.php';
+require_once BASE_PATH . '/controllers/ReportController.php';
 
 $reportController = new ReportController($koneksi);
 

@@ -9,10 +9,24 @@ class UserController {
         $this->userModel = new User($koneksi);
     }
 
-    public function index() {
-        global $store_id;
-        return $this->userModel->getUsersByStoreId($store_id);
+    public function index() { 
+        global $store_id; 
+        
+        $users = $this->userModel->getUsersByStoreId($store_id); 
+        
+        foreach ($users as $key => $user) { 
+            $basePath = BASE_URL . "/assets/img/user/";
+            if ($users[$key]['picture'] == '') {
+                $users[$key]['picture_link'] = $basePath . 'default.jpg'; 
+            }else{
+                $users[$key]['picture_link'] = $basePath . $user['picture']; 
+            }   
+            
+        } 
+        
+        return $users; 
     }
+
 
     private function requestData() {
         global $store_id, $storeName;

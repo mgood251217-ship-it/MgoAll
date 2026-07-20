@@ -18,23 +18,34 @@ class AuthController {
         }
 
         require_once BASE_PATH . '/session.php';
+        if ($foto) {
+            $fotoLink = BASE_URL . "/assets/img/user/" . $foto;
+        }else{
+            $fotoLink = BASE_URL . "/assets/img/user/" . 'default.jpg';
+        }
+
+        if ($storeLogo) {
+            $storeLogoLink = BASE_URL . "/assets/img/store/" . $storeLogo;
+        }else{
+            $storeLogoLink = BASE_URL . "/assets/img/store/" . 'default.jpg';
+        }
 
         Response::success(
             'Session aktif.',
             [
                 'user' => [
-                    'user_id' => $user_id,
-                    'store_id' => $store_id,
                     'role' => $role,
                     'username' => $username,
                     'initial' => $initial,
                     'name' => $name,
-                    'foto' => $foto
+                    'foto' => $foto,
+                    'foto_link' => $fotoLink
                 ],
                 'store' => [
                     'name' => $storeName,
                     'address' => $storeAddress,
-                    'logo' => $storeLogo
+                    'logo' => $storeLogo,
+                    'logo_link' =>  $storeLogoLink
                 ],
                 'administrator' => $administrator ?? false
             ]
@@ -90,6 +101,8 @@ class AuthController {
 
         $secret_key = "6LfKclYtAAAAAKEHLpfWAOv_riDy4PJOtleE0Pw9";
         $is_localhost = isLocalhostRequest();
+        $is_desktop_app = (($_SERVER['HTTP_X_CLIENT_TYPE'] ?? '') === 'desktop-app');
+        $score_threshold = $is_desktop_app ? 0.3 : 0.5;
 
         if (!$is_localhost) {
             if (empty($recaptcha_response)) {
@@ -118,7 +131,7 @@ class AuthController {
                 !is_array($response_keys) ||
                 empty($response_keys['success']) ||
                 !isset($response_keys['score']) ||
-                $response_keys['score'] < 0.5 ||
+                $response_keys['score'] < $score_threshold ||
                 !isset($response_keys['action']) ||
                 $response_keys['action'] !== 'login'
             ) {

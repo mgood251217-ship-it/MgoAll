@@ -580,6 +580,7 @@ class ReportController {
     }
 
     public function transactionsDetail(){
+        global $storeName;
         global $store_id;
         $start_date = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
         $end_date = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
@@ -625,9 +626,17 @@ class ReportController {
                 $paymentsByOrder[$payment['order_id']][] = $payment;
             }
 
-            $transfers = $this->koneksi->query("SELECT order_id, transfer_id, img FROM transfers WHERE order_id IN ($ids) ")->fetch_all(MYSQLI_ASSOC);
+            $transfers = $this->koneksi->query("SELECT order_id, transfer_id, img, date FROM transfers WHERE order_id IN ($ids) ")->fetch_all(MYSQLI_ASSOC);
 
-            foreach ($transfers as $transfer) {
+            foreach ($transfers as $key => $transfer) {
+                $urlDynamic = folder(BASE_URL . '/assets/img/buktitf/', $storeName, $transfer['date']) . $transfer['img'];
+                $storeFolder = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
+                $urlFallback = BASE_URL . '/assets/img/buktitf/' . $storeFolder . '/' . $transfer['img'];
+
+                $pathDynamic = str_replace(BASE_URL, BASE_PATH, $urlDynamic);
+                $pathFallback = str_replace(BASE_URL, BASE_PATH, $urlFallback);
+                $transfer['img_link'] = file_exists($pathDynamic) ? $urlDynamic : (file_exists($pathFallback) ? $urlFallback : BASE_URL . '/assets/img/buktitf/errortf.png');
+                
                 $transfersByOrder[$transfer['order_id']][] = $transfer;
             }
 

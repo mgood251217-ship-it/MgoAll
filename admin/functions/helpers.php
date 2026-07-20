@@ -151,7 +151,7 @@ function folder($basePath, $storeName, $date){
     $month = date('m', strtotime($date));
     $day = date('d', strtotime($date));
     $folderDate = "$year/$month/$day";
-    $uploadDir = "/$basePath/$storeFolder/$folderDate/";
+    $uploadDir = "$basePath$storeFolder/$folderDate/";
 
     return $uploadDir;
 }
