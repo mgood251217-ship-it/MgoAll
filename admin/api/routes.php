@@ -96,6 +96,7 @@ $router->add('activity', ReportController::class, 'activity', ['auth']);
 $router->add('statistics', ReportController::class, 'statistics', ['auth']);
 $router->add('order_archive', ReportController::class, 'orderArchive', ['auth']);
 $router->add('maklun', ReportController::class, 'maklun', ['auth']);
+$router->add('failure', ReportController::class, 'failure', ['auth']);
  
 // Meter Controller
 $router->add('meter_outdoor', MeterController::class, 'getOutdoor', ['auth']);

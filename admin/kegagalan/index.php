@@ -1,5 +1,7 @@
 <?php
-//failure.php
+
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Modal.php';
@@ -10,97 +12,17 @@ require_once BASE_PATH . '/components/Icon.php';
 require_once BASE_PATH . '/models/User.php';
 require_once BASE_PATH . '/models/Store.php';
 require_once BASE_PATH . '/models/Product.php';
+require_once BASE_PATH . '/controllers/ReportController.php';
 
 $productModel = new Product($koneksi);
 $userModel = new User($koneksi);
 $storeModel = new Store($koneksi);
-$start_date = $_GET['start_date'] ?? date('Y-m-d');
-$end_date = $_GET['end_date'] ?? date('Y-m-d');
+$reportController = new ReportController($koneksi);
+
+$items = $reportController->failure();
 
 $users = $userModel->getUsersInitial($store_id);
 $machines = $storeModel->getMachineByStoreId($store_id);
-
-$sql = "SELECT f.*, m.name AS nama_mesin, m.type AS machine_type 
-        FROM failure f 
-        LEFT JOIN machine m ON f.machine_id = m.machine_id
-        WHERE f.store_id = ? AND f.date BETWEEN ? AND ?
-        ORDER BY f.date DESC";
-
-$stmt2 = $koneksi->prepare($sql);
-$stmt2->bind_param("iss", $store_id, $start_date, $end_date);
-$stmt2->execute();
-$items = $stmt2->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt2->close();
-
-function getFinishingFailedPrice(string $finishing_ids, $size, mysqli $koneksi): int {
-    if ($finishing_ids === '-' || empty($finishing_ids)) {
-        return 0;
-    }
-
-    $total = 0;
-    $ids = explode(',', $finishing_ids);
-
-    foreach ($ids as $fid) {
-        $fid = trim($fid);
-        if (ctype_digit($fid)) {
-          $ketProduct = $koneksi->prepare('SELECT failed_price, unit_type FROM products WHERE product_id = ?');
-          $ketProduct->bind_param('i', $fid);
-          $ketProduct->execute();
-          $keterangan = $ketProduct->get_result()->fetch_assoc();
-          $harga = (int)$keterangan['failed_price'];
-          $unit_type = $keterangan["unit_type"];
-
-            $total += $harga;
-          
-        }
-    }
-
-    return $total;
-}
-
-function getSatuanHarga($product_id, $size, $finishing, $koneksi){
-  global $productModel;
-  $keterangan = $productModel->getProductById($product_id);
-
-  $unit_type = $keterangan['unit_type'];
-  $type = $keterangan['category'];
-  $reasonable_price = $keterangan['failed_price'];
-  $product_name = $keterangan['name'];
-  $finishing_price = getFinishingFailedPrice($finishing, $size, $koneksi);
-  $hargaSatuan = 0;
-  if ($product_id != 0) {
-    if ($unit_type == 'M2') {
-      if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $size, $match)) {
-        $p = floatval($match[1]);
-        $l = floatval($match[2]);
-        if ($keterangan['category'] == 'DTF') {
-          $hargaSatuan = $p * ((float)$reasonable_price += $finishing_price);
-        }else {
-          $hargaSatuan = $p * $l * ((float)$reasonable_price += $finishing_price);
-        }
-      }
-    }elseif ($unit_type == 'PCS') {
-      $hargaSatuan = (float)$reasonable_price += (float)$finishing_price;
-      if($type == 'JERSEY'){
-        $harga_jersey = 0;
-        if ($size === '5XL') {
-            $harga_jersey += 40000;
-        } elseif ($size === '4XL') {
-            $harga_jersey += 30000;
-        } elseif ($size === '3XL') {
-            $harga_jersey += 20000;
-        } elseif ($size === '2XL') {
-            $harga_jersey += 10000;
-        }
-        $hargaSatuan += $harga_jersey;
-      }elseif ($type == 'SUBLIM' && str_contains($product_name, 'BAHAN')) {
-        $kata = explode(" ", $size);
-        $hargaSatuan *= (float)$kata[0];
-      }
-    }
-  }
-  return $hargaSatuan;
-}
 
 $categories = $productModel->getCategoryByStoreId($store_id);
 ?>
@@ -149,53 +71,37 @@ $categories = $productModel->getCategoryByStoreId($store_id);
             'empty_message'  => 'Tidak ada data kegagalan.',
             'table_class'    => 'table table-bordered table-striped',
             'thead_class'    => 'table-primary',
-            'row_attributes' => function($row) {
-                return 'class="order-row" data-calc-id="' . $row['failure_id'] . '"';
-            },
+            'row_attributes' => fn($row) => 'class="order-row" data-calc-id="' . $row['failure_id'] . '"',
             'columns'        => [
                 ['header' => 'No', 'type' => 'number'],
-                ['header' => 'Tanggal', 'render' => fn($p) => date('d M Y', strtotime($p['date']))],
+                ['header' => 'Tanggal', 'field' => 'formatted_date'],
                 ['header' => 'Nomorator', 'field' => 'nomorator'],
                 ['header' => 'Customer', 'field' => 'customer_name'],
-                ['header' => 'Operator', 'render' => fn($p) => htmlspecialchars($users[$p['user_id']] ?? '-')],
-                ['header' => 'Mesin', 'render' => fn($p) => htmlspecialchars($p['nama_mesin'] ?? '-') . '<br><small class="text-muted">' . htmlspecialchars($p['machine_type'] ?? '') . '</small>'],
+                ['header' => 'Operator', 'field' => 'operator_name'],
+                [
+                    'header' => 'Mesin',
+                    'render' => fn($row) => ($row['nama_mesin'] ?? '-') . '<br><small class="text-muted">' . ($row['machine_type'] ?? '') . '</small>'
+                ],
                 ['header' => 'Judul Produk', 'field' => 'judul'],
                 ['header' => 'Ukuran', 'field' => 'size'],
                 ['header' => 'Qty', 'field' => 'quantity'],
-                [
-                    'header' => 'Finishing',
-                    'render' => function($p) use ($koneksi) {
-                        if (empty($p['finishing']) || $p['finishing'] === '-') return '-';
-                        
-                        $ids = array_filter(array_map('intval', explode(',', $p['finishing'])));
-                        if (empty($ids)) return '-';
-                        
-                        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-                        $stmt = $koneksi->prepare("SELECT name FROM products WHERE product_id IN ($placeholders)");
-                        $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
-                        $stmt->execute();
-                        $res = $stmt->get_result();
-                        $names = [];
-                        while ($r = $res->fetch_assoc()) $names[] = $r['name'];
-                        $stmt->close();
-                        return implode(', ', $names);
-                    }
-                ],
+                ['header' => 'Finishing', 'field' => 'finishing_names_str'],
                 [
                     'header' => 'Detail Gagal',
-                    'render' => function($p) {
-                        $details = [];
-                        if (!empty($p['failure_design'])) $details[] = "Desain: " . htmlspecialchars($p['failure_design']);
-                        if (!empty($p['failure_print'])) $details[] = "Cetak: " . htmlspecialchars($p['failure_print']);
-                        if (!empty($p['failure_finishing'])) $details[] = "Finishing: " . htmlspecialchars($p['failure_finishing']);
-                        if (!empty($p['failure_cause'])) $details[] = "Penyebab: " . htmlspecialchars($p['failure_cause']);
-                        if (!empty($p['failure_cause_other'])) $details[] = "Lainnya: " . htmlspecialchars($p['failure_cause_other']);
-                        return empty($details) ? '-' : implode('<br>', $details);
-                    }
+                    'render' => fn($row) => $row['detail_gagal']
                 ],
-                ['header' => 'Kerugian', 'render' => fn($p) => '<span class="text-danger fw-bold">Rp ' . number_format(getSatuanHarga($p['product_id'], $p['size'], $p['finishing'], $koneksi) * (int)$p['quantity'], 0, ',', '.') . '</span>'],
-                ['header' => 'Beban', 'render' => fn($p) => '<span class="text-danger fw-bold">' . htmlspecialchars($p['loss_burden']) . '</span>'],
-                ['header' => 'Keterangan', 'render' => fn($p) => '<span class="text-danger fw-bold">' . htmlspecialchars($p['info']) . '</span>'],
+                [
+                    'header' => 'Kerugian',
+                    'render' => fn($row) => '<span class="text-danger fw-bold">Rp ' . number_format($row['total_loss'], 0, ',', '.') . '</span>'
+                ],
+                [
+                    'header' => 'Beban',
+                    'render' => fn($row) => '<span class="text-danger fw-bold">' . $row['loss_burden'] . '</span>'
+                ],
+                [
+                    'header' => 'Keterangan',
+                    'render' => fn($row) => '<span class="text-danger fw-bold">' . $row['info'] . '</span>'
+                ],
                 [
                     'header'  => 'Aksi',
                     'type'    => 'action_buttons',
