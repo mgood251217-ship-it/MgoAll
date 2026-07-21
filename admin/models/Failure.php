@@ -38,6 +38,22 @@ class Failure {
         return $success;
     }
 
+    public function deleteFailure($id){
+        $stmt = $this->koneksi->prepare("DELETE FROM failure WHERE failure_id = ?");
+        $stmt->bind_param("i", $id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function updateFailureInfo($data){
+        $stmt = $this->koneksi->prepare("UPDATE failure SET info = ? WHERE failure_id = ?");
+        $stmt->bind_param("si", $data->info, $data->failure_id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
 }
 
 ?>

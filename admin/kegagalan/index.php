@@ -118,14 +118,15 @@ $categories = $productModel->getCategoryByStoreId($store_id);
                             ]
                         ],
                         [
-                            'type'        => 'link',
+                            'type'        => 'button',
                             'icon'        => get_icon('delete', ['class' => 'me-1']),
                             'text'        => 'Hapus',
                             'color'       => 'danger',
                             'class'       => 'mb-1',
-                            'href'        => 'delete_failure.php?id=',
-                            'param_field' => 'failure_id',
-                            'confirm'     => 'Yakin ingin menghapus log ini?'
+                            'onclick' => [
+                                'function' => 'deleteFailure',
+                                'param_fields' => ['failure_id'] 
+                            ]
                         ]
                     ]
                 ]
@@ -728,7 +729,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
           if (orderItemId) dataPost.order_item_id = orderItemId;
 
-          fetch('add_failure_items.php', {
+          fetch('../routes/?action=create_failure', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dataPost)
@@ -777,6 +778,29 @@ function bukaModalEditInfo(failureId, infoText) {
     editModal.show();
 }
 
+function deleteFailure(id){
+    fetch('../routes/?action=delete_failure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `failure_id=${encodeURIComponent(id)}` 
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => { throw new Error(text) });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            Swal.fire('Gagal', data.message, 'error');
+        }
+    })
+    .catch(error => {
+        Swal.fire('Error', 'Terjadi kesalahan sistem: ' + error.message, 'error');
+    });
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     const formEditInfo = document.getElementById('formEditInfo');
@@ -787,7 +811,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const formData = new FormData(this);
 
-            fetch('edit_failure_info.php', {
+            fetch('../routes/?action=update_failure_info', {
                 method: 'POST',
                 body: formData
             })

@@ -14,6 +14,7 @@ require_once BASE_PATH . '/functions/Otp.php';
 require_once BASE_PATH . "/functions/setInfo.php";
 require_once BASE_PATH . '/controllers/ProductController.php';
 require_once BASE_PATH . '/controllers/AuthController.php';
+require_once BASE_PATH . '/controllers/FailureController.php';
 
 $authController = new AuthController($koneksi);
 $productController = new ProductController($koneksi);
@@ -25,6 +26,7 @@ $paymentController = new PaymentController($koneksi);
 $userController = new UserController($koneksi);
 $locationController = new LocationController($koneksi);
 $storeController = new StoreController($koneksi);
+$failureController = new FailureController($koneksi);
 
 $action = $_GET['action'] ?? '';
 if ($action != 'login'){
@@ -165,6 +167,15 @@ switch ($action) {
         break;
     case 'price':
         $orderController->fullPrice();
+        break;
+    case 'create_failure':
+        $failureController->create();
+        break;
+    case 'update_failure_info':
+        $failureController->updateInfo();
+        break;
+    case 'delete_failure':
+        $failureController->delete();
         break;
     default:
         send_json_response(false, 'Invalid action.');
