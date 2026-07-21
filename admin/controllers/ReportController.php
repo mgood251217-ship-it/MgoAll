@@ -783,7 +783,6 @@ class ReportController {
         ];
 
     }
-
     public function orderArchive() {
         global $store_id;
 
@@ -935,7 +934,7 @@ class ReportController {
                         }
                     }
                 }
-                $row['finishing_names_str'] = !empty($f_names) ? implode(', ', $f_names) : '-';
+                $row['finishing_names'] = !empty($f_names) ? implode(', ', $f_names) : '-';
 
                 $hargaSatuan = 0;
                 if (!empty($row['product_id']) && $row['product_id'] != 0) {

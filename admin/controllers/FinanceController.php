@@ -13,10 +13,10 @@ class FinanceController {
 
     public function createTf(){
         require_once BASE_PATH . '/global_functions.php';
+        global $store_id;
         global $storeName;
 
         $order_id = $_POST['order_id'] ?? 0;
-        $store_id = $_POST['store_id'] ?? 0;
         $date = date('Y-m-d H:i:s');
  
         $storeNames = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');

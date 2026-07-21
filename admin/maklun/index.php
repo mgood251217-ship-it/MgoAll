@@ -51,7 +51,7 @@ $dataMaklunKeluar = $dataMaklun['maklunOut'];
               ['header' => 'No', 'type' => 'number'],
               ['header' => 'Judul', 'field' => 'judul'],
               ['header' => 'Ukuran', 'field' => 'size'],
-              ['header' => 'Finishing', 'field' => 'finishing_names_str'],
+              ['header' => 'Finishing', 'field' => 'finishing_names'],
               ['header' => 'Qty', 'field' => 'quantity'],
               ['header' => 'Satuan', 'field' => 'harga_satuan_calc'],
               ['header' => 'Jumlah', 'field' => 'jumlah_harga_calc'],

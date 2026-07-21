@@ -49,7 +49,7 @@ $router->add('get_orders', OrderController::class, 'index', ['auth']);
 $router->add('create_order', OrderController::class, 'create', ['auth']);
 $router->add('update_order', OrderController::class, 'update', ['auth']);
 $router->add('delete_order', OrderController::class, 'delete', ['auth']);
-// Order Item
+// Order Item 
 $router->add('order_detail', OrderController::class, 'orderDetail', ['auth']);
 $router->add('item_price', OrderController::class, 'fullPrice', ['auth']);
 $router->add('create_order_item', OrderController::class, 'createItem', ['auth']);
@@ -60,6 +60,7 @@ $router->add('update_maklun', OrderController::class, 'updateMaklun', ['auth']);
 $router->add('update_project', OrderController::class, 'updateProject', ['auth']);
 // Note
 $router->add('update_customer_note', OrderController::class, 'createNote', ['auth']);
+$router->add('update_detail_note', OrderController::class, 'createNoteDetail', ['auth']);
 
 // Location Controller
 $router->add('locations', LocationController::class, 'index', ['auth']);
@@ -78,9 +79,9 @@ $router->add('delete_income', FinanceController::class, 'deleteIncome', ['auth']
 $router->add('create_expenditure', FinanceController::class, 'createExpenditure', ['auth']);
 $router->add('update_expenditure', FinanceController::class, 'updateExpenditure', ['auth']);
 $router->add('delete_expenditure', FinanceController::class, 'deleteExpenditure', ['auth']);
-$router->add('create_Tf', FinanceController::class, 'createTf', ['auth']);
-$router->add('delete_Tf', FinanceController::class, 'deleteTf', ['auth']);
-$router->add('synn_finance', FinanceController::class, 'syncFinanceInterval', ['auth']);
+$router->add('create_tf', FinanceController::class, 'createTf', ['auth']);
+$router->add('delete_tf', FinanceController::class, 'deleteTf', ['auth']);
+$router->add('sync_finance', FinanceController::class, 'syncFinanceInterval', ['auth']); 
 
 // Report Controller
 $router->add('report', ReportController::class, 'index', ['auth']);
