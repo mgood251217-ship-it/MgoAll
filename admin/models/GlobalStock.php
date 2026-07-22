@@ -41,7 +41,7 @@ class GlobalStock {
 
     public function updateGlobalStock($data){
         $stmt = $this->koneksi->prepare("UPDATE global_stocks SET name = ?, size = ?, price = ?, global_stock_category_id = ? WHERE id = ?");
-        $stmt->bind_param("ssssi", $data->name, $data->size, $data->price, $data->global_stock_category_id, $data->id);
+        $stmt->bind_param("ssdii", $data->name, $data->size, $data->price, $data->category_id, $data->id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;

@@ -12,14 +12,14 @@ require_once BASE_PATH . '/components/Icon.php';
 require_once BASE_PATH . '/models/User.php';
 require_once BASE_PATH . '/models/Store.php';
 require_once BASE_PATH . '/models/Product.php';
-require_once BASE_PATH . '/controllers/ReportController.php';
+require_once BASE_PATH . '/controllers/FailureController.php';
 
 $productModel = new Product($koneksi);
 $userModel = new User($koneksi);
 $storeModel = new Store($koneksi);
-$reportController = new ReportController($koneksi);
+$failureController = new FailureController($koneksi);
 
-$items = $reportController->failure();
+$items = $failureController->index();
 
 $users = $userModel->getUsersInitial($store_id);
 $machines = $storeModel->getMachineByStoreId($store_id);

@@ -2,130 +2,21 @@
 
 require_once '../connect.php';
 require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/controllers/GlobalStockController.php';
 
+$globalStockController = new GlobalStockController($koneksi);
 $selected_month = isset($_GET['month']) ? $_GET['month'] : date('Y-m');
-$days_in_month = date('t', strtotime($selected_month . '-01'));
+$data = $globalStockController->index();
 
-$available_stores = [];
-$queryStores = mysqli_query($koneksi, "SELECT store_id, name FROM stores WHERE store_id != '$store_id' ORDER BY name ASC");
-if ($queryStores) {
-    while ($row = mysqli_fetch_assoc($queryStores)) {
-        $available_stores[] = $row;
-    }
-}
-$other_stores_stocks = [];
-$qOtherStocks = mysqli_query($koneksi, "
-    SELECT gs.id, gs.store_id, gs.name, gs.size, gsc.name as category_name, gs.price
-    FROM global_stocks gs
-    JOIN global_stock_categories gsc ON gs.global_stock_category_id = gsc.id
-    WHERE gs.store_id != '$store_id'
-    ORDER BY gsc.name ASC, gs.name ASC
-");
-if ($qOtherStocks) {
-    while ($row = mysqli_fetch_assoc($qOtherStocks)) {
-        $other_stores_stocks[] = $row;
-    }
-}
-
-$deliveries = [];
-$queryDeliveries = mysqli_query($koneksi, "
-    SELECT 
-        d.id, d.qty, d.date, 
-        s_from.name AS from_store, 
-        s_to.name AS to_store, 
-        d.to_store_id, 
-        gs_from.name AS item_name, 
-        gs_from.size AS item_size,
-        gs_from.price, 
-        d.store_id AS sender_id
-    FROM global_stock_deliveries d
-    JOIN stores s_from ON d.store_id = s_from.store_id
-    JOIN stores s_to ON d.to_store_id = s_to.store_id
-    JOIN global_stocks gs_from ON d.global_stock_id = gs_from.id
-    WHERE (d.store_id = '$store_id' OR d.to_store_id = '$store_id')
-      AND d.date LIKE '$selected_month%' 
-    ORDER BY d.date ASC, d.id ASC
-");
-if ($queryDeliveries) {
-    while ($row = mysqli_fetch_assoc($queryDeliveries)) {
-        $deliveries[] = $row;
-    }
-}
-
-$categories = [];
-$queryCategory = mysqli_query($koneksi, "
-    SELECT *
-    FROM global_stock_categories
-    WHERE store_id = '$store_id'
-    ORDER BY name ASC
-");
-while ($row = mysqli_fetch_assoc($queryCategory)) {
-    $categories[] = $row;
-}
-
-$stocks = [];
-
-$queryStocks = mysqli_query($koneksi, "
-    SELECT
-        gs.*,
-        gsc.name AS category_name
-    FROM global_stocks gs
-    JOIN global_stock_categories gsc
-        ON gsc.id = gs.global_stock_category_id
-    WHERE gs.store_id = '$store_id'
-    ORDER BY gsc.name ASC, gs.name ASC, gs.size ASC
-");
-
-while ($row = mysqli_fetch_assoc($queryStocks)) {
-    $id = $row['id'];
-    $stocks[$id] = $row;
-    $stocks[$id]['sa_awal'] = 0; 
-    $stocks[$id]['sa_akhir'] = 0; 
-    $stocks[$id]['daily'] = [];
-    
-    for ($i = 1; $i <= 31; $i++) {
-        $stocks[$id]['daily'][$i] = ['sm' => 0, 'sk' => 0];
-    }
-}
-
-$queryAwal = mysqli_query($koneksi, "
-    SELECT global_stock_id, initial_stock, final_stock
-    FROM global_stock_monthly_values
-    WHERE store_id = '$store_id' AND month_year = '$selected_month'
-");
-while ($row = mysqli_fetch_assoc($queryAwal)) {
-    if (isset($stocks[$row['global_stock_id']])) {
-        $stocks[$row['global_stock_id']]['sa_awal'] = $row['initial_stock'];
-        $stocks[$row['global_stock_id']]['sa_akhir'] = $row['final_stock']; 
-    }
-}
-
-$queryDaily = mysqli_query($koneksi, "
-    SELECT global_stock_id, DAY(date) as day_date, stock_in, stock_out
-    FROM global_stock_daily_values
-    WHERE store_id = '$store_id' AND date LIKE '$selected_month%'
-");
-while ($row = mysqli_fetch_assoc($queryDaily)) {
-    if (isset($stocks[$row['global_stock_id']])) {
-        $day = (int)$row['day_date'];
-        $stocks[$row['global_stock_id']]['daily'][$day]['sm'] += $row['stock_in'];
-        $stocks[$row['global_stock_id']]['daily'][$day]['sk'] += $row['stock_out'];
-    }
-}
-
-$grouped_stocks = [];
-foreach ($stocks as $id => $s) {
-    $cat_name = $s['category_name'];
-    $item_name = $s['name'];
-    
-    if (!isset($grouped_stocks[$cat_name])) {
-        $grouped_stocks[$cat_name] = [];
-    }
-    if (!isset($grouped_stocks[$cat_name][$item_name])) {
-        $grouped_stocks[$cat_name][$item_name] = [];
-    }
-    $grouped_stocks[$cat_name][$item_name][$id] = $s;
-}
+$days_in_month = $data['days_in_month'];
+$available_stores = $data['available_stores'];
+$other_stores_stocks = $data['other_stores_stocks'];
+$deliveries = $data['deliveries'];
+$categories = $data['categories'];
+$stocks_list = $data['stocks_list'];
+$awal_list = $data['awal_list'];
+$daily_list = $data['daily_list'];
+$grouped_stocks = $data['grouped_stocks'];
 
 $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary', 'dark'];
 
@@ -254,8 +145,8 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
 
                 <div class="d-flex gap-2">
                     <?php if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] == true): ?>
-                        <form action="global_stock_action.php" method="POST" class="d-inline m-0">
-                            <input type="hidden" name="action" value="export_csv">
+                        <form class="d-inline m-0" method="POST" action="../routes/?action=export_csv_global_stock">
+                            <input type="hidden" name="action" value="export_csv_global_stock">
                             <button type="submit" class="btn btn-dark btn-sm text-white fw-bold" title="Download Template Master Barang">
                                 ↓ Export CSV
                             </button>
@@ -490,8 +381,8 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
 <div class="modal fade" id="sendStockModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content border-0">
-            <form action="global_stock_action.php" method="POST" class="async-form">
-                <input type="hidden" name="action" value="send_stock">
+            <form class="async-form">
+                <input type="hidden" name="action" value="send_global_stock">
                 <div class="modal-header bg-info text-white">
                     <h5 class="modal-title">Pengiriman Barang</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -510,7 +401,7 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
                         <label class="form-label fw-bold">2. Barang Yang Dikirim (Dari Toko Ini)</label>
                         <select name="global_stock_id" class="form-select" required>
                             <option value="">-- Pilih Barang Stok --</option>
-                            <?php foreach ($stocks as $s): ?>
+                            <?php foreach ($stocks_list as $s): ?>
                                 <option value="<?= $s['id'] ?>">
                                     <?= htmlspecialchars($s['category_name']) ?> - <?= htmlspecialchars($s['name']) ?> (UK: <?= htmlspecialchars($s['size']) ?>)
                                 </option>
@@ -547,8 +438,8 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
 <div class="modal fade" id="addCategoryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form action="global_stock_action.php" method="POST" class="async-form">
-                <input type="hidden" name="action" value="add_category">
+            <form class="async-form">
+                <input type="hidden" name="action" value="create_category_global_stock">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">Tambah Kategori</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -567,8 +458,8 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
 <div class="modal fade" id="editCategoryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form action="global_stock_action.php" method="POST" class="async-form">
-                <input type="hidden" name="action" value="edit_category">
+            <form class="async-form">
+                <input type="hidden" name="action" value="update_category_global_stock">
                 <input type="hidden" name="id" id="edit_category_id">
                 <div class="modal-header bg-warning">
                     <h5 class="modal-title">Edit Kategori</h5>
@@ -588,8 +479,8 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
 <div class="modal fade" id="addStockModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form action="global_stock_action.php" method="POST" class="async-form">
-                <input type="hidden" name="action" value="add_stock">
+            <form class="async-form">
+                <input type="hidden" name="action" value="create_global_stock">
                 <div class="modal-header bg-success text-white">
                     <h5 class="modal-title">Tambah Barang</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -628,8 +519,8 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
 <div class="modal fade" id="editStockModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form action="global_stock_action.php" method="POST" class="async-form">
-                <input type="hidden" name="action" value="edit_stock">
+            <form class="async-form">
+                <input type="hidden" name="action" value="update_global_stock">
                 <input type="hidden" name="id" id="edit_stock_id">
                 <div class="modal-header bg-warning">
                     <h5 class="modal-title">Edit Barang</h5>
@@ -669,8 +560,8 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
 <div class="modal fade" id="dailyModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content border-0">
-            <form action="global_stock_action.php" method="POST" class="async-form">
-                <input type="hidden" name="action" value="update_daily_stock">
+            <form class="async-form">
+                <input type="hidden" name="action" value="update_daily_global_stock">
                 <input type="hidden" name="global_stock_id" id="modal_stock_id">
                 
                 <div class="modal-header bg-primary text-white">
@@ -711,8 +602,8 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
 <div class="modal fade" id="importCsvModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content border-0">
-            <form action="global_stock_action.php" method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="action" value="import_csv">
+            <form enctype="multipart/form-data" class="async-form">
+                <input type="hidden" name="action" value="import_csv_global_stock">
                 <div class="modal-header bg-dark text-white">
                     <h5 class="modal-title">Import Data Stok (CSV)</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -740,6 +631,7 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
 <script src="<?= BASE_URL ?>/assets/js/FileSaver.min.js"></script>
 
 <script>
+
 const otherStoresStocks = <?= json_encode($other_stores_stocks) ?>;
 const groupedStocks = <?= json_encode($grouped_stocks, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 const daysInMonth = <?= $days_in_month ?>;
@@ -1190,16 +1082,17 @@ document.querySelectorAll('.async-form').forEach(form => {
         loading.classList.remove('d-none');
 
         const formData = new FormData(this);
+        const action = formData.get('action')
 
         try {
-            const response = await fetch('global_stock_action.php', {
+            const response = await fetch(`../routes/?action=${action}`, {
                 method: 'POST',
                 body: formData
             });
 
             const result = await response.json();
 
-            if(result.status === 'success') {
+            if(result.success) {
                 window.location.reload(); 
             } else {
                 alert(result.message || 'Terjadi kesalahan pada saat menyimpan data.');
@@ -1250,13 +1143,13 @@ document.addEventListener('DOMContentLoaded', function () {
 // FUNGSI HAPUS KATEGORI & BARANG (ADMIN ONLY)
 async function deleteCategory(id, name) {
     if (confirm(`PERINGATAN: Anda yakin ingin menghapus Kategori "${name}" beserta SELURUH BARANG di dalamnya?\n\nTindakan ini akan menghapus riwayat stoknya juga dan tidak dapat dibatalkan.`)) {
-        sendDeleteRequest('delete_category', id);
+        sendDeleteRequest('delete_category_global_stock', id);
     }
 }
 
 async function deleteStock(id, name) {
     if (confirm(`Anda yakin ingin menghapus Barang "${name}"?\n\nRiwayat stok masuk dan keluar untuk barang ini akan ikut terhapus.`)) {
-        sendDeleteRequest('delete_stock', id);
+        sendDeleteRequest('delete_global_stock', id);
     }
 }
 
@@ -1269,7 +1162,7 @@ async function sendDeleteRequest(action, id) {
     formData.append('id', id);
 
     try {
-        const response = await fetch('global_stock_action.php', {
+        const response = await fetch(`../routes/?action=${id}`, {
             method: 'POST',
             body: formData
         });

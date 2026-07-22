@@ -15,6 +15,7 @@ require_once BASE_PATH . "/functions/setInfo.php";
 require_once BASE_PATH . '/controllers/ProductController.php';
 require_once BASE_PATH . '/controllers/AuthController.php';
 require_once BASE_PATH . '/controllers/FailureController.php';
+require_once BASE_PATH . '/controllers/GlobalStockController.php';
 
 $authController = new AuthController($koneksi);
 $productController = new ProductController($koneksi);
@@ -27,6 +28,7 @@ $userController = new UserController($koneksi);
 $locationController = new LocationController($koneksi);
 $storeController = new StoreController($koneksi);
 $failureController = new FailureController($koneksi);
+$globalStockController = new GlobalStockController($koneksi);
 
 $action = $_GET['action'] ?? '';
 if ($action != 'login'){
@@ -176,6 +178,36 @@ switch ($action) {
         break;
     case 'delete_failure':
         $failureController->delete();
+        break;
+    case 'create_category_global_stock':
+        $globalStockController->createCategory();
+        break;
+    case 'update_category_global_stock':
+        $globalStockController->updateCategory();
+        break;
+    case 'create_global_stock':
+        $globalStockController->createStock();
+        break;
+    case 'update_global_stock':
+        $globalStockController->updateStock();
+        break;
+    case 'send_global_stock':
+        $globalStockController->sendStock();
+        break;
+    case 'update_daily_global_stock':
+        $globalStockController->updateDailyStock();
+        break;
+    case 'export_csv_global_stock':
+        $globalStockController->exportCsv();
+        break;
+    case 'import_csv_global_stock':
+        $globalStockController->importCsv();
+        break;
+    case 'delete_category_global_stock':
+        $globalStockController->deleteCategory();
+        break;
+    case 'delete_global_stock':
+        $globalStockController->deleteStock();
         break;
     default:
         send_json_response(false, 'Invalid action.');

@@ -96,8 +96,16 @@ $router->add('activity', ReportController::class, 'activity', ['auth']);
 $router->add('statistics', ReportController::class, 'statistics', ['auth']);
 $router->add('order_archive', ReportController::class, 'orderArchive', ['auth']);
 $router->add('maklun', ReportController::class, 'maklun', ['auth']);
-$router->add('failure', ReportController::class, 'failure', ['auth']);
- 
+
+// Failure Controller
+$router->add('failure', FailureController::class, 'failure', ['auth']);
+$router->add('create_failure', FailureController::class, 'create', ['auth']);
+$router->add('update_failure_info', FailureController::class, 'updateInfo', ['auth']);
+$router->add('delete_failure', FailureController::class, 'delete', ['auth']);
+
+// Global Stock Controller
+$router->add('global_stock', GlobalStockController::class, 'index', ['auth']);
+
 // Meter Controller
 $router->add('meter_outdoor', MeterController::class, 'getOutdoor', ['auth']);
 $router->add('meter_indoor', MeterController::class, 'getIndoor', ['auth']);
