@@ -48,7 +48,7 @@ class SettingController {
     }
 
     public function changeTheme(){
-        $user_id = $_POST['user_id'];
+        global $user_id;
 
         if (isset($_POST['mode'])) {
             $newMode = ($_POST['mode'] == 1) ? 1 : 0;
