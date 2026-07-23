@@ -105,6 +105,22 @@ $router->add('delete_failure', FailureController::class, 'delete', ['auth']);
 
 // Global Stock Controller
 $router->add('global_stock', GlobalStockController::class, 'index', ['auth']);
+$router->add('get_store_global_stock', GlobalStockController::class, 'getAvailableStores', ['auth']);
+$router->add('get_other_store_stock', GlobalStockController::class, 'getOtherStoresStocks', ['auth']);
+$router->add('deliveries_global_stock', GlobalStockController::class, 'getDeliveries', ['auth']);
+$router->add('categories_global_stock', GlobalStockController::class, 'getCategories', ['auth']);
+$router->add('create_category_global_stock', GlobalStockController::class, 'createCategory', ['auth']);
+$router->add('update_category_global_stock', GlobalStockController::class, 'updateCategory', ['auth']);
+$router->add('delete_category_global_stock', GlobalStockController::class, 'deleteCategory', ['auth']);
+$router->add('grouped_stock_global_stock', GlobalStockController::class, 'getGroupedStocks', ['auth']);
+$router->add('global_stocks_by_store', GlobalStockController::class, 'getStockByStoreId', ['auth']);
+$router->add('create_global_stock', GlobalStockController::class, 'createStock', ['auth']);
+$router->add('update_global_stock', GlobalStockController::class, 'updateStock', ['auth']);
+$router->add('delete_global_stock', GlobalStockController::class, 'deleteStock', ['auth']);
+$router->add('send_global_stock', GlobalStockController::class, 'sendStock', ['auth']);
+$router->add('update_daily_global_stock', GlobalStockController::class, 'updateDailyStock', ['auth']);
+$router->add('export_csv_global_stock', GlobalStockController::class, 'exportCsv', ['auth']);
+$router->add('import_csv_global_stock', GlobalStockController::class, 'importCsv', ['auth']);
 
 // Meter Controller
 $router->add('meter_outdoor', MeterController::class, 'getOutdoor', ['auth']);

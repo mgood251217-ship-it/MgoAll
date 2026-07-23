@@ -11,32 +11,66 @@ class GlobalStockController {
         $this->globalStockModel = new GlobalStock($koneksi);
     }
 
-    public function index(){
-        global $store_id;
+    public function index() {
         $selected_month = isset($_GET['month']) ? $_GET['month'] : date('Y-m');
         $days_in_month = date('t', strtotime($selected_month . '-01'));
 
-        $stmtStores = $this->koneksi->prepare("SELECT store_id, name FROM stores WHERE store_id != ? ORDER BY name ASC");
-        $stmtStores->bind_param("i", $store_id);
-        $stmtStores->execute();
-        $available_stores = $stmtStores->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmtStores->close();
+        $available_stores = $this->getAvailableStores();
+        $other_stores_stocks = $this->getOtherStoresStocks();
+        $deliveries = $this->getDeliveries();
+        $categories = $this->getCategories();
+        
+        $stock_data = $this->getGroupedStocks();
 
-        $stmtOtherStocks = $this->koneksi->prepare("
+        return [
+            'days_in_month' => $days_in_month,
+            'available_stores' => $available_stores,
+            'other_stores_stocks' => $other_stores_stocks,
+            'deliveries' => $deliveries,
+            'categories' => $categories,
+            'stocks_list' => $stock_data['stocks_list'],
+            'awal_list' => $stock_data['awal_list'],
+            'daily_list' => $stock_data['daily_list'],
+            'grouped_stocks' => $stock_data['grouped_stocks']
+        ];
+    }
+
+    public function getAvailableStores() {
+        global $store_id;
+        
+        $stmt = $this->koneksi->prepare("SELECT store_id, name FROM stores WHERE store_id != ? ORDER BY name ASC");
+        $stmt->bind_param("i", $store_id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        return $result;
+    }
+
+    public function getOtherStoresStocks() {
+        global $store_id;
+        
+        $stmt = $this->koneksi->prepare("
             SELECT gs.id, gs.store_id, gs.name, gs.size, gsc.name as category_name, gs.price
             FROM global_stocks gs
             JOIN global_stock_categories gsc ON gs.global_stock_category_id = gsc.id
             WHERE gs.store_id != ?
             ORDER BY gsc.name ASC, gs.name ASC
         ");
-        $stmtOtherStocks->bind_param("i", $store_id);
-        $stmtOtherStocks->execute();
-        $other_stores_stocks = $stmtOtherStocks->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmtOtherStocks->close();
+        $stmt->bind_param("i", $store_id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        return $result;
+    }
 
+    public function getDeliveries() {
+        global $store_id;
+        $selected_month = isset($_GET['month']) ? $_GET['month'] : date('Y-m');
         $selected_month_param = $selected_month . '%';
-
-        $stmtDeliveries = $this->koneksi->prepare("
+        
+        $stmt = $this->koneksi->prepare("
             SELECT 
                 d.id, d.qty, d.date, 
                 s_from.name AS from_store, 
@@ -54,21 +88,35 @@ class GlobalStockController {
             AND d.date LIKE ? 
             ORDER BY d.date ASC, d.id ASC
         ");
-        $stmtDeliveries->bind_param("iis", $store_id, $store_id, $selected_month_param);
-        $stmtDeliveries->execute();
-        $deliveries = $stmtDeliveries->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmtDeliveries->close();
+        $stmt->bind_param("iis", $store_id, $store_id, $selected_month_param);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        return $result;
+    }
 
-        $stmtCategory = $this->koneksi->prepare("
+    public function getCategories() {
+        global $store_id;
+        
+        $stmt = $this->koneksi->prepare("
             SELECT *
             FROM global_stock_categories
             WHERE store_id = ?
             ORDER BY name ASC
         ");
-        $stmtCategory->bind_param("i", $store_id);
-        $stmtCategory->execute();
-        $categories = $stmtCategory->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmtCategory->close();
+        $stmt->bind_param("i", $store_id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        return $result;
+    }
+
+    public function getGroupedStocks() {
+        global $store_id;
+        $selected_month = isset($_GET['month']) ? $_GET['month'] : date('Y-m');
+        $selected_month_param = $selected_month . '%';
 
         $stmtStocks = $this->koneksi->prepare("
             SELECT
@@ -148,24 +196,37 @@ class GlobalStockController {
         }
 
         return [
-            'days_in_month' => $days_in_month,
-            'available_stores' => $available_stores,
-            'other_stores_stocks' => $other_stores_stocks,
-            'deliveries' => $deliveries,
-            'categories' => $categories,
             'stocks_list' => $stocks_list,
             'awal_list' => $awal_list,
             'daily_list' => $daily_list,
             'grouped_stocks' => $grouped_stocks
         ];
+    }
 
+    public function getStockByStoreId() {
+        $store_id = isset($_GET['store_id']) ? $_GET['store_id'] : 0;
+        
+        $stmt = $this->koneksi->prepare("
+            SELECT gs.id, gs.store_id, gs.name, gs.size, gsc.name as category_name, gs.price
+            FROM global_stocks gs
+            JOIN global_stock_categories gsc ON gs.global_stock_category_id = gsc.id
+            WHERE gs.store_id = ?
+            ORDER BY gsc.name ASC, gs.name ASC
+        ");
+        $stmt->bind_param("i", $store_id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        return $result;
     }
 
     public function createCategory() {
+        global $store_id;
         header('Content-Type: application/json');
         $data = new stdClass();
         $data->name = $_POST['name'] ?? '';
-        $data->store_id = $_POST['store_id'] ?? 0;
+        $data->store_id = $store_id;
 
         if ($this->globalStockModel->createGlobalStockCategory($data)) {
             send_json_response(true, 'Kategori berhasil ditambahkan.');
@@ -191,14 +252,49 @@ class GlobalStockController {
         exit;
     }
 
+    public function deleteCategory() {
+        global $store_id;
+        if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] != true) {
+            echo json_encode(['status' => 'error', 'message' => 'Akses ditolak. Anda bukan admin.']);
+            exit;
+        }
+        
+        $id = (int) $_POST['id'];
+
+        $qItems = $this->koneksi->query("SELECT id FROM global_stocks WHERE global_stock_category_id = $id AND store_id = '$store_id'");
+        $stock_ids = [];
+        while($row = $qItems->fetch_assoc()) {
+            $stock_ids[] = $row['id'];
+        }
+
+        if (count($stock_ids) > 0) {
+            $ids_str = implode(',', $stock_ids);
+            $this->koneksi->query("DELETE FROM global_stock_daily_values WHERE global_stock_id IN ($ids_str)");
+            $this->koneksi->query("DELETE FROM global_stock_monthly_values WHERE global_stock_id IN ($ids_str)");
+            $this->koneksi->query("DELETE FROM global_stock_deliveries WHERE global_stock_id IN ($ids_str) OR to_global_stock_id IN ($ids_str)");
+        }
+
+        $this->koneksi->query("DELETE FROM global_stocks WHERE global_stock_category_id = $id AND store_id = '$store_id'");
+
+        $stmt = $this->koneksi->prepare("DELETE FROM global_stock_categories WHERE id = ? AND store_id = ?");
+        $stmt->bind_param("is", $id, $store_id);
+        if ($stmt->execute()) {
+            send_json_response(true, "Kategori dan seluruh barang di dalamnya berhasil dihapus.");
+        } else {
+            send_json_response(false, "Gagal menghapus kategori");
+        }
+        exit;
+    }
+
     public function createStock() {
+        global $store_id;
         header('Content-Type: application/json');
         $data = new stdClass();
         $data->name = $_POST['name'] ?? '';
         $data->size = $_POST['size'] ?? '';
         $data->price = $_POST['price'] ?? 0;
         $data->category_id = $_POST['category_id'] ?? 0;
-        $data->store_id = $_POST['store_id'] ?? 0;
+        $data->store_id = $store_id ?? 0;
 
         if ($this->globalStockModel->createGlobalStock($data)) {
             send_json_response(true, 'Barang stok berhasil ditambahkan.');
@@ -223,6 +319,29 @@ class GlobalStockController {
             send_json_response(true, 'Barang stok berhasil diperbarui.');
         } else {
             send_json_response(false, 'Gagal memperbarui barang stok.');
+        }
+        exit;
+    }
+
+    public function deleteStock() {
+        global $store_id;
+        if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] != true) {
+            echo json_encode(['status' => 'error', 'message' => 'Akses ditolak. Anda bukan admin.']);
+            exit;   
+        }
+        
+        $id = (int) $_POST['id'];
+
+        $this->koneksi->query("DELETE FROM global_stock_daily_values WHERE global_stock_id = $id");
+        $this->koneksi->query("DELETE FROM global_stock_monthly_values WHERE global_stock_id = $id");
+        $this->koneksi->query("DELETE FROM global_stock_deliveries WHERE global_stock_id = $id OR to_global_stock_id = $id");
+
+        $stmt = $this->koneksi->prepare("DELETE FROM global_stocks WHERE id = ? AND store_id = ?");
+        $stmt->bind_param("is", $id, $store_id);
+        if ($stmt->execute()) {
+            send_json_response(true, "Barang beserta riwayatnya berhasil dihapus.");
+        } else {
+            send_json_response(false, "Gagal menghapus barang");
         }
         exit;
     }
@@ -562,63 +681,6 @@ class GlobalStockController {
         }
         
         send_json_response(true, "Berhasil import product");
-    }
-
-    public function deleteCategory() {
-        global $store_id;
-        if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] != true) {
-            echo json_encode(['status' => 'error', 'message' => 'Akses ditolak. Anda bukan admin.']);
-            exit;
-        }
-        
-        $id = (int) $_POST['id'];
-
-        $qItems = $this->koneksi->query("SELECT id FROM global_stocks WHERE global_stock_category_id = $id AND store_id = '$store_id'");
-        $stock_ids = [];
-        while($row = $qItems->fetch_assoc()) {
-            $stock_ids[] = $row['id'];
-        }
-
-        if (count($stock_ids) > 0) {
-            $ids_str = implode(',', $stock_ids);
-            $this->koneksi->query("DELETE FROM global_stock_daily_values WHERE global_stock_id IN ($ids_str)");
-            $this->koneksi->query("DELETE FROM global_stock_monthly_values WHERE global_stock_id IN ($ids_str)");
-            $this->koneksi->query("DELETE FROM global_stock_deliveries WHERE global_stock_id IN ($ids_str) OR to_global_stock_id IN ($ids_str)");
-        }
-
-        $this->koneksi->query("DELETE FROM global_stocks WHERE global_stock_category_id = $id AND store_id = '$store_id'");
-
-        $stmt = $this->koneksi->prepare("DELETE FROM global_stock_categories WHERE id = ? AND store_id = ?");
-        $stmt->bind_param("is", $id, $store_id);
-        if ($stmt->execute()) {
-            send_json_response(true, "Kategori dan seluruh barang di dalamnya berhasil dihapus.");
-        } else {
-            send_json_response(false, "Gagal menghapus kategori");
-        }
-        exit;
-    }
-
-    public function deleteStock() {
-        global $store_id;
-        if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] != true) {
-            echo json_encode(['status' => 'error', 'message' => 'Akses ditolak. Anda bukan admin.']);
-            exit;
-        }
-        
-        $id = (int) $_POST['id'];
-
-        $this->koneksi->query("DELETE FROM global_stock_daily_values WHERE global_stock_id = $id");
-        $this->koneksi->query("DELETE FROM global_stock_monthly_values WHERE global_stock_id = $id");
-        $this->koneksi->query("DELETE FROM global_stock_deliveries WHERE global_stock_id = $id OR to_global_stock_id = $id");
-
-        $stmt = $this->koneksi->prepare("DELETE FROM global_stocks WHERE id = ? AND store_id = ?");
-        $stmt->bind_param("is", $id, $store_id);
-        if ($stmt->execute()) {
-            send_json_response(true, "Barang beserta riwayatnya berhasil dihapus.");
-        } else {
-            send_json_response(false, "Gagal menghapus barang");
-        }
-        exit;
     }
     
 }
