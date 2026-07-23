@@ -19,6 +19,25 @@ class SettingController {
         return $data;
     }
 
+    public function appVersion() {
+        $filePath = __DIR__ . '/version.json';
+
+        if (!file_exists($filePath)) {
+            Response::json(false, "Version info tidak ditemukan.", [], 404);
+            return;
+        }
+
+        $data = json_decode(file_get_contents($filePath), true);
+
+        if (!$data) {
+            Response::json(false, "Format version.json tidak valid.", [], 500);
+            return;
+        }
+
+        Response::json(true, "OK", $data);
+    }
+
+
     public function limit() {
         $data = $this->requestData();
         if ($this->settingModel->cekUserSetting($data->user_id)) {

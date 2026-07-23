@@ -25,6 +25,7 @@ $router->add('store_names', StoreController::class, 'storeName', ['auth']);
 // Setting Controller
 $router->add('theme', SettingController::class, 'changeTheme', ['auth']);
 $router->add('test', SettingController::class, 'test');
+$router->add('app_version', SettingController::class, 'appVersion');
 
 // Product Controller
 $router->add('products', ProductController::class, 'index', ['auth']);
