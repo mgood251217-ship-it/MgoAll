@@ -172,12 +172,22 @@ class AuthController {
         $cookies_to_delete = [
             'user_user_id', 'user_username', 'user_name', 'user_initial', 
             'user_store_id', 'user_role', 'user_foto', 'store_name', 
-            'store_address', 'store_logo'
+            'store_address', 'store_logo', 'user_mode'
         ];
         
+        $options = [
+            'expires'  => time() - (86400 * 365),
+            'path'     => '/',
+            'domain'   => '',
+            'secure'   => true,
+            'httponly' => true,
+            'samesite' => 'None',
+        ];
+
         foreach ($cookies_to_delete as $cookie_name) {
             if (isset($_COOKIE[$cookie_name])) {
-                setcookie($cookie_name, '', time() - 3600, '/');
+                setcookie($cookie_name, '', $options);
+                unset($_COOKIE[$cookie_name]); 
             }
         }
 
