@@ -31,7 +31,7 @@ $globalStockController = new GlobalStockController($koneksi);
 
 $action = $_GET['action'] ?? '';
 if ($action != 'login'){
-    require_once BASE_PATH . '/session.php';
+    require_once BASE_PATH . '/middleware/init_auth.php';
 }
 
 switch ($action) {

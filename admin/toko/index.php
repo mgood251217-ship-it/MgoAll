@@ -1,6 +1,6 @@
 <?php
 require_once '../connect.php';
-require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/middleware/init_auth.php';
 require_once BASE_PATH . '/controllers/UserController.php';
 require_once BASE_PATH . '/controllers/LocationController.php';
 require_once BASE_PATH . '/models/Store.php';

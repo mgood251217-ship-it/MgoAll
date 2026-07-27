@@ -1,6 +1,6 @@
 <?php
 require_once '../connect.php'; 
-require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/middleware/init_auth.php';
 
 if (!isset($_GET['order_id'])) {
     http_response_code(400);

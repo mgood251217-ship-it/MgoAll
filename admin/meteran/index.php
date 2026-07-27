@@ -1,6 +1,6 @@
 <?php
 require_once '../connect.php';
-require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/middleware/init_auth.php';
 
 $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
 $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');

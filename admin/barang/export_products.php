@@ -1,6 +1,6 @@
 <?php
 require_once '../connect.php';
-require_once BASE_PATH . '/session.php';
+require_once BASE_PATH . '/components/header.php';
 
 $barangIds = $_POST['barangIds'] ?? [];
 

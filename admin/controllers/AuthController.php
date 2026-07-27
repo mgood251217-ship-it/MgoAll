@@ -17,7 +17,7 @@ class AuthController {
             Response::error('Belum login.', 401);
         }
 
-        require_once BASE_PATH . '/session.php';
+        require_once BASE_PATH . '/components/header.php';
         if ($foto) {
             $fotoLink = BASE_URL . "/assets/img/user/" . $foto;
         }else{
