@@ -1,8 +1,6 @@
 <?php
 
 require_once '../../connect.php';
-require_once BASE_PATH . '/global_functions.php';
-
 
 $result = $koneksi->query("SELECT s.*, (SELECT COUNT(*) FROM users u WHERE u.store_id = s.store_id) as total_karyawan FROM stores s");
 

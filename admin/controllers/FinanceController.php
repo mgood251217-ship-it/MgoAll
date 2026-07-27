@@ -12,7 +12,7 @@ class FinanceController {
     }
 
     public function createTf(){
-        require_once BASE_PATH . '/global_functions.php';
+        require_once BASE_PATH . '/functions/imageHelpers.php';
         global $store_id;
         global $storeName;
 
@@ -311,7 +311,7 @@ class FinanceController {
                 exit;
             }
 
-            require_once BASE_PATH . '/global_functions.php';
+            require_once BASE_PATH . '/functions/imageHelpers.php';
             $file = compress($_FILES['picture'], $uploadDir);
 
             if (!$file || !($file['success'] ?? false)) {

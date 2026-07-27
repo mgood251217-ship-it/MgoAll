@@ -1,6 +1,5 @@
 <?php
 require_once '../../connect.php';
-require_once BASE_PATH . '/global_functions.php';
 
 if ($access == 'ALL') {
   $stores = $koneksi->query("SELECT store_id, name FROM stores");

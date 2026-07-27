@@ -1,7 +1,6 @@
 <?php
 
 require_once '../connect.php';
-require_once '../global_functions.php';
 require_once BASE_PATH . '/session.php';
 require_once BASE_PATH . '/components/Table.php';
 require_once BASE_PATH . '/controllers/FinanceController.php';
@@ -27,7 +26,7 @@ $dataPemasukan = $data['income'];
   <meta charset="UTF-8">
   <title>Keuangan</title>
   <?php include BASE_PATH . '/header.php'; ?>
-  <?php include BASE_PATH . '/export_libraries.php'; ?>
+  <?php include BASE_PATH . '/components/export_libraries.php'; ?>
 <style>
 .img-thumb:hover {
   opacity: 0.5;
@@ -51,7 +50,7 @@ $dataPemasukan = $data['income'];
       <div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-3">
         <h1 class="mb-3 mb-md-0">Keuangan</h1>
         <div class="d-flex flex-wrap justify-content-end align-items-end gap-2">
-          <?php $showExport = true; include BASE_PATH . '/interval_date.php'; ?>
+          <?php $showExport = true; include BASE_PATH . '/components/interval_date.php'; ?>
         </div>
       </div>
 
@@ -500,7 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     const formData = new FormData(this);
 
-    fetch('finance_action?action=sync_finance_by_interval_date', {
+    fetch('finance_action?action=sync_finance_by_components/interval_date', {
       method : 'POST',
       body : formData
     }).then(response => {

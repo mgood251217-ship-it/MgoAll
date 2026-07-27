@@ -48,7 +48,7 @@ switch ($action) {
     case 'create_income':
         $financeController->createIncome();
         break;
-    case 'sync_finance_by_interval_date':
+    case 'sync_finance_by_components/interval_date':
         $financeController->syncFinanceInterval();
         break;
     case 'update_expenditure':

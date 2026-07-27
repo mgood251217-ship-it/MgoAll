@@ -1,6 +1,7 @@
 <?php
 require_once BASE_PATH . '/models/User.php';
 require_once BASE_PATH . '/functions/helpers.php';
+require_once BASE_PATH . '/functions/imageHelpers.php';
 
 class UserController {
     private $userModel;

@@ -293,7 +293,7 @@ class GlobalStockController {
         $data->name = $_POST['name'] ?? '';
         $data->size = $_POST['size'] ?? '';
         $data->price = $_POST['price'] ?? 0;
-        $data->category_id = $_POST['category_id'] ?? 0;
+        $data->global_stock_category_id = $_POST['category_id'] ?? 0;
         $data->store_id = $store_id ?? 0;
 
         if ($this->globalStockModel->createGlobalStock($data)) {

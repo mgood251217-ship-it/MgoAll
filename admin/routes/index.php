@@ -1,6 +1,5 @@
 <?php
 require_once '../connect.php';
-require_once '../global_functions.php';
 require_once BASE_PATH . '/controllers/OrderController.php';
 require_once BASE_PATH . '/controllers/SettingController.php';
 require_once BASE_PATH . '/controllers/PaymentController.php';

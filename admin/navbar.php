@@ -75,7 +75,7 @@ if (strpos($userAgent, 'Mobile') !== false) {
 <script>
 
 document.getElementById("btnLogoout").addEventListener('click', function (){
-  fetch('<?= BASE_URL ?>/action.php?action=logout', {
+  fetch('<?= BASE_URL ?>/routes/?action=logout', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
   })
@@ -96,7 +96,7 @@ document.getElementById('toggleMode').addEventListener('click', function () {
   let mode = '<?= $mode ?>';
   let newMode = (mode == '1') ? 0 : 1;
 
-  fetch('<?= BASE_URL ?>/action.php?action=theme', {
+  fetch('<?= BASE_URL ?>/routes/?action=theme', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `mode=${newMode}&user_id=${<?= $user_id ?>}`

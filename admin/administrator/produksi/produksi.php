@@ -5,7 +5,6 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 require_once '../../connect.php';
-require_once BASE_PATH . '/global_functions.php';
 
 $start_date_f = $_GET['start_date'] ?? date('Y-m-d');
 $end_date_f = $_GET['end_date'] ?? date('Y-m-d');

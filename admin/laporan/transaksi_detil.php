@@ -29,7 +29,7 @@ $notesByOrder = $transactionsDetail['notesByOrder'];
   <meta charset="UTF-8" />
   <title>Transaksi Detil</title>
   <?php include BASE_PATH . '/header.php'; ?>
-  <?php include BASE_PATH . '/export_libraries.php'; ?>
+  <?php include BASE_PATH . '/components/export_libraries.php'; ?>
   <style>
     .nota-block { margin-bottom: 40px; border: 1px solid #ccc; padding: 20px; border-radius: 10px; }
     .nota-header { display: flex; justify-content: space-between; flex-wrap: wrap; }
@@ -95,7 +95,7 @@ $notesByOrder = $transactionsDetail['notesByOrder'];
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <h1 class="mb-0">Transaksi Detil</h1>
         <div class="row g-2 align-items-end justify-content-end flex-nowrap" style="margin-bottom:0;">
-          <?php $showExport = true; include BASE_PATH . '/interval_date.php'; ?>
+          <?php $showExport = true; include BASE_PATH . '/components/interval_date.php'; ?>
         </div>
       </div>
 

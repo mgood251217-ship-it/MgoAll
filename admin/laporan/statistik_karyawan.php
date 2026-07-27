@@ -76,7 +76,7 @@ $htmlTableStatistik = renderTable([
     <meta charset="UTF-8">
     <title>Statistik Karyawan</title>
     <?php include BASE_PATH . '/header.php'; ?>
-    <?php include BASE_PATH . '/export_libraries.php'; ?>
+    <?php include BASE_PATH . '/components/export_libraries.php'; ?>
 </head>
 <body>
 <div id="main-wrapper">
@@ -90,7 +90,7 @@ $htmlTableStatistik = renderTable([
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                 <h1 class="mb-0">Statistik Karyawan</h1>
                 <div class="row g-2 align-items-end justify-content-end flex-nowrap" style="margin-bottom:0;">
-                    <?php $showExport = false; include BASE_PATH . '/interval_date.php'; ?>
+                    <?php $showExport = false; include BASE_PATH . '/components/interval_date.php'; ?>
                     <div class="col-auto align-self-end d-flex gap-2 flex-wrap">
                         <button type="button" class="btn btn-success" id="btnExportExcel">Export Excel</button>
                         <button type="button" class="btn btn-primary" id="btnExportWord">Export Word</button>

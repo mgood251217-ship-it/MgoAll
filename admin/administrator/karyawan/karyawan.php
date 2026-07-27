@@ -1,7 +1,6 @@
 <?php
 
 require_once '../../connect.php';
-require_once BASE_PATH . '/global_functions.php';
 
 // Query menampilkan data users
 $result = $koneksi->query("

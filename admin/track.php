@@ -1,6 +1,5 @@
 <?php
 require_once 'connect.php';
-require_once 'global_functions.php';
 $order_id = $_GET['id'] ?? 0;
 date_default_timezone_set('Asia/Jakarta');
 

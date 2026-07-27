@@ -186,7 +186,6 @@ class OrderController {
         $insert = $this->orderModel->createOrder($data);
 
         if ($insert) {
-            require_once BASE_PATH . '/global_functions.php';
             $order_id = $this->koneksi->insert_id;
             $data->order_id = $order_id;
             $this->projectModel->createProject($data);

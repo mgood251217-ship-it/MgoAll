@@ -1162,7 +1162,7 @@ async function sendDeleteRequest(action, id) {
     formData.append('id', id);
 
     try {
-        const response = await fetch(`../routes/?action=${id}`, {
+        const response = await fetch(`../routes/?action=${action}&id=${id}`, {
             method: 'POST',
             body: formData
         });

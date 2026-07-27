@@ -1,6 +1,5 @@
 <?php
 require_once '../../connect.php';
-require_once BASE_PATH . '/global_functions.php';
 
 if (!empty($_POST['store_id'])) {
   $store_id = (int) $_POST['store_id'];

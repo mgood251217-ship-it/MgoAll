@@ -1,6 +1,5 @@
 <?php
 require_once '../../connect.php';
-require_once BASE_PATH . '/global_functions.php';
 
 // Ambil input dari form
 $store_id = $_POST['store_id'] ?? null;

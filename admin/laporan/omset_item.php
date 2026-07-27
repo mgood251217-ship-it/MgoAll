@@ -53,7 +53,7 @@ $htmlTableOmsetPerItem = renderTable([
   <meta charset="UTF-8">
   <title>Daftar Omset Produk</title>
   <?php include BASE_PATH . '/header.php'; ?>
-  <?php include BASE_PATH . '/export_libraries.php'; ?>
+  <?php include BASE_PATH . '/components/export_libraries.php'; ?>
 </head>
 
 <body>
@@ -69,7 +69,7 @@ $htmlTableOmsetPerItem = renderTable([
         <h1 class="mb-4">Daftar Omset Per Produk</h1>
 
         <div class="d-flex flex-wrap justify-content-end align-items-end gap-2">
-          <?php $showExport = true; include BASE_PATH . '/interval_date.php'; ?>
+          <?php $showExport = true; include BASE_PATH . '/components/interval_date.php'; ?>
         </div>
       </div>
     <div id="omsetPerItemWrapper">

@@ -80,7 +80,7 @@ $htmlTableTransaksi = renderTable([
     <meta charset="UTF-8" />
     <title>Transaksi Bulanan</title>
     <?php include BASE_PATH . '/header.php'; ?>
-    <?php include BASE_PATH . '/export_libraries.php'; ?>
+    <?php include BASE_PATH . '/components/export_libraries.php'; ?>
 </head>
 <body>
 <div id="main-wrapper">

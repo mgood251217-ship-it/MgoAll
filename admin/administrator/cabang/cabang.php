@@ -1,6 +1,5 @@
 <?php
 require_once '../../connect.php';
-require_once BASE_PATH . '/global_functions.php';
 require_once BASE_PATH . '/administrator/session.php';
 
 if ($access == 'ALL') {

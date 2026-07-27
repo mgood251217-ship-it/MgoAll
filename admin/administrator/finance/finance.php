@@ -3,7 +3,6 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 require_once '../../connect.php';
-require_once BASE_PATH . '/global_functions.php';
 
 date_default_timezone_set('Asia/Jakarta');
 // Ambil filter tanggal

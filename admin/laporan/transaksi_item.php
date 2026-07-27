@@ -22,7 +22,7 @@ $productData = $data['transaksi_item'];
   <meta charset="UTF-8" />
   <title>Transaksi per Item</title>
   <?php include BASE_PATH . '/header.php'; ?>
-  <?php include BASE_PATH . '/export_libraries.php'; ?>
+  <?php include BASE_PATH . '/components/export_libraries.php'; ?>
   
   <style>
     .nota-block { margin-bottom: 40px; border: 1px solid #ccc; padding: 20px; border-radius: 10px; }
@@ -62,7 +62,7 @@ $productData = $data['transaksi_item'];
 
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="mb-0">Transaksi per Item</h1>
-        <?php $showExport = true; include BASE_PATH . '/interval_date.php'; ?>
+        <?php $showExport = true; include BASE_PATH . '/components/interval_date.php'; ?>
       </div>
 
       <?php if (empty($productData)): ?>

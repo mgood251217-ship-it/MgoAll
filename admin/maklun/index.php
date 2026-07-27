@@ -22,7 +22,7 @@ $dataMaklunKeluar = $dataMaklun['maklunOut'];
   <meta charset="UTF-8">
   <title>Maklun</title>
   <?php include BASE_PATH . '/header.php'; ?>
-  <?php include BASE_PATH . '/export_libraries.php'; ?>
+  <?php include BASE_PATH . '/components/export_libraries.php'; ?>
 </head>
 
 <body>
@@ -36,7 +36,7 @@ $dataMaklunKeluar = $dataMaklun['maklunOut'];
     <div class="d-flex justify-content-between align-items-end mb-4">
       <h1>Maklun</h1>
       <div class="d-flex gap-2 align-items-end">
-        <?php $showExport = true; include BASE_PATH . '/interval_date.php'; ?>
+        <?php $showExport = true; include BASE_PATH . '/components/interval_date.php'; ?>
       </div>
     </div>
 

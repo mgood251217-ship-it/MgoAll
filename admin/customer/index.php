@@ -127,7 +127,7 @@ $ordersOffline = $dataOrder['offline'];
           <div class="col">
             <?php
             $showSearch = true;
-            include BASE_PATH . '/interval_date.php'; ?>
+            include BASE_PATH . '/components/interval_date.php'; ?>
           </div>
         </div>
 
