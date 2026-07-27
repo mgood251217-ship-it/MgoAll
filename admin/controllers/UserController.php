@@ -2,12 +2,15 @@
 require_once BASE_PATH . '/models/User.php';
 require_once BASE_PATH . '/functions/helpers.php';
 require_once BASE_PATH . '/functions/imageHelpers.php';
+require_once BASE_PATH . '/middleware/AuthMiddleware.php';
 
 class UserController {
     private $userModel;
+    private $authMiddleware;
 
     public function __construct($koneksi) {
         $this->userModel = new User($koneksi);
+        $this->authMiddleware = new AuthMiddleware($koneksi);
     }
 
     public function index() { 
@@ -47,6 +50,7 @@ class UserController {
     }
 
     public function update() {
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         header('Content-Type: application/json');
         $data = $this->requestData();
         $errors = [];
@@ -84,6 +88,7 @@ class UserController {
     }
 
     public function create() {
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         header('Content-Type: application/json');
         $data = $this->requestData();
         $errors = [];
@@ -118,6 +123,7 @@ class UserController {
     }
 
     public function delete() {
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         header('Content-Type: application/json');
         global $store_id, $picture;
         $data = $this->requestData();

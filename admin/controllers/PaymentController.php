@@ -26,15 +26,6 @@ class PaymentController {
         $this->financeController = new FinanceController($koneksi);
     }
 
-    private function requestData() {
-        global $store_id;
-
-        $data = (object)[
-            'order_id' => $_POST['order_id'],
-            'store_id' => $store_id,
-        ];
-    }
-
     public function create(){
         global $store_id;
         $isLunas = isset($_POST['lunas_method']);

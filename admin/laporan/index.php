@@ -1,7 +1,7 @@
 <?php
 require_once '../connect.php';
 require_once BASE_PATH . '/middleware/init_auth.php';
-require BASE_PATH . '/access_rights.php';
+
 require_once BASE_PATH . '/functions/helpers.php';
 
 $startMonth  = date('Y-m-01 00:00:00');

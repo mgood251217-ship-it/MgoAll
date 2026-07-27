@@ -66,9 +66,9 @@ class Store{
         return $result;
     }
 
-    public function deleteMachine($id){
-        $stmt = $this->koneksi->prepare("DELETE FROM machine WHERE machine_id = ?");
-        $stmt->bind_param("i", $id);
+    public function deleteMachine($id, $store_id){
+        $stmt = $this->koneksi->prepare("DELETE FROM machine WHERE machine_id = ? AND store_id = ?");
+        $stmt->bind_param("ii", $id, $store_id);
         $result = $stmt->execute();
         return $result;
     }

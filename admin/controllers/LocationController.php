@@ -1,12 +1,15 @@
 <?php
 require_once BASE_PATH . '/models/Location.php';
 require_once BASE_PATH . '/functions/helpers.php';
+require_once BASE_PATH . '/middleware/AuthMiddleware.php';
 
 class LocationController {
     private $locationModel;
+    private $authMiddleware;
 
     public function __construct($koneksi) {
         $this->locationModel = new Location($koneksi);
+        $this->authMiddleware = new AuthMiddleware($koneksi);
     }
 
     private function requestData() {
@@ -25,6 +28,7 @@ class LocationController {
     }
 
     public function setLocation() {
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         header('Content-Type: application/json');
         $data = $this->requestData();
 

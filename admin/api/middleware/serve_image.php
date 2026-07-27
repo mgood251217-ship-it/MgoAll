@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/api/middleware/cors.php';
+require_once 'cors.php';
 
-$allowedDir = realpath(__DIR__ . '/assets/img');
+$allowedDir = realpath('../../assets/img');
 $requested = $_GET['path'] ?? '';
 $fullPath = realpath($allowedDir . '/' . $requested);
 

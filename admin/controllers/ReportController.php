@@ -3,10 +3,12 @@ require_once BASE_PATH . '/models/Order.php';
 require_once BASE_PATH . '/models/User.php';
 require_once BASE_PATH . '/models/Project.php';
 require_once BASE_PATH . '/models/Product.php';
-
 require_once BASE_PATH . '/models/Activity.php';
 require_once BASE_PATH . '/models/Finance.php';
 require_once BASE_PATH . '/models/Payment.php';
+
+require_once BASE_PATH . '/middleware/AuthMiddleware.php';
+
 require_once BASE_PATH . '/functions/helpers.php';
 
 class ReportController {
@@ -18,6 +20,7 @@ class ReportController {
     private $paymentModel;
     private $activityModel;
     private $financeModel;
+    private $authMiddleware;
 
     public function __construct($koneksi) {
         $this->koneksi = $koneksi;
@@ -28,9 +31,12 @@ class ReportController {
         $this->paymentModel = new Payment($koneksi);
         $this->activityModel = new Activity($koneksi);
         $this->financeModel = new Finance($koneksi);
+        $this->authMiddleware = new AuthMiddleware($koneksi);
     }
     
     public function index(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
+
         global $store_id;
 
         $startMonth  = date('Y-m-01 00:00:00');
@@ -210,6 +216,8 @@ class ReportController {
     }
 
     public function allDetailOrderByIntervalDate(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
+
         global $store_id;
         $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
         $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
@@ -233,6 +241,9 @@ class ReportController {
     }
     
     public function piutang(){
+        if ($this->authMiddleware->isAdminOrManager() == false) {
+            return [];
+        }
         global $store_id;
         $total_hutang = 0;
 
@@ -281,6 +292,8 @@ class ReportController {
         ];
     }
     public function transactionsCapture() {
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
+
         global $store_id;
         $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
         $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
@@ -471,6 +484,8 @@ class ReportController {
     }
 
     public function orderAnalysis(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
+
         global $store_id;
 
         $data_tanggal = [];
@@ -580,6 +595,8 @@ class ReportController {
     }
 
     public function transactionsDetail(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
+
         global $storeName;
         global $store_id;
         $start_date = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
@@ -658,6 +675,8 @@ class ReportController {
     }
 
     public function omsetItem(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
+
         global $store_id;
         $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
         $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
@@ -667,6 +686,8 @@ class ReportController {
     }
 
     public function productUsed() {
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
+
         global $store_id;
         $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
         $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
@@ -676,6 +697,8 @@ class ReportController {
     }
 
     public function activity() {
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
+
         global $store_id;
         $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
         $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
@@ -685,6 +708,8 @@ class ReportController {
     }
 
     public function statistics(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
+
         global $store_id;
 
         $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
@@ -784,6 +809,7 @@ class ReportController {
 
     }
     public function orderArchive() {
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         global $store_id;
 
         $start_date = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';

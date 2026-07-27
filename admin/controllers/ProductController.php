@@ -1,12 +1,15 @@
 <?php
 require_once BASE_PATH . '/models/Product.php';
 require_once BASE_PATH . '/functions/helpers.php';
+require_once BASE_PATH . '/middleware/AuthMiddleware.php';
 
 class ProductController {
     private $productModel;
+    private $authMiddleware;
 
     public function __construct($koneksi) {
         $this->productModel = new Product($koneksi);
+        $this->authMiddleware = new AuthMiddleware($koneksi);
     }
 
     private function requestData() {
@@ -78,6 +81,7 @@ class ProductController {
     }
 
     public function createProduct() {
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         header('Content-Type: application/json');
         $data = $this->requestData();
         
@@ -90,6 +94,7 @@ class ProductController {
     }
 
     public function createFinishing() {
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         header('Content-Type: application/json');
         $data = $this->requestData();
         
@@ -102,6 +107,7 @@ class ProductController {
     }
 
     public function updateProduct() {
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         header('Content-Type: application/json');
         $data = $this->requestData();
         
@@ -114,6 +120,7 @@ class ProductController {
     }
 
     public function updateFinishing() {
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         header('Content-Type: application/json');
         $data = $this->requestData();
         
@@ -126,6 +133,7 @@ class ProductController {
     }
 
     public function deleteProduct() {
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         header('Content-Type: application/json');
         $data = new stdClass();
         $data->id = $_POST['product_id'] ?? 0;
@@ -139,6 +147,7 @@ class ProductController {
     }
 
     public function deleteFinishing() {
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         header('Content-Type: application/json');
         $data = new stdClass();
         $data->id = $_POST['finishing_id'] ?? 0;

@@ -1,12 +1,15 @@
 <?php
 require_once BASE_PATH . '/models/Store.php';
 require_once BASE_PATH . '/functions/helpers.php';
+require_once BASE_PATH . '/middleware/AuthMiddleware.php';
 
 class StoreController {
     private $storeModel;
+    private $authMiddleware;
 
     public function __construct($koneksi) {
         $this->storeModel = new Store($koneksi);
+        $this->authMiddleware = new AuthMiddleware($koneksi);
     }
 
     public function store(){
@@ -16,6 +19,7 @@ class StoreController {
     }
 
     public function createMachine(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         global $store_id;
         $data = (object)[
             'name' => trim($_POST['name'] ?? ''),
@@ -33,7 +37,7 @@ class StoreController {
     }
 
     public function updateMachine(){
-        global $store_id;
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         $data = (object)[
             'name' => trim($_POST['name'] ?? ''),
             'type' => trim($_POST['type'] ?? ''),
@@ -50,10 +54,11 @@ class StoreController {
     }
 
     public function deleteMachine(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         global $store_id;
         $id = $_POST['machine_id'] ?? 0;
 
-        if ($this->storeModel->deleteMachine($id)) {
+        if ($this->storeModel->deleteMachine($id, $store_id)) {
             send_json_response(true, 'Mesin berhasil dihapus.');
         } else {
             http_response_code(500);

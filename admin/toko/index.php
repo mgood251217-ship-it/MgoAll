@@ -4,7 +4,6 @@ require_once BASE_PATH . '/middleware/init_auth.php';
 require_once BASE_PATH . '/controllers/UserController.php';
 require_once BASE_PATH . '/controllers/LocationController.php';
 require_once BASE_PATH . '/models/Store.php';
-require_once  BASE_PATH . '/access_rights.php';
 require_once BASE_PATH . '/components/Modal.php';
 require_once BASE_PATH . '/components/Alert.php';
 require_once BASE_PATH . '/components/Table.php';

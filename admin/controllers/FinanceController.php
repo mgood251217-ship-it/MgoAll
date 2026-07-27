@@ -1,17 +1,21 @@
 <?php
 require_once BASE_PATH . '/models/Finance.php';
 require_once BASE_PATH . '/functions/helpers.php';
+require_once BASE_PATH . '/middleware/AuthMiddleware.php';
 
 class FinanceController {
     private $koneksi;
     private $financeModel;
+    private $authMiddleware;
 
     public function __construct($koneksi) {
         $this->koneksi = $koneksi;
         $this->financeModel = new Finance($koneksi);
+        $this->authMiddleware = new AuthMiddleware($koneksi);
     }
 
     public function createTf(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         require_once BASE_PATH . '/functions/imageHelpers.php';
         global $store_id;
         global $storeName;
@@ -77,6 +81,7 @@ class FinanceController {
     }
 
     public function finance(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         global $store_id;
         global $storeName;
         $start_date = $_GET['start_date'] ?? date('Y-m-d');
@@ -260,6 +265,7 @@ class FinanceController {
     }
 
     public function syncFinanceInterval(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         global $store_id;
         $start_date = $_POST['start_date'];
         $end_date = $_POST['end_date'];
@@ -284,6 +290,7 @@ class FinanceController {
     }
 
     public function createExpenditure(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         global $store_id;
         global $storeName;
 
@@ -339,6 +346,7 @@ class FinanceController {
     }
 
     public function createIncome(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         global $store_id;
         $info    = strtoupper(trim($_POST['information']));
         $nominal = $_POST['nominal'] ?? 0;
@@ -360,6 +368,7 @@ class FinanceController {
     }
 
     public function updateExpenditure(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         global $store_id;
 
         $information     = strtoupper(trim($_POST['information'] ?? ''));
@@ -378,6 +387,7 @@ class FinanceController {
     }
 
     public function updateIncome(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         global $store_id;
 
         $information     = strtoupper(trim($_POST['information'] ?? ''));
@@ -396,6 +406,7 @@ class FinanceController {
     }
 
     public function deleteExpenditure(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         global $store_id;
         global $storeName;
 
@@ -422,6 +433,7 @@ class FinanceController {
     }
 
     public function deleteIncome(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         global $store_id;
 
         $income_id = (int)($_POST['id'] ?? 0);
