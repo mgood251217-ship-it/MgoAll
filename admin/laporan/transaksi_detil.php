@@ -7,7 +7,6 @@ require_once BASE_PATH . '/controllers/ReportController.php';
 
 $reportController = new ReportController($koneksi);
 
-$scrl_id = $_GET['scrl_id'] ?? '';
 $access = startEnk('dek', $_COOKIE['admin_access'] ?? '');
 
 $start_date = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
@@ -676,29 +675,6 @@ function loadPaymentInfo(orderId, container) {
       });
     });
   });
-
-    const order_id = <?= json_encode($scrl_id) ?>;
-
-    const target = document.getElementById(order_id);
-    if (target) {
-      target.style.borderColor = "yellow";
-      target.style.borderWidth = "3px";
-      const offsetTop = target.getBoundingClientRect().top + window.pageYOffset - 80;
-      window.scrollTo({ top: offsetTop, behavior: 'instant' });
-    }
-    function kedip(){
-      if (target.style.borderColor === "yellow") {
-        target.style.borderColor = "red";
-      }else if(target.style.borderColor === "red"){
-        target.style.borderColor = "black";
-      }else{
-        target.style.borderColor = "yellow";
-      }
-
-    }
-    if (<?= json_encode($scrl_id) ?>) {
-      setInterval(kedip, 200);
-    }
     
   });
 </script>

@@ -81,7 +81,7 @@ $htmlTablePelunasan = renderTable([
             'header' => 'Cek Order',
             'render' => function($row) {
                 $dOrder = date('Y-m-d', strtotime($row['order_date']));
-                return '<a href="transaksi_detil?scrl_id=' . $row['order_id'] . '&start_date=' . $dOrder . '&end_date=' . $dOrder . '" target="_blank" class="btn btn-danger btn-sm">Cek Order</a>';
+                return '<a href="transaksi_detil?search=' . $row['nomorator'] . '&start_date=' . $dOrder . '&end_date=' . $dOrder . '" target="_blank" class="btn btn-danger btn-sm">Cek Order</a>';
             }
         ]
     ]

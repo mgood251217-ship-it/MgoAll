@@ -599,18 +599,35 @@ class ReportController {
 
         global $storeName;
         global $store_id;
-        $start_date = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
-        $end_date = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
 
-        $stmt = $this->koneksi->prepare("SELECT o.order_id, o.nomorator, o.nomor, o.customer_name, o.date, o.total, o.system, u.name AS operator
-                FROM orders o
-                LEFT JOIN users u ON o.user_id = u.user_id
-                WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
-                ORDER BY o.system ASC, o.order_id DESC");
-        $stmt->bind_param("iss", $store_id, $start_date, $end_date);
-        $stmt->execute();
-        $orders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $search = $_GET['search'] ?? ''; 
+        $start_date = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00'; 
+        $end_date = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59'; 
+
+        $query = "SELECT o.order_id, o.nomorator, o.nomor, o.customer_name, o.date, o.total, o.system, u.name AS operator 
+                FROM orders o 
+                LEFT JOIN users u ON o.user_id = u.user_id 
+                WHERE o.store_id = ? AND o.date BETWEEN ? AND ?";
+
+        if ($search !== '') {
+            $query .= " AND (o.nomorator = ? OR o.customer_name LIKE ?)";
+        }
+
+        $query .= " ORDER BY o.system ASC, o.order_id DESC";
+
+        $stmt = $this->koneksi->prepare($query);
+
+        if ($search !== '') {
+            $search_like = "%" . $search . "%";
+            $stmt->bind_param("issss", $store_id, $start_date, $end_date, $search, $search_like);
+        } else {
+            $stmt->bind_param("iss", $store_id, $start_date, $end_date);
+        }
+
+        $stmt->execute(); 
+        $orders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); 
         $stmt->close();
+
 
         $itemsByOrder = [];
         $paymentsByOrder = [];

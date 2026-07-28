@@ -210,7 +210,7 @@ $ordersOffline = $dataOrder['offline'];
                               </div> ';
                     if ($role == 'ADMIN' || $role == 'MANAGER') {
                         $formattedDate = date('Y-m-d', strtotime($row['date']));
-                        $html .= '<a href="../laporan/transaksi_detil?scrl_id=' . $row['order_id'] . '&start_date=' . $formattedDate . '&end_date=' . $formattedDate . '" target="_blank" class="btn btn-sm btn-success">Cek</a>';
+                        $html .= '<a href="../laporan/transaksi_detil?search=' . $row['nomorator'] . '&start_date=' . $formattedDate . '&end_date=' . $formattedDate . '" target="_blank" class="btn btn-sm btn-success">Cek</a>';
                     }
                     $html .= '</div>';
                     return $html;

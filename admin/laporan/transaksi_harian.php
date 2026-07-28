@@ -70,7 +70,7 @@ $htmlTableTransaksi = renderTable([
             'header' => 'Aksi',
             'render' => function($row) {
                 $date = date('Y-m-d', strtotime($row['order_date']));
-                return '<a href="transaksi_detil?scrl_id=' . sanitize($row['order_id']) . '&start_date=' . $date . '&end_date=' . $date . '" target="_blank" class="btn btn-danger btn-sm">Cek Order</a>';
+                return '<a href="transaksi_detil?search=' . sanitize($row['nomorator']) . '&start_date=' . $date . '&end_date=' . $date . '" target="_blank" class="btn btn-danger btn-sm">Cek Order</a>';
             }
         ]
     ]
