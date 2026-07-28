@@ -837,8 +837,7 @@ class ReportController {
         $result = [];
 
         foreach ($archive as $row) {
-            $orderId = $row['order_id'];
-
+            $orderId = $row['order_id'] ?? '';
             if (!isset($result[$orderId])) {
                 $result[$orderId] = $row;
                 $result[$orderId]['items'] = [];

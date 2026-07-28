@@ -647,10 +647,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }).then(data => {
         if (data.success) {
           showAlert('success', data.message);
-          setTimeout(() => {
+
             window.location.reload();
-          }, 2000);
-        } else {
+
+        } else {  
           showAlert('error', data.message);
           console.log('Error creating expenditure:', data.message);
         }

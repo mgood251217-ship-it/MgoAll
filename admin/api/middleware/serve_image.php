@@ -1,5 +1,12 @@
 <?php
-require_once 'cors.php';
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 $allowedDir = realpath('../../assets/img');
 $requested = $_GET['path'] ?? '';
@@ -12,12 +19,12 @@ if (!$fullPath || strpos($fullPath, $allowedDir) !== 0 || !is_file($fullPath)) {
 
 $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
 $mimeTypes = [
-    'jpg' => 'image/jpeg',
+    'jpg'  => 'image/jpeg',
     'jpeg' => 'image/jpeg',
-    'png' => 'image/png',
-    'gif' => 'image/gif',
+    'png'  => 'image/png',
+    'gif'  => 'image/gif',
     'webp' => 'image/webp',
-    'svg' => 'image/svg+xml',
+    'svg'  => 'image/svg+xml',
 ];
 
 if (!isset($mimeTypes[$ext])) {
