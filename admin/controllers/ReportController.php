@@ -291,12 +291,16 @@ class ReportController {
             'total' => $total_hutang
         ];
     }
-    public function transactionsCapture() {
+    public function transactionsCapture($custom_start = null, $custom_end = null) {
         if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
 
         global $store_id;
-        $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
-        $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
+        
+        $base_start = $custom_start ?? $_GET['start_date'] ?? date('Y-m-d');
+        $base_end = $custom_end ?? $_GET['end_date'] ?? date('Y-m-d');
+        
+        $start_date = $base_start . ' 00:00:00';
+        $end_date = $base_end . ' 23:59:59';
 
         $sqlTransaksi = "
             SELECT 
@@ -437,7 +441,6 @@ class ReportController {
 
             if ($statusLabel === 'PELUNASAN') {
                 $dp = $dpData[$oid] ?? null;
-
                 $punyaDp = ($dp && $pCount > 1);
 
                 $row['dp_nominal'] = $punyaDp ? $dp['dp_nominal'] : 0;

@@ -646,7 +646,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return response.json();
       }).then(data => {
         if (data.success) {
-          showAlert('success', data.message);
 
             window.location.reload();
 

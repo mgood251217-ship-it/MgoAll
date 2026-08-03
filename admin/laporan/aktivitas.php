@@ -34,6 +34,10 @@ $htmlTableAktivitas = renderTable([
             'field'  => 'order_id'
         ],
         [
+            'header' => 'Tanggal Order',
+            'field'  => 'order_date'
+        ],
+        [
             'header' => 'Tanggal',
             'field'  => 'date'
         ],

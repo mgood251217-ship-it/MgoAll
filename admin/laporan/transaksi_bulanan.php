@@ -11,19 +11,18 @@ $startMonth = $_GET['start_month'] ?? date('m');
 $startYear  = $_GET['start_year'] ?? date('Y');
 $endMonth   = $_GET['end_month'] ?? date('m');
 $endYear    = $_GET['end_year'] ?? date('Y');
-
+ 
 $startDate = date('Y-m-d', strtotime("$startYear-$startMonth-01"));
 $endDate = date('Y-m-t', strtotime("$endYear-$endMonth-01"));
 
-$start_date = $startDate . " 00:00:00";
-$end_date = $endDate . " 23:59:59";
+$rekap = $reportController->transactionsCapture($startDate, $endDate);
 
-$rekap = $reportController->transactionsCapture();
 $total_bulan = $rekap['rekap']['total_bulan'];
 $data_per_tanggal = $rekap['rekap']['data_per_tanggal'];
 $total_transaksi_all = $rekap['rekap']['total_transaksi_all'];
 $total_bulan_tf = $rekap['rekap']['total_bulan_tf'];
 $total_bulan_cash = $rekap['rekap']['total_bulan_cash'];
+
 
 $htmlTableTransaksi = renderTable([
     'id'          => 'tableTransaksi',

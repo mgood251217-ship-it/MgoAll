@@ -6,6 +6,7 @@ require_once BASE_PATH . '/models/Product.php';
 require_once BASE_PATH . '/models/Activity.php';
 require_once BASE_PATH . '/models/Payment.php';
 require_once BASE_PATH . '/functions/helpers.php';
+require_once BASE_PATH . '/functions/cacheHelpers.php';
 
 class OrderController {
     private $koneksi;
@@ -189,6 +190,7 @@ class OrderController {
             $order_id = $this->koneksi->insert_id;
             $data->order_id = $order_id;
             $this->projectModel->createProject($data);
+            updateStoreCache($data->store_id, 'order');
             
             send_json_response(true, 'Order berhasil ditambahkan', ['order_id' => $order_id, 'id' => startEnk('enk', $order_id)]);
             exit;
@@ -196,6 +198,7 @@ class OrderController {
             send_json_response(false, 'Gagal menambahkan order');
             exit;
         }
+        
     }
 
     public function nomorator($store_id, $sys) {

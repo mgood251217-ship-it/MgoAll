@@ -35,7 +35,20 @@ class Activity {
     }
 
     public function getActivitiesByStoreId($id, $start_date, $end_date){
-        $stmt = $this->koneksi->prepare("SELECT activity_id, title, message, information, order_id, date, done FROM activity WHERE store_id = ? AND date BETWEEN ? AND ?");
+        $stmt = $this->koneksi->prepare("SELECT 
+                                            a.activity_id, 
+                                            a.title, 
+                                            a.message, 
+                                            a.information, 
+                                            a.order_id, 
+                                            a.date, 
+                                            a.done,
+                                            o.date AS order_date
+                                        FROM activity a
+                                        LEFT JOIN orders o ON a.order_id = o.order_id
+                                        WHERE a.store_id = ? 
+                                        AND a.date BETWEEN ? AND ?
+                                        ");
         $stmt->bind_param("iss", $id, $start_date, $end_date);
         $stmt->execute();
         $result = $stmt->get_result();
