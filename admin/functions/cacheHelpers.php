@@ -28,10 +28,21 @@ function updateOrderTrigger($store_id, $order_id) {
 
     $filePath = $tempDir . '/store_' . $store_id . '.json';
     
-    $data = [
-        "order_id" => (int) $order_id,
-        "last_update" => time()
-    ];
+    $data = [];
+
+    if (file_exists($filePath)) {
+        $json = file_get_contents($filePath);
+        $data = json_decode($json, true) ?: [];
+    }
+
+    $data[(string)$order_id] = time();
+
+    $expireTime = time() - (24 * 3600);
+    foreach ($data as $id => $timestamp) {
+        if ($timestamp < $expireTime) {
+            unset($data[$id]);
+        }
+    }
 
     file_put_contents($filePath, json_encode($data));
 }

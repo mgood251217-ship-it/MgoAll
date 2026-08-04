@@ -954,4 +954,10 @@ class OrderController {
         }
     }
 
+    public function triggerOrderUpdate() {
+        global $store_id;
+        $order_id = $_POST['order_id'] ?? 0;
+        updateOrderTrigger($store_id, $order_id);
+    }
+
 }

@@ -51,6 +51,7 @@ $router->add('get_orders', OrderController::class, 'index', ['auth']);
 $router->add('create_order', OrderController::class, 'create', ['auth']);
 $router->add('update_order', OrderController::class, 'update', ['auth']);
 $router->add('delete_order', OrderController::class, 'delete', ['auth']);
+$router->add('trigger_order_update', OrderController::class, 'triggerOrderUpdate', ['auth']);
 // Order Item 
 $router->add('order_detail', OrderController::class, 'orderDetail', ['auth']);
 $router->add('item_price', OrderController::class, 'fullPrice', ['auth']);
