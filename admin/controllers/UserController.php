@@ -3,6 +3,7 @@ require_once BASE_PATH . '/models/User.php';
 require_once BASE_PATH . '/functions/helpers.php';
 require_once BASE_PATH . '/functions/imageHelpers.php';
 require_once BASE_PATH . '/middleware/AuthMiddleware.php';
+require_once BASE_PATH . '/functions/cacheHelpers.php';
 
 class UserController {
     private $userModel;
@@ -80,6 +81,7 @@ class UserController {
         }
 
         if ($this->userModel->updateUser($data)) {
+            updateStoreCache($data->store_id, 'users');
             send_json_response(true, "User berhasil diperbarui.");
         } else {
             send_json_response(false, "Gagal memperbarui user.");
@@ -115,6 +117,7 @@ class UserController {
         }
 
         if ($this->userModel->createUser($data)) {
+            updateStoreCache($data->store_id, 'users');
             send_json_response(true, "User berhasil ditambahkan.");
         } else {
             send_json_response(false, "Gagal menambahkan user.");
@@ -140,6 +143,7 @@ class UserController {
                     unlink($filePath);
                 }
             }
+            updateStoreCache($data->store_id, 'users');
             send_json_response(true, "User berhasil dihapus.");
         } else {
             send_json_response(false, "Gagal menghapus user.");

@@ -28,6 +28,7 @@ class StoreController {
         ];
 
         if ($this->storeModel->createMachine($data)) {
+            updateStoreCache($store_id, 'machines');
             send_json_response(true, 'Mesin baru berhasil ditambahkan.');
         } else {
             http_response_code(500);
@@ -37,6 +38,7 @@ class StoreController {
     }
 
     public function updateMachine(){
+        global $store_id;
         if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         $data = (object)[
             'name' => trim($_POST['name'] ?? ''),
@@ -45,6 +47,7 @@ class StoreController {
         ];
 
         if ($this->storeModel->updateMachine($data)) {
+            updateStoreCache($store_id, 'machines');
             send_json_response(true, 'Mesin berhasil diperbaharui.');
         } else {
             http_response_code(500);
@@ -59,6 +62,7 @@ class StoreController {
         $id = $_POST['machine_id'] ?? 0;
 
         if ($this->storeModel->deleteMachine($id, $store_id)) {
+            updateStoreCache($store_id, 'machines');
             send_json_response(true, 'Mesin berhasil dihapus.');
         } else {
             http_response_code(500);

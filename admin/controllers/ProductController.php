@@ -86,6 +86,7 @@ class ProductController {
         $data = $this->requestData();
         
         if ($this->productModel->createProduct($data)) {
+            updateStoreCache($data->store_id, 'products');
             send_json_response(true, 'Produk berhasil ditambahkan.');
         } else {
             send_json_response(false, 'Gagal menambahkan produk.');
@@ -99,6 +100,7 @@ class ProductController {
         $data = $this->requestData();
         
         if ($this->productModel->createFinishing($data)) {
+            updateStoreCache($data->store_id, 'finishings');
             send_json_response(true, 'Finishing berhasil ditambahkan.');
         } else {
             send_json_response(false, 'Gagal menambahkan finishing.');
@@ -112,6 +114,7 @@ class ProductController {
         $data = $this->requestData();
         
         if ($this->productModel->updateProduct($data)) {
+            updateStoreCache($data->store_id, 'products');
             send_json_response(true, 'Produk berhasil diperbarui.');
         } else {
             send_json_response(false, 'Gagal memperbarui produk.');
@@ -125,6 +128,7 @@ class ProductController {
         $data = $this->requestData();
         
         if ($this->productModel->updateFinishing($data)) {
+            updateStoreCache($data->store_id, 'finishings');
             send_json_response(true, 'Finishing berhasil diperbarui.');
         } else {
             send_json_response(false, 'Gagal memperbarui finishing.');
@@ -139,6 +143,7 @@ class ProductController {
         $data->id = $_POST['product_id'] ?? 0;
         
         if ($this->productModel->deleteProductById($data)) {
+            updateStoreCache($data->store_id, 'products');
             send_json_response(true, 'Produk berhasil dihapus.');
         } else {
             send_json_response(false, 'Gagal menghapus produk.');
@@ -153,6 +158,7 @@ class ProductController {
         $data->id = $_POST['finishing_id'] ?? 0;
         
         if ($this->productModel->deleteFinishingById($data)) {
+            updateStoreCache($data->store_id, 'finishings');
             send_json_response(true, 'Finishing berhasil dihapus.');
         } else {
             send_json_response(false, 'Gagal menghapus finishing.');
@@ -161,11 +167,13 @@ class ProductController {
     }
 
     public function updateStock() {
+        global $store_id;
         header('Content-Type: application/json');
         $id       = $_POST['product_id'] ?? 0;
         $quantity = $_POST['quantity'] ?? 0;
 
         if ($this->productModel->updateStock($id, $quantity)) {
+            updateStoreCache($store_id, 'products');
             send_json_response(true, 'Stok berhasil diperbarui.');
         } else {
             send_json_response(false, 'Gagal memperbarui stok.');
@@ -174,11 +182,13 @@ class ProductController {
     }
 
     public function updateStockFinishing() {
+        global $store_id;
         header('Content-Type: application/json');
         $id       = $_POST['finishing_id'] ?? 0;
         $quantity = $_POST['quantity'] ?? 0;
 
         if ($this->productModel->updateStockFinishing($id, $quantity)) {
+            updateStoreCache($store_id, 'products');
             send_json_response(true, 'Stok berhasil diperbarui.');
         } else {
             send_json_response(false, 'Gagal memperbarui stok.');

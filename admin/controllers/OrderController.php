@@ -190,7 +190,7 @@ class OrderController {
             $order_id = $this->koneksi->insert_id;
             $data->order_id = $order_id;
             $this->projectModel->createProject($data);
-            updateStoreCache($data->store_id, 'order');
+            updateStoreCache($data->store_id, 'orders');
             
             send_json_response(true, 'Order berhasil ditambahkan', ['order_id' => $order_id, 'id' => startEnk('enk', $order_id)]);
             exit;
@@ -280,6 +280,7 @@ class OrderController {
         }
 
         if ($this->orderModel->updateOrder($data)) {
+            updateStoreCache($data->store_id, 'orders');
             send_json_response(true, 'Berhasil edit order');
         } else {
             send_json_response(false, 'Gagal edit order');
@@ -317,6 +318,7 @@ class OrderController {
             $this->koneksi->commit();
             $financeController = new FinanceController($this->koneksi);
             $financeController->refreshFinance($order['store_id'], date('Y-m-d', strtotime($order['date'])));
+            updateStoreCache($store_id, 'orders');
             send_json_response(true, 'Order berhasil dihapus');
 
         } catch (Exception $e) {

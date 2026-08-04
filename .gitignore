@@ -6,6 +6,7 @@ vendor/
 uploads/
 storage/
 tmp/
+temp/
 
 # Cache
 cache/
@@ -37,6 +38,7 @@ build/
 /admin/connect.php
 /admin/config.php
 /admin/.env
+/admin/temp/
 
 # Administrator
 /admin/administrator/connect.php
