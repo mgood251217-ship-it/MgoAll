@@ -3,7 +3,8 @@ require_once BASE_PATH . '/models/Failure.php';
 require_once BASE_PATH . '/functions/helpers.php';
 require_once BASE_PATH . '/models/Product.php'; 
 require_once BASE_PATH . '/controllers/OrderController.php';
-
+require_once BASE_PATH . '/functions/cacheHelpers.php';
+        
 class FailureController{
     private $koneksi;
     private $productModel;
@@ -262,15 +263,18 @@ class FailureController{
             if ($unit_type !== '~') {
                 $this->productModel->updateStock($product_id, $stok_butuh);
             }
-            echo json_encode(['success' => true, 'message' => 'Item berhasil ditambahkan.']);
+            updateStoreCache($store_id, 'failures');
+            send_json_response(true, "Item berhasil ditambahkan.");
         } else {
-            echo json_encode(['success' => false, 'message' => 'Gagal Insert Data: ']);
+            send_json_response(false, "Gagal Insert Data: ");
         }
     }
 
     public function delete(){
+        global $store_id;
         $failure_id   = isset($_POST['failure_id']) ? $_POST['failure_id'] : '';
         if($this->failureModel->deleteFailure($failure_id)){
+            updateStoreCache($store_id, 'failures');
             send_json_response(true, "Berhasil menghapus kegagalan", $failure_id);
         }else {
             send_json_response(false, "Gagal menghapus kegagalan");
@@ -289,6 +293,7 @@ class FailureController{
         ];
 
         if ($this->failureModel->updateFailureInfo($data)) {
+            updateStoreCache($store_id, 'failures');
             send_json_response(true, "Kegagalan berhasil diperbaharui");
         }else {
             send_json_response(false, "Gagal memperbaharui kegagalan");

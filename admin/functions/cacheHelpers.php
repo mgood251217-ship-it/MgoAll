@@ -25,18 +25,22 @@ function updateOrderTrigger($store_id, $order_id) {
     if (!is_dir($tempDir)) {
         mkdir($tempDir, 0775, true);
     }
-
     $filePath = $tempDir . '/store_' . $store_id . '.json';
-    
     $data = [];
 
     if (file_exists($filePath)) {
-        $json = file_get_contents($filePath);
-        $data = json_decode($json, true) ?: [];
+        $fileDate = date('Y-m-d', filemtime($filePath));
+        $todayDate = date('Y-m-d');
+        
+        if ($fileDate !== $todayDate) {
+            unlink($filePath);
+        } else {
+            $json = file_get_contents($filePath);
+            $data = json_decode($json, true) ?: [];
+        }
     }
 
     $data[(string)$order_id] = time();
-
     $expireTime = time() - (24 * 3600);
     foreach ($data as $id => $timestamp) {
         if ($timestamp < $expireTime) {

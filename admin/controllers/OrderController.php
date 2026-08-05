@@ -343,6 +343,7 @@ class OrderController {
     }
 
     public function createNote() {
+        global $store_id;
         $note_for = 'CTM';
         $order_id = (int)($_POST['order_id'] ?? 0);
         $note = trim($_POST['note'] ?? '');
@@ -355,7 +356,7 @@ class OrderController {
             } else {
                 $this->orderModel->createNote($order_id, $note, $note_for);
             }
-
+            updateOrderTrigger($store_id,$order_id);
             send_json_response(true, 'Note saved successfully.', ['note' => $note]);
             exit;
         }
@@ -887,6 +888,7 @@ class OrderController {
     }
 
     public function updateProject(){
+        global $store_id;
         date_default_timezone_set('Asia/Jakarta');
 ;
         $order_ids = $_POST['order_id'] ?? '';
@@ -909,7 +911,7 @@ class OrderController {
                 $this->projectModel->updateProject($data);
             }
         }
-
+        updateStoreCache($store_id, 'orders');
         send_json_response(true, "Berhasil Update Prosess");
     }
 

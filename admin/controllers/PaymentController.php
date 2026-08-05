@@ -6,6 +6,7 @@ require_once BASE_PATH . '/models/Activity.php';
 require_once BASE_PATH . '/models/Finance.php';
 require_once BASE_PATH . '/controllers/FinanceController.php';
 require_once BASE_PATH . '/functions/helpers.php';
+require_once BASE_PATH . '/functions/cacheHelpers.php';
 
 class PaymentController {
     private $paymentModel;
@@ -67,7 +68,8 @@ class PaymentController {
         } else {
             $totalBayar = "<div style='font-size: 12px; line-height: 12px;'>DP: " . format_rupiah($total_paid) . " | Sisa : " . format_rupiah($total - $total_paid) . "</div>";
         }
-
+        updateStoreCache($store_id, 'orders');
+        updateOrderTrigger($store_id, $order_id);
         send_json_response(true, 'Pembayaran berhasil', [
             'status' => $data->status,
             'bayar' => $totalBayar,
@@ -107,7 +109,8 @@ class PaymentController {
         $this->paymentModel->deletePaymentById($payment_id);
         $tanggalAja = date("Y-m-d");
         $this->financeController->refreshFinance($store_id, $tanggalAja);
-
+        updateStoreCache($store_id, 'orders');
+        updateOrderTrigger($store_id, $order_id);
         send_json_response(true, 'Pembayaran berhasil dihapus.');
 
     }
@@ -243,6 +246,8 @@ class PaymentController {
                 $this->financeController->refreshFinance($store_id, $tanggalAja);
             }
         }
+        updateStoreCache($store_id, 'orders');
+        updateOrderTrigger($store_id, $order_id);
         send_json_response(true, 'Pembayaran berhasil diubah.');
 
     }
