@@ -69,6 +69,7 @@ class PaymentController {
             $totalBayar = "<div style='font-size: 12px; line-height: 12px;'>DP: " . format_rupiah($total_paid) . " | Sisa : " . format_rupiah($total - $total_paid) . "</div>";
         }
         updateStoreCache($store_id, 'orders');
+        updateStoreCache($store_id, 'payments');
         updateOrderTrigger($store_id, $order_id);
         send_json_response(true, 'Pembayaran berhasil', [
             'status' => $data->status,
@@ -105,11 +106,13 @@ class PaymentController {
             'administrator_id' => $administrator_id
         ];
 
+        updateStoreCache($store_id, 'activities');
         $this->activityModel->createActivity($data);
         $this->paymentModel->deletePaymentById($payment_id);
         $tanggalAja = date("Y-m-d");
         $this->financeController->refreshFinance($store_id, $tanggalAja);
         updateStoreCache($store_id, 'orders');
+        updateStoreCache($store_id, 'payments');
         updateOrderTrigger($store_id, $order_id);
         send_json_response(true, 'Pembayaran berhasil dihapus.');
 
@@ -207,6 +210,7 @@ class PaymentController {
                 'done' => $done,
                 'administrator_id' => $administrator_id
             ];
+            updateStoreCache($store_id, 'activities');
             $this->activityModel->createActivity($data);
         }
 
@@ -247,6 +251,7 @@ class PaymentController {
             }
         }
         updateStoreCache($store_id, 'orders');
+        updateStoreCache($store_id, 'payments');
         updateOrderTrigger($store_id, $order_id);
         send_json_response(true, 'Pembayaran berhasil diubah.');
 

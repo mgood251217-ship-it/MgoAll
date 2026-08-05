@@ -2,6 +2,7 @@
 require_once BASE_PATH . '/models/Finance.php';
 require_once BASE_PATH . '/functions/helpers.php';
 require_once BASE_PATH . '/middleware/AuthMiddleware.php';
+require_once BASE_PATH . '/functions/cacheHelpers.php';
 
 class FinanceController {
     private $koneksi;
@@ -39,6 +40,7 @@ class FinanceController {
                 ];
 
                 if ($this->financeModel->create_tf($data)) {
+                    updateStoreCache($store_id, 'payments');
                     send_json_response(true, 'Pembayaran berhasil');
                     exit;
                 }else{
@@ -58,6 +60,7 @@ class FinanceController {
 
     public function deleteTf(){
         global $storeName;
+        global $store_id;
 
         $transfer_id = (int)$_POST['transfer_id'];
         $transfer = $this->financeModel->getTfById($transfer_id);
@@ -76,7 +79,7 @@ class FinanceController {
         }elseif (file_exists($pathFallback)) {
             unlink($pathFallback);
         }
-
+        updateStoreCache($store_id, 'payments');
         send_json_response(true, 'Berhasil menghapus transfer', $pathDynamic . '&&&' . $pathFallback);
     }
 
@@ -285,7 +288,7 @@ class FinanceController {
         foreach ($dates as $date) {
             $this->refreshFinance($store_id, $date); 
         }
-
+        updateStoreCache($store_id, 'finance');
         send_json_response(true, "Sinkron Berhasil");
     }
 
@@ -340,7 +343,7 @@ class FinanceController {
         $this->financeModel->createExpenditure($data); 
 
         $this->refreshFinance($store_id, $date);
-
+        updateStoreCache($store_id, 'finance');
         send_json_response(true, "Berhasil Menambahkan Pengeluaran");
 
     }
@@ -362,7 +365,7 @@ class FinanceController {
         $this->financeModel->createIncome($data);
 
         $this->refreshFinance($store_id, $date);
-
+        updateStoreCache($store_id, 'finance');
         send_json_response(true, "Berhasil Menambahkan Pemasukan");
 
     }
@@ -383,6 +386,7 @@ class FinanceController {
         ];
         $this->financeModel->updateExpenditure($data);
         $this->refreshFinance($store_id, $date);
+        updateStoreCache($store_id, 'finance');
         send_json_response(true, "Berhasil Memperbarui Pengeluaran");
     }
 
@@ -402,6 +406,7 @@ class FinanceController {
         ];
         $this->financeModel->updateIncome($data);
         $this->refreshFinance($store_id, $date);
+        updateStoreCache($store_id, 'finance');
         send_json_response(true, "Berhasil Memperbarui Pemasukan");
     }
 
@@ -426,6 +431,7 @@ class FinanceController {
 
         if ($this->financeModel->deleteExpenditure($expenditure_id, $store_id)) {
             $this->refreshFinance($store_id, $start_date);
+            updateStoreCache($store_id, 'finance');
             send_json_response(true, 'Pengeluaran berhasil dihapus');
         } else {
             send_json_response(false, 'Gagal menghapus pengeluaran');
@@ -441,6 +447,7 @@ class FinanceController {
 
         if ($this->financeModel->deleteIncome($income_id, $store_id)) {
             $this->refreshFinance($store_id, $start_date);
+            updateStoreCache($store_id, 'finance');
             send_json_response(true, 'Pemasukan berhasil dihapus');
         } else {
             send_json_response(false, 'Gagal menghapus pemasukan');

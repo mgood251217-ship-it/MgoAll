@@ -338,7 +338,7 @@ class OrderController {
         $data->order_id = $order_id;
         $data->done = 0;
         $data->administrator_id = $administrator_id;
-
+        updateStoreCache($store_id, 'activities');
         return $this->activityModel->createActivity($data);
     }
 
@@ -947,9 +947,16 @@ class OrderController {
     }
 
     public function updateMaklun(){
-        $data = (object) ['store_id_maklun' => $_POST['store_id'] ?? 0, 'order_item_id' => $_POST['order_item_id'] ?? 0];
-
+        global $store_id;
+        $data = (object) [
+            'store_id_maklun' => $_POST['store_id'] ?? 0,
+            'order_item_id' => $_POST['order_item_id'] ?? 0,
+            'order_id' => $_POST['order_id'] ?? 0,];
+        if ($data->store_id_maklun == $store_id){
+            $data->store_id_maklun = 0;
+        }
         if ($this->orderModel->updateMaklun($data)) {
+            updateOrderTrigger($store_id, $data->order_id);
             send_json_response(true, 'Maklun updated successfully.');
         } else {
             send_json_response(false, 'Failed to update Maklun.');

@@ -2,6 +2,7 @@
 require_once BASE_PATH . '/models/Product.php';
 require_once BASE_PATH . '/functions/helpers.php';
 require_once BASE_PATH . '/middleware/AuthMiddleware.php';
+require_once BASE_PATH . '/functions/cacheHelpers.php';
 
 class ProductController {
     private $productModel;

@@ -22,7 +22,7 @@ class UserController {
         foreach ($users as $key => $user) { 
             $basePath = BASE_URL . "/assets/img/user/";
             if ($users[$key]['picture'] == '') {
-                $users[$key]['picture_link'] = $basePath . 'default.jpg'; 
+                $users[$key]['picture_link'] = $basePath . 'default.png'; 
             }else{
                 $users[$key]['picture_link'] = $basePath . $user['picture']; 
             }   

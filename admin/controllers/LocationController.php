@@ -2,6 +2,7 @@
 require_once BASE_PATH . '/models/Location.php';
 require_once BASE_PATH . '/functions/helpers.php';
 require_once BASE_PATH . '/middleware/AuthMiddleware.php';
+require_once BASE_PATH . '/functions/cacheHelpers.php';
 
 class LocationController {
     private $locationModel;
@@ -37,7 +38,7 @@ class LocationController {
         } else {
             $this->locationModel->createLocation($data);
         }
-
+        updateStoreCache($data->store_id, 'locations');
         send_json_response(true, "Lokasi berhasil diperbarui.");
         exit;
     }
