@@ -114,18 +114,13 @@ switch ($action) {
         send_json_response(true, 'Order retrieved successfully.', $order);
         break;
     case 'get_category':
-        $categories = $productModel->getCategoryByStoreId($store_id);
-        send_json_response(true, 'categories retrieved successfully.', $categories);
+        $productController->getCategory();
         break;
     case 'get_product':
-        $category_id = $_GET['category_id'] ?? '';
-        $products = $productModel->getProductByCategoryId($category_id);
-        send_json_response(true, 'Products retrieved successfully.', $products);
+        $productController->getProductByCategory();
         break;
     case 'get_finishing':
-        $category_id = $_GET['category_id'] ?? '';
-        $finishings = $productModel->getFinishingByCategoryId($category_id);
-        send_json_response(true, 'finishings retrieved successfully.', $finishings);
+        $productController->getFinishingByCategory();
         break;
     case 'get_note':
         $order_id = $_GET['order_id'] ?? 0;
@@ -137,19 +132,10 @@ switch ($action) {
         }
         break;
     case 'get_history':
-        $data = (object)['name' => $_GET['name'] ?? '', 'store_id' => $store_id];
-        $history = $orderModel->getHistoryNameAndNomor($data) ?? [];
-        send_json_response(true, 'History retrieved successfully.', $history);
-
+        $orderController->getHistoryNameAndNomor();
         break;
     case 'maklun':
-        $data = (object) ['store_id_maklun' => $_POST['store_id_maklun'] ?? 0, 'order_item_id' => $_POST['order_item_id'] ?? 0];
-
-        if ($orderModel->updateMaklun($data)) {
-            send_json_response(true, 'Maklun updated successfully.');
-        } else {
-            send_json_response(false, 'Failed to update Maklun.');
-        }
+        $orderController->updateMaklun();
         break;
     case 'limit':
         $settingController->limit();

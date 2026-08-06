@@ -341,7 +341,6 @@ class OrderController {
         updateStoreCache($store_id, 'activities');
         return $this->activityModel->createActivity($data);
     }
-
     public function createNote() {
         global $store_id;
         $note_for = 'CTM';
@@ -415,7 +414,6 @@ class OrderController {
         
         return $this->orderModel->updateOrderTotal($id, $grand_total);
     }
-
     public function discount( $order_id, $product_id, $diskonInput) {
         if ($diskonInput > 0) {
             if ($this->orderModel->checkDiscount($order_id, $product_id)) {
@@ -523,7 +521,6 @@ class OrderController {
             'amount' => $amount
         ];
     }
-
     public function finishingData($input_finishing, $panjang, $lebar) {
         try {
             $finishing_ids = [];
@@ -961,6 +958,17 @@ class OrderController {
         } else {
             send_json_response(false, 'Failed to update Maklun.');
         }
+    }
+
+    public function getHistoryNameAndNomor() {
+        global $store_id;
+        $data = (object)['name' => $_GET['name'] ?? '', 'store_id' => $store_id];
+        if ($data->name != '' && strlen($data->name) < 3) {
+            send_json_response(true, 'Nama terlalu pendek.', []);
+            return;
+        }
+        $history = $this->orderModel->getHistoryNameAndNomor($data) ?? [];
+        send_json_response(true, 'History retrieved successfully.', $history);
     }
 
     public function triggerOrderUpdate() {

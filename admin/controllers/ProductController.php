@@ -49,12 +49,14 @@ class ProductController {
 
     public function getFinishing() {
         global $store_id;
-        return $this->productModel->getFinishingByStoreId($store_id);
+        $finishings = $this->productModel->getFinishingByStoreId($store_id);
+        send_json_response(true, 'Finishings retrieved successfully.', $finishings);
     }
 
     public function getCategory() {
         global $store_id;
-        return $this->productModel->getCategoryByStoreId($store_id);
+        $categories = $this->productModel->getCategoryByStoreId($store_id);
+        send_json_response(true, 'Categories retrieved successfully.', $categories);
     }
 
     public function getProductByPagination(){

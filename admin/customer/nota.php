@@ -372,7 +372,7 @@ document.addEventListener('DOMContentLoaded', function () {
                       fetch('../routes/?action=maklun', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                          body: `order_item_id=${encodeURIComponent(orderItemId)}&store_id_maklun=${maklunStoreId}`
+                          body: `order_item_id=${encodeURIComponent(orderItemId)}&store_id_maklun=${maklunStoreId}&order_id=${order_id}`
                       })
                       .then(res => res.json())
                       .then(data => {
