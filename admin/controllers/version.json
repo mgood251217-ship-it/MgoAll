@@ -1,5 +1,6 @@
 {
-    "version": "1.0.0",
-    "download_url": "https://mgood.my.id/downloads/MgoDesktop-Setup-1.0.0.exe",
+    "version": "1.0.2",
+    "min_required_version": "1.0.0",
+    "download_url": "https://mgood.my.id/admin/downloads/MgoDesktop-Setup-1.0.2.exe",
     "force_update": false
 }

@@ -40,6 +40,7 @@ function getUserByUsername($username)
 function setInfo($user, $dataStore)
 {
     global $koneksi;
+    $mode = 0;
     $stmt = $koneksi->prepare("SELECT mode FROM user_setting WHERE user_id = ?");
     $stmt->bind_param("i", $user['user_id']);
     $stmt->execute();

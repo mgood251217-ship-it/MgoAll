@@ -3,6 +3,7 @@ require_once '../connect.php';
 require_once BASE_PATH . '/middleware/init_auth.php';
 require_once BASE_PATH . '/controllers/UserController.php';
 require_once BASE_PATH . '/controllers/LocationController.php';
+require_once BASE_PATH . '/controllers/ReportController.php';
 require_once BASE_PATH . '/models/Store.php';
 require_once BASE_PATH . '/components/Modal.php';
 require_once BASE_PATH . '/components/Alert.php';
@@ -19,6 +20,24 @@ $locations = $locationController->index();
 
 $mesinList = $storeModel->getMachineByStoreId($store_id);
 
+$reportController = new ReportController($koneksi);
+$data = $reportController->orderAnalysis();
+
+$data_tanggal = $data['chart_30']['tanggal'];
+$data_jumlah = $data['chart_30']['jumlah'];
+$data_total = $data['chart_30']['total'];
+
+$data_bulan_365 = $data['chart_365']['bulan'];
+$data_jumlah_365 = $data['chart_365']['jumlah'];
+$data_total_365 = $data['chart_365']['total'];
+
+$total30 = $data['summary']['total_30'];
+$total_today = $data['summary']['total_today'];
+$top_customer = $data['summary']['top_customer'];
+$top_total = $data['summary']['top_total'];
+
+$darkModeClass = ($mode === 1) ? 'dark-mode' : '';
+
 ?>
 
 <!DOCTYPE html>
@@ -28,6 +47,43 @@ $mesinList = $storeModel->getMachineByStoreId($store_id);
   <title>Manajemen User</title>
   <?php include BASE_PATH . '/header.php'; ?>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+  .dark-mode {
+    background-color: #121212;
+    color: #e0e0e0;
+  }
+  .dark-mode .card {
+    background-color: #2c2c2c;
+    color: #e0e0e0;
+    border-color: #444;
+  }
+  .dark-mode .card .card-title {
+    color: #ddd;
+  }
+  .dark-mode .list-group-item {
+    background-color: #3a3a3a;
+    color: #ccc;
+    border-color: #444;
+  }
+  .dark-mode .list-group-item strong {
+    color: #fff;
+  }
+  .dark-mode .text-primary {
+    color: #80bdff !important;
+  }
+  .dark-mode .text-success {
+    color: #85e085 !important;
+  }
+  .dark-mode .fw-bold,
+  .dark-mode .fw-semibold {
+    color: #eee !important;
+  }
+  .dark-mode canvas {
+    background-color: #1e1e1e;
+    border-radius: 8px;
+  }
+  </style>
 </head>
 <body>
 <div id="main-wrapper">
@@ -35,7 +91,51 @@ $mesinList = $storeModel->getMachineByStoreId($store_id);
   <div id="main-content" <?= (isset($mode) && $mode === 1) ? 'class="dark-mode"' : '' ?>>
     <?php include BASE_PATH . '/sidebar.php'; ?>
     <div id="page-content-wrapper">
-      <?php include 'chart.php'; ?>
+    <!-- GRAFIK 30 HARI -->
+    <div class="row mt-4">
+      <div class="col-md-8">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Statistik Order 30 Hari Terakhir</h5>
+            <canvas id="orderChart" height="100"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">📌 Keterangan</h5>
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item">
+                <strong class="text-dark">Customer:</strong><br>
+                <span class="text-primary fw-bold"><?= htmlspecialchars($top_customer); ?></span><br>
+                <span class="text-success fw-semibold"><?= format_rupiah($top_total); ?></span>
+              </li>
+              <li class="list-group-item">
+                <strong class="text-dark">Total 30 Hari:</strong><br>
+                <span class="text-success fw-semibold"><?= format_rupiah($total30); ?></span>
+              </li>
+              <li class="list-group-item">
+                <strong class="text-dark">Total Hari Ini:</strong><br>
+                <span class="text-primary fw-semibold"><?= format_rupiah($total_today); ?></span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GRAFIK 1 TAHUN -->
+    <div class="row mt-4">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Statistik Order 1 Tahun Terakhir</h5>
+            <canvas id="orderChart365" height="100"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
 
       <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
         <h1 class="mb-0">Manajemen User</h1>
@@ -494,6 +594,153 @@ window.addEventListener('DOMContentLoaded', async () => {
       }, 300);
     });
   });
+});
+</script>
+<script>
+const isDarkMode = <?= ($mode === 1) ? 'true' : 'false' ?>;
+
+const commonOptions = {
+    responsive: true,
+    scales: {
+        y: {
+            beginAtZero: true,
+            position: 'left',
+            title: {
+                display: true,
+                text: 'Jumlah Order',
+                color: isDarkMode ? '#eee' : '#000',
+            },
+            ticks: {
+                color: isDarkMode ? '#ccc' : '#000',
+            },
+            grid: {
+                color: isDarkMode ? '#444' : '#ddd',
+            }
+        },
+        y1: {
+            beginAtZero: true,
+            position: 'right',
+            grid: {
+                drawOnChartArea: false,
+                color: isDarkMode ? '#444' : '#ddd',
+            },
+            title: {
+                display: true,
+                text: 'Total Order (Rp)',
+                color: isDarkMode ? '#eee' : '#000',
+            },
+            ticks: {
+                color: isDarkMode ? '#ccc' : '#000',
+            }
+        },
+        x: {
+            title: {
+                display: true,
+                color: isDarkMode ? '#eee' : '#000',
+            },
+            ticks: {
+                color: isDarkMode ? '#ccc' : '#000',
+            },
+            grid: {
+                color: isDarkMode ? '#444' : '#ddd',
+            }
+        }
+    },
+    plugins: {
+        legend: {
+            labels: {
+                color: isDarkMode ? '#eee' : '#000',
+            }
+        },
+        tooltip: {
+            mode: 'index',
+            intersect: false,
+            backgroundColor: isDarkMode ? '#333' : undefined,
+            titleColor: isDarkMode ? '#eee' : undefined,
+            bodyColor: isDarkMode ? '#eee' : undefined,
+        }
+    }
+};
+
+const ctx = document.getElementById('orderChart').getContext('2d');
+const orderChart = new Chart(ctx, {
+    data: {
+        labels: <?= json_encode($data_tanggal); ?>,
+        datasets: [
+            {
+                type: 'bar',
+                label: 'Jumlah Order',
+                data: <?= json_encode($data_jumlah); ?>,
+                backgroundColor: isDarkMode ? 'rgba(33, 150, 243, 0.2)' : 'rgba(33, 150, 243, 0.2)',
+                borderColor: '#fff',
+                borderWidth: 2,
+                yAxisID: 'y'
+            },
+            {
+                type: 'line',
+                label: 'Total Omset (Rp)',
+                data: <?= json_encode($data_total); ?>,
+                backgroundColor: isDarkMode ? 'rgba(255, 235, 59, 0.3)' : 'rgba(255, 235, 59, 0.3)',
+                borderColor: '#ff9800',
+                borderWidth: 2,
+                tension: 0, 
+                fill: true,
+                yAxisID: 'y1',
+                pointRadius: 4,
+                pointBackgroundColor: '#ff9800'
+            }
+
+        ]
+    },
+    options: commonOptions
+});
+
+const ctx365 = document.getElementById('orderChart365').getContext('2d');
+const orderChart365 = new Chart(ctx365, {
+    type: 'line',
+    data: {
+        labels: <?= json_encode($data_bulan_365); ?>,
+        datasets: [
+            {
+                label: 'Jumlah Order per Bulan',
+                data: <?= json_encode($data_jumlah_365); ?>,
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true,
+                yAxisID: 'y',
+                pointRadius: 4,
+                pointBackgroundColor: 'rgba(75, 192, 192, 1)'
+            },
+            {
+                label: 'Total Order per Bulan (Rp)',
+                data: <?= json_encode($data_total_365); ?>,
+                backgroundColor: 'rgba(255, 206, 86, 0.2)',
+                borderColor: 'rgba(255, 206, 86, 1)',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true,
+                yAxisID: 'y1',
+                pointRadius: 4,
+                pointBackgroundColor: 'rgba(255, 206, 86, 1)'
+            }
+        ]
+    },
+    options: {
+      ...commonOptions,
+      scales: {
+        ...commonOptions.scales,
+        x: {
+          ...commonOptions.scales.x,
+          title: {
+            display: true,
+            text: 'Bulan',
+            color: isDarkMode ? '#eee' : '#000',
+          }
+        }
+      }
+    }
 });
 </script>
 </body>

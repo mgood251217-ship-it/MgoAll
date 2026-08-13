@@ -596,7 +596,6 @@ class ReportController {
             ]
         ];
     }
-
     public function transactionsDetail(){
         if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
 
@@ -644,13 +643,24 @@ class ReportController {
             $ids = implode(',', array_map('intval', $orderIds));
 
             $items = $this->koneksi->query("
-                SELECT order_id, judul, finishing, size, quantity, unit, amount,
+                SELECT 
+                    oi.order_id, 
+                    oi.judul, 
+                    oi.finishing, 
+                    oi.size, 
+                    oi.quantity, 
+                    oi.unit, 
+                    oi.amount, 
+                    oi.product_id,
                     ( SELECT GROUP_CONCAT(fp.name SEPARATOR ', ')
-                        FROM finishings fp
-                        WHERE FIND_IN_SET(fp.finishing_id, REPLACE(order_items.finishing, ' ', ''))
-                    ) AS finishing_names
-                FROM order_items
-                WHERE order_id IN ($ids)
+                    FROM finishings fp
+                    WHERE FIND_IN_SET(fp.finishing_id, REPLACE(oi.finishing, ' ', ''))
+                    ) AS finishing_names,
+                    c.name AS category
+                FROM order_items oi
+                LEFT JOIN products p ON oi.product_id = p.product_id
+                LEFT JOIN categories c ON p.category_id = c.category_id
+                WHERE oi.order_id IN ($ids)
             ")->fetch_all(MYSQLI_ASSOC);
 
             foreach ($items as $item) {

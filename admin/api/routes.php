@@ -68,12 +68,13 @@ $router->add('update_detail_note', OrderController::class, 'createNoteDetail', [
 
 // Location Controller
 $router->add('locations', LocationController::class, 'index', ['auth']);
+$router->add('set_location', LocationController::class, 'setLocation', ['auth']);
 
 // Payment Controller
 $router->add('create_payment', PaymentController::class, 'create', ['auth']);
 $router->add('update_payment', PaymentController::class, 'update', ['auth']);
 $router->add('delete_payment', PaymentController::class, 'delete', ['auth']);
-$router->add('order_payment', PaymentController::class, 'orderPayment', ['auth']);
+$router->add('order_payment', PaymentController::class, 'setLocation', ['auth']);
 
 // Finance Controller
 $router->add('finance', FinanceController::class, 'finance', ['auth']);
