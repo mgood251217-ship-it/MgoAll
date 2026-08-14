@@ -21,7 +21,7 @@ class AuthController {
         if ($foto) {
             $fotoLink = BASE_URL . "/assets/img/user/" . $foto;
         }else{
-            $fotoLink = BASE_URL . "/assets/img/user/" . 'default.jpg';
+            $fotoLink = BASE_URL . "/assets/img/user/" . 'default.png';
         }
 
         if ($storeLogo) {
