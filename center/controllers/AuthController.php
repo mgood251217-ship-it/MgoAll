@@ -49,9 +49,17 @@ class AuthController {
                         $expire = time() + (1 * 24 * 60 * 60);
                         $path   = '/';
 
+                        // Set Cookies
                         setcookie('admin_administrator_id', startEnk('enk', $user['administrator_id']), $expire, $path, "", true, true);
                         setcookie('admin_username',         startEnk('enk', $user['username']),         $expire, $path, "", true, true);
                         setcookie('admin_access',           startEnk('enk', $user['access']),           $expire, $path, "", true, true);
+
+                        // Set Session
+                        $_SESSION['admin_logged_in'] = [
+                            'administrator_id' => startEnk('enk', $user['administrator_id']),
+                            'username'         => startEnk('enk', $user['username']),
+                            'access'           => startEnk('enk', $user['access'])
+                        ];
 
                         header("Location: /center/dashboard");
                         exit;
@@ -74,9 +82,12 @@ class AuthController {
     public function logout() {
         session_start();
         session_destroy();
+        
+        // Hapus Cookies
         setcookie('admin_administrator_id', '', time() - 3600, '/');
         setcookie('admin_username', '', time() - 3600, '/');
         setcookie('admin_access', '', time() - 3600, '/');
+        
         header('Location: /center/login');
         exit;
     }
