@@ -4,7 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 if (!isset($_SESSION['admin_logged_in'])) {
-    header("Location: /center/login");
+    header("Location: /login");
     exit;
 }
 

@@ -4,7 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 if (!isset($_SESSION['admin_logged_in'])) {
-    header("Location: /center/login");
+    header("Location: /login");
     exit;
 }
 
@@ -240,7 +240,7 @@ $all_users = $data['all_users'];
 <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content modal-content-custom">
-            <form action="/center/action?action=edit_store" method="POST">
+            <form action="/action?action=edit_store" method="POST">
                 <input type="hidden" name="store_id" id="edit_store_id">
                 <div class="modal-header modal-header-custom">
                     <h5 class="modal-title-custom">Edit Cabang</h5>
@@ -290,7 +290,7 @@ $all_users = $data['all_users'];
 
 <div class="modal fade" id="modalTambahToko" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <form class="modal-content modal-content-custom" method="post" action="/center/action?action=add_store" enctype="multipart/form-data">
+        <form class="modal-content modal-content-custom" method="post" action="/action?action=add_store" enctype="multipart/form-data">
             <div class="modal-header modal-header-custom">
                 <h5 class="modal-title-custom">Tambah Toko Baru</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -391,7 +391,7 @@ document.addEventListener('submit', function(e) {
         const form = e.target;
         const formData = new URLSearchParams(new FormData(form)).toString();
 
-        fetch('/center/action?action=set_session', {
+        fetch('/action?action=set_session', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'

@@ -7,7 +7,7 @@ date_default_timezone_set('Asia/Jakarta');
 $date = date("Y-m-d H:i:s");
 
 if (isset($_SESSION['admin_logged_in'])) {
-    header("Location: /center/dashboard");
+    header("Location: /dashboard");
     exit;
 } elseif (
     isset($_COOKIE['admin_administrator_id']) &&
@@ -25,7 +25,7 @@ if (isset($_SESSION['admin_logged_in'])) {
             'access'           => $_COOKIE['admin_access']
         ];
     }
-    header("Location: /center/dashboard");
+    header("Location: /dashboard");
     exit;
 }
 
@@ -150,7 +150,7 @@ if (isset($_SESSION['login_error'])) {
         <p>Welcome back! Please login to your account.</p>
       </div>
       <div class="card-body">
-        <form action="/center/action?action=login" method="POST">
+        <form action="/action?action=login" method="POST">
           <div class="mb-4">
             <label class="form-label">Username</label>
             <input autocomplete="off" type="text" name="usernames" class="form-control" required placeholder="Enter your username">

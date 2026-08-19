@@ -61,7 +61,7 @@ class AuthController {
                             'access'           => startEnk('enk', $user['access'])
                         ];
 
-                        header("Location: /center/dashboard");
+                        header("Location: /dashboard");
                         exit;
                     } else {
                         $pesan_error = "Password salah!";
@@ -73,7 +73,7 @@ class AuthController {
 
             if ($pesan_error) {
                 $_SESSION['login_error'] = $pesan_error;
-                header("Location: /center/login");
+                header("Location: /login");
                 exit;
             }
         }
@@ -88,7 +88,7 @@ class AuthController {
         setcookie('admin_username', '', time() - 3600, '/');
         setcookie('admin_access', '', time() - 3600, '/');
         
-        header('Location: /center/login');
+        header('Location: /login');
         exit;
     }
     

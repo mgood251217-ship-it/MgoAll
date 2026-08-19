@@ -4,7 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 if (!isset($_SESSION['admin_logged_in'])) {
-    header("Location: /center/login");
+    header("Location: /login");
     exit;
 }
 
@@ -326,7 +326,7 @@ $stores = $data['stores'];
 
 <div class="modal fade" id="modalTambahUser" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <form class="modal-content modal-content-custom" method="post" action="/center/action?action=add_user" enctype="multipart/form-data">
+        <form class="modal-content modal-content-custom" method="post" action="/action?action=add_user" enctype="multipart/form-data">
             <div class="modal-header modal-header-custom">
                 <h5 class="modal-title-custom">Tambah User Baru</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -382,7 +382,7 @@ $stores = $data['stores'];
 
 <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <form class="modal-content modal-content-custom" method="post" action="/center/action?action=edit_user" enctype="multipart/form-data">
+        <form class="modal-content modal-content-custom" method="post" action="/action?action=edit_user" enctype="multipart/form-data">
             <input type="hidden" name="user_id" id="edit_user_id">
             <div class="modal-header modal-header-custom">
                 <h5 class="modal-title-custom">Edit User</h5>
@@ -494,7 +494,7 @@ function deleteUser(userId) {
         customClass: { popup: 'rounded-4' }
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch('/center/action?action=delete_user', {
+            fetch('/action?action=delete_user', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({ user_id: userId })
@@ -524,7 +524,7 @@ function restoreUser(userId) {
         customClass: { popup: 'rounded-4' }
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch('/center/action?action=restore_user', {
+            fetch('/action?action=restore_user', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({ user_id: userId })
@@ -554,7 +554,7 @@ function changeStore(userId, storeId, storeName) {
         customClass: { popup: 'rounded-4' }
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch('/center/action?action=change_user_store', {
+            fetch('/action?action=change_user_store', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({ user_id: userId, store_id: storeId })

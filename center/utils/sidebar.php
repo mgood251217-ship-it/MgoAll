@@ -84,13 +84,13 @@
         <span>App Center</span>
     </div>
     <ul>
-        <li><a href="/center/dashboard"><i class="fas fa-home"></i> <span>Dashboard</span></a></li>
-        <li><a href="/center/orders"><i class="fas fa-shopping-cart"></i> <span>Orders</span></a></li>
-        <li><a href="/center/stores"><i class="fas fa-store"></i> <span>Stores</span></a></li>
-        <li><a href="/center/finance"><i class="fas fa-wallet"></i> <span>Finance</span></a></li>
-        <li><a href="/center/users"><i class="fas fa-users"></i> <span>Users</span></a></li>
-        <li><a href="/center/productions"><i class="fas fa-industry"></i> <span>Productions</span></a></li>
-        <li><a href="/center/analysis"><i class="fas fa-chart-line"></i> <span>Analysis</span></a></li>
-        <li><a href="/center/setting"><i class="fas fa-cog"></i> <span>Setting</span></a></li>
+        <li><a href="/dashboard"><i class="fas fa-home"></i> <span>Dashboard</span></a></li>
+        <li><a href="/orders"><i class="fas fa-shopping-cart"></i> <span>Orders</span></a></li>
+        <li><a href="/stores"><i class="fas fa-store"></i> <span>Stores</span></a></li>
+        <li><a href="/finance"><i class="fas fa-wallet"></i> <span>Finance</span></a></li>
+        <li><a href="/users"><i class="fas fa-users"></i> <span>Users</span></a></li>
+        <li><a href="/productions"><i class="fas fa-industry"></i> <span>Productions</span></a></li>
+        <li><a href="/analysis"><i class="fas fa-chart-line"></i> <span>Analysis</span></a></li>
+        <li><a href="/setting"><i class="fas fa-cog"></i> <span>Setting</span></a></li>
     </ul>
 </div>

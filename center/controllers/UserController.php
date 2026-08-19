@@ -99,7 +99,7 @@ class UserController {
             $_SESSION['swal_error'] = "Pastikan semua field wajib diisi.";
         }
 
-        header("Location: /center/users");
+        header("Location: /users");
         exit;
     }
 
@@ -151,7 +151,7 @@ class UserController {
             $_SESSION['swal_error'] = "Field wajib (Nama, Username, Peran, Toko) harus diisi.";
         }
 
-        header("Location: /center/users");
+        header("Location: /users");
         exit;
     }
 

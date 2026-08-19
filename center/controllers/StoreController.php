@@ -88,7 +88,7 @@ class StoreController {
             $_SESSION['swal_error'] = "Field wajib diisi: nama, alamat, cabang, email harus lengkap.";
         }
 
-        header("Location: /center/stores");
+        header("Location: /stores");
         exit;
     }
 
@@ -200,7 +200,7 @@ class StoreController {
             $_SESSION['swal_error'] = "Field wajib diisi: nama, alamat, cabang, email, dan owner.";
         }
         
-        header("Location: /center/stores");
+        header("Location: /stores");
         exit;
     }
 
