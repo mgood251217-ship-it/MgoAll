@@ -974,6 +974,7 @@ class OrderController {
     public function triggerOrderUpdate() {
         global $store_id;
         $order_id = $_POST['order_id'] ?? 0;
+        updateStoreCache($store_id, 'products');
         updateOrderTrigger($store_id, $order_id);
     }
 
