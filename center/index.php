@@ -7,6 +7,11 @@ $basepath = '/center/';
 $route = str_replace($basepath, '', $request);
 $route = trim($route, '/');
 
+if ($route === 'action' || strpos($route, 'action/') === 0) {
+    require 'actions/index.php';
+    exit;
+}
+
 ob_start();
 
 switch ($route) {

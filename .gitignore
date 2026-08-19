@@ -53,3 +53,6 @@ build/
 
 # Medina
 /medina/connect.php
+
+# Center
+/center/config/connect.php
