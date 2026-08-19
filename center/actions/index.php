@@ -28,6 +28,20 @@ switch ($action) {
         if ($action === 'edit_store') $storeController->editStore();
         if ($action === 'set_session') $storeController->setSession();
         break;
+
+    case 'add_user':
+    case 'edit_user':
+    case 'delete_user':
+    case 'restore_user':
+    case 'change_user_store':
+        require_once __DIR__ . '/../controllers/UserController.php';
+        $userController = new UserController($koneksi);
+        if ($action === 'add_user') $userController->addUser();
+        if ($action === 'edit_user') $userController->editUser();
+        if ($action === 'delete_user') $userController->deleteUser();
+        if ($action === 'restore_user') $userController->restoreUser();
+        if ($action === 'change_user_store') $userController->changeStore();
+        break;
         
     default:
         http_response_code(404);
