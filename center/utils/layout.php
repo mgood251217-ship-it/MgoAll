@@ -4,71 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>App Center</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        
         body {
             margin: 0;
-            font-family: Arial, sans-serif;
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+        }
+        .main-wrapper {
+            margin-left: 70px;
             display: flex;
             flex-direction: column;
             min-height: 100vh;
         }
-        .main-wrapper {
-            display: flex;
-            flex: 1;
-        }
-        .content-wrapper {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
         .content {
-            padding: 20px;
+            padding: 24px;
             flex: 1;
-        }
-        .navbar {
-            background-color: #333;
-            color: white;
-            padding: 15px 20px;
-        }
-        .sidebar {
-            width: 250px;
-            background-color: #f4f4f4;
-            padding: 20px;
-            border-right: 1px solid #ddd;
-        }
-        .footer {
-            background-color: #333;
-            color: white;
-            text-align: center;
-            padding: 10px;
-        }
-        .sidebar ul {
-            list-style: none;
-            padding: 0;
-        }
-        .sidebar ul li {
-            margin-bottom: 10px;
-        }
-        .sidebar ul li a {
-            text-decoration: none;
-            color: #333;
         }
     </style>
 </head>
 <body>
 
-    <?php require 'navbar.php'; ?>
+    <?php require 'sidebar.php'; ?>
     
     <div class="main-wrapper">
-        <?php require 'sidebar.php'; ?>
+        <?php require 'navbar.php'; ?>
         
-        <div class="content-wrapper">
-            <div class="content">
-                <?php echo $content; ?>
-            </div>
-            
-            <?php require 'footer.php'; ?>
+        <div class="content">
+            <?php echo $content; ?>
         </div>
+        
+        <?php require 'footer.php'; ?>
     </div>
 
 </body>
