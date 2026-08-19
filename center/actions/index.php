@@ -8,17 +8,25 @@ if (empty($action)) {
     }
 }
 
-require_once __DIR__ . '/../controllers/AuthController.php';
-
-$authController = new AuthController();
+require_once __DIR__ . '/../config/connect.php';
 
 switch ($action) {
     case 'login':
-        $authController->login();
+    case 'logout':
+        require_once __DIR__ . '/../controllers/AuthController.php';
+        $authController = new AuthController();
+        if ($action === 'login') $authController->login();
+        if ($action === 'logout') $authController->logout();
         break;
         
-    case 'logout':
-        $authController->logout();
+    case 'add_store':
+    case 'edit_store':
+    case 'set_session':
+        require_once __DIR__ . '/../controllers/StoreController.php';
+        $storeController = new StoreController($koneksi);
+        if ($action === 'add_store') $storeController->addStore();
+        if ($action === 'edit_store') $storeController->editStore();
+        if ($action === 'set_session') $storeController->setSession();
         break;
         
     default:
