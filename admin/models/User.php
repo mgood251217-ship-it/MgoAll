@@ -130,6 +130,31 @@ class User{
         $stmt->close();
         return $success;
     }
+
+    public function createHelp($data){
+        $stmt = $this->koneksi->prepare("INSERT INTO help_center (user_id, category, subject, detail, status, datetime) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("isssss", $data->user_id, $data->category, $data->subject, $data->detail, $data->status, $data->datetime);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function updateHelpStatus($id, $status){
+        $stmt = $this->koneksi->prepare("UPDATE help_center SET status = ? WHERE id = ?");
+        $stmt->bind_param("si", $status, $id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function getHelps($id){
+        $stmt = $this->koneksi->prepare("SELECT * FROM help_center WHERE user_id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $result;
+    }
 }
 
 ?>

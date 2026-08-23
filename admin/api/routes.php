@@ -14,6 +14,8 @@ $router->add('create_user', UserController::class, 'create', ['auth']);
 $router->add('update_user', UserController::class, 'update', ['auth']);
 $router->add('delete_user', UserController::class, 'delete', ['auth']);
 $router->add('get_initial', UserController::class, 'getInitial', ['auth']);
+$router->add('create_help', UserController::class, 'createHelp', ['auth']);
+$router->add('helps', UserController::class, 'getHelps', ['auth']);
 
 // Store Controller
 $router->add('store', StoreController::class, 'store', ['auth']);

@@ -157,5 +157,45 @@ class UserController {
         send_json_response(true, "Berhasil mengambil Initial", $usersInitial);
     }
 
+    public function createHelp(){
+        global $user_id;
+
+        $data = new stdClass();
+        $data->user_id = $user_id;
+        $data->category = strtoupper(trim($_POST['category'] ?? ''));
+        $data->subject = strtoupper(trim($_POST['subject'] ?? ''));
+        $data->detail = strtoupper(trim($_POST['detail'] ?? ''));
+        $data->status = strtoupper(trim($_POST['status'] ?? ''));
+        $data->datetime = strtoupper(trim($_POST['datetime'] ?? ''));
+
+        if ($this->userModel->createHelp($data)) {
+            send_json_response(true, "Berhasil mengirim pengajuan");
+        }else {
+            send_json_response(false, "Gagal mengirim pengajuan");
+        }
+    }
+
+    public function updateHelpStatus(){
+        $id = (int)$_POST['id'] ?? 0;
+        $status = strtoupper(trim($_POST['status'] ?? ''));
+
+        if ($this->userModel->updateHelpStatus($id, $status)) {
+            send_json_response(true, "Berhasil update pengajuan");
+        }else {
+            send_json_response(false, "Gagal update pengajuan");
+        }
+
+    }
+
+    public function getHelps(){
+        global $user_id;
+        if ($user_id) {
+            $data = $this->userModel->getHelps($user_id);
+            send_json_response(true, "Berhasil mengambil data pengajuan", $data);
+        }else {
+            send_json_response(false, "Gagal mengambil data pengajuan");
+        }
+    }
+
 }
 ?>
