@@ -74,7 +74,7 @@ $router->add('set_location', LocationController::class, 'setLocation', ['auth'])
 $router->add('create_payment', PaymentController::class, 'create', ['auth']);
 $router->add('update_payment', PaymentController::class, 'update', ['auth']);
 $router->add('delete_payment', PaymentController::class, 'delete', ['auth']);
-$router->add('order_payment', PaymentController::class, 'setLocation', ['auth']);
+$router->add('order_payment', PaymentController::class, 'orderPayment', ['auth']);
 
 // Finance Controller
 $router->add('finance', FinanceController::class, 'finance', ['auth']);

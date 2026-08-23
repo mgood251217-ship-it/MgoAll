@@ -5,6 +5,7 @@ class AuthController {
         session_start();
         require_once __DIR__ . "/../config/connect.php";
         require_once __DIR__ . "/../functions/helpers.php";
+        global $koneksi;
 
         $is_localhost = in_array($_SERVER['HTTP_HOST'], ['localhost', 'center.mgoall.test', '127.0.0.1', '::1']);
         $site_key   = "6LegPm0sAAAAACMlVF_Q0hQmj2cRMXNl2Pj8pldB";

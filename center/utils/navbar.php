@@ -36,7 +36,7 @@
 </style>
 <div class="navbar">
     <h3>Overview</h3>
-    <a href="/center/action?action=logout" class="btn-logout">
+    <a href="/action?action=logout" class="btn-logout">
         <i class="fas fa-sign-out-alt"></i> Logout
     </a>
 </div>

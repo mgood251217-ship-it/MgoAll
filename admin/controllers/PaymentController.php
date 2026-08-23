@@ -70,6 +70,7 @@ class PaymentController {
         }
         updateStoreCache($store_id, 'orders');
         updateStoreCache($store_id, 'payments');
+        updateStoreCache($store_id, 'finance');
         updateOrderTrigger($store_id, $order_id);
         send_json_response(true, 'Pembayaran berhasil', [
             'status' => $data->status,
@@ -113,6 +114,7 @@ class PaymentController {
         $this->financeController->refreshFinance($store_id, $tanggalAja);
         updateStoreCache($store_id, 'orders');
         updateStoreCache($store_id, 'payments');
+        updateStoreCache($store_id, 'finance');
         updateOrderTrigger($store_id, $order_id);
         send_json_response(true, 'Pembayaran berhasil dihapus.');
 
@@ -252,6 +254,7 @@ class PaymentController {
         }
         updateStoreCache($store_id, 'orders');
         updateStoreCache($store_id, 'payments');
+        updateStoreCache($store_id, 'finance');
         updateOrderTrigger($store_id, $order_id);
         send_json_response(true, 'Pembayaran berhasil diubah.');
 

@@ -1,6 +1,7 @@
 <?php
 require_once BASE_PATH . '/models/GlobalStock.php';
 require_once BASE_PATH . '/functions/helpers.php';
+require_once BASE_PATH . '/functions/cacheHelpers.php';
 
 class GlobalStockController {
     private $globalStockModel;
@@ -202,7 +203,6 @@ class GlobalStockController {
             'grouped_stocks' => $grouped_stocks
         ];
     }
-
     public function getStockByStoreId() {
         $store_id = isset($_GET['store_id']) ? $_GET['store_id'] : 0;
         
@@ -229,6 +229,7 @@ class GlobalStockController {
         $data->store_id = $store_id;
 
         if ($this->globalStockModel->createGlobalStockCategory($data)) {
+            updateStoreCache($store_id, 'global_stocks');
             send_json_response(true, 'Kategori berhasil ditambahkan.');
         } else {
             send_json_response(false, 'Gagal menambahkan kategori.');
@@ -245,6 +246,7 @@ class GlobalStockController {
         $data->name = $_POST['name'] ?? '';
 
         if ($this->globalStockModel->updateGlobalStockCategory($data)) {
+            updateStoreCache($store_id, 'global_stocks');
             send_json_response(true, 'Kategori berhasil diperbarui.');
         } else {
             send_json_response(false, 'Gagal memperbarui kategori.');
@@ -279,6 +281,7 @@ class GlobalStockController {
         $stmt = $this->koneksi->prepare("DELETE FROM global_stock_categories WHERE id = ? AND store_id = ?");
         $stmt->bind_param("is", $id, $store_id);
         if ($stmt->execute()) {
+            updateStoreCache($store_id, 'global_stocks');
             send_json_response(true, "Kategori dan seluruh barang di dalamnya berhasil dihapus.");
         } else {
             send_json_response(false, "Gagal menghapus kategori");
@@ -297,6 +300,7 @@ class GlobalStockController {
         $data->store_id = $store_id ?? 0;
 
         if ($this->globalStockModel->createGlobalStock($data)) {
+            updateStoreCache($store_id, 'global_stocks');
             send_json_response(true, 'Barang stok berhasil ditambahkan.');
         } else {
             send_json_response(false, 'Gagal menambahkan barang stok.');
@@ -305,6 +309,7 @@ class GlobalStockController {
     }
 
     public function updateStock() {
+        global $store_id;
         error_reporting(E_ALL);
         ini_set('display_errors', 1);
         header('Content-Type: application/json');
@@ -316,6 +321,7 @@ class GlobalStockController {
         $data->category_id = $_POST['category_id'] ?? 0;
 
         if ($this->globalStockModel->updateGlobalStock($data)) {
+            updateStoreCache($store_id, 'global_stocks');
             send_json_response(true, 'Barang stok berhasil diperbarui.');
         } else {
             send_json_response(false, 'Gagal memperbarui barang stok.');
@@ -339,6 +345,7 @@ class GlobalStockController {
         $stmt = $this->koneksi->prepare("DELETE FROM global_stocks WHERE id = ? AND store_id = ?");
         $stmt->bind_param("is", $id, $store_id);
         if ($stmt->execute()) {
+            updateStoreCache($store_id, 'global_stocks');
             send_json_response(true, "Barang beserta riwayatnya berhasil dihapus.");
         } else {
             send_json_response(false, "Gagal menghapus barang");
@@ -496,6 +503,7 @@ class GlobalStockController {
             $upd_main->bind_param("ii", $t_id, $t_id);
             $upd_main->execute();
         }
+        updateStoreCache($store_id, 'global_stocks');
         send_json_response(true, 'Barang berhasil dikirim dan terhubung dengan stok toko tujuan.');
         exit;
     }
@@ -577,6 +585,7 @@ class GlobalStockController {
         $upd_main->bind_param("ii", $global_stock_id, $global_stock_id);
         $upd_main->execute();
 
+        updateStoreCache($store_id, 'global_stocks');
         send_json_response(true, "Data stok berhasil diperbarui.");
         exit;
     }
@@ -679,7 +688,7 @@ class GlobalStockController {
         } else {
             $_SESSION['error'] = "Gagal mengunggah file CSV.";
         }
-        
+        updateStoreCache($store_id, 'global_stocks');
         send_json_response(true, "Berhasil import product");
     }
     

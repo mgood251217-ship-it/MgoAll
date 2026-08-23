@@ -289,6 +289,7 @@ class FinanceController {
             $this->refreshFinance($store_id, $date); 
         }
         updateStoreCache($store_id, 'finance');
+        updateStoreCache($store_id, 'payments');
         send_json_response(true, "Sinkron Berhasil");
     }
 
@@ -344,6 +345,7 @@ class FinanceController {
 
         $this->refreshFinance($store_id, $date);
         updateStoreCache($store_id, 'finance');
+        updateStoreCache($store_id, 'payments');
         send_json_response(true, "Berhasil Menambahkan Pengeluaran");
 
     }
@@ -366,6 +368,7 @@ class FinanceController {
 
         $this->refreshFinance($store_id, $date);
         updateStoreCache($store_id, 'finance');
+        updateStoreCache($store_id, 'payments');
         send_json_response(true, "Berhasil Menambahkan Pemasukan");
 
     }
@@ -387,6 +390,7 @@ class FinanceController {
         $this->financeModel->updateExpenditure($data);
         $this->refreshFinance($store_id, $date);
         updateStoreCache($store_id, 'finance');
+        updateStoreCache($store_id, 'payments');
         send_json_response(true, "Berhasil Memperbarui Pengeluaran");
     }
 
@@ -407,6 +411,7 @@ class FinanceController {
         $this->financeModel->updateIncome($data);
         $this->refreshFinance($store_id, $date);
         updateStoreCache($store_id, 'finance');
+        updateStoreCache($store_id, 'payments');
         send_json_response(true, "Berhasil Memperbarui Pemasukan");
     }
 
@@ -432,6 +437,7 @@ class FinanceController {
         if ($this->financeModel->deleteExpenditure($expenditure_id, $store_id)) {
             $this->refreshFinance($store_id, $start_date);
             updateStoreCache($store_id, 'finance');
+            updateStoreCache($store_id, 'payments');
             send_json_response(true, 'Pengeluaran berhasil dihapus');
         } else {
             send_json_response(false, 'Gagal menghapus pengeluaran');
@@ -448,6 +454,7 @@ class FinanceController {
         if ($this->financeModel->deleteIncome($income_id, $store_id)) {
             $this->refreshFinance($store_id, $start_date);
             updateStoreCache($store_id, 'finance');
+            updateStoreCache($store_id, 'payments');
             send_json_response(true, 'Pemasukan berhasil dihapus');
         } else {
             send_json_response(false, 'Gagal menghapus pemasukan');
