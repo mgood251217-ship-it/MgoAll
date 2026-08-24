@@ -86,6 +86,7 @@
     <ul>
         <li><a href="/dashboard"><i class="fas fa-home"></i> <span>Dashboard</span></a></li>
         <li><a href="/orders"><i class="fas fa-shopping-cart"></i> <span>Orders</span></a></li>
+        <li><a href="/products"><i class="fas fa-box"></i> <span>Products</span></a></li>
         <li><a href="/stores"><i class="fas fa-store"></i> <span>Stores</span></a></li>
         <li><a href="/finance"><i class="fas fa-wallet"></i> <span>Finance</span></a></li>
         <li><a href="/users"><i class="fas fa-users"></i> <span>Users</span></a></li>

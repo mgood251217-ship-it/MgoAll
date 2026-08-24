@@ -12,6 +12,16 @@ class AuthController {
         $this->koneksi = $koneksi;
     }
 
+    public function testConnection(){
+        $query = $this->koneksi->query("SELECT NOW() AS server_time");
+        if (!$query) {
+            echo json_encode(["success" => false, "message" => $this->koneksi->error]);
+            exit;
+        }
+        $data = $query->fetch_assoc();
+        send_json_response(true, "Database Connected", $data);
+    }
+
     public function session(){
         if (!self::checkSession()) {
             Response::error('Belum login.', 401);

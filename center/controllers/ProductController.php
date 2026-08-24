@@ -1,0 +1,213 @@
+<?php
+class ProductController {
+    private $koneksi;
+
+    public function __construct($db) {
+        $this->koneksi = $db;
+    }
+
+    public function getIndexData($access) {
+        if ($access == 'ALL') {
+            $storesResult = $this->koneksi->query("SELECT store_id, name FROM stores ORDER BY name ASC");
+        } else {
+            $stmt = $this->koneksi->prepare("SELECT store_id, name FROM stores WHERE administrator = ? ORDER BY name ASC");
+            $stmt->bind_param("s", $access);
+            $stmt->execute();
+            $storesResult = $stmt->get_result();
+        }
+
+        $stores = [];
+        if ($storesResult) {
+            while ($row = $storesResult->fetch_assoc()) {
+                $stores[] = $row;
+            }
+        }
+
+        $store_id = isset($_GET['store_id']) && $_GET['store_id'] !== '' ? (int)$_GET['store_id'] : null;
+        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+        $search = $_GET['search'] ?? '';
+        $limit = isset($_GET['limit']) ? max(1, (int)$_GET['limit']) : 25;
+
+        if ($store_id === null && !empty($stores)) {
+            $store_id = $stores[0]['store_id'];
+        }
+
+        $productsData = [];
+        $finishingsData = [];
+        $categories = [];
+        $totalPages = 0;
+        $total = 0;
+
+        if ($store_id !== null) {
+            $catStmt = $this->koneksi->prepare("SELECT category_id, name FROM categories WHERE store_id = ? ORDER BY name ASC");
+            $catStmt->bind_param("i", $store_id);
+            $catStmt->execute();
+            $catResult = $catStmt->get_result();
+            if ($catResult) {
+                while ($c = $catResult->fetch_assoc()) {
+                    $categories[] = $c;
+                }
+            }
+            $catStmt->close();
+
+            $search_param = "%" . $search . "%";
+            $countStmt = $this->koneksi->prepare("
+                SELECT COUNT(*) 
+                FROM products 
+                WHERE store_id = ? AND name LIKE ?
+            ");
+            $countStmt->bind_param("is", $store_id, $search_param);
+            $countStmt->execute();
+            $total = $countStmt->get_result()->fetch_row()[0];
+            $countStmt->close();
+
+            $totalPages = ceil($total / $limit);
+            $offset = ($page - 1) * $limit;
+
+            $stmt = $this->koneksi->prepare("
+                SELECT p.*, c.name AS category 
+                FROM products p
+                LEFT JOIN categories c ON p.category_id = c.category_id
+                WHERE p.store_id = ? AND p.name LIKE ? 
+                ORDER BY p.product_id DESC 
+                LIMIT ? OFFSET ?
+            ");
+            $stmt->bind_param("isii", $store_id, $search_param, $limit, $offset);
+            $stmt->execute();
+            
+            $result = $stmt->get_result();
+            if ($result) {
+                while ($row = $result->fetch_assoc()) {
+                    $productsData[] = $row;
+                }
+            }
+            $stmt->close();
+
+            $fStmt = $this->koneksi->prepare("
+                SELECT f.*, c.name AS category 
+                FROM finishings f
+                LEFT JOIN categories c ON f.category_id = c.category_id
+                WHERE f.store_id = ? AND f.name LIKE ? 
+                ORDER BY f.finishing_id DESC
+            ");
+            $fStmt->bind_param("is", $store_id, $search_param);
+            $fStmt->execute();
+            
+            $fResult = $fStmt->get_result();
+            if ($fResult) {
+                while ($row = $fResult->fetch_assoc()) {
+                    $finishingsData[] = $row;
+                }
+            }
+            $fStmt->close();
+        }
+
+        return [
+            'stores' => $stores,
+            'current_store_id' => $store_id,
+            'categories' => $categories,
+            'products' => $productsData,
+            'finishings' => $finishingsData,
+            'current_page' => $page,
+            'total_pages' => $totalPages,
+            'total_items' => $total,
+            'search' => $search,
+            'limit' => $limit
+        ];
+    }
+
+    public function addProduct() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $this->saveData('products', 'product');
+    }
+
+    public function editProduct() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $this->updateData('products', 'product_id', 'produk');
+    }
+
+    public function deleteProduct() {
+        $this->deleteData('products', 'product_id');
+    }
+
+    public function addFinishing() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $this->saveData('finishings', 'finishing');
+    }
+
+    public function editFinishing() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $this->updateData('finishings', 'finishing_id', 'finishing');
+    }
+
+    public function deleteFinishing() {
+        $this->deleteData('finishings', 'finishing_id');
+    }
+
+    private function saveData($table, $label) {
+        $store_id = $_POST['store_id'] ?? null;
+        $category_id = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
+        $name = trim($_POST['name'] ?? '');
+        $price = isset($_POST['price']) ? (int)$_POST['price'] : 0;
+        $stock = isset($_POST['stock']) ? (int)$_POST['stock'] : 0;
+
+        if ($store_id && $name) {
+            $stmt = $this->koneksi->prepare("INSERT INTO $table (store_id, category_id, name, price, stock) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param("iisii", $store_id, $category_id, $name, $price, $stock);
+
+            if ($stmt->execute()) {
+                $_SESSION['swal_success'] = ucfirst($label) . " berhasil ditambahkan.";
+            } else {
+                $_SESSION['swal_error'] = "Gagal menyimpan data: " . $stmt->error;
+            }
+            $stmt->close();
+        } else {
+            $_SESSION['swal_error'] = "Toko dan nama wajib diisi.";
+        }
+
+        header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "/products?store_id=" . $store_id));
+        exit;
+    }
+
+    private function updateData($table, $id_column, $label) {
+        $id = $_POST[$id_column] ?? null;
+        $category_id = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
+        $name = trim($_POST['name'] ?? '');
+        $price = isset($_POST['price']) ? (int)$_POST['price'] : 0;
+        $stock = isset($_POST['stock']) ? (int)$_POST['stock'] : 0;
+
+        if ($id && $name) {
+            $stmt = $this->koneksi->prepare("UPDATE $table SET category_id=?, name=?, price=?, stock=? WHERE $id_column=?");
+            $stmt->bind_param("isiii", $category_id, $name, $price, $stock, $id);
+
+            if ($stmt->execute()) {
+                $_SESSION['swal_success'] = ucfirst($label) . " berhasil diperbarui.";
+            } else {
+                $_SESSION['swal_error'] = "Gagal memperbarui data: " . $stmt->error;
+            }
+            $stmt->close();
+        } else {
+            $_SESSION['swal_error'] = "Nama wajib diisi.";
+        }
+
+        header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "/products"));
+        exit;
+    }
+
+    private function deleteData($table, $id_column) {
+        $id = $_POST[$id_column] ?? null;
+        if ($id) {
+            $stmt = $this->koneksi->prepare("DELETE FROM $table WHERE $id_column = ?");
+            $stmt->bind_param("i", $id);
+            if ($stmt->execute()) {
+                echo "OK";
+            } else {
+                echo "Error: " . $this->koneksi->error;
+            }
+            $stmt->close();
+        } else {
+            echo "ID tidak ditemukan";
+        }
+        exit;
+    }
+}

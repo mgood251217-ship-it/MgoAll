@@ -4,6 +4,7 @@ ini_set('display_errors', 1);
 $router = new Router();
 
 // Auth Controller
+$router->add('test_connection' , AuthController::class, 'testConnection');
 $router->add('login' , AuthController::class, 'login');
 $router->add('logout', AuthController::class, 'logout', ['auth']);
 $router->add('session', AuthController::class, 'session');

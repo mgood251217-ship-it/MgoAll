@@ -42,6 +42,22 @@ switch ($action) {
         if ($action === 'restore_user') $userController->restoreUser();
         if ($action === 'change_user_store') $userController->changeStore();
         break;
+
+    case 'add_product':
+    case 'edit_product':
+    case 'delete_product':
+    case 'add_finishing':
+    case 'edit_finishing':
+    case 'delete_finishing':
+        require_once __DIR__ . '/../controllers/ProductController.php';
+        $productController = new ProductController($koneksi);
+        if ($action === 'add_product') $productController->addProduct();
+        if ($action === 'edit_product') $productController->editProduct();
+        if ($action === 'delete_product') $productController->deleteProduct();
+        if ($action === 'add_finishing') $productController->addFinishing();
+        if ($action === 'edit_finishing') $productController->editFinishing();
+        if ($action === 'delete_finishing') $productController->deleteFinishing();
+        break;
         
     default:
         http_response_code(404);
