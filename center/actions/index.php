@@ -66,6 +66,14 @@ switch ($action) {
         if ($action === 'delete_order') $orderController->deleteOrder();
         if ($action === 'clear_order_items') $orderController->clearOrderItems();
         break;
+
+    case 'edit_payment':
+    case 'delete_payment':
+        require_once __DIR__ . '/../controllers/PaymentController.php';
+        $paymentController = new PaymentController($koneksi);
+        if ($action === 'edit_payment') $paymentController->update();
+        if ($action === 'delete_payment') $paymentController->delete();
+        break;
         
     default:
         http_response_code(404);
