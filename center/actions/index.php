@@ -58,6 +58,14 @@ switch ($action) {
         if ($action === 'edit_finishing') $productController->editFinishing();
         if ($action === 'delete_finishing') $productController->deleteFinishing();
         break;
+
+    case 'delete_order':
+    case 'clear_order_items':
+        require_once __DIR__ . '/../controllers/OrderController.php';
+        $orderController = new OrderController($koneksi);
+        if ($action === 'delete_order') $orderController->deleteOrder();
+        if ($action === 'clear_order_items') $orderController->clearOrderItems();
+        break;
         
     default:
         http_response_code(404);
