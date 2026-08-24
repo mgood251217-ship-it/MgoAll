@@ -9,6 +9,9 @@ $router->add('login' , AuthController::class, 'login');
 $router->add('logout', AuthController::class, 'logout', ['auth']);
 $router->add('session', AuthController::class, 'session');
 
+// Dataset Controller
+$router->add('check_update_dataset', DatasetController::class, 'checkUpdate', ['auth']);
+
 // User Controller
 $router->add('users', UserController::class, 'index', ['auth']);
 $router->add('create_user', UserController::class, 'create', ['auth']);
