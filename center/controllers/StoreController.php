@@ -206,7 +206,40 @@ class StoreController {
 
     public function setSession() {
         if (session_status() === PHP_SESSION_NONE) session_start();
+        
+        session_destroy();
+
         require_once __DIR__ . '/../functions/helpers.php';
+        
+        $domain = 'mgood.my.id';
+
+        $clearOptions = [
+            'expires'  => time() - 3600,
+            'path'     => '/',
+            'domain'   => $domain,
+            'secure'   => true,
+            'httponly' => true,
+            'samesite' => 'None',
+        ];
+
+        $sessionName = session_name();
+        setcookie($sessionName, '', $clearOptions);
+        if (isset($_COOKIE[$sessionName])) {
+            unset($_COOKIE[$sessionName]); 
+        }
+
+        $cookiesToClear = [
+            'user_user_id', 'user_username', 'user_name', 'user_initial', 
+            'user_store_id', 'user_role', 'user_foto', 'store_name', 
+            'store_address', 'store_logo', 'user_mode', 'user_access'
+        ];
+        
+        foreach ($cookiesToClear as $cookieName) {
+            setcookie($cookieName, '', $clearOptions);
+            if (isset($_COOKIE[$cookieName])) {
+                unset($_COOKIE[$cookieName]);
+            }
+        }
         
         $user_id = (int)$_POST['user_id'];
         $sql = "SELECT user_id, username, name, password, store_id, initial, role, picture FROM users WHERE user_id = ?";
@@ -245,20 +278,29 @@ class StoreController {
             }
             $stmt->close();
 
-            $_SESSION['user'] = [
-                'user_id' => startEnk('enk', $sesi['user_id']),
-                'username' => startEnk('enk', $sesi['username']),
-                'name' => startEnk('enk', $sesi['name']),
-                'initial' => startEnk('enk', $sesi['initial']),
-                'store_id' => startEnk('enk', $sesi['store_id']),
-                'role' => startEnk('enk', $sesi['role']),
-                'foto' => startEnk('enk', $sesi['picture']),
-                'store_name'     => startEnk('enk', $storeName),
-                'store_address'  => startEnk('enk', $storeAddress),
-                'store_logo'     => startEnk('enk', $storeLogo),
-                'mode'           => startEnk('enk', $mode),
-                'access'         => startEnk('enk', 'all')
+            $expire = time() + (86400 * 1); 
+
+            $options = [
+                'expires'  => $expire,
+                'path'     => '/',
+                'domain'   => $domain,
+                'secure'   => true,
+                'httponly' => true,
+                'samesite' => 'None',
             ];
+
+            setcookie('user_user_id', startEnk('enk', $sesi['user_id']), $options);
+            setcookie('user_username', startEnk('enk', $sesi['username']), $options);
+            setcookie('user_name', startEnk('enk', $sesi['name']), $options);
+            setcookie('user_initial', startEnk('enk', $sesi['initial']), $options);
+            setcookie('user_store_id', startEnk('enk', $sesi['store_id']), $options);
+            setcookie('user_role', startEnk('enk', $sesi['role']), $options);
+            setcookie('user_foto', startEnk('enk', $sesi['picture']), $options);
+            setcookie('store_name', startEnk('enk', $storeName), $options);
+            setcookie('store_address', startEnk('enk', $storeAddress), $options);
+            setcookie('store_logo', startEnk('enk', $storeLogo), $options);
+            setcookie('user_mode', startEnk('enk', $mode), $options);
+            setcookie('user_access', startEnk('enk', 'all'), $options);
             
             http_response_code(200);
             echo "success";

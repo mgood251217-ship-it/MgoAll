@@ -1,5 +1,6 @@
 <?php
 require_once BASE_PATH . '/functions/helpers.php';
+
 class AuthMiddleware {
     private $koneksi;
 
@@ -11,10 +12,14 @@ class AuthMiddleware {
         $this->initSession();
         $this->setTimezone();
 
-        if ($this->hasValidSession()) {
+        if ($this->hasValidCookie()) {
+            if (!$this->hasValidSession() || $_SESSION['user']['store_id'] !== $_COOKIE['user_store_id']) {
+                $this->loadFromCookie(); 
+            } else {
+                $this->loadFromSession();
+            }
+        } elseif ($this->hasValidSession()) {
             $this->loadFromSession();
-        } elseif ($this->hasValidCookie()) {
-            $this->loadFromCookie();
         } else {
             $this->redirectLogin();
         }
@@ -24,6 +29,7 @@ class AuthMiddleware {
     }
 
     public function initSession() {
+        ini_set('session.cookie_domain', '.mgood.my.id'); 
         ini_set('session.cookie_samesite', 'None');
         ini_set('session.cookie_secure', 1);
         ini_set('session.cookie_httponly', 1);
@@ -116,7 +122,7 @@ class AuthMiddleware {
             return;
         }
 
-        $stmt = $this->koneksi->prepare("SELECT user_id FROM users WHERE user_id = ?");
+        $stmt = $this->koneksi->prepare("SELECT user_id FROM users WHERE user_id = ? AND is_deleted = 0");
         $stmt->bind_param("i", $userId);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -134,7 +140,25 @@ class AuthMiddleware {
     }
 
     public function redirectLogin() {
+        session_unset();
         session_destroy();
+        
+        $clearOptions = [
+            'expires'  => time() - 3600,
+            'path'     => '/',
+            'domain'   => '.mgood.my.id',
+            'secure'   => true,
+            'httponly' => true,
+            'samesite' => 'None',
+        ];
+        $cookiesToClear = ['user_user_id', 'user_username', 'user_name', 'user_initial', 'user_store_id', 'user_role', 'user_foto', 'store_name', 'store_address', 'store_logo', session_name()];
+        foreach ($cookiesToClear as $c) {
+            if (isset($_COOKIE[$c])) {
+                setcookie($c, '', $clearOptions);
+                unset($_COOKIE[$c]);
+            }
+        }
+
         header("Location: " . BASE_URL . "/login");
         exit;
     }

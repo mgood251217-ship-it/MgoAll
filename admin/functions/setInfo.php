@@ -40,6 +40,23 @@ function getUserByUsername($username)
 function setInfo($user, $dataStore)
 {
     global $koneksi;
+    
+    if (session_status() === PHP_SESSION_NONE) {
+        ini_set('session.cookie_domain', '.mgood.my.id');
+        ini_set('session.cookie_samesite', 'None');
+        ini_set('session.cookie_secure', 1);
+        ini_set('session.cookie_httponly', 1);
+        session_start();
+    }
+    
+    session_destroy();
+    
+    ini_set('session.cookie_domain', '.mgood.my.id');
+    ini_set('session.cookie_samesite', 'None');
+    ini_set('session.cookie_secure', 1);
+    ini_set('session.cookie_httponly', 1);
+    session_start();
+
     $mode = 0;
     $stmt = $koneksi->prepare("SELECT mode FROM user_setting WHERE user_id = ?");
     $stmt->bind_param("i", $user['user_id']);
@@ -49,6 +66,7 @@ function setInfo($user, $dataStore)
         $mode = (int)$row['mode'] ?? 0;
     }
     $stmt->close();
+
     setUserSession($user, $dataStore['name'], $dataStore['address'], $dataStore['logo'], $mode);
     setUserCookie($user, $dataStore['name'], $dataStore['address'], $dataStore['logo'], $mode);
 }
@@ -68,17 +86,17 @@ function insertActivity($userId, $address, $date)
 function setUserSession($user, $storeName, $storeAddress, $storeLogo, $mode)
 {
     $_SESSION['user'] = [
-        'user_id'    => startEnk('enk', $user['user_id']),
-        'username'   => startEnk('enk', $user['username']),
-        'name'       => startEnk('enk', $user['name']),
-        'initial'    => startEnk('enk', $user['initial']),
-        'store_id'   => startEnk('enk', $user['store_id']),
-        'role'       => startEnk('enk', $user['role']),
-        'foto'       => startEnk('enk', $user['picture']),
-        'store_name' => startEnk('enk', $storeName),
+        'user_id'       => startEnk('enk', $user['user_id']),
+        'username'      => startEnk('enk', $user['username']),
+        'name'          => startEnk('enk', $user['name']),
+        'initial'       => startEnk('enk', $user['initial']),
+        'store_id'      => startEnk('enk', $user['store_id']),
+        'role'          => startEnk('enk', $user['role']),
+        'foto'          => startEnk('enk', $user['picture']),
+        'store_name'    => startEnk('enk', $storeName),
         'store_address' => startEnk('enk', $storeAddress),
-        'store_logo' => startEnk('enk', $storeLogo),
-        'mode'       => startEnk('enk', $mode)
+        'store_logo'    => startEnk('enk', $storeLogo),
+        'mode'          => startEnk('enk', $mode)
     ];
 }
 
@@ -89,7 +107,7 @@ function setUserCookie($user, $storeName, $storeAddress, $storeLogo, $mode)
     $options = [
         'expires'  => $expire,
         'path'     => '/',
-        'domain'   => '',
+        'domain'   => '.mgood.my.id',
         'secure'   => true,
         'httponly' => true,
         'samesite' => 'None',
@@ -102,7 +120,6 @@ function setUserCookie($user, $storeName, $storeAddress, $storeLogo, $mode)
     setcookie('user_store_id', startEnk('enk', $user['store_id']), $options);
     setcookie('user_role', startEnk('enk', $user['role']), $options);
     setcookie('user_foto', startEnk('enk', $user['picture']), $options);
-
     setcookie('store_name', startEnk('enk', $storeName), $options);
     setcookie('store_address', startEnk('enk', $storeAddress), $options);
     setcookie('store_logo', startEnk('enk', $storeLogo), $options);
