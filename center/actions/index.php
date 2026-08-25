@@ -75,6 +75,18 @@ switch ($action) {
         if ($action === 'delete_payment') $paymentController->delete();
         break;
         
+    case 'edit_expenditure':
+    case 'delete_expenditure':
+    case 'edit_income':
+    case 'delete_income':
+        require_once __DIR__ . '/../controllers/FinanceController.php';
+        $financeController = new FinanceController($koneksi);
+        if ($action === 'edit_expenditure') $financeController->updateExpenditure();
+        if ($action === 'delete_expenditure') $financeController->deleteExpenditure();
+        if ($action === 'edit_income') $financeController->updateIncome();
+        if ($action === 'delete_income') $financeController->deleteIncome();
+        break;
+
     default:
         http_response_code(404);
         echo "Action not found";
