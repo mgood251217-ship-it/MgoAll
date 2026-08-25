@@ -11,7 +11,7 @@ class StoreController {
             $query = "
                 SELECT s.*, 
                        u.name AS owner_name, 
-                       (SELECT COUNT(*) FROM users emp WHERE emp.store_id = s.store_id) AS total_karyawan 
+                       (SELECT COUNT(*) FROM users emp WHERE emp.store_id = s.store_id AND emp.is_deleted = 0) AS total_karyawan 
                 FROM stores s 
                 LEFT JOIN users u ON s.owner_id = u.user_id
             ";
@@ -20,10 +20,10 @@ class StoreController {
             $query = "
                 SELECT s.*, 
                        u.name AS owner_name, 
-                       (SELECT COUNT(*) FROM users emp WHERE emp.store_id = s.store_id) AS total_karyawan 
+                       (SELECT COUNT(*) FROM users emp WHERE emp.store_id = s.store_id AND emp.is_deleted = 0) AS total_karyawan 
                 FROM stores s 
                 LEFT JOIN users u ON s.owner_id = u.user_id 
-                WHERE s.administrator = ?
+                WHERE s.administrator = ? 
             ";
             $stmtStore = $this->koneksi->prepare($query);
             $stmtStore->bind_param("s", $access);
@@ -38,7 +38,7 @@ class StoreController {
             }
         }
 
-        $userResult = $this->koneksi->query("SELECT user_id, name, username FROM users ORDER BY name ASC");
+        $userResult = $this->koneksi->query("SELECT user_id, name, username FROM users WHERE is_deleted = 0 ORDER BY name ASC");
         $all_users = [];
         if ($userResult) {
             while ($uRow = $userResult->fetch_assoc()) {
