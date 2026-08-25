@@ -88,6 +88,47 @@ class PaymentController {
         ];
     }
 
+    private function recalculatePaymentStatus($order_id) {
+        $stmtOrder = $this->koneksi->prepare("SELECT total FROM orders WHERE order_id = ?");
+        $stmtOrder->bind_param("i", $order_id);
+        $stmtOrder->execute();
+        $orderRow = $stmtOrder->get_result()->fetch_assoc();
+        $stmtOrder->close();
+
+        if (!$orderRow) return;
+        $orderTotal = (float)$orderRow['total'];
+
+        $stmtPay = $this->koneksi->prepare("SELECT payment_id, nominal FROM payment WHERE order_id = ? ORDER BY date ASC, payment_id ASC");
+        $stmtPay->bind_param("i", $order_id);
+        $stmtPay->execute();
+        $resPay = $stmtPay->get_result();
+        
+        $payments = [];
+        $totalPembayaran = 0;
+        while ($row = $resPay->fetch_assoc()) {
+            $payments[] = $row;
+            $totalPembayaran += (float)$row['nominal'];
+        }
+        $stmtPay->close();
+
+        if (empty($payments)) return;
+
+        $stmtReset = $this->koneksi->prepare("UPDATE payment SET status = 'DP' WHERE order_id = ?");
+        $stmtReset->bind_param("i", $order_id);
+        $stmtReset->execute();
+        $stmtReset->close();
+
+        if ($totalPembayaran >= $orderTotal) {
+            $lastPayment = end($payments);
+            $lastPaymentId = $lastPayment['payment_id'];
+            
+            $stmtLunas = $this->koneksi->prepare("UPDATE payment SET status = 'LUNAS' WHERE payment_id = ?");
+            $stmtLunas->bind_param("i", $lastPaymentId);
+            $stmtLunas->execute();
+            $stmtLunas->close();
+        }
+    }
+
     public function delete() {
         if (session_status() === PHP_SESSION_NONE) session_start();
         header('Content-Type: application/json');
@@ -130,6 +171,8 @@ class PaymentController {
             $stmtDel->bind_param("i", $payment_id);
             $stmtDel->execute();
             $stmtDel->close();
+
+            $this->recalculatePaymentStatus($order_id);
 
             $this->koneksi->commit();
 
@@ -251,31 +294,12 @@ class PaymentController {
                 $stmtAct->close();
             }
 
-            $stmtUpd = $this->koneksi->prepare("UPDATE payment SET nominal = ?, payment_method = ?, date = ?, status = 'DP' WHERE payment_id = ?");
+            $stmtUpd = $this->koneksi->prepare("UPDATE payment SET nominal = ?, payment_method = ?, date = ? WHERE payment_id = ?");
             $stmtUpd->bind_param("issi", $nominal, $method, $tanggal, $payment_id);
             $stmtUpd->execute();
             $stmtUpd->close();
 
-            $stmtSum = $this->koneksi->prepare("SELECT SUM(nominal) as total_bayar FROM payment WHERE order_id = ?");
-            $stmtSum->bind_param("i", $order_id);
-            $stmtSum->execute();
-            $totalPembayaran = (int)$stmtSum->get_result()->fetch_assoc()['total_bayar'];
-            $stmtSum->close();
-
-            if ($totalPembayaran >= $order['total']) {
-                $stmtLast = $this->koneksi->prepare("SELECT payment_id FROM payment WHERE order_id = ? ORDER BY payment_id DESC LIMIT 1");
-                $stmtLast->bind_param("i", $order_id);
-                $stmtLast->execute();
-                $lastRow = $stmtLast->get_result()->fetch_assoc();
-                $stmtLast->close();
-                
-                if ($lastRow) {
-                    $lastId = $lastRow['payment_id'];
-                    $this->koneksi->query("UPDATE payment SET status = 'LUNAS' WHERE payment_id = $lastId");
-                }
-            } else {
-                $this->koneksi->query("UPDATE payment SET status = 'DP' WHERE order_id = $order_id");
-            }
+            $this->recalculatePaymentStatus($order_id);
 
             $this->koneksi->commit();
 
