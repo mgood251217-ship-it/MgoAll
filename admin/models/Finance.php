@@ -32,7 +32,7 @@ class Finance{
         return $success;
     }
 
-    public function getOmsetItemByIntervalDate( $store_id, $start_date, $end_date){
+    public function getOmsetItemByIntervalDate($store_id, $start_date, $end_date) {
         $stmt = $this->koneksi->prepare("
             SELECT 
                 p.name AS nama_barang,
@@ -51,15 +51,15 @@ class Finance{
                 ) AS total_terjual,
                 COALESCE(SUM(oi.amount), 0) AS total_omset
             FROM products p
-            LEFT JOIN order_items oi ON oi.product_id = p.product_id AND oi.store_id = ?
-            LEFT JOIN orders o ON oi.order_id = o.order_id
+            INNER JOIN order_items oi ON oi.product_id = p.product_id AND oi.store_id = ?
+            INNER JOIN orders o ON oi.order_id = o.order_id AND o.store_id = ?
             WHERE p.store_id = ?
             AND NOT p.unit_type = '~'
-            AND (o.date BETWEEN ? AND ?)
+            AND DATE(o.date) BETWEEN ? AND ?
             GROUP BY p.product_id
             ORDER BY total_omset DESC
         ");
-        $stmt->bind_param("iiss", $store_id, $store_id, $start_date, $end_date);
+        $stmt->bind_param("iiiss", $store_id, $store_id, $store_id, $start_date, $end_date);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
