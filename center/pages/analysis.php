@@ -124,7 +124,7 @@ $data = $controller->getIndexData($access, $startDateGet, $endDateGet);
 </div>
 
 <div class="filter-card">
-    <form method="get" action="/orders" class="filter-form">
+    <form method="get" action="/analysis" class="filter-form">
         <div class="form-group">
             <label for="start_date">Dari Tanggal</label>
             <input type="date" id="start_date" name="start_date" class="form-control" value="<?= htmlspecialchars($data['startDate']) ?>" onchange="this.form.submit()">
