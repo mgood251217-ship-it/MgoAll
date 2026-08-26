@@ -84,6 +84,10 @@ class PaymentController {
         global $store_id;
         $date = date("Y-m-d H:i:s");
         $administrator_id = startEnk('dek',  $_SESSION['admin_logged_in']['administrator_id']);
+        if (!$administrator_id){
+            send_json_response(false, "Sesi Habis");
+            exit;
+        }
         $payment_id = isset($_POST['payment_id']) ? (int)$_POST['payment_id'] : 0;
         $order_id = isset($_POST['order_id']) ? (int)$_POST['order_id'] : 0;
         $keterangan = isset($_POST['keterangan_hapus']) ? trim($_POST['keterangan_hapus']) : '';

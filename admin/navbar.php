@@ -27,8 +27,15 @@ if ($mode === 1) {
 $navbarBgClass = $mode === 1 ? 'bg-dark-night' : 'bg-primary';
 
 $access = '';
-if (isset($_SESSION['user']['access']) && startEnk('dek', $_SESSION['user']['access']) == 'all' ) {
-  $access = startEnk('dek', $_SESSION['user']['access']);
+$administrator_id = '';
+if (isset($_COOKIE['admin_administrator_id']) && startEnk('dek',  $_COOKIE['admin_administrator_id']) != ''){
+  $administrator_id = startEnk('dek',  $_COOKIE['admin_administrator_id']);
+}
+
+if (isset($_SESSION['admin_logged_in']['access']) && strtoupper(startEnk('dek', $_SESSION['admin_logged_in']['access'])) == 'ALL') {
+    $access = 'all';
+} elseif (isset($_COOKIE['admin_access']) && strtoupper(startEnk('dek', $_COOKIE['admin_access'])) == 'ALL') {
+    $access = 'all';
 }
 
 $userAgent = $_SERVER['HTTP_USER_AGENT'];
@@ -47,7 +54,7 @@ if (strpos($userAgent, 'Mobile') !== false) {
       <?= htmlspecialchars($storeName) ?>
     </a>
 
-    <?php if (isset($_SESSION['admin_logged_in']['administrator_id'])){ ?>
+    <?php if (isset($_COOKIE['admin_administrator_id'])){ ?>
     <div class="btn btn-primary">
       Admin Mode
     </div>

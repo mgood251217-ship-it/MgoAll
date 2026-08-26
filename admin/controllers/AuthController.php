@@ -188,7 +188,7 @@ class AuthController {
         $options = [
             'expires'  => time() - (86400 * 365),
             'path'     => '/',
-            'domain'   => '',
+            'domain'   => '.mgood.my.id',
             'secure'   => true,
             'httponly' => true,
             'samesite' => 'None',

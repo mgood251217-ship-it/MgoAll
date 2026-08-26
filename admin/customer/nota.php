@@ -14,8 +14,12 @@ $storeModel = new Store($koneksi);
 $paymentModel = new Payment($koneksi);
 $productModel = new Product($koneksi);
 
+$administrator_id = '';
+if (isset($_COOKIE['admin_administrator_id']) && startEnk('dek',  $_COOKIE['admin_administrator_id']) != ''){
+  $administrator_id = startEnk('dek',  $_COOKIE['admin_administrator_id']);
+}
 
-if((int)$orderModel->getOneValue($order_id, 'total') > 0 && !$administrator){
+if((int)$orderModel->getOneValue($order_id, 'total') > 0 && !$administrator_id){
   header("Location: " . BASE_URL . "/customer/");
   exit;
 }
