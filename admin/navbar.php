@@ -30,12 +30,7 @@ $access = '';
 $administrator_id = '';
 if (isset($_COOKIE['admin_administrator_id']) && startEnk('dek',  $_COOKIE['admin_administrator_id']) != ''){
   $administrator_id = startEnk('dek',  $_COOKIE['admin_administrator_id']);
-}
-
-if (isset($_SESSION['admin_logged_in']['access']) && strtoupper(startEnk('dek', $_SESSION['admin_logged_in']['access'])) == 'ALL') {
-    $access = 'all';
-} elseif (isset($_COOKIE['admin_access']) && strtoupper(startEnk('dek', $_COOKIE['admin_access'])) == 'ALL') {
-    $access = 'all';
+  $access = 'all';
 }
 
 $userAgent = $_SERVER['HTTP_USER_AGENT'];
