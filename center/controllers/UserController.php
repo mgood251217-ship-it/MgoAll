@@ -71,6 +71,7 @@ class UserController {
     public function addUser() {
         if (session_status() === PHP_SESSION_NONE) session_start();
         require_once __DIR__ . '/../functions/cacheHelper.php';
+        require_once __DIR__ . '/../functions/imageHelpers.php';
 
         $name     = $_POST['name'] ?? '';
         $username = $_POST['username'] ?? '';
@@ -83,7 +84,15 @@ class UserController {
         $pictureName = '';
 
         if (!empty($_FILES['picture']['name'])) {
-            $pictureName = $this->processImageUpload($_FILES['picture']);
+            $targetDir = __DIR__ . "/../../../assets/img/user/";
+            $resultUpload = compress($_FILES['picture'], $targetDir);
+            if ($resultUpload['success']) {
+                $pictureName = $resultUpload['file'];
+            } else {
+                $_SESSION['swal_error'] = $resultUpload['error'];
+                header("Location: /users");
+                exit;
+            }
         }
 
         if ($name && $username && $password && $role && $store_id) {
@@ -108,6 +117,7 @@ class UserController {
     public function editUser() {
         if (session_status() === PHP_SESSION_NONE) session_start();
         require_once __DIR__ . '/../functions/cacheHelper.php';
+        require_once __DIR__ . '/../functions/imageHelpers.php';
 
         $user_id  = $_POST['user_id'] ?? null;
         $name     = $_POST['name'] ?? '';
@@ -135,11 +145,16 @@ class UserController {
             }
 
             if (!empty($_FILES['picture']['name'])) {
-                $pictureName = $this->processImageUpload($_FILES['picture']);
-                if ($pictureName) {
+                $targetDir = __DIR__ . "/../../admin/assets/img/user/";
+                $resultUpload = compress($_FILES['picture'], $targetDir);
+                if ($resultUpload['success']) {
                     $updateSql .= ", picture=?";
-                    $params[] = $pictureName;
+                    $params[] = $resultUpload['file'];
                     $types .= "s";
+                } else {
+                    $_SESSION['swal_error'] = $resultUpload['error'];
+                    header("Location: /users");
+                    exit;
                 }
             }
 
@@ -254,83 +269,5 @@ class UserController {
             echo "Data tidak valid";
         }
         exit;
-    }
-
-    private function processImageUpload($fileInfo) {
-        $targetDir = __DIR__ . "/../../../assets/img/user/";
-        if (!is_dir($targetDir)) {
-            mkdir($targetDir, 0755, true);
-        }
-
-        $ext = strtolower(pathinfo($fileInfo['name'], PATHINFO_EXTENSION));
-        $pictureName = uniqid("user_", true) . '.' . $ext;
-        $targetPath = $targetDir . $pictureName;
-
-        $maxWidth = 400;
-        $maxHeight = 400;
-        $maxSize = 100 * 1024;
-
-        list($origWidth, $origHeight) = getimagesize($fileInfo['tmp_name']);
-        if (!$origWidth || !$origHeight) return '';
-
-        $ratio = min($maxWidth / $origWidth, $maxHeight / $origHeight);
-        $newWidth = (int)($origWidth * $ratio);
-        $newHeight = (int)($origHeight * $ratio);
-
-        switch ($ext) {
-            case 'jpg':
-            case 'jpeg':
-                $srcImage = imagecreatefromjpeg($fileInfo['tmp_name']);
-                break;
-            case 'png':
-                $srcImage = imagecreatefrompng($fileInfo['tmp_name']);
-                break;
-            case 'gif':
-                $srcImage = imagecreatefromgif($fileInfo['tmp_name']);
-                break;
-            default:
-                $srcImage = false;
-        }
-
-        if ($srcImage) {
-            $resizedImage = imagecreatetruecolor($newWidth, $newHeight);
-            imagecopyresampled($resizedImage, $srcImage, 0, 0, 0, 0, $newWidth, $newHeight, $origWidth, $origHeight);
-
-            if ($ext === 'jpg' || $ext === 'jpeg') {
-                $quality = 85;
-                do {
-                    ob_start();
-                    imagejpeg($resizedImage, null, $quality);
-                    $imageData = ob_get_clean();
-                    $fileSize = strlen($imageData);
-                    $quality -= 5;
-                } while ($fileSize > $maxSize && $quality >= 10);
-                file_put_contents($targetPath, $imageData);
-            } elseif ($ext === 'png') {
-                ob_start();
-                imagepng($resizedImage, null, 9);
-                $imageData = ob_get_clean();
-
-                if (strlen($imageData) > $maxSize) {
-                    $scale = sqrt($maxSize / strlen($imageData));
-                    $smallerWidth = max(50, (int)($newWidth * $scale));
-                    $smallerHeight = max(50, (int)($newHeight * $scale));
-                    $finalImage = imagecreatetruecolor($smallerWidth, $smallerHeight);
-                    imagecopyresampled($finalImage, $resizedImage, 0, 0, 0, 0, $smallerWidth, $smallerHeight, $newWidth, $newHeight);
-                    imagepng($finalImage, $targetPath, 9);
-                    imagedestroy($finalImage);
-                } else {
-                    file_put_contents($targetPath, $imageData);
-                }
-            } elseif ($ext === 'gif') {
-                imagegif($resizedImage, $targetPath);
-            }
-
-            imagedestroy($srcImage);
-            imagedestroy($resizedImage);
-            return $pictureName;
-        }
-
-        return '';
     }
 }
