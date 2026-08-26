@@ -70,6 +70,7 @@ class UserController {
 
     public function addUser() {
         if (session_status() === PHP_SESSION_NONE) session_start();
+        require_once __DIR__ . '/../functions/cacheHelper.php';
 
         $name     = $_POST['name'] ?? '';
         $username = $_POST['username'] ?? '';
@@ -90,6 +91,7 @@ class UserController {
             $stmt->bind_param("sssssis", $name, $username, $hashedPassword, $initial, $role, $store_id, $pictureName);
 
             if ($stmt->execute()) {
+                updateStoreCache($store_id, 'users');
                 $_SESSION['swal_success'] = "User berhasil ditambahkan.";
             } else {
                 $_SESSION['swal_error'] = "Gagal menyimpan data: " . $stmt->error;
@@ -105,6 +107,7 @@ class UserController {
 
     public function editUser() {
         if (session_status() === PHP_SESSION_NONE) session_start();
+        require_once __DIR__ . '/../functions/cacheHelper.php';
 
         $user_id  = $_POST['user_id'] ?? null;
         $name     = $_POST['name'] ?? '';
@@ -115,6 +118,12 @@ class UserController {
         $store_id = $_POST['store_id'] ?? null;
 
         if ($user_id && $name && $username && $role && $store_id) {
+            $stmtGet = $this->koneksi->prepare("SELECT store_id FROM users WHERE user_id = ?");
+            $stmtGet->bind_param("i", $user_id);
+            $stmtGet->execute();
+            $old_store_id = $stmtGet->get_result()->fetch_assoc()['store_id'] ?? null;
+            $stmtGet->close();
+
             $updateSql = "UPDATE users SET name=?, username=?, initial=?, role=?, store_id=?";
             $params = [$name, $username, $initial, $role, $store_id];
             $types = "ssssi";
@@ -142,6 +151,10 @@ class UserController {
             $stmt->bind_param($types, ...$params);
 
             if ($stmt->execute()) {
+                updateStoreCache($store_id, 'users');
+                if ($old_store_id && $old_store_id != $store_id) {
+                    updateStoreCache($old_store_id, 'users');
+                }
                 $_SESSION['swal_success'] = "User berhasil diperbarui.";
             } else {
                 $_SESSION['swal_error'] = "Gagal memperbarui data: " . $stmt->error;
@@ -157,12 +170,23 @@ class UserController {
 
     public function deleteUser() {
         if (session_status() === PHP_SESSION_NONE) session_start();
+        require_once __DIR__ . '/../functions/cacheHelper.php';
+        
         $user_id = $_POST['user_id'] ?? null;
 
         if ($user_id) {
+            $stmtGet = $this->koneksi->prepare("SELECT store_id FROM users WHERE user_id = ?");
+            $stmtGet->bind_param("i", $user_id);
+            $stmtGet->execute();
+            $store_id = $stmtGet->get_result()->fetch_assoc()['store_id'] ?? null;
+            $stmtGet->close();
+
             $stmt = $this->koneksi->prepare("UPDATE users SET is_deleted = 1 WHERE user_id = ?");
             $stmt->bind_param("i", $user_id);
             if ($stmt->execute()) {
+                if ($store_id) {
+                    updateStoreCache($store_id, 'users');
+                }
                 echo "OK";
             } else {
                 echo "Error";
@@ -174,12 +198,23 @@ class UserController {
 
     public function restoreUser() {
         if (session_status() === PHP_SESSION_NONE) session_start();
+        require_once __DIR__ . '/../functions/cacheHelper.php';
+        
         $user_id = $_POST['user_id'] ?? null;
 
         if ($user_id) {
+            $stmtGet = $this->koneksi->prepare("SELECT store_id FROM users WHERE user_id = ?");
+            $stmtGet->bind_param("i", $user_id);
+            $stmtGet->execute();
+            $store_id = $stmtGet->get_result()->fetch_assoc()['store_id'] ?? null;
+            $stmtGet->close();
+
             $stmt = $this->koneksi->prepare("UPDATE users SET is_deleted = 0 WHERE user_id = ?");
             $stmt->bind_param("i", $user_id);
             if ($stmt->execute()) {
+                if ($store_id) {
+                    updateStoreCache($store_id, 'users');
+                }
                 echo "OK";
             } else {
                 echo "Error";
@@ -190,14 +225,26 @@ class UserController {
     }
 
     public function changeStore() {
+        require_once __DIR__ . '/../functions/cacheHelper.php';
+        
         $user_id = $_POST['user_id'] ?? null;
         $store_id = $_POST['store_id'] ?? null;
 
         if ($user_id && $store_id) {
+            $stmtGet = $this->koneksi->prepare("SELECT store_id FROM users WHERE user_id = ?");
+            $stmtGet->bind_param("i", $user_id);
+            $stmtGet->execute();
+            $old_store_id = $stmtGet->get_result()->fetch_assoc()['store_id'] ?? null;
+            $stmtGet->close();
+
             $stmt = $this->koneksi->prepare("UPDATE users SET store_id = ? WHERE user_id = ?");
             $stmt->bind_param("ii", $store_id, $user_id);
             
             if ($stmt->execute()) {
+                updateStoreCache($store_id, 'users');
+                if ($old_store_id && $old_store_id != $store_id) {
+                    updateStoreCache($old_store_id, 'users');
+                }
                 echo "OK";
             } else {
                 echo "Error: " . $this->koneksi->error;

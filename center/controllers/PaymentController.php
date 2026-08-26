@@ -133,6 +133,7 @@ class PaymentController {
         if (session_status() === PHP_SESSION_NONE) session_start();
         header('Content-Type: application/json');
         require_once __DIR__ . '/../functions/helpers.php';
+        require_once __DIR__ . '/../functions/cacheHelper.php';
         
         $store_id = isset($_POST['store_id']) ? (int)$_POST['store_id'] : 0;
         $date = date("Y-m-d H:i:s");
@@ -182,15 +183,11 @@ class PaymentController {
                 $financeController->refreshFinance($store_id, date("Y-m-d"));
             }
 
-            if (function_exists('updateStoreCache')) {
-                updateStoreCache($store_id, 'activities');
-                updateStoreCache($store_id, 'orders');
-                updateStoreCache($store_id, 'payments');
-                updateStoreCache($store_id, 'finance');
-            }
-            if (function_exists('updateOrderTrigger')) {
-                updateOrderTrigger($store_id, $order_id);
-            }
+            updateStoreCache($store_id, 'activities');
+            updateStoreCache($store_id, 'orders');
+            updateStoreCache($store_id, 'payments');
+            updateStoreCache($store_id, 'finance');
+            updateOrderTrigger($store_id, $order_id);
 
             echo json_encode(['success' => true, 'message' => 'Pembayaran berhasil dihapus.']);
         } catch (Exception $e) {
@@ -204,6 +201,7 @@ class PaymentController {
         if (session_status() === PHP_SESSION_NONE) session_start();
         header('Content-Type: application/json');
         require_once __DIR__ . '/../functions/helpers.php';
+        require_once __DIR__ . '/../functions/cacheHelper.php';
 
         if (!isset($_SESSION['admin_logged_in'])) {
             echo json_encode(['success' => false, 'message' => 'Kesalahan Login Administrator']);
@@ -309,15 +307,11 @@ class PaymentController {
                 $financeController->refreshFinance($store_id, date("Y-m-d"));
             }
 
-            if (function_exists('updateStoreCache')) {
-                updateStoreCache($store_id, 'activities');
-                updateStoreCache($store_id, 'orders');
-                updateStoreCache($store_id, 'payments');
-                updateStoreCache($store_id, 'finance');
-            }
-            if (function_exists('updateOrderTrigger')) {
-                updateOrderTrigger($store_id, $order_id);
-            }
+            updateStoreCache($store_id, 'activities');
+            updateStoreCache($store_id, 'orders');
+            updateStoreCache($store_id, 'payments');
+            updateStoreCache($store_id, 'finance');
+            updateOrderTrigger($store_id, $order_id);
 
             echo json_encode(['success' => true, 'message' => 'Pembayaran berhasil diubah.']);
         } catch (Exception $e) {

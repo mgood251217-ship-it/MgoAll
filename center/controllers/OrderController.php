@@ -180,6 +180,7 @@ class OrderController {
         if (session_status() === PHP_SESSION_NONE) session_start();
         header('Content-Type: application/json');
         require_once __DIR__ . '/../functions/helpers.php';
+        require_once __DIR__ . '/../functions/cacheHelper.php';
 
         if (!isset($_POST['order_id']) || !isset($_SESSION['admin_logged_in'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak atau data tidak valid.']);
@@ -239,10 +240,9 @@ class OrderController {
 
             $this->koneksi->commit();
 
-            if (function_exists('updateStoreCache')) {
-                updateStoreCache($order['store_id'], 'orders');
-                updateStoreCache($order['store_id'], 'activities');
-            }
+            updateStoreCache($order['store_id'], 'orders');
+            updateStoreCache($order['store_id'], 'activities');
+            updateOrderTrigger($order['store_id'], $order_id);
 
             echo json_encode(['success' => true, 'message' => 'Order berhasil dihapus']);
         } catch (Exception $e) {
@@ -256,6 +256,7 @@ class OrderController {
         if (session_status() === PHP_SESSION_NONE) session_start();
         header('Content-Type: application/json');
         require_once __DIR__ . '/../functions/helpers.php';
+        require_once __DIR__ . '/../functions/cacheHelper.php';
 
         if (!isset($_POST['order_id']) || !isset($_SESSION['admin_logged_in'])) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak atau data tidak valid.']);
@@ -266,11 +267,24 @@ class OrderController {
 
         $this->koneksi->begin_transaction();
         try {
+            $stmt = $this->koneksi->prepare("SELECT store_id FROM orders WHERE order_id = ?");
+            $stmt->bind_param("i", $order_id);
+            $stmt->execute();
+            $order = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+
+            if (!$order) throw new Exception("Order tidak ditemukan.");
+            $store_id = $order['store_id'];
+
             $this->koneksi->query("DELETE FROM diskon_order_items WHERE order_id = $order_id");
             $this->koneksi->query("DELETE FROM order_items WHERE order_id = $order_id");
             $this->koneksi->query("UPDATE orders SET total = 0 WHERE order_id = $order_id");
 
             $this->koneksi->commit();
+            
+            updateStoreCache($store_id, 'orders');
+            updateOrderTrigger($store_id, $order_id);
+            
             echo json_encode(['success' => true, 'message' => 'Semua item dalam order berhasil dikosongkan.']);
         } catch (Exception $e) {
             $this->koneksi->rollback();

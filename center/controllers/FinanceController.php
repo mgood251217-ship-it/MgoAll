@@ -306,6 +306,7 @@ class FinanceController {
         if (session_status() === PHP_SESSION_NONE) session_start();
         header('Content-Type: application/json');
         require_once __DIR__ . '/../functions/helpers.php';
+        require_once __DIR__ . '/../functions/cacheHelper.php';
 
         $administrator_id = isset($_SESSION['admin_logged_in']['administrator_id']) ? startEnk('dek', $_SESSION['admin_logged_in']['administrator_id']) : 0;
         $expenditure_id = isset($_POST['expenditure_id']) ? (int)$_POST['expenditure_id'] : 0;
@@ -349,11 +350,8 @@ class FinanceController {
             $this->refreshFinance($store_id, $date_finance);
 
             $this->koneksi->commit();
-
-            if (function_exists('updateStoreCache')) {
-                updateStoreCache($store_id, 'activities');
-                updateStoreCache($store_id, 'finance');
-            }
+            updateStoreCache($store_id, 'activities');
+            updateStoreCache($store_id, 'finance');
 
             echo json_encode(['success' => true, 'message' => 'Pengeluaran berhasil dihapus']);
         } catch (Exception $e) {
@@ -367,6 +365,7 @@ class FinanceController {
         if (session_status() === PHP_SESSION_NONE) session_start();
         header('Content-Type: application/json');
         require_once __DIR__ . '/../functions/helpers.php';
+        require_once __DIR__ . '/../functions/cacheHelper.php';
 
         $administrator_id = isset($_SESSION['admin_logged_in']['administrator_id']) ? startEnk('dek', $_SESSION['admin_logged_in']['administrator_id']) : 0;
         $expenditure_id = isset($_POST['expenditure_id']) ? (int)$_POST['expenditure_id'] : 0;
@@ -425,10 +424,8 @@ class FinanceController {
 
             $this->koneksi->commit();
 
-            if (function_exists('updateStoreCache')) {
-                updateStoreCache($store_id, 'activities');
-                updateStoreCache($store_id, 'finance');
-            }
+            updateStoreCache($store_id, 'activities');
+            updateStoreCache($store_id, 'finance');
 
             echo json_encode(['success' => true, 'message' => 'Pengeluaran berhasil diubah']);
         } catch (Exception $e) {
@@ -442,6 +439,7 @@ class FinanceController {
         if (session_status() === PHP_SESSION_NONE) session_start();
         header('Content-Type: application/json');
         require_once __DIR__ . '/../functions/helpers.php';
+        require_once __DIR__ . '/../functions/cacheHelper.php';
 
         $administrator_id = isset($_SESSION['admin_logged_in']['administrator_id']) ? startEnk('dek', $_SESSION['admin_logged_in']['administrator_id']) : 0;
         $income_id = isset($_POST['income_id']) ? (int)$_POST['income_id'] : 0;
@@ -486,10 +484,8 @@ class FinanceController {
 
             $this->koneksi->commit();
 
-            if (function_exists('updateStoreCache')) {
-                updateStoreCache($store_id, 'activities');
-                updateStoreCache($store_id, 'finance');
-            }
+            updateStoreCache($store_id, 'activities');
+            updateStoreCache($store_id, 'finance');
 
             echo json_encode(['success' => true, 'message' => 'Pemasukan berhasil dihapus']);
         } catch (Exception $e) {
@@ -503,6 +499,7 @@ class FinanceController {
         if (session_status() === PHP_SESSION_NONE) session_start();
         header('Content-Type: application/json');
         require_once __DIR__ . '/../functions/helpers.php';
+        require_once __DIR__ . '/../functions/cacheHelper.php';
 
         $administrator_id = isset($_SESSION['admin_logged_in']['administrator_id']) ? startEnk('dek', $_SESSION['admin_logged_in']['administrator_id']) : 0;
         $income_id = isset($_POST['income_id']) ? (int)$_POST['income_id'] : 0;
@@ -561,10 +558,8 @@ class FinanceController {
 
             $this->koneksi->commit();
 
-            if (function_exists('updateStoreCache')) {
-                updateStoreCache($store_id, 'activities');
-                updateStoreCache($store_id, 'finance');
-            }
+            updateStoreCache($store_id, 'activities');
+            updateStoreCache($store_id, 'finance');
 
             echo json_encode(['success' => true, 'message' => 'Pemasukan berhasil diubah']);
         } catch (Exception $e) {

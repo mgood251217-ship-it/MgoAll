@@ -156,6 +156,9 @@ class ProductController {
             $stmt->bind_param("iisii", $store_id, $category_id, $name, $price, $stock);
 
             if ($stmt->execute()) {
+                require_once __DIR__ . '/../functions/cacheHelper.php';
+                updateStoreCache($store_id, $table);
+                
                 $_SESSION['swal_success'] = ucfirst($label) . " berhasil ditambahkan.";
             } else {
                 $_SESSION['swal_error'] = "Gagal menyimpan data: " . $stmt->error;
@@ -177,10 +180,21 @@ class ProductController {
         $stock = isset($_POST['stock']) ? (int)$_POST['stock'] : 0;
 
         if ($id && $name) {
+            $stmtGet = $this->koneksi->prepare("SELECT store_id FROM $table WHERE $id_column = ?");
+            $stmtGet->bind_param("i", $id);
+            $stmtGet->execute();
+            $store_id = $stmtGet->get_result()->fetch_assoc()['store_id'] ?? null;
+            $stmtGet->close();
+
             $stmt = $this->koneksi->prepare("UPDATE $table SET category_id=?, name=?, price=?, stock=? WHERE $id_column=?");
             $stmt->bind_param("isiii", $category_id, $name, $price, $stock, $id);
 
             if ($stmt->execute()) {
+                if ($store_id) {
+                    require_once __DIR__ . '/../functions/cacheHelper.php';
+                    updateStoreCache($store_id, $table);
+                }
+                
                 $_SESSION['swal_success'] = ucfirst($label) . " berhasil diperbarui.";
             } else {
                 $_SESSION['swal_error'] = "Gagal memperbarui data: " . $stmt->error;
@@ -197,9 +211,21 @@ class ProductController {
     private function deleteData($table, $id_column) {
         $id = $_POST[$id_column] ?? null;
         if ($id) {
+            $stmtGet = $this->koneksi->prepare("SELECT store_id FROM $table WHERE $id_column = ?");
+            $stmtGet->bind_param("i", $id);
+            $stmtGet->execute();
+            $store_id = $stmtGet->get_result()->fetch_assoc()['store_id'] ?? null;
+            $stmtGet->close();
+
             $stmt = $this->koneksi->prepare("DELETE FROM $table WHERE $id_column = ?");
             $stmt->bind_param("i", $id);
+            
             if ($stmt->execute()) {
+                if ($store_id) {
+                    require_once __DIR__ . '/../functions/cacheHelper.php';
+                    updateStoreCache($store_id, $table);
+                }
+                
                 echo "OK";
             } else {
                 echo "Error: " . $this->koneksi->error;
