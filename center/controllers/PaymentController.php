@@ -1,9 +1,14 @@
 <?php
+require_once __DIR__ . '/../functions/helpers.php';
+require_once __DIR__ . '/../functions/cacheHelper.php';
+require_once 'FinanceController.php';
 class PaymentController {
     private $koneksi;
+    private $financeController;
 
     public function __construct($db) {
         $this->koneksi = $db;
+        $this->financeController = new FinanceController($db);
     }
 
     public function getIndexData($access) {
@@ -127,6 +132,66 @@ class PaymentController {
             $stmtLunas->execute();
             $stmtLunas->close();
         }
+    }
+
+    public function createPayment($data){
+        $stmt = $this->koneksi->prepare("INSERT INTO payment (order_id, store_id, nominal, payment_method, status, date) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("iiisss", $data->order_id, $data->store_id, $data->nominal, $data->payment_method, $data->status, $data->date);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function create(){
+        require_once 'OrderController.php';
+        $store_id = $_POST['store_id'] ?? 0;
+        if ($store_id == 0 || $store_id == '') {
+            send_json_response(false, "error store");
+            exit;
+        }
+
+        $orderController = new OrderController($this->koneksi);
+        $isLunas = isset($_POST['lunas_method']);
+        $order_id = $_POST['order_id'];
+
+        $total = $orderController->getOneValue($order_id, 'total');
+        $paid = $this->getPaidByOrderId($order_id);
+
+        $nominal = $isLunas ? ($total - $paid) : ((int)($_POST['nominal'] ?? 0));
+
+        if ($nominal <= 0) {
+            send_json_response(false, $isLunas ? 'Sudah Lunas' : 'Nominal Invalid');
+            exit;
+        }
+
+        $total_paid = $paid + $nominal;
+        $isLunasStatus = ($total_paid >= $total);
+
+        $data = new stdClass();
+        $data->order_id = $order_id;
+        $data->store_id = $store_id;
+        $data->nominal = $nominal;
+        $data->payment_method = $isLunas ? $_POST['lunas_method'] : ($_POST['payment_method'] ?? '');
+        $data->status = $isLunasStatus ? 'LUNAS' : 'DP';
+        $data->date = date('Y-m-d H:i:s');
+
+        $this->createPayment($data);
+        $this->financeController->refreshFinance($store_id, date('Y-m-d'));
+
+        if ($isLunasStatus) {
+            $totalBayar = title_case("LUNAS " . $data->payment_method);
+        } else {
+            $totalBayar = "<div style='font-size: 12px; line-height: 12px;'>DP: " . format_rupiah($total_paid) . " | Sisa : " . format_rupiah($total - $total_paid) . "</div>";
+        }
+        updateStoreCache($store_id, 'orders');
+        updateStoreCache($store_id, 'payments');
+        updateStoreCache($store_id, 'finance');
+        updateOrderTrigger($store_id, $order_id);
+        send_json_response(true, 'Pembayaran berhasil', [
+            'status' => $data->status,
+            'bayar' => $totalBayar,
+            'isLunas' => $isLunasStatus,
+        ]);
     }
 
     public function delete() {
@@ -319,5 +384,39 @@ class PaymentController {
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
         exit;
+    }
+
+    public function getPaidByOrderId($id){
+        $stmt = $this->koneksi->prepare("SELECT COALESCE(SUM(nominal), 0) AS total_nominal FROM payment WHERE order_id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        return $result ? $result['total_nominal'] : 0;
+    }
+
+    public function updateLastStatusPayment($order_id, $value){
+        $stmt = $this->koneksi->prepare("
+            UPDATE payment 
+            SET status = ? 
+            WHERE payment_id = (
+                SELECT payment_id FROM (
+                    SELECT payment_id FROM payment WHERE order_id = ? ORDER BY date DESC LIMIT 1
+                ) AS subquery
+            )
+        ");
+        $stmt->bind_param("si", $value, $order_id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function getPaymentByOrderId($id){
+        $stmt = $this->koneksi->prepare("SELECT * FROM payment WHERE order_id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $data;
     }
 }

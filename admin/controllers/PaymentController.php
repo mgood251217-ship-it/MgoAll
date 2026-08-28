@@ -83,9 +83,10 @@ class PaymentController {
     public function delete(){
         global $store_id;
         $date = date("Y-m-d H:i:s");
-        $administrator_id = startEnk('dek',  $_SESSION['admin_logged_in']['administrator_id']);
-        if (!$administrator_id){
-            send_json_response(false, "Sesi Habis");
+        if (isset($_COOKIE['admin_administrator_id']) && startEnk('dek',  $_COOKIE['admin_administrator_id']) != ''){
+            $administrator_id = startEnk('dek',  $_COOKIE['admin_administrator_id']);
+        }else{
+            echo json_encode(['success' => false, 'message' => 'Kesalahan Login Administrator']);
             exit;
         }
         $payment_id = isset($_POST['payment_id']) ? (int)$_POST['payment_id'] : 0;
@@ -127,12 +128,12 @@ class PaymentController {
     public function update(){
         global $store_id;
 
-        if (!isset($_SESSION['admin_logged_in'])) {
+        if (isset($_COOKIE['admin_administrator_id']) && startEnk('dek',  $_COOKIE['admin_administrator_id']) != ''){
+            $administrator_id = startEnk('dek',  $_COOKIE['admin_administrator_id']);
+        }else{
             echo json_encode(['success' => false, 'message' => 'Kesalahan Login Administrator']);
             exit;
         }
-
-        $administrator_id = startEnk('dek', $_SESSION['admin_logged_in']['administrator_id']);
 
         $date = date("Y-m-d H:i:s");
 

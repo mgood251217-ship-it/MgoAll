@@ -199,6 +199,8 @@ $data = $controller->getIndexData($access);
     }
     .btn-edit { background-color: #f59e0b; }
     .btn-edit:hover { background-color: #d97706; }
+    .btn-open { background-color: #3b82f6; }
+    .btn-open:hover { background-color: #2563eb; color: #ffffff; }
     .btn-delete { background-color: #ef4444; }
     .btn-delete:hover { background-color: #dc2626; }
 </style>
@@ -283,6 +285,9 @@ $data = $controller->getIndexData($access);
                         $tanggal = date('d/m/Y H:i', strtotime($row['date']));
                         $paymentBadge = $row['status'] == 'LUNAS' ? 'bg-success-light' : 'bg-warning-light';
                         $isoDate = date('Y-m-d\TH:i', strtotime($row['date']));
+                        $encryptedStoreId = startEnk('enk', $row['store_id']);
+                        $encryptedOrderId = startEnk('enk', $row['order_id']);
+                        $orderUrl = "/order?store_id=" . urlencode($encryptedStoreId) . "&id=" . urlencode($encryptedOrderId);
                     ?>
                         <tr>
                             <td><?= $no++ ?></td>
@@ -296,6 +301,9 @@ $data = $controller->getIndexData($access);
                             <td><span class="badge-pill <?= $paymentBadge ?>"><?= htmlspecialchars($row['status']) ?></span></td>
                             <td><?= $tanggal ?></td>
                             <td style="text-align: right;">
+                                <a href="<?= $orderUrl ?>" class="btn-action btn-open me-1" title="Buka Order">
+                                    <i class="fas fa-folder-open"></i>
+                                </a>
                                 <button type="button" class="btn-action btn-edit me-1" title="Edit Pembayaran" 
                                     onclick="openEditModal(<?= $row['payment_id'] ?>, <?= $row['order_id'] ?>, '<?= $row['payment_method'] ?>', <?= $row['nominal'] ?>, '<?= $isoDate ?>')">
                                     <i class="fas fa-pen"></i>

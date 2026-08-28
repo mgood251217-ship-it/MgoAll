@@ -28,6 +28,10 @@ switch ($route) {
         require 'pages/orders.php';
         break;
 
+    case 'order':
+        require 'pages/order.php';
+        break;
+
     case 'products':
         require 'pages/products.php';
         break;

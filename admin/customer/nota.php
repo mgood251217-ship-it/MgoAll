@@ -14,6 +14,10 @@ $storeModel = new Store($koneksi);
 $paymentModel = new Payment($koneksi);
 $productModel = new Product($koneksi);
 
+if ($role === 'PRODUKSI') {
+  header("Location: " . BASE_URL . "/customer/");
+}
+
 $administrator_id = '';
 if (isset($_COOKIE['admin_administrator_id']) && startEnk('dek',  $_COOKIE['admin_administrator_id']) != ''){
   $administrator_id = startEnk('dek',  $_COOKIE['admin_administrator_id']);
@@ -22,10 +26,6 @@ if (isset($_COOKIE['admin_administrator_id']) && startEnk('dek',  $_COOKIE['admi
 if((int)$orderModel->getOneValue($order_id, 'total') > 0 && !$administrator_id){
   header("Location: " . BASE_URL . "/customer/");
   exit;
-}
-
-if ($role === 'PRODUKSI') {
-  header("Location: " . BASE_URL . "/customer/");
 }
 
 $order = $orderModel->getOrderById($order_id);

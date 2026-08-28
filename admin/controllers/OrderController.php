@@ -587,7 +587,6 @@ class OrderController {
             throw new Exception("finishingData Error: " . $e->getMessage() . " on line " . $e->getLine());
         }
     }
-
     public function calculatePricingDetails($product, $base_price, $finishing_price, $quantity, $panjang, $lebar, $waktu, $kiloan, $size) {
         try {
             $unit = $base_price + $finishing_price;

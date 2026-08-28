@@ -49,6 +49,8 @@ switch ($action) {
     case 'add_finishing':
     case 'edit_finishing':
     case 'delete_finishing':
+    case 'get_product':
+    case 'get_finishing':
         require_once __DIR__ . '/../controllers/ProductController.php';
         $productController = new ProductController($koneksi);
         if ($action === 'add_product') $productController->addProduct();
@@ -57,20 +59,37 @@ switch ($action) {
         if ($action === 'add_finishing') $productController->addFinishing();
         if ($action === 'edit_finishing') $productController->editFinishing();
         if ($action === 'delete_finishing') $productController->deleteFinishing();
+        if ($action === 'get_product') $productController->getProductByCategoryId();
+        if ($action === 'get_finishing') $productController->getFinishingByCategoryId();
         break;
 
     case 'delete_order':
     case 'clear_order_items':
+    case 'get_order_items':
+    case 'maklun':
+    case 'price':
+    case 'create_item':
+    case 'delete_item':
+    case 'get_note':
+    case 'save_note':
         require_once __DIR__ . '/../controllers/OrderController.php';
         $orderController = new OrderController($koneksi);
         if ($action === 'delete_order') $orderController->deleteOrder();
         if ($action === 'clear_order_items') $orderController->clearOrderItems();
+        if ($action === 'get_order_items') $orderController->orderDetail();
+        if ($action === 'price') $orderController->fullPrice();
+        if ($action === 'create_item') $orderController->createItem();
+        if ($action === 'delete_item') $orderController->deleteItem();
+        if ($action === 'get_note') $orderController->getNoteOrder();
+        if ($action === 'save_note') $orderController->createNote();
         break;
 
+    case 'add_payment':
     case 'edit_payment':
     case 'delete_payment':
         require_once __DIR__ . '/../controllers/PaymentController.php';
         $paymentController = new PaymentController($koneksi);
+        if ($action === 'add_payment') $paymentController->create();
         if ($action === 'edit_payment') $paymentController->update();
         if ($action === 'delete_payment') $paymentController->delete();
         break;

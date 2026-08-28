@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../functions/helpers.php';
 class ProductController {
     private $koneksi;
 
@@ -236,4 +237,119 @@ class ProductController {
         }
         exit;
     }
+
+    public function getCategoryByStoreId($store_id){
+        $stmt = $this->koneksi->prepare("SELECT * FROM categories WHERE store_id = ?");
+        $stmt->bind_param('i', $store_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $caregories = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        return $caregories;
+    }
+
+    public function getProductByCategoryId(){
+        $category_id = $_GET['category_id'] ?? '';
+        $stmt = $this->koneksi->prepare("SELECT * FROM products WHERE category_id = ?");
+        $stmt->bind_param('i', $category_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $products = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        // return $products;
+        send_json_response(true, "success", $products);
+    }
+
+    public function getFinishingByCategoryId(){
+        $category_id = $_GET['category_id'] ?? '';
+        $stmt = $this->koneksi->prepare("SELECT * FROM finishings WHERE category_id = ?");
+        $stmt->bind_param('i', $category_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $finishings = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        // return $finishings;
+        send_json_response(true, "success", $finishings);
+    }
+
+    public function getProductById($id) {
+        $stmt = $this->koneksi->prepare("
+            SELECT
+                p.*,
+                c.name AS category
+            FROM products p
+            LEFT JOIN categories c
+                ON c.category_id = p.category_id
+            WHERE p.product_id = ?
+            LIMIT 1
+        ");
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_assoc();
+        $stmt->close();
+
+        return $data;
+    }
+
+    public function getStockByProductId($product_id) {
+        $stmt = $this->koneksi->prepare("SELECT stock FROM products WHERE product_id = ? LIMIT 1");
+        $stmt->bind_param("i", $product_id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        return $result ? (float)$result['stock'] : 0;
+    }
+
+    public function getFinishingStockByProductId($finishing_id) {
+        $stmt = $this->koneksi->prepare("SELECT stock FROM finishings WHERE finishing_id = ? LIMIT 1");
+        $stmt->bind_param("i", $finishing_id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        return $result ? (float)$result['stock'] : 0;
+    }
+
+    public function addStock($quantity, $product_id) {
+        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock + ? WHERE product_id = ?");
+        $stmt->bind_param("di", $quantity, $product_id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function addFinishingStock($quantity, $finishing_id) {
+        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock + ? WHERE finishing_id = ?");
+        $stmt->bind_param("di", $quantity, $finishing_id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function getProductByNameAndStore($name, $store_id) {
+        $stmt = $this->koneksi->prepare("SELECT p.*, c.name AS category FROM products p LEFT JOIN categories c ON c.category_id = p.category_id WHERE p.name = ? AND p.store_id = ? LIMIT 1");
+        $stmt->bind_param("si", $name, $store_id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $result;
+    }
+
+    public function reduceStock($quantity, $product_id) {
+        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock - ? WHERE product_id = ?");
+        $stmt->bind_param("di", $quantity, $product_id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
+    public function reduceFinishingStock($quantity, $finishing_id) {
+        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock - ? WHERE finishing_id = ?");
+        $stmt->bind_param("di", $quantity, $finishing_id);
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
+    }
+
 }

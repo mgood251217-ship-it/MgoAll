@@ -199,7 +199,10 @@ $data = $controller->getIndexData($access);
         transition: all 0.2s ease;
         color: #ffffff;
         cursor: pointer;
+        text-decoration: none;
     }
+    .btn-open { background-color: #3b82f6; }
+    .btn-open:hover { background-color: #2563eb; color: #ffffff; }
     .btn-clear { background-color: #f59e0b; }
     .btn-clear:hover { background-color: #d97706; }
     .btn-delete { background-color: #ef4444; }
@@ -271,7 +274,7 @@ $data = $controller->getIndexData($access);
                     <th>Total Biaya</th>
                     <th>Terbayar</th>
                     <th>Pembayaran</th>
-                    <th style="text-align: right; min-width: 100px;">Aksi</th>
+                    <th style="text-align: right; min-width: 140px;">Aksi</th>
                 </tr>
             </thead>
             <tbody>
@@ -294,6 +297,10 @@ $data = $controller->getIndexData($access);
                             $paymentStatus = 'DP';
                             $paymentBadge = 'bg-warning-light';
                         }
+
+                        $encryptedStoreId = startEnk('enk', $data['current_store_id']);
+                        $encryptedOrderId = startEnk('enk', $row['order_id']);
+                        $orderUrl = "/order?store_id=" . urlencode($encryptedStoreId) . "&id=" . urlencode($encryptedOrderId);
                     ?>
                         <tr>
                             <td><?= $no++ ?></td>
@@ -310,6 +317,9 @@ $data = $controller->getIndexData($access);
                             <td>Rp <?= number_format($row['total_paid'] ?? 0, 0, ',', '.') ?></td>
                             <td><span class="badge-pill <?= $paymentBadge ?>"><?= $paymentStatus ?></span></td>
                             <td style="text-align: right;">
+                                <a href="<?= $orderUrl ?>" class="btn-action btn-open me-1" title="Buka Order">
+                                    <i class="fas fa-folder-open"></i>
+                                </a>
                                 <button type="button" class="btn-action btn-clear me-1" title="Clear Item Order" onclick="clearOrderItems(<?= $row['order_id'] ?>)">
                                     <i class="fas fa-eraser"></i>
                                 </button>
