@@ -63,6 +63,10 @@ switch ($route) {
     case 'setting':
         require 'pages/settings.php';
         break;
+
+    case 'piutang':
+        require 'pages/piutang.php';
+        break;
         
     default:
         http_response_code(404);

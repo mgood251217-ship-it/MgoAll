@@ -87,4 +87,108 @@ class AnalysisController {
             'storesData' => $storesData
         ];
     }
+
+    public function piutang($access) {
+        $store_param = $_GET['store_id'] ?? '';
+        $store_id = $store_param ? (int)startEnk('dek', $store_param) : 0;
+        
+        if ($store_id === 0 && is_numeric($store_param)) {
+            $store_id = (int)$store_param;
+        }
+
+        $total_hutang = 0;
+
+        if ($access == 'ALL') {
+            $query = "
+                SELECT 
+                    o.order_id,
+                    o.store_id,
+                    o.customer_name AS nama,
+                    o.nomorator,
+                    o.nomor,
+                    o.total,
+                    o.user_id,
+                    o.date,
+                    IFNULL(u.initial, '') AS op_initial,
+                    CASE 
+                    WHEN ps.lunas = 1 THEN 0
+                    ELSE o.total - IFNULL(ps.total_dp, 0)
+                    END AS hutang
+                FROM orders o
+                LEFT JOIN (
+                    SELECT 
+                        order_id,
+                        MAX(CASE WHEN status = 'LUNAS' THEN 1 ELSE 0 END) AS lunas,
+                        SUM(CASE WHEN status = 'DP' THEN nominal ELSE 0 END) AS total_dp
+                    FROM payment
+                    GROUP BY order_id
+                ) ps ON o.order_id = ps.order_id
+                LEFT JOIN users u ON o.user_id = u.user_id
+                WHERE 1=1
+            ";
+        } else {
+            $query = "
+                SELECT 
+                    o.order_id,
+                    o.store_id,
+                    o.customer_name AS nama,
+                    o.nomorator,
+                    o.nomor,
+                    o.total,
+                    o.user_id,
+                    o.date,
+                    IFNULL(u.initial, '') AS op_initial,
+                    CASE 
+                    WHEN ps.lunas = 1 THEN 0
+                    ELSE o.total - IFNULL(ps.total_dp, 0)
+                    END AS hutang
+                FROM orders o
+                LEFT JOIN (
+                    SELECT 
+                        order_id,
+                        MAX(CASE WHEN status = 'LUNAS' THEN 1 ELSE 0 END) AS lunas,
+                        SUM(CASE WHEN status = 'DP' THEN nominal ELSE 0 END) AS total_dp
+                    FROM payment
+                    GROUP BY order_id
+                ) ps ON o.order_id = ps.order_id
+                LEFT JOIN users u ON o.user_id = u.user_id
+                JOIN stores s ON o.store_id = s.store_id
+                WHERE s.administrator = ?
+            ";
+        }
+
+        if ($store_id > 0) {
+            $query .= " AND o.store_id = ?";
+        }
+
+        $query .= " HAVING hutang > 0 ORDER BY o.order_id DESC, o.nomor DESC";
+
+        $stmt = $this->koneksi->prepare($query);
+
+        if ($access == 'ALL') {
+            if ($store_id > 0) {
+                $stmt->bind_param("i", $store_id);
+            }
+        } else {
+            if ($store_id > 0) {
+                $stmt->bind_param("si", $access, $store_id);
+            } else {
+                $stmt->bind_param("s", $access);
+            }
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $dataPiutang = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        foreach ($dataPiutang as $row) {
+            $total_hutang += $row['hutang'];
+        }
+
+        return [
+            'data' => $dataPiutang,
+            'total' => $total_hutang
+        ];
+    }
 }

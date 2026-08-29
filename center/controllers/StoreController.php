@@ -310,4 +310,19 @@ class StoreController {
         }
         exit;
     }
+
+    public function getStores($access){
+        if ($access == 'ALL') {
+            $storesResult = $this->koneksi->query("SELECT store_id, name FROM stores ORDER BY name ASC");
+        } else {
+            $stmt = $this->koneksi->prepare("SELECT store_id, name FROM stores WHERE administrator = ? ORDER BY name ASC");
+            $stmt->bind_param("s", $access);
+            $stmt->execute();
+            $storesResult = $stmt->get_result();
+        }
+
+        $stores = $storesResult->fetch_all(MYSQLI_ASSOC);
+
+        return $stores;
+    }
 }

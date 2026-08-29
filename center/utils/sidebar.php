@@ -125,6 +125,7 @@
         <li><a href="/transactions"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a></li>
         <li><a href="/stores"><i class="fas fa-store"></i> <span>Stores</span></a></li>
         <li><a href="/finance"><i class="fas fa-wallet"></i> <span>Finance</span></a></li>
+        <li><a href="/piutang"><i class="fas fa-file-invoice-dollar"></i> <span>Piutang</span></a></li>
         <li><a href="/users"><i class="fas fa-users"></i> <span>Users</span></a></li>
         <li><a href="/productions"><i class="fas fa-industry"></i> <span>Productions</span></a></li>
         <li><a href="/analysis"><i class="fas fa-chart-line"></i> <span>Analysis</span></a></li>
