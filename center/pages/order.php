@@ -254,8 +254,6 @@ if (isset($_GET['ajax_payment'])) {
     .btn-delete:hover { background-color: #dc2626; }
 </style>
 
-<script src="<?= BASE_URL ?>/assets/js/jquery-3.7.1.min.js"></script>
-
 <div class="page-header">
     <h2>Detail Order: <span style="color: #3b82f6;"><?= sanitize($order['nomorator']) ?></span></h2>
     <a href="/orders" class="btn-secondary-custom">

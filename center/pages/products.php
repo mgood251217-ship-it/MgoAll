@@ -199,7 +199,6 @@ $data = $controller->getIndexData($access);
     .btn-delete { background-color: #ef4444; }
     .btn-delete:hover { background-color: #dc2626; }
 
-    /* Modals */
     .modal-content-custom {
         border: none;
         border-radius: 16px;
@@ -220,6 +219,8 @@ $data = $controller->getIndexData($access);
     .modal-body-custom {
         padding: 24px;
         background-color: #f8fafc;
+        max-height: 70vh;
+        overflow-y: auto;
     }
     .modal-footer-custom {
         border-top: 1px solid #f1f5f9;
@@ -303,7 +304,6 @@ $data = $controller->getIndexData($access);
     </form>
 </div>
 
-<!-- TABEL PRODUK -->
 <div class="table-container">
     <h3 class="table-header-title"><i class="fas fa-box" style="color: #3b82f6;"></i> Daftar Produk</h3>
     <div style="overflow-x: auto;">
@@ -331,7 +331,12 @@ $data = $controller->getIndexData($access);
                         <tr>
                             <td><?= $no++ ?></td>
                             <td><span class="badge-category"><?= htmlspecialchars($row['category'] ?? 'Tanpa Kategori') ?></span></td>
-                            <td><strong><?= htmlspecialchars($row['name']) ?></strong></td>
+                            <td>
+                                <strong><?= htmlspecialchars($row['name']) ?></strong>
+                                <?php if (!empty($row['unit_type']) && $row['unit_type'] !== '~'): ?>
+                                    <span style="font-size: 0.75rem; color: #64748b; margin-left: 4px;">(<?= htmlspecialchars($row['unit_type']) ?>)</span>
+                                <?php endif; ?>
+                            </td>
                             <td>Rp <?= number_format($row['price'] ?? 0, 0, ',', '.') ?></td>
                             <td><?= number_format($row['stock'] ?? 0, 0, ',', '.') ?></td>
                             <td style="text-align: right;">
@@ -342,7 +347,10 @@ $data = $controller->getIndexData($access);
                                     data-name="<?= htmlspecialchars($row['name']) ?>"
                                     data-category="<?= $row['category_id'] ?>"
                                     data-price="<?= $row['price'] ?>"
-                                    data-stock="<?= $row['stock'] ?>">
+                                    data-reasonable-price="<?= $row['reasonable_price'] ?? 0 ?>"
+                                    data-failed-price="<?= $row['failed_price'] ?? 0 ?>"
+                                    data-stock="<?= $row['stock'] ?>"
+                                    data-unit-type="<?= htmlspecialchars($row['unit_type'] ?? '~') ?>">
                                     <i class="fas fa-pen"></i>
                                 </button>
                                 <button type="button" class="btn-action btn-delete" onclick="deleteData('product', <?= $row['product_id'] ?>)">
@@ -406,7 +414,6 @@ $data = $controller->getIndexData($access);
     <?php endif; ?>
 </div>
 
-<!-- TABEL FINISHING -->
 <div class="table-container">
     <h3 class="table-header-title"><i class="fas fa-layer-group" style="color: #10b981;"></i> Daftar Finishing</h3>
     <div style="overflow-x: auto;">
@@ -434,7 +441,12 @@ $data = $controller->getIndexData($access);
                         <tr>
                             <td><?= $no++ ?></td>
                             <td><span class="badge-category"><?= htmlspecialchars($row['category'] ?? 'Tanpa Kategori') ?></span></td>
-                            <td><strong><?= htmlspecialchars($row['name']) ?></strong></td>
+                            <td>
+                                <strong><?= htmlspecialchars($row['name']) ?></strong>
+                                <?php if (!empty($row['unit_type']) && $row['unit_type'] !== '~'): ?>
+                                    <span style="font-size: 0.75rem; color: #64748b; margin-left: 4px;">(<?= htmlspecialchars($row['unit_type']) ?>)</span>
+                                <?php endif; ?>
+                            </td>
                             <td>Rp <?= number_format($row['price'] ?? 0, 0, ',', '.') ?></td>
                             <td><?= number_format($row['stock'] ?? 0, 0, ',', '.') ?></td>
                             <td style="text-align: right;">
@@ -445,7 +457,10 @@ $data = $controller->getIndexData($access);
                                     data-name="<?= htmlspecialchars($row['name']) ?>"
                                     data-category="<?= $row['category_id'] ?>"
                                     data-price="<?= $row['price'] ?>"
-                                    data-stock="<?= $row['stock'] ?>">
+                                    data-reasonable-price="<?= $row['reasonable_price'] ?? 0 ?>"
+                                    data-failed-price="<?= $row['failed_price'] ?? 0 ?>"
+                                    data-stock="<?= $row['stock'] ?>"
+                                    data-unit-type="<?= htmlspecialchars($row['unit_type'] ?? '~') ?>">
                                     <i class="fas fa-pen"></i>
                                 </button>
                                 <button type="button" class="btn-action btn-delete" onclick="deleteData('finishing', <?= $row['finishing_id'] ?>)">
@@ -460,7 +475,6 @@ $data = $controller->getIndexData($access);
     </div>
 </div>
 
-<!-- MODAL TAMBAH PRODUK -->
 <div class="modal fade" id="modalTambahProduk" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <form class="modal-content modal-content-custom" method="post" action="/action?action=add_product">
@@ -484,8 +498,25 @@ $data = $controller->getIndexData($access);
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label-custom">Harga (Rp)</label>
+                    <label class="form-label-custom">Satuan</label>
+                    <select name="unit_type" class="form-control-custom form-select">
+                        <option value="~">~</option>
+                        <option value="M2">M2</option>
+                        <option value="CM2">CM2</option>
+                        <option value="PCS">PCS</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-custom">Harga Jual (Rp)</label>
                     <input type="number" class="form-control-custom" name="price" value="0" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-custom">Harga Maklun (Rp)</label>
+                    <input type="number" class="form-control-custom" name="reasonable_price" value="0" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-custom">Harga Kegagalan (Rp)</label>
+                    <input type="number" class="form-control-custom" name="failed_price" value="0" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Stok Awal</label>
@@ -500,7 +531,6 @@ $data = $controller->getIndexData($access);
     </div>
 </div>
 
-<!-- MODAL EDIT PRODUK -->
 <div class="modal fade" id="modalEditProduk" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <form class="modal-content modal-content-custom" method="post" action="/action?action=edit_product">
@@ -524,8 +554,25 @@ $data = $controller->getIndexData($access);
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label-custom">Harga (Rp)</label>
+                    <label class="form-label-custom">Satuan</label>
+                    <select name="unit_type" id="edit_product_unit_type" class="form-control-custom form-select">
+                        <option value="~">~</option>
+                        <option value="M2">M2</option>
+                        <option value="CM2">CM2</option>
+                        <option value="PCS">PCS</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-custom">Harga Jual (Rp)</label>
                     <input type="number" class="form-control-custom" name="price" id="edit_product_price" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-custom">Harga Maklun (Rp)</label>
+                    <input type="number" class="form-control-custom" name="reasonable_price" id="edit_product_reasonable_price" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-custom">Harga Kegagalan (Rp)</label>
+                    <input type="number" class="form-control-custom" name="failed_price" id="edit_product_failed_price" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Stok</label>
@@ -540,7 +587,6 @@ $data = $controller->getIndexData($access);
     </div>
 </div>
 
-<!-- MODAL TAMBAH FINISHING -->
 <div class="modal fade" id="modalTambahFinishing" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <form class="modal-content modal-content-custom" method="post" action="/action?action=add_finishing">
@@ -564,8 +610,25 @@ $data = $controller->getIndexData($access);
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label-custom">Harga (Rp)</label>
+                    <label class="form-label-custom">Satuan</label>
+                    <select name="unit_type" class="form-control-custom form-select">
+                        <option value="~">~</option>
+                        <option value="M2">M2</option>
+                        <option value="CM2">CM2</option>
+                        <option value="PCS">PCS</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-custom">Harga Jual (Rp)</label>
                     <input type="number" class="form-control-custom" name="price" value="0" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-custom">Harga Maklun (Rp)</label>
+                    <input type="number" class="form-control-custom" name="reasonable_price" value="0" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-custom">Harga Kegagalan (Rp)</label>
+                    <input type="number" class="form-control-custom" name="failed_price" value="0" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Stok Awal</label>
@@ -580,7 +643,6 @@ $data = $controller->getIndexData($access);
     </div>
 </div>
 
-<!-- MODAL EDIT FINISHING -->
 <div class="modal fade" id="modalEditFinishing" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <form class="modal-content modal-content-custom" method="post" action="/action?action=edit_finishing">
@@ -604,8 +666,25 @@ $data = $controller->getIndexData($access);
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label-custom">Harga (Rp)</label>
+                    <label class="form-label-custom">Satuan</label>
+                    <select name="unit_type" id="edit_finishing_unit_type" class="form-control-custom form-select">
+                        <option value="~">~</option>
+                        <option value="M2">M2</option>
+                        <option value="CM2">CM2</option>
+                        <option value="PCS">PCS</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-custom">Harga Jual (Rp)</label>
                     <input type="number" class="form-control-custom" name="price" id="edit_finishing_price" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-custom">Harga Maklun (Rp)</label>
+                    <input type="number" class="form-control-custom" name="reasonable_price" id="edit_finishing_reasonable_price" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-custom">Harga Kegagalan (Rp)</label>
+                    <input type="number" class="form-control-custom" name="failed_price" id="edit_finishing_failed_price" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Stok</label>
@@ -658,7 +737,10 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('edit_product_name').value = button.getAttribute('data-name');
             document.getElementById('edit_product_category').value = button.getAttribute('data-category');
             document.getElementById('edit_product_price').value = button.getAttribute('data-price');
+            document.getElementById('edit_product_reasonable_price').value = button.getAttribute('data-reasonable-price');
+            document.getElementById('edit_product_failed_price').value = button.getAttribute('data-failed-price');
             document.getElementById('edit_product_stock').value = button.getAttribute('data-stock');
+            document.getElementById('edit_product_unit_type').value = button.getAttribute('data-unit-type') || '~';
         });
     }
 
@@ -670,7 +752,10 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('edit_finishing_name').value = button.getAttribute('data-name');
             document.getElementById('edit_finishing_category').value = button.getAttribute('data-category');
             document.getElementById('edit_finishing_price').value = button.getAttribute('data-price');
+            document.getElementById('edit_finishing_reasonable_price').value = button.getAttribute('data-reasonable-price');
+            document.getElementById('edit_finishing_failed_price').value = button.getAttribute('data-failed-price');
             document.getElementById('edit_finishing_stock').value = button.getAttribute('data-stock');
+            document.getElementById('edit_finishing_unit_type').value = button.getAttribute('data-unit-type') || '~';
         });
     }
 });

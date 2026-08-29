@@ -150,11 +150,14 @@ class ProductController {
         $category_id = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
         $name = trim($_POST['name'] ?? '');
         $price = isset($_POST['price']) ? (int)$_POST['price'] : 0;
+        $reasonable_price = isset($_POST['reasonable_price']) ? (int)$_POST['reasonable_price'] : 0;
+        $failed_price = isset($_POST['failed_price']) ? (int)$_POST['failed_price'] : 0;
         $stock = isset($_POST['stock']) ? (int)$_POST['stock'] : 0;
+        $unit_type = trim($_POST['unit_type'] ?? '');
 
         if ($store_id && $name) {
-            $stmt = $this->koneksi->prepare("INSERT INTO $table (store_id, category_id, name, price, stock) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("iisii", $store_id, $category_id, $name, $price, $stock);
+            $stmt = $this->koneksi->prepare("INSERT INTO $table (store_id, category_id, name, price, reasonable_price, failed_price, stock, unit_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("iisiiiis", $store_id, $category_id, $name, $price, $reasonable_price, $failed_price, $stock, $unit_type);
 
             if ($stmt->execute()) {
                 require_once __DIR__ . '/../functions/cacheHelper.php';
@@ -178,7 +181,10 @@ class ProductController {
         $category_id = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
         $name = trim($_POST['name'] ?? '');
         $price = isset($_POST['price']) ? (int)$_POST['price'] : 0;
+        $reasonable_price = isset($_POST['reasonable_price']) ? (int)$_POST['reasonable_price'] : 0;
+        $failed_price = isset($_POST['failed_price']) ? (int)$_POST['failed_price'] : 0;
         $stock = isset($_POST['stock']) ? (int)$_POST['stock'] : 0;
+        $unit_type = trim($_POST['unit_type'] ?? '');
 
         if ($id && $name) {
             $stmtGet = $this->koneksi->prepare("SELECT store_id FROM $table WHERE $id_column = ?");
@@ -187,8 +193,8 @@ class ProductController {
             $store_id = $stmtGet->get_result()->fetch_assoc()['store_id'] ?? null;
             $stmtGet->close();
 
-            $stmt = $this->koneksi->prepare("UPDATE $table SET category_id=?, name=?, price=?, stock=? WHERE $id_column=?");
-            $stmt->bind_param("isiii", $category_id, $name, $price, $stock, $id);
+            $stmt = $this->koneksi->prepare("UPDATE $table SET category_id=?, name=?, price=?, reasonable_price=?, failed_price=?, stock=?, unit_type=? WHERE $id_column=?");
+            $stmt->bind_param("isiiiisi", $category_id, $name, $price, $reasonable_price, $failed_price, $stock, $unit_type, $id);
 
             if ($stmt->execute()) {
                 if ($store_id) {
