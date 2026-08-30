@@ -160,6 +160,36 @@ class AuthController {
                 setInfo($fullUserData, $dataStore);
                 insertActivity($fullUserData['user_id'], $address, $date);
 
+                $temp_dir = '../temp/login/';
+                
+                if (!is_dir($temp_dir)) {
+                    mkdir($temp_dir, 0755, true);
+                }
+
+                $file_date = date("Y-m-d");
+                $json_file = $temp_dir . $file_date . '.json';
+
+                $login_stats = [
+                    'website' => 0,
+                    'desktop_app' => 0
+                ];
+
+                if (file_exists($json_file)) {
+                    $existing_data = file_get_contents($json_file);
+                    $decoded_data = json_decode($existing_data, true);
+                    if (is_array($decoded_data)) {
+                        $login_stats = array_merge($login_stats, $decoded_data);
+                    }
+                }
+
+                if ($is_desktop_app) {
+                    $login_stats['desktop_app'] += 1;
+                } else {
+                    $login_stats['website'] += 1;
+                }
+
+                file_put_contents($json_file, json_encode($login_stats, JSON_PRETTY_PRINT) | LOCK_EX);
+
                 send_json_response(true, "Login Berhasil");
                 exit;
             } else {
