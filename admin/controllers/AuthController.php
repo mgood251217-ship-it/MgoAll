@@ -160,25 +160,27 @@ class AuthController {
                 setInfo($fullUserData, $dataStore);
                 insertActivity($fullUserData['user_id'], $address, $date);
 
-                $temp_dir = '../temp/login/';
-                
-                if (!is_dir($temp_dir)) {
-                    mkdir($temp_dir, 0755, true);
-                }
+                $tempDir = BASE_PATH . '/temp/login';
+                $filePath = $tempDir . '/' . date("Y-m-d") . '.json';
 
-                $file_date = date("Y-m-d");
-                $json_file = $temp_dir . $file_date . '.json';
+                if (!is_dir($tempDir)) {
+                    mkdir($tempDir, 0775, true);
+                }
 
                 $login_stats = [
                     'website' => 0,
-                    'desktop_app' => 0
+                    'desktop_app' => 0,
+                    'users_data' => []
                 ];
 
-                if (file_exists($json_file)) {
-                    $existing_data = file_get_contents($json_file);
-                    $decoded_data = json_decode($existing_data, true);
+                if (file_exists($filePath)) {
+                    $json = file_get_contents($filePath);
+                    $decoded_data = json_decode($json, true);
                     if (is_array($decoded_data)) {
                         $login_stats = array_merge($login_stats, $decoded_data);
+                        if (!isset($login_stats['users_data']) || !is_array($login_stats['users_data'])) {
+                            $login_stats['users_data'] = [];
+                        }
                     }
                 }
 
@@ -188,9 +190,24 @@ class AuthController {
                     $login_stats['website'] += 1;
                 }
 
-                file_put_contents($json_file, json_encode($login_stats, JSON_PRETTY_PRINT) | LOCK_EX);
+                $fullUserData['login_time'] = $date;
+                $fullUserData['login_source'] = $is_desktop_app ? 'desktop-app' : 'website';
+                $fullUserData['ip_address'] = $address;
 
-                send_json_response(true, "Login Berhasil");
+                $login_stats['users_data'][] = $fullUserData;
+
+                file_put_contents($filePath, json_encode($login_stats, JSON_PRETTY_PRINT));
+
+                $extra = [];
+                if (!$is_desktop_app) {
+                    $downloadUrl = $this->getDesktopDownloadUrl();
+                    if ($downloadUrl) {
+                        $extra['show_desktop_promo'] = true;
+                        $extra['desktop_download_url'] = $downloadUrl;
+                    }
+                }
+
+                send_json_response(true, "Login Berhasil", $extra);
                 exit;
             } else {
                 send_json_response(false, "Username atau password salah!");
@@ -233,6 +250,15 @@ class AuthController {
 
         send_json_response(true, "Berhasil logout");
         exit;
+    }
+
+    private function getDesktopDownloadUrl() {
+        $versionFile = __DIR__ . '/version.json';
+        if (!file_exists($versionFile)) {
+            return null;
+        }
+        $data = json_decode(file_get_contents($versionFile), true);
+        return $data['download_url'] ?? null;
     }
 }
 ?>

@@ -266,6 +266,103 @@ $is_localhost = isLocalhostRequest();
     ol, ul {
         padding-left: 0;
     }
+    .dp-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(3px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    }
+
+    .dp-overlay.active {
+    display: flex;
+    opacity: 1;
+    }
+
+    .dp-modal {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 32px 28px;
+    max-width: 360px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    transform: translateY(20px) scale(0.96);
+    transition: transform 0.25s ease;
+    }
+
+    .dp-overlay.active .dp-modal {
+    transform: translateY(0) scale(1);
+    }
+
+    .dp-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 16px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    }
+
+    .dp-modal h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 8px;
+    }
+
+    .dp-modal p {
+    font-size: 14px;
+    color: #6b7280;
+    line-height: 1.5;
+    margin: 0 0 24px;
+    }
+
+    .dp-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    }
+
+    .dp-btn {
+    border: none;
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+
+    .dp-btn:active {
+    transform: scale(0.97);
+    }
+
+    .dp-btn-primary {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #ffffff;
+    }
+
+    .dp-btn-primary:hover {
+    opacity: 0.9;
+    }
+
+    .dp-btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    }
+
+    .dp-btn-secondary:hover {
+    background: #e5e7eb;
+    }
 </style>
 </head>
 
@@ -313,6 +410,22 @@ $is_localhost = isLocalhostRequest();
           <li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li>
         </ul>
 </div>
+<div id="desktopPromoOverlay" class="dp-overlay">
+  <div class="dp-modal">
+    <div class="dp-icon">
+      <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="4" width="18" height="13" rx="2"></rect>
+        <path d="M8 21h8M12 17v4"></path>
+      </svg>
+    </div>
+    <h2>Coba Aplikasi Desktop</h2>
+    <p>Kelola pesanan lebih cepat dan nyaman langsung dari komputer Anda dengan aplikasi MgoDesktop.</p>
+    <div class="dp-actions">
+      <button id="dpDownloadBtn" class="dp-btn dp-btn-primary">Unduh Sekarang</button>
+      <button id="dpLaterBtn" class="dp-btn dp-btn-secondary">Nanti Saja</button>
+    </div>
+  </div>
+</div>
 <script>
 const isLocalhost = <?= $is_localhost ? 'true' : 'false' ?>;
 const siteKey = '<?= $site_key ?>';
@@ -338,8 +451,35 @@ function generateRecaptchaToken() {
 
 generateRecaptchaToken();
 
+function showDesktopPromoModal(downloadUrl, onDone) {
+    const overlay = document.getElementById('desktopPromoOverlay');
+    const downloadBtn = document.getElementById('dpDownloadBtn');
+    const laterBtn = document.getElementById('dpLaterBtn');
+
+    overlay.classList.add('active');
+
+    function close(shouldContinue) {
+        overlay.classList.remove('active');
+        downloadBtn.removeEventListener('click', handleDownload);
+        laterBtn.removeEventListener('click', handleLater);
+        if (shouldContinue) onDone();
+    }
+
+    function handleDownload() {
+        window.open(downloadUrl, '_blank');
+        close(true);
+    }
+
+    function handleLater() {
+        close(true);
+    }
+
+    downloadBtn.addEventListener('click', handleDownload);
+    laterBtn.addEventListener('click', handleLater);
+}
+
 document.getElementById('loginForm').addEventListener('submit', function(e) {
-    e.preventDefault(); 
+    e.preventDefault();
     showGlobalLoading();
 
     const formData = new FormData(this);
@@ -351,9 +491,15 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
     .then(response => response.json())
     .then(data => {
         hideGlobalLoading();
-        
-        if(data.success) {
-            window.location.href = "customer";
+
+        if (data.success) {
+            if (data.data.show_desktop_promo && data.data.desktop_download_url) {
+                showDesktopPromoModal(data.data.desktop_download_url, function() {
+                    window.location.href = "customer";
+                });
+            } else {
+                window.location.href = "customer";
+            }
         } else {
             showAlert('error', data.message);
             generateRecaptchaToken();
