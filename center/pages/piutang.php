@@ -17,16 +17,20 @@ $analysisController = new AnalysisController($koneksi);
 $storeController = new StoreController($koneksi);
 
 $access = isset($_SESSION['admin_logged_in']['access']) ? startEnk('dek', $_SESSION['admin_logged_in']['access']) : '';
-
 $stores = $storeController->getStores($access);
 
-$defaultStoreEnc = !empty($stores) ? startEnk('enk', $stores[0]['store_id']) : '';
-
-if (empty($_GET['store_id']) && !empty($stores)) {
-    $selectedStore = $defaultStoreEnc;
-    $_GET['store_id'] = $selectedStore; 
+if (!empty($_GET['store_id'])) {
+    $selectedStorePlain = startEnk('dek', $_GET['store_id']);
+} elseif (!empty($stores)) {
+    $selectedStorePlain = $stores[0]['store_id'];
 } else {
-    $selectedStore = $_GET['store_id'] ?? '';
+    $selectedStorePlain = '';
+}
+
+$selectedStore = !empty($selectedStorePlain) ? startEnk('enk', $selectedStorePlain) : '';
+
+if (empty($_GET['store_id']) && !empty($selectedStore)) {
+    $_GET['store_id'] = $selectedStore;
 }
 
 $piutangData = $analysisController->piutang($access);
@@ -183,10 +187,8 @@ $totalPiutang = $piutangData['total'] ?? 0;
             <label for="store_id">Pilih Toko</label>
             <select name="store_id" id="store_id" class="form-control" onchange="this.form.submit()">
                 <?php foreach ($stores as $store): ?>
-                    <?php 
-                        $encrypted_store_id = startEnk('enk', $store['store_id']); 
-                    ?>
-                    <option value="<?= $encrypted_store_id ?>" <?= $selectedStore === $encrypted_store_id ? 'selected' : '' ?>>
+                    <?php $encrypted_store_id = startEnk('enk', $store['store_id']); ?>
+                    <option value="<?= $encrypted_store_id ?>" <?= ((string)$store['store_id'] === (string)$selectedStorePlain) ? 'selected' : '' ?>>
                         <?= htmlspecialchars($store['name']) ?>
                     </option>
                 <?php endforeach; ?>
@@ -245,7 +247,7 @@ $totalPiutang = $piutangData['total'] ?? 0;
                                 <div class="badge-info"><?= htmlspecialchars($row['op_initial'] ?: '-') ?></div>
                             </td>
                             <td style="text-align: right;">
-                                <a href="/order?store_id=<?= $selectedStore ?>&id=<?= $encOrderId ?>&store_id=<?= $encStoreId ?>" class="btn-action" style="background-color: #3b82f6;" title="Buka Order">
+                                <a href="/order?store_id=<?= urlencode($selectedStore) ?>&id=<?= urlencode($encOrderId) ?>" class="btn-action" style="background-color: #3b82f6;" title="Buka Order">
                                     <i class="fas fa-folder-open"></i>
                                 </a>
                             </td>
