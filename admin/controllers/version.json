@@ -1,12 +1,12 @@
 {
-    "version": "1.0.8",
+    "version": "2.0.0",
     "min_required_version": "1.0.6",
-    "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v1.0.8/MgoDesktop-Setup-1.0.8.exe",
+    "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.0/MgoDesktop_2.0.0_x64-setup.exe",
     "force_update": false,
     "release_notes": [
-      "fix : error save setting",
-      "fix : input waktu in add order item",
-      "feat : display product on online role",
-      "feat : help center"
-     ]
+      "⚡ feat: Ukuran aplikasi super ramping, kini di bawah 10 MB!",
+      "🧠 feat: Performa lebih ringan dan jauh lebih hemat konsumsi RAM",
+      "🖨️ feat: Integrasi sistem cetak struk baru berbasis engine Tauri",
+      "❓ feat: Menu Pusat Bantuan (Help Center) untuk solusi cepat"
+    ]
 }
