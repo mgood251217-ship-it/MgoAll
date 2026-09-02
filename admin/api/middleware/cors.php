@@ -6,6 +6,7 @@ $allowedOrigins = [
 	"http://localhost:51730",
 	"http://localhost:5173",
 	"https://mgood.my.id",
+	'http://tauri.localhost'
 ];
 
 if (in_array($origin, $allowedOrigins, true)) {
