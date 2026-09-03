@@ -1,12 +1,15 @@
 {
-    "version": "2.0.0",
-    "min_required_version": "1.0.6",
-    "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.0/MgoDesktop_2.0.0_x64-setup.exe",
+    "version": "2.0.1",
+    "min_required_version": "2.0.0",
+    "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.1/MgoDesktop_2.0.1_x64-setup.exe",
+    "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.1/MgoDesktop_2.0.1.apk",
     "force_update": false,
     "release_notes": [
-      "⚡ feat: Ukuran aplikasi super ramping, kini di bawah 10 MB!",
-      "🧠 feat: Performa lebih ringan dan jauh lebih hemat konsumsi RAM",
-      "🖨️ feat: Integrasi sistem cetak struk baru berbasis engine Tauri",
-      "❓ feat: Menu Pusat Bantuan (Help Center) untuk solusi cepat"
+      "🔑 feat: Remember Me Login: Masuk ke aplikasi kini jadi jauh lebih praktis dan efisien tanpa perlu repot mengetik ulang kredensial di setiap sesi baru.",
+      "📜 feat: Menu Changelog di Navbar: Pantau setiap pembaruan, perbaikan bug, dan rilis fitur keren secara langsung melalui menu khusus yang kini tersemat rapi di bagian navbar.",
+      "📝 feat: Detail Order Komprehensif: Penambahan informasi rincian pesanan secara langsung pada halaman input order untuk memastikan akurasi transaksi kian meningkat dan transparan.",
+      "⚡ fix: Sinkronisasi Sesi Instan (useSession): Perbaikan total pada manajemen state useSession untuk menuntaskan masalah jeda waktu (delay) saat proses set dan get data sesi pengguna.",
+      "🎨 fix: Penyempurnaan Dropdown Select Option: Menghilangkan kendala warna latar belakang (background) yang tidak selaras pada elemen pilihan menu agar tampil konsisten di semua mode tema.",
+      "💎 fix: Pembaruan UI Modal Pembayaran: Tampilan jendela pop-up pembayaran kini didesain ulang agar jauh lebih rapi, intuitif, dan nyaman dioperasikan saat jam-jam transaksi padat."
     ]
 }
