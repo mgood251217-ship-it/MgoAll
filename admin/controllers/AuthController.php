@@ -112,7 +112,15 @@ class AuthController {
         $secret_key = "6LfKclYtAAAAAKEHLpfWAOv_riDy4PJOtleE0Pw9";
         $is_localhost = isLocalhostRequest();
         $is_desktop_app = (($_SERVER['HTTP_X_CLIENT_TYPE'] ?? '') === 'desktop-app');
-        $score_threshold = $is_desktop_app ? 0.3 : 0.5;
+        $client_type = $_SERVER['HTTP_X_CLIENT_TYPE'] ?? '';
+
+        if ($client_type === 'mobile-app') {
+            $score_threshold = 0.1;
+        } elseif ($client_type === 'desktop-app') {
+            $score_threshold = 0.3;
+        } else {
+            $score_threshold = 0.5;
+        }
 
         if (!$is_localhost) {
             if (empty($recaptcha_response)) {
