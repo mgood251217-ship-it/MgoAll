@@ -211,7 +211,8 @@ class AuthController {
                     $downloadUrl = $this->getDesktopDownloadUrl();
                     if ($downloadUrl) {
                         $extra['show_desktop_promo'] = true;
-                        $extra['desktop_download_url'] = $downloadUrl;
+                        $extra['download_url_desktop'] = $downloadUrl['desktop'];
+                        $extra['download_url_mobile'] = $downloadUrl['mobile'];
                     }
                 }
 
@@ -266,7 +267,11 @@ class AuthController {
             return null;
         }
         $data = json_decode(file_get_contents($versionFile), true);
-        return $data['download_url'] ?? null;
+        $result = [
+            'desktop' => $data['download_url'] ?? null,
+            'mobile' => $data['download_url_mobile'] ?? null
+        ];
+        return $result;
     }
 }
 ?>
