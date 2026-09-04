@@ -1,15 +1,14 @@
 {
-    "version": "2.0.1",
+    "version": "2.0.2",
     "min_required_version": "2.0.0",
-    "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.1/MgoDesktop_2.0.1_x64-setup.exe",
-    "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.1/MgoDesktop_2.0.1.apk",
+    "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.2/MgoDesktop_2.0.2_x64-setup.exe",
+    "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.2/MgoDesktop_2.0.2.apk",
     "force_update": false,
     "release_notes": [
-      "🔑 feat: Remember Me Login: Masuk ke aplikasi kini jadi jauh lebih praktis dan efisien tanpa perlu repot mengetik ulang kredensial di setiap sesi baru.",
-      "📜 feat: Menu Changelog di Navbar: Pantau setiap pembaruan, perbaikan bug, dan rilis fitur keren secara langsung melalui menu khusus yang kini tersemat rapi di bagian navbar.",
-      "📝 feat: Detail Order Komprehensif: Penambahan informasi rincian pesanan secara langsung pada halaman input order untuk memastikan akurasi transaksi kian meningkat dan transparan.",
-      "⚡ fix: Sinkronisasi Sesi Instan (useSession): Perbaikan total pada manajemen state useSession untuk menuntaskan masalah jeda waktu (delay) saat proses set dan get data sesi pengguna.",
-      "🎨 fix: Penyempurnaan Dropdown Select Option: Menghilangkan kendala warna latar belakang (background) yang tidak selaras pada elemen pilihan menu agar tampil konsisten di semua mode tema.",
-      "💎 fix: Pembaruan UI Modal Pembayaran: Tampilan jendela pop-up pembayaran kini didesain ulang agar jauh lebih rapi, intuitif, dan nyaman dioperasikan saat jam-jam transaksi padat."
+      "📱 feat: Peluncuran Aplikasi Android Eksklusif: Nikmati mobilitas tanpa batas! Sistem kini hadir dalam versi aplikasi Android mandiri untuk mempermudah akses dan pengelolaan operasional langsung dari genggaman Anda.",
+      "💡 feat: Tooltip & Akurasi Hover Tabel: Pengalaman eksplorasi data makin seamless dengan penambahan tooltip informatif serta penyempurnaan akurasi deteksi posisi hover kursor pada setiap baris tabel.",
+      "📌 fix: Sticky Header & Kolom Menyeluruh: Navigasi data bervolume besar kini jauh lebih nyaman. Implementasi sticky header dan sticky column pada seluruh tabel memastikan konteks informasi tetap terlihat jelas meskipun Anda melakukan scroll panjang.",
+      "📲 fix: Optimalisasi Responsif Layar Mobile: Akses sistem via perangkat seluler kini beradaptasi dengan sempurna. Tampilan antarmuka jauh lebih mulus, proporsional, dan tetap fungsional di layar kecil sekalipun.",
+      "📐 fix: Penyesuaian Ruang (Padding): Tata letak komponen visual kini didesain lebih rapi dan efisien dengan menghilangkan padding berlebih, menghasilkan tampilan aplikasi yang padat, modern, dan profesional."
     ]
 }
