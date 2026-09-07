@@ -9,7 +9,10 @@ if (!isset($_SESSION['admin_logged_in'])) {
 }
 
 require_once __DIR__ . '/../config/connect.php';
+require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../controllers/UserController.php';
+
+$access = isset($_SESSION['admin_logged_in']['access']) ? startEnk('dek', $_SESSION['admin_logged_in']['access']) : '';
 
 $controller = new UserController($koneksi);
 $data = $controller->getIndexData();

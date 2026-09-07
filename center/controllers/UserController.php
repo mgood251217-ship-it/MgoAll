@@ -7,6 +7,10 @@ class UserController {
     }
 
     public function getIndexData() {
+        $groupedUsers = [];
+        $deletedUsers = [];
+        $stores = [];
+
         $queryActive = "
             SELECT 
                 u.user_id, 
@@ -22,14 +26,13 @@ class UserController {
             WHERE u.is_deleted = 0
             ORDER BY s.name ASC, u.name ASC
         ";
-        $resultActive = $this->koneksi->query($queryActive);
-
-        $groupedUsers = [];
-        if ($resultActive) {
+        
+        if ($resultActive = $this->koneksi->query($queryActive)) {
             while ($row = $resultActive->fetch_assoc()) {
-                $storeName = $row['store_name'] ?: 'Tanpa Toko';
+                $storeName = !empty($row['store_name']) ? $row['store_name'] : 'Tanpa Toko';
                 $groupedUsers[$storeName][] = $row;
             }
+            $resultActive->free();
         }
 
         $queryDeleted = "
@@ -44,21 +47,19 @@ class UserController {
             WHERE u.is_deleted = 1
             ORDER BY u.name ASC
         ";
-        $resultDeleted = $this->koneksi->query($queryDeleted);
         
-        $deletedUsers = [];
-        if ($resultDeleted) {
+        if ($resultDeleted = $this->koneksi->query($queryDeleted)) {
             while ($row = $resultDeleted->fetch_assoc()) {
                 $deletedUsers[] = $row;
             }
+            $resultDeleted->free();
         }
 
-        $storesResult = $this->koneksi->query("SELECT store_id, name FROM stores ORDER BY name ASC");
-        $stores = [];
-        if ($storesResult) {
+        if ($storesResult = $this->koneksi->query("SELECT store_id, name FROM stores ORDER BY name ASC")) {
             while ($row = $storesResult->fetch_assoc()) {
                 $stores[] = $row;
             }
+            $storesResult->free();
         }
 
         return [
