@@ -113,8 +113,9 @@ class AuthMiddleware {
 
     public function validateDatabaseUser() {
         $userId = $GLOBALS['user_id'] ?? null;
+        $storeId = $GLOBALS['store_id'] ?? null;
 
-        if (!$userId) {
+        if (!$userId || !$storeId) {
             $this->redirectLogin();
         }
 
