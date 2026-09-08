@@ -3,7 +3,7 @@ require_once __DIR__ . '/connect.php';
 require_once __DIR__ . '/middleware/init_auth.php';
 
 $foto_file = $foto ? $foto : 'default_user.png';
-$foto_view = BASE_URL . '/assets/img/user/' . $foto_file;
+$foto_view = $_ENV['BASE_URL_UPLOAD'] . '/image/user/' . $foto_file;
 
 $currentFile = basename(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 $is_restricted_all = in_array($role, ['ONLINE', 'PRODUKSI', 'SETTING']);

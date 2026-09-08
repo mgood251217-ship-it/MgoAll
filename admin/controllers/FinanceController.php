@@ -25,7 +25,7 @@ class FinanceController {
         $date = date('Y-m-d H:i:s');
  
         $storeNames = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
-        $uploadDir = folder(__DIR__ . "/../assets/img/buktitf/", $storeName, $date);
+        $uploadDir = folder($_ENV['BASE_PATH_UPLOAD'] . "/image/buktitf/", $storeName, $date);
 
         if ( !empty($_FILES['picture']['name']) && $_FILES['picture']['error'] === 0){
             $result = compress( $_FILES['picture'], $uploadDir );
@@ -65,12 +65,12 @@ class FinanceController {
         $transfer_id = (int)$_POST['transfer_id'];
         $transfer = $this->financeModel->getTfById($transfer_id);
 
-        $urlDynamic = folder(BASE_URL . '/assets/img/buktitf/', $storeName, $transfer['date']) . $transfer['img'];
+        $urlDynamic = folder($_ENV['BASE_PATH_UPLOAD'] . '/image/buktitf/', $storeName, $transfer['date']) . $transfer['img'];
         $storeFolder = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
-        $urlFallback = BASE_URL . '/assets/img/buktitf/' . $storeFolder . '/' . $transfer['img'];
+        $urlFallback = $_ENV['BASE_URL_UPLOAD'] . '/image/buktitf/' . $storeFolder . '/' . $transfer['img'];
 
-        $pathDynamic = str_replace(BASE_URL, __DIR__ . '/../', $urlDynamic);
-        $pathFallback = str_replace(BASE_URL, __DIR__ . '/../', $urlFallback);
+        $pathDynamic = str_replace($_ENV['BASE_URL_UPLOAD'], __DIR__ . '/../', $urlDynamic);
+        $pathFallback = str_replace($_ENV['BASE_URL_UPLOAD'], __DIR__ . '/../', $urlFallback);
 
         $this->financeModel->deleteTf($transfer_id);
 
@@ -100,7 +100,7 @@ class FinanceController {
         $dataPengeluaran = $this->financeModel->getExpenditureByIntervalDate($store_id, $start_date, $end_date);
 
         foreach ($dataPengeluaran as $key => $data) {
-            $url = folder(__DIR__ . '/../assets/img/bukti/', $storeName, $data['date']);
+            $url = folder($_ENV['BASE_URL_UPLOAD'] . '/image/bukti/', $storeName, $data['date']);
             if ($data['img']) {
                 $dataPengeluaran[$key]['img_link'] = $url . $data['img'];
             }else{
@@ -307,7 +307,7 @@ class FinanceController {
         $monthFolder = date('m', strtotime($date));
         $dateFolder = date('d', strtotime($date));
         $fullDateFolder = $yearFolder . '/' . $monthFolder . '/' . $dateFolder;
-        $uploadDir = __DIR__ . "/../assets/img/bukti/$storeFolder/$fullDateFolder/";
+        $uploadDir = $_ENV['BASE_PATH_UPLOAD'] . "/image/bukti/$storeFolder/$fullDateFolder/";
 
         $pictureName = '';
 
@@ -425,7 +425,7 @@ class FinanceController {
 
         $row = $this->financeModel->getExpenditureById($expenditure_id);
 
-        $uploadDir = folder(__DIR__ . '/../assets/img/bukti', $storeName, $row['date']);
+        $uploadDir = folder($_ENV['BASE_PATH_UPLOAD'] . '/image/bukti', $storeName, $row['date']);
 
         if (!empty($row['img'])) {
             $imgPath = $uploadDir . $row['img'];

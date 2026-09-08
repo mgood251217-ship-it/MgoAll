@@ -60,10 +60,10 @@ $preview_print = $settingModel->getOneValue($user_id, 'preview_print') ?? 0;
 $tanggal = format_tanggal_id($order['date']);
 $nomorator = sanitize($order['nomorator']);
 $filename = "{$customer_name_clean}_{$initial}_{$tanggal}_{$nomorator}.pdf";
-$logo_url = BASE_URL . '/assets/img/store/' . ($store["logo_print"] ?: $store['logo']);
+$logo_url = $_ENV['BASE_URL_UPLOAD'] . '/image/store/' . ($store["logo_print"] ?: $store['logo']);
 
 ?>
-<!DOCcategory html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">

@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-$allowedDir = realpath('../../assets/img');
+$allowedDir = realpath('../../../uploads/image');
 $requested = $_GET['path'] ?? '';
 $fullPath = realpath($allowedDir . '/' . $requested);
 

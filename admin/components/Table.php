@@ -66,7 +66,7 @@ function renderTable($config = []) {
                                         $width = $col['width'] ?? 40;
                                         $height = $col['height'] ?? 40;
                                         $imgClass = $col['img_class'] ?? 'img-thumbnail rounded';
-                                        echo '<img src="' . BASE_URL . $basePath . '/' . htmlspecialchars($val) . '" width="' . $width . '" height="' . $height . '" class="' . $imgClass . '">';
+                                        echo '<img src="' . $_ENV['BASE_URL_UPLOAD'] . $basePath . '/' . htmlspecialchars($val) . '" width="' . $width . '" height="' . $height . '" class="' . $imgClass . '">';
                                     } else {
                                         echo '<span class="text-muted">-</span>';
                                     }

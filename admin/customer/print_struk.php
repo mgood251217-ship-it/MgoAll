@@ -63,7 +63,7 @@ $printed_price_for = [];
 <body onload="window.print(); window.onafterprint = () => window.close();">
 
 <div class="center" style="display: flex; flex-direction: column; align-items: center; width: 92%; margin: 0 auto;">
-  <img src="<?= BASE_URL . '/assets/img/store/' . sanitize($store["logo_print"] ?: $store['logo']) ?>" style="max-height:30px; margin-bottom: 2px; max-width: 70px">
+  <img src="<?= $_ENV['BASE_URL_UPLOAD'] . '/image/store/' . sanitize($store["logo_print"] ?: $store['logo']) ?>" style="max-height:30px; margin-bottom: 2px; max-width: 70px">
   <div style="font-family: 'Brush Script MT', cursive; font-size: 16px;"><?= ucwords(strtolower(sanitize($store['branch']))) ?></div>
 </div>
 

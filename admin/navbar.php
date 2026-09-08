@@ -45,7 +45,7 @@ if (strpos($userAgent, 'Mobile') !== false) {
 <nav class="navbar navbar-expand-lg navbar-dark <?= $navbarBgClass ?> shadow sticky-top py-2" style="<?= ($username == 'zannia' || $username == 'vikialvian') ? 'background-color:rgb(248, 141, 230) !important;' : '' ?>">
   <div class="container-fluid">
     <a class="navbar-brand d-flex align-items-center" href="#">
-      <img src="<?= BASE_URL ?>/assets/img/store/<?= $storeLogo ?>" alt="Logo" style="height:32px; margin-right:10px;">
+      <img src="<?= $_ENV['BASE_URL_UPLOAD'] ?>/image/store/<?= $storeLogo ?>" alt="Logo" style="height:32px; margin-right:10px;">
       <?= htmlspecialchars($storeName) ?>
     </a>
 

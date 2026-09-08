@@ -23,8 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-require_once '../connect.php';
-require_once BASE_PATH . '/middleware/init_auth.php';
+require_once __DIR__ . '/../connect.php';
+require_once __DIR__ . '/../middleware/init_auth.php';
 
 header('Content-Type: application/json');
 
@@ -39,8 +39,8 @@ if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
 }
 
-$dataset_path = BASE_PATH . '/temp/dataset/store_' . $store_id . '.json';
-$order_trigger_path = BASE_PATH . '/temp/orders/store_' . $store_id . '.json';
+$dataset_path = __DIR__ . '/../temp/dataset/store_' . $store_id . '.json';
+$order_trigger_path = __DIR__ . '/../temp/orders/store_' . $store_id . '.json';
 
 $data = [];
 

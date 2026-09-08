@@ -20,7 +20,7 @@ class UserController {
         $users = $this->userModel->getUsersByStoreId($store_id); 
         
         foreach ($users as $key => $user) { 
-            $basePath = BASE_URL . "/assets/img/user/";
+            $basePath = $_ENV['BASE_URL_UPLOAD'] . '/image/user/';
             if ($users[$key]['picture'] == '') {
                 $users[$key]['picture_link'] = $basePath . 'default.png'; 
             }else{
@@ -61,7 +61,7 @@ class UserController {
         }
 
         $errors = [];
-        $uploadDir = __DIR__ . "/../assets/img/user/";
+        $uploadDir = $_ENV['BASE_PATH_UPLOAD'] . '/image/user/';
         $old_picture = $_POST['old_picture'] ?? '';
 
         if (!empty($_FILES['picture']['name']) && $_FILES['picture']['error'] === 0) {
@@ -100,7 +100,7 @@ class UserController {
         header('Content-Type: application/json');
         $data = $this->requestData();
         $errors = [];
-        $uploadDir = __DIR__ . "/../assets/img/user/";
+        $uploadDir = $_ENV['BASE_PATH_UPLOAD'] . '/image/user/';
         $data->picture = ''; 
 
         if (!empty($_FILES['picture']['name']) && $_FILES['picture']['error'] === 0) {
@@ -149,7 +149,7 @@ class UserController {
 
         if ($this->userModel->deleteUserById($data->id)) {
             if (!empty($picture)) {
-                 $filePath = __DIR__ . '/../assets/img/' . $picture;
+                 $filePath = $_ENV['BASE_PATH_UPLOAD'] . '/image/user/' . $picture;
                 if (file_exists($filePath)) {
                     unlink($filePath);
                 }

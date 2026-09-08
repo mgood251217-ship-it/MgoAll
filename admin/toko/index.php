@@ -167,7 +167,7 @@ $darkModeClass = ($mode === 1) ? 'dark-mode' : '';
                   'header' => 'Foto', 
                   'type' => 'image', 
                   'field' => 'picture', 
-                  'base_path' => '/assets/img/user'
+                  'base_path' => '/image/user'
               ],
               [
                   'header' => 'Aksi', 

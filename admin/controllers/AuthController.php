@@ -32,15 +32,15 @@ class AuthController {
 
         require_once __DIR__ . '/../middleware/init_auth.php';
         if ($foto) {
-            $fotoLink = BASE_URL . "/assets/img/user/" . $foto;
+            $fotoLink = $_ENV['BASE_URL_UPLOAD'] . '/image/user/' . $foto;
         }else{
-            $fotoLink = BASE_URL . "/assets/img/user/" . 'default.png';
+            $fotoLink = $_ENV['BASE_URL_UPLOAD'] . '/image/user/' . 'default.png';
         }
 
         if ($storeLogo) {
-            $storeLogoLink = BASE_URL . "/assets/img/store/" . $storeLogo;
+            $storeLogoLink = $_ENV['BASE_URL_UPLOAD'] . '/image/store/' . $storeLogo;
         }else{
-            $storeLogoLink = BASE_URL . "/assets/img/store/" . 'default.jpg';
+            $storeLogoLink = $_ENV['BASE_URL_UPLOAD'] . '/image/store/' . 'default.jpg';
         }
 
         Response::success(
