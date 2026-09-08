@@ -46,6 +46,11 @@ class StoreController {
             'machine_id' => trim($_POST['machine_id'] ?? ''),
         ];
 
+        if (empty($data->machine_id)) {
+            send_json_response(false, 'ID mesin tidak ditemukan.');
+            exit;
+        }
+
         if ($this->storeModel->updateMachine($data)) {
             updateStoreCache($store_id, 'machines');
             send_json_response(true, 'Mesin berhasil diperbaharui.');
@@ -60,6 +65,11 @@ class StoreController {
         if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         global $store_id;
         $id = $_POST['machine_id'] ?? 0;
+
+        if (empty($id)) {
+            send_json_response(false, "ID mesin tidak ditemukan.");
+            exit;
+        }
 
         if ($this->storeModel->deleteMachine($id, $store_id)) {
             updateStoreCache($store_id, 'machines');

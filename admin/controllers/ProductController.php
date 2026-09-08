@@ -87,6 +87,11 @@ class ProductController {
         if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         header('Content-Type: application/json');
         $data = $this->requestData();
+
+        if (empty($data->name) || empty($data->price) || empty($data->unit)) {
+            send_json_response(false, 'Validasi gagal: Nama, harga, dan satuan harus diisi.');
+            exit;
+        }
         
         if ($this->productModel->createProduct($data)) {
             updateStoreCache($data->store_id, 'products');
@@ -101,7 +106,12 @@ class ProductController {
         if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         header('Content-Type: application/json');
         $data = $this->requestData();
-        
+
+        if (empty($data->name) || empty($data->price) || empty($data->unit)) {
+            send_json_response(false, 'Validasi gagal: Nama, harga, dan satuan harus diisi.');
+            exit;
+        }
+
         if ($this->productModel->createFinishing($data)) {
             updateStoreCache($data->store_id, 'finishings');
             send_json_response(true, 'Finishing berhasil ditambahkan.');
@@ -116,6 +126,11 @@ class ProductController {
         header('Content-Type: application/json');
         $data = $this->requestData();
         
+        if (empty($data->name) || empty($data->price) || empty($data->unit)) {
+            send_json_response(false, 'Validasi gagal: Nama, harga, dan satuan harus diisi.');
+            exit;
+        }
+
         if ($this->productModel->updateProduct($data)) {
             updateStoreCache($data->store_id, 'products');
             send_json_response(true, 'Produk berhasil diperbarui.');
@@ -129,6 +144,11 @@ class ProductController {
         if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         header('Content-Type: application/json');
         $data = $this->requestData();
+
+        if (empty($data->name) || empty($data->price) || empty($data->unit)) {
+            send_json_response(false, 'Validasi gagal: Nama, harga, dan satuan harus diisi.');
+            exit;
+        }
         
         if ($this->productModel->updateFinishing($data)) {
             updateStoreCache($data->store_id, 'finishings');
@@ -144,6 +164,11 @@ class ProductController {
         header('Content-Type: application/json');
         $data = new stdClass();
         $data->id = $_POST['product_id'] ?? 0;
+
+        if (empty($data->id)) {
+            send_json_response(false, 'ID produk tidak ditemukan.');
+            exit;
+        }
         
         if ($this->productModel->deleteProductById($data)) {
             updateStoreCache($data->store_id, 'products');
@@ -160,6 +185,11 @@ class ProductController {
         $data = new stdClass();
         $data->id = $_POST['finishing_id'] ?? 0;
         
+        if (empty($data->id)) {
+            send_json_response(false, 'ID finishing tidak ditemukan.');
+            exit;
+        }
+
         if ($this->productModel->deleteFinishingById($data)) {
             updateStoreCache($data->store_id, 'finishings');
             send_json_response(true, 'Finishing berhasil dihapus.');
@@ -175,6 +205,11 @@ class ProductController {
         $id       = $_POST['product_id'] ?? 0;
         $quantity = $_POST['quantity'] ?? 0;
 
+        if (empty($id)) {
+            send_json_response(false, 'ID produk tidak ditemukan.');
+            exit;
+        }
+
         if ($this->productModel->updateStock($id, $quantity)) {
             updateStoreCache($store_id, 'products');
             send_json_response(true, 'Stok berhasil diperbarui.');
@@ -189,6 +224,11 @@ class ProductController {
         header('Content-Type: application/json');
         $id       = $_POST['finishing_id'] ?? 0;
         $quantity = $_POST['quantity'] ?? 0;
+
+        if (empty($id)) {
+            send_json_response(false, 'ID finishing tidak ditemukan.');
+            exit;
+        }
 
         if ($this->productModel->updateStockFinishing($id, $quantity)) {
             updateStoreCache($store_id, 'products');

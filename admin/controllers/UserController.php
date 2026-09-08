@@ -54,6 +54,12 @@ class UserController {
         if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         header('Content-Type: application/json');
         $data = $this->requestData();
+
+        if (empty($data->id)) {
+            send_json_response(false, 'ID user tidak ditemukan.');
+            exit;
+        }
+
         $errors = [];
         $uploadDir = BASE_PATH . "/assets/img/user/";
         $old_picture = $_POST['old_picture'] ?? '';
@@ -131,6 +137,11 @@ class UserController {
         global $store_id, $picture;
         $data = $this->requestData();
 
+        if (empty($data->id)) {
+            send_json_response(false, "ID user tidak ditemukan.");
+            exit;
+        }
+
         if ($this->userModel->checkUserStore($store_id) == 1) {
             send_json_response(false, "Tidak bisa menghapus user terakhir.");
             exit;
@@ -159,6 +170,11 @@ class UserController {
 
     public function createHelp(){
         global $user_id;
+
+        if (empty($user_id)) {
+            send_json_response(false, "ID user tidak ditemukan.");
+            exit;
+        }
 
         $data = new stdClass();
         $data->user_id = $user_id;

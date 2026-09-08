@@ -270,12 +270,12 @@ class OrderController {
         $data = $this->requestData();
 
         if ($data->order_id === 0 || $data->store_id === 0 || $data->user_id === 0 || empty($data->customer_name)) {
-            send_json_response(false, 'Tidak lengkap');
+            send_json_response(false, 'Data tidak lengkap');
             exit;
         }
 
         if (!$this->userModel->checkValidOperator($data->user_id, $data->store_id)) {
-            send_json_response(false, 'Tidak valid');
+            send_json_response(false, 'Operator tidak valid');
             exit;
         }
 
@@ -346,6 +346,11 @@ class OrderController {
         $note_for = 'CTM';
         $order_id = (int)($_POST['order_id'] ?? 0);
         $note = trim($_POST['note'] ?? '');
+
+        if (empty($order_id)) {
+            send_json_response(false, 'ID order tidak valid.');
+            exit;
+        }
 
         if ($order_id && $note !== '') {
             $existing = $this->orderModel->getLatestCustomerNote($order_id);
@@ -718,6 +723,12 @@ class OrderController {
                 'amount' => round($itemData['amount'], 2),
                 'finishing_str' => $itemData['finishing_str']
             ];
+
+            if ($data_item->order_id <= 0 || $data_item->product_id <= 0 || empty($data_item->judul)) {
+                http_response_code(400);
+                send_json_response(false, 'Data item tidak lengkap');
+                exit;
+            }
 
             $rowExist = $this->orderModel->cekOrderItem($itemData['order_id'], $itemData['judul'], $itemData['finishing_str'], $itemData['size']);
             

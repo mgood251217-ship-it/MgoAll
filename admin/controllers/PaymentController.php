@@ -30,7 +30,12 @@ class PaymentController {
     public function create(){
         global $store_id;
         $isLunas = isset($_POST['lunas_method']);
-        $order_id = $_POST['order_id'];
+        $order_id = $_POST['order_id'] ?? '';
+
+        if (empty($order_id)) {
+            send_json_response(false, 'Order tidak ditemukan');
+            exit;
+        }
 
         $total = $this->orderModel->getOneValue($order_id, 'total');
         $paid = $this->paymentModel->getPaidByOrderId($order_id);
@@ -92,6 +97,10 @@ class PaymentController {
         $payment_id = isset($_POST['payment_id']) ? (int)$_POST['payment_id'] : 0;
         $order_id = isset($_POST['order_id']) ? (int)$_POST['order_id'] : 0;
         $keterangan = isset($_POST['keterangan_hapus']) ? trim($_POST['keterangan_hapus']) : '';
+        if (empty($order_id) || empty($payment_id)) {
+            send_json_response(false, 'Order atau pembayaran tidak ditemukan');
+            exit;
+        }
 
         $order = $this->orderModel->getOrderById($order_id);
         $orderName = $order['customer_name'];
@@ -145,6 +154,11 @@ class PaymentController {
         $keterangan = isset($_POST['keterangan']) ? trim($_POST['keterangan']) : '';
         $tanggalOld = strtotime($tanggal);
         $tanggalcek = date('Y-m-d', $tanggalOld);
+
+        if (empty($order_id) || empty($payment_id)) {
+            send_json_response(false, 'Order atau pembayaran tidak ditemukan');
+            exit;
+        }
 
         $tanggal = str_replace('T', ' ', $tanggal) . ':00';
 
