@@ -1,12 +1,12 @@
 <?php
-require_once '../connect.php';
-require_once BASE_PATH . '/middleware/init_auth.php';
-require_once BASE_PATH . '/models/Product.php';
-require_once BASE_PATH . '/models/Order.php';
-require_once BASE_PATH . '/models/Store.php'; 
-require_once BASE_PATH . '/models/Payment.php';
-require_once BASE_PATH . '/functions/helpers.php';
-require_once BASE_PATH . '/components/Alert.php';
+require_once __DIR__ . '/../connect.php';
+require_once __DIR__ . '/../middleware/init_auth.php';
+require_once __DIR__ . '/../models/Product.php';
+require_once __DIR__ . '/../models/Order.php';
+require_once __DIR__ . '/../models/Store.php'; 
+require_once __DIR__ . '/../models/Payment.php';
+require_once __DIR__ . '/../functions/helpers.php';
+require_once __DIR__ . '/../components/Alert.php';
 
 $order_id = (int)startEnk('dek', $_GET['id']);
 $orderModel = new Order($koneksi);
@@ -43,7 +43,7 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Nota Order</title>
-    <?php include BASE_PATH . '/header.php'; ?>
+    <?php include __DIR__ . '/../header.php'; ?>
     <script src="<?= BASE_URL ?>/assets/js/jquery-3.7.1.min.js"></script>
       <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/select2.min.css">
     <script src="<?= BASE_URL ?>/assets/js/select2.min.js"></script>
@@ -86,9 +86,9 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
 </head>
 <body>
   <div id="main-wrapper">
-    <?php include BASE_PATH . '/navbar.php'; ?>
+    <?php include __DIR__ . '/../navbar.php'; ?>
     <div id="main-content" <?= (isset($mode) && $mode === 1) ? 'class="dark-mode"' : '' ?>>
-      <?php include BASE_PATH . '/sidebar.php'; ?>
+      <?php include __DIR__ . '/../sidebar.php'; ?>
       <div id="page-content-wrapper">
         <div class="container-fluid py-4 px-2">
           <div class="row align-items-start">
@@ -284,7 +284,7 @@ $resultStores = $storeModel->getStoreForMaklun($store_id);
         </div>
       </div>
     </div>
-    <?php include BASE_PATH . '/footer.php'; ?>
+    <?php include __DIR__ . '/../footer.php'; ?>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>

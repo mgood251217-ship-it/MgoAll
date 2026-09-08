@@ -2,10 +2,10 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-require_once '../connect.php';
-require_once BASE_PATH . '/middleware/init_auth.php';
-require_once BASE_PATH . '/components/Table.php';
-require_once BASE_PATH . '/controllers/ReportController.php';
+require_once __DIR__ . '/../connect.php';
+require_once __DIR__ . '/../middleware/init_auth.php';
+require_once __DIR__ . '/../components/Table.php';
+require_once __DIR__ . '/../controllers/ReportController.php';
 
 $reportController = new ReportController($koneksi);
 $data = $reportController->statistics();
@@ -75,14 +75,14 @@ $htmlTableStatistik = renderTable([
 <head>
     <meta charset="UTF-8">
     <title>Statistik Karyawan</title>
-    <?php include BASE_PATH . '/header.php'; ?>
-    <?php include BASE_PATH . '/components/export_libraries.php'; ?>
+    <?php include __DIR__ . '/../header.php'; ?>
+    <?php include __DIR__ . '/../components/export_libraries.php'; ?>
 </head>
 <body>
 <div id="main-wrapper">
-    <?php include BASE_PATH . '/navbar.php'; ?>
+    <?php include __DIR__ . '/../navbar.php'; ?>
     <div id="main-content" <?= ($mode ?? 0) === 1 ? 'class="dark-mode"' : '' ?>>
-        <?php include BASE_PATH . '/sidebar.php'; ?>
+        <?php include __DIR__ . '/../sidebar.php'; ?>
 
         <div id="page-content-wrapper">
             <?php require 'summary_cards.php'; ?>
@@ -90,7 +90,7 @@ $htmlTableStatistik = renderTable([
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                 <h1 class="mb-0">Statistik Karyawan</h1>
                 <div class="row g-2 align-items-end justify-content-end flex-nowrap" style="margin-bottom:0;">
-                    <?php $showExport = false; include BASE_PATH . '/components/interval_date.php'; ?>
+                    <?php $showExport = false; include __DIR__ . '/../components/interval_date.php'; ?>
                     <div class="col-auto align-self-end d-flex gap-2 flex-wrap">
                         <button type="button" class="btn btn-success" id="btnExportExcel">Export Excel</button>
                         <button type="button" class="btn btn-primary" id="btnExportWord">Export Word</button>
@@ -104,7 +104,7 @@ $htmlTableStatistik = renderTable([
 
         </div>
     </div>
-    <?php include BASE_PATH . '/footer.php'; ?>
+    <?php include __DIR__ . '/../footer.php'; ?>
 </div>
 
 <script>

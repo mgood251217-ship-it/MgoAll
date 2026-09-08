@@ -1,6 +1,6 @@
 <?php
-require_once BASE_PATH . '/models/Setting.php';
-require_once BASE_PATH . '/models/Store.php';
+require_once __DIR__ . '/models/Setting.php';
+require_once __DIR__ . '/models/Store.php';
 
 $settingModel = new Setting($koneksi);
 $storeModel = new Store($koneksi);

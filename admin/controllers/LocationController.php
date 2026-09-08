@@ -1,8 +1,8 @@
 <?php
-require_once BASE_PATH . '/models/Location.php';
-require_once BASE_PATH . '/functions/helpers.php';
-require_once BASE_PATH . '/middleware/AuthMiddleware.php';
-require_once BASE_PATH . '/functions/cacheHelpers.php';
+require_once __DIR__ . '/../models/Location.php';
+require_once __DIR__ . '/../functions/helpers.php';
+require_once __DIR__ . '/../middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../functions/cacheHelpers.php';
 
 class LocationController {
     private $locationModel;

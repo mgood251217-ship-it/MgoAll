@@ -1,8 +1,8 @@
 <?php
-require_once '../connect.php';
-require_once BASE_PATH . '/middleware/init_auth.php';
+require_once __DIR__ . '/../connect.php';
+require_once __DIR__ . '/../middleware/init_auth.php';
 
-require_once BASE_PATH . '/functions/helpers.php';
+require_once __DIR__ . '/../functions/helpers.php';
 
 $startMonth  = date('Y-m-01 00:00:00');
 $endMonth    = date('Y-m-t 23:59:59');
@@ -163,7 +163,7 @@ $topKonsumenName = $row['name'] ?? '-';
 <head>
   <meta charset="UTF-8">
   <title>Laporan</title>
-  <?php include BASE_PATH . '/header.php'; ?>
+    <?php include __DIR__ . '/../header.php'; ?>
     <style>
     .laporan-grid {
         display: flex;
@@ -264,10 +264,10 @@ $topKonsumenName = $row['name'] ?? '-';
 
 <body>
 <div id="main-wrapper">
-  <?php include BASE_PATH . '/navbar.php'; ?>
+    <?php include __DIR__ . '/../navbar.php'; ?>
 
   <div id="main-content" <?= (isset($mode) && $mode === 1) ? 'class="dark-mode"' : '' ?>>
-    <?php include BASE_PATH . '/sidebar.php'; ?>
+    <?php include __DIR__ . '/../sidebar.php'; ?>
 
     <div id="page-content-wrapper">
       <h1 class="mb-4">Laporan</h1>
@@ -353,7 +353,7 @@ $topKonsumenName = $row['name'] ?? '-';
     
   </div>
 
-  <?php include BASE_PATH . '/footer.php'; ?>
+    <?php include __DIR__ . '/../footer.php'; ?>
 </div>
 </body>
 </html>

@@ -1,5 +1,5 @@
 <?php
-require_once BASE_PATH . '/functions/helpers.php';
+require_once __DIR__ . '/../functions/helpers.php';
 
 class AuthMiddleware {
     private $koneksi;

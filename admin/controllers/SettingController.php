@@ -1,6 +1,6 @@
 <?php
-require_once BASE_PATH . '/models/Setting.php';
-require_once BASE_PATH . '/functions/helpers.php';
+require_once __DIR__ . '/../models/Setting.php';
+require_once __DIR__ . '/../functions/helpers.php';
 
 class SettingController {
     private $settingModel;

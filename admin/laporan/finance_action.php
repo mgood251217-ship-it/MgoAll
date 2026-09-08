@@ -1,13 +1,13 @@
 <?php
-require_once '../connect.php';
-require_once BASE_PATH . '/middleware/init_auth.php';
-require_once BASE_PATH . '/models/Finance.php';
-require_once BASE_PATH . '/controllers/FinanceController.php';
-require_once BASE_PATH . '/models/Payment.php';
-require_once BASE_PATH . '/controllers/PaymentController.php';
-require_once BASE_PATH . '/models/Activity.php';
-require_once BASE_PATH . '/controllers/OrderController.php';
-require_once BASE_PATH . '/controllers/ReportController.php';
+require_once __DIR__ . '/../connect.php';
+require_once __DIR__ . '/../middleware/init_auth.php';
+require_once __DIR__ . '/../models/Finance.php';
+require_once __DIR__ . '/../controllers/FinanceController.php';
+require_once __DIR__ . '/../models/Payment.php';
+require_once __DIR__ . '/../controllers/PaymentController.php';
+require_once __DIR__ . '/../models/Activity.php';
+require_once __DIR__ . '/../controllers/OrderController.php';
+require_once __DIR__ . '/../controllers/ReportController.php';
 
 $activityModel = new Activity($koneksi);
 $financeModel = new Finance($koneksi);

@@ -1,9 +1,9 @@
 <?php
-require_once '../connect.php';
-require_once BASE_PATH . '/middleware/init_auth.php';
-require_once BASE_PATH . '/components/Table.php';
-require_once BASE_PATH . '/functions/helpers.php';
-require_once BASE_PATH . '/controllers/ReportController.php';
+require_once __DIR__ . '/../connect.php';
+require_once __DIR__ . '/../middleware/init_auth.php';
+require_once __DIR__ . '/../components/Table.php';
+require_once __DIR__ . '/../functions/helpers.php';
+require_once __DIR__ . '/../controllers/ReportController.php';
 
 $reportController = new ReportController($koneksi);
 
@@ -52,16 +52,16 @@ $htmlTableOmsetPerItem = renderTable([
 <head>
   <meta charset="UTF-8">
   <title>Daftar Omset Produk</title>
-  <?php include BASE_PATH . '/header.php'; ?>
-  <?php include BASE_PATH . '/components/export_libraries.php'; ?>
+  <?php include __DIR__ . '/../header.php'; ?>
+  <?php include __DIR__ . '/../components/export_libraries.php'; ?>
 </head>
 
 <body>
 <div id="main-wrapper">
-  <?php include BASE_PATH . '/navbar.php'; ?>
+  <?php include __DIR__ . '/../navbar.php'; ?>
 
   <div id="main-content" <?= (isset($mode) && $mode === 1) ? 'class="dark-mode"' : '' ?>>
-    <?php include BASE_PATH . '/sidebar.php'; ?>
+    <?php include __DIR__ . '/../sidebar.php'; ?>
 
     <div id="page-content-wrapper">
       <?php require 'summary_cards.php'; ?>
@@ -69,7 +69,7 @@ $htmlTableOmsetPerItem = renderTable([
         <h1 class="mb-4">Daftar Omset Per Produk</h1>
 
         <div class="d-flex flex-wrap justify-content-end align-items-end gap-2">
-          <?php $showExport = true; include BASE_PATH . '/components/interval_date.php'; ?>
+          <?php $showExport = true; include __DIR__ . '/../components/interval_date.php'; ?>
         </div>
       </div>
     <div id="omsetPerItemWrapper">
@@ -78,7 +78,7 @@ $htmlTableOmsetPerItem = renderTable([
     </div>
   </div>
 
-  <?php include BASE_PATH . '/footer.php'; ?>
+  <?php include __DIR__ . '/../footer.php'; ?>
 </div>
 
 <script>

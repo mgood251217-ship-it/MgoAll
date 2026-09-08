@@ -1,18 +1,18 @@
 <?php
-require_once '../connect.php';
-require_once BASE_PATH . '/controllers/OrderController.php';
-require_once BASE_PATH . '/controllers/SettingController.php';
-require_once BASE_PATH . '/controllers/PaymentController.php';
-require_once BASE_PATH . '/controllers/UserController.php';
-require_once BASE_PATH . '/controllers/LocationController.php';
-require_once BASE_PATH . '/controllers/StoreController.php';
-require_once BASE_PATH . '/models/Order.php';
-require_once BASE_PATH . '/models/Product.php';
-require_once BASE_PATH . '/functions/helpers.php';
-require_once BASE_PATH . '/controllers/ProductController.php';
-require_once BASE_PATH . '/controllers/AuthController.php';
-require_once BASE_PATH . '/controllers/FailureController.php';
-require_once BASE_PATH . '/controllers/GlobalStockController.php';
+require_once __DIR__ . '/../connect.php';
+require_once __DIR__ . '/../controllers/OrderController.php';
+require_once __DIR__ . '/../controllers/SettingController.php';
+require_once __DIR__ . '/../controllers/PaymentController.php';
+require_once __DIR__ . '/../controllers/UserController.php';
+require_once __DIR__ . '/../controllers/LocationController.php';
+require_once __DIR__ . '/../controllers/StoreController.php';
+require_once __DIR__ . '/../models/Order.php';
+require_once __DIR__ . '/../models/Product.php';
+require_once __DIR__ . '/../functions/helpers.php';
+require_once __DIR__ . '/../controllers/ProductController.php';
+require_once __DIR__ . '/../controllers/AuthController.php';
+require_once __DIR__ . '/../controllers/FailureController.php';
+require_once __DIR__ . '/../controllers/GlobalStockController.php';
 
 $authController = new AuthController($koneksi);
 $productController = new ProductController($koneksi);
@@ -29,7 +29,7 @@ $globalStockController = new GlobalStockController($koneksi);
 
 $action = $_GET['action'] ?? '';
 if ($action != 'login'){
-    require_once BASE_PATH . '/middleware/init_auth.php';
+    require_once __DIR__ . '/../middleware/init_auth.php';
 }
 
 switch ($action) {

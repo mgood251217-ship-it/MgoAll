@@ -1,6 +1,6 @@
 <?php
 function updateStoreCache($store_id, $module) {
-    $tempDir = BASE_PATH . '/temp/dataset';
+    $tempDir = __DIR__ . '/../temp/dataset';
     $filePath = $tempDir . '/store_' . $store_id . '.json';
 
     if (!is_dir($tempDir)) {

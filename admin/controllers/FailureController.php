@@ -1,9 +1,9 @@
 <?php
-require_once BASE_PATH . '/models/Failure.php';
-require_once BASE_PATH . '/functions/helpers.php';
-require_once BASE_PATH . '/models/Product.php'; 
-require_once BASE_PATH . '/controllers/OrderController.php';
-require_once BASE_PATH . '/functions/cacheHelpers.php';
+require_once __DIR__ . '/../models/Failure.php';
+require_once __DIR__ . '/../functions/helpers.php';
+require_once __DIR__ . '/../models/Product.php'; 
+require_once __DIR__ . '/../controllers/OrderController.php';
+require_once __DIR__ . '/../functions/cacheHelpers.php';
         
 class FailureController{
     private $koneksi;

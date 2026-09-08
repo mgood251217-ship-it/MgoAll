@@ -1,7 +1,7 @@
 <?php
-require_once BASE_PATH . '/models/GlobalStock.php';
-require_once BASE_PATH . '/functions/helpers.php';
-require_once BASE_PATH . '/functions/cacheHelpers.php';
+require_once __DIR__ . '/../models/GlobalStock.php';
+require_once __DIR__ . '/../functions/helpers.php';
+require_once __DIR__ . '/../functions/cacheHelpers.php';
 
 class GlobalStockController {
     private $globalStockModel;

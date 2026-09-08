@@ -1,13 +1,13 @@
 <?php
-require_once '../connect.php';
-require_once BASE_PATH . '/middleware/init_auth.php';
-require_once BASE_PATH . '/controllers/ProductController.php';
-require_once BASE_PATH . '/models/Product.php';
-require_once BASE_PATH . '/components/Modal.php';
-require_once BASE_PATH . '/components/Alert.php';
-require_once BASE_PATH . '/components/Table.php';
-require_once BASE_PATH . '/components/Loading.php';
-require_once BASE_PATH . '/components/Icon.php';
+require_once __DIR__ . '/../connect.php';
+require_once __DIR__ . '/../middleware/init_auth.php';
+require_once __DIR__ . '/../controllers/ProductController.php';
+require_once __DIR__ . '/../models/Product.php';
+require_once __DIR__ . '/../components/Modal.php';
+require_once __DIR__ . '/../components/Alert.php';
+require_once __DIR__ . '/../components/Table.php';
+require_once __DIR__ . '/../components/Loading.php';
+require_once __DIR__ . '/../components/Icon.php';
 
 $productController = new ProductController($koneksi);
 $productModel = new Product($koneksi);
@@ -26,15 +26,15 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
 <head>
   <meta charset="UTF-8">
   <title>Data Barang</title>
-  <?php include BASE_PATH . '/header.php'; ?>
+  <?php include __DIR__ . '/../header.php'; ?>
   <?= renderLoading(); ?>
   <script>showLoading();</script>
 </head>
 <body>
 <div id="main-wrapper">
-  <?php include '../navbar.php'; ?>
+  <?php include __DIR__ . '/../navbar.php'; ?>
   <div id="main-content" <?= (isset($mode) && $mode === 1) ? 'class="dark-mode"' : '' ?>>
-    <?php include '../sidebar.php'; ?>
+    <?php include __DIR__ . '/../sidebar.php'; ?>
 
     <div id="page-content-wrapper">
       <div class="d-flex justify-content-between align-items-center mb-4">
@@ -363,7 +363,7 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
     </div>
   </div>
 
-  <?php include '../footer.php'; ?>
+  <?php include __DIR__ . '/../footer.php'; ?>
 </div>
 
 <script>

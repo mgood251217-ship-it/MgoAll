@@ -1,7 +1,7 @@
 <?php
-require_once '../connect.php';
-require_once BASE_PATH . '/middleware/init_auth.php';
-require_once BASE_PATH . '/controllers/MeterController.php';
+require_once __DIR__ . '/../connect.php';
+require_once __DIR__ . '/../middleware/init_auth.php';
+require_once __DIR__ . '/../controllers/MeterController.php';
 
 $meterController = new MeterController($koneksi);
 

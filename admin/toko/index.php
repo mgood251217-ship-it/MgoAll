@@ -1,14 +1,14 @@
 <?php
-require_once '../connect.php';
-require_once BASE_PATH . '/middleware/init_auth.php';
-require_once BASE_PATH . '/controllers/UserController.php';
-require_once BASE_PATH . '/controllers/LocationController.php';
-require_once BASE_PATH . '/controllers/ReportController.php';
-require_once BASE_PATH . '/models/Store.php';
-require_once BASE_PATH . '/components/Modal.php';
-require_once BASE_PATH . '/components/Alert.php';
-require_once BASE_PATH . '/components/Table.php';
-require_once BASE_PATH . '/components/Icon.php';
+require_once __DIR__ . '/../connect.php';
+require_once __DIR__ . '/../middleware/init_auth.php';
+require_once __DIR__ . '/../controllers/UserController.php';
+require_once __DIR__ . '/../controllers/LocationController.php';
+require_once __DIR__ . '/../controllers/ReportController.php';
+require_once __DIR__ . '/../models/Store.php';
+require_once __DIR__ . '/../components/Modal.php';
+require_once __DIR__ . '/../components/Alert.php';
+require_once __DIR__ . '/../components/Table.php';
+require_once __DIR__ . '/../components/Icon.php';
 
 $userController = new UserController($koneksi);
 $users = $userController->index();
@@ -45,7 +45,7 @@ $darkModeClass = ($mode === 1) ? 'dark-mode' : '';
 <head>
   <meta charset="UTF-8">
   <title>Manajemen User</title>
-  <?php include BASE_PATH . '/header.php'; ?>
+  <?php include __DIR__ . '/../header.php'; ?>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -87,9 +87,9 @@ $darkModeClass = ($mode === 1) ? 'dark-mode' : '';
 </head>
 <body>
 <div id="main-wrapper">
-  <?php include BASE_PATH . '/navbar.php'; ?>
+  <?php include __DIR__ . '/../navbar.php'; ?>
   <div id="main-content" <?= (isset($mode) && $mode === 1) ? 'class="dark-mode"' : '' ?>>
-    <?php include BASE_PATH . '/sidebar.php'; ?>
+    <?php include __DIR__ . '/../sidebar.php'; ?>
     <div id="page-content-wrapper">
     <!-- GRAFIK 30 HARI -->
     <div class="row mt-4">
@@ -251,7 +251,7 @@ $darkModeClass = ($mode === 1) ? 'dark-mode' : '';
       <div id="map" style="height: 400px;"></div>
       <button id="setLocationBtn" class="btn btn-primary mt-2">Set Lokasi Saya</button>
     </div>
-    <?php include BASE_PATH . '/footer.php'; ?>
+    <?php include __DIR__ . '/../footer.php'; ?>
   </div>
   <br>
 

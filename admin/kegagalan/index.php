@@ -2,17 +2,17 @@
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-require_once '../connect.php';
-require_once BASE_PATH . '/middleware/init_auth.php';
-require_once BASE_PATH . '/components/Modal.php';
-require_once BASE_PATH . '/components/Alert.php';
-require_once BASE_PATH . '/components/Table.php';
-require_once BASE_PATH . '/components/Loading.php';
-require_once BASE_PATH . '/components/Icon.php';
-require_once BASE_PATH . '/models/User.php';
-require_once BASE_PATH . '/models/Store.php';
-require_once BASE_PATH . '/models/Product.php';
-require_once BASE_PATH . '/controllers/FailureController.php';
+require_once __DIR__ . '/../connect.php';
+require_once __DIR__ . '/../middleware/init_auth.php';
+require_once __DIR__ . '/../components/Modal.php';
+require_once __DIR__ . '/../components/Alert.php';
+require_once __DIR__ . '/../components/Table.php';
+require_once __DIR__ . '/../components/Loading.php';
+require_once __DIR__ . '/../components/Icon.php';
+require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../models/Store.php';
+require_once __DIR__ . '/../models/Product.php';
+require_once __DIR__ . '/../controllers/FailureController.php';
 
 $productModel = new Product($koneksi);
 $userModel = new User($koneksi);
@@ -31,7 +31,7 @@ $categories = $productModel->getCategoryByStoreId($store_id);
 <head>
   <meta charset="UTF-8">
   <title>Log Kegagalan</title>
-  <?php include BASE_PATH . '/header.php'; ?>
+  <?php include __DIR__ . '/../header.php'; ?>
       <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
       <link href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.3.1/dist/select2-bootstrap4.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/content.css">
@@ -51,14 +51,14 @@ $categories = $productModel->getCategoryByStoreId($store_id);
 </head>
 <body>
   <div id="main-wrapper">
-    <?php include '../navbar.php'; ?>
+    <?php include __DIR__ . '/../navbar.php'; ?>
     <div id="main-content" <?= (isset($mode) && $mode === 1) ? 'class="dark-mode"' : '' ?>>
-      <?php include '../sidebar.php'; ?>
+      <?php include __DIR__ . '/../sidebar.php'; ?>
 
       <div id="page-content-wrapper">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h1 class="mb-0">Log Kegagalan</h1>
-            <?php $showExport = true; include BASE_PATH . '/components/interval_date.php'; ?>
+            <?php $showExport = true; include __DIR__ . '/../components/interval_date.php'; ?>
         </div>
 
         <?php if (empty($items)): ?>
@@ -409,7 +409,7 @@ $categories = $productModel->getCategoryByStoreId($store_id);
                     </div>
                 </div>
             </div>
-            <?php include '../footer.php'; ?>
+            <?php include __DIR__ . '/../footer.php'; ?>
       </div>
         
     </div>

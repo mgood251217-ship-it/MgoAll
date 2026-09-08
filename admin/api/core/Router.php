@@ -20,7 +20,7 @@ class Router {
 
 		$route = $this->routes[$action];
 		if (in_array('auth', $route['middlewares'])) {
-			require_once BASE_PATH . '/middleware/init_auth.php';
+			require_once __DIR__ . '/../../middleware/init_auth.php';
 		}
 
 		$controller = new $route['controller']($koneksi);

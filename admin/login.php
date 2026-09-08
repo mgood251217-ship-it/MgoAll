@@ -1,9 +1,9 @@
 <?php
 session_start();
-require_once "connect.php";
-require_once BASE_PATH . '/functions/helpers.php';
-require_once BASE_PATH . '/controllers/AuthController.php';
-require_once BASE_PATH . '/components/Alert.php';
+require_once __DIR__ . "/connect.php";
+require_once __DIR__ . '/functions/helpers.php';
+require_once __DIR__ . '/controllers/AuthController.php';
+require_once __DIR__ . '/components/Alert.php';
 
 if (AuthController::checkSession()) {
     header("Location: " . BASE_URL . "/customer");

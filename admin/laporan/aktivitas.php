@@ -1,8 +1,8 @@
 <?php
-require_once '../connect.php';
-require_once BASE_PATH . '/middleware/init_auth.php';
-require_once BASE_PATH . '/components/Table.php';
-require_once BASE_PATH . '/controllers/ReportController.php';
+require_once __DIR__ . '/../connect.php';
+require_once __DIR__ . '/../middleware/init_auth.php';
+require_once __DIR__ . '/../components/Table.php';
+require_once __DIR__ . '/../controllers/ReportController.php';
 
 $reportController = new ReportController($koneksi);
 $activity = $reportController->activity();
@@ -60,7 +60,7 @@ $htmlTableAktivitas = renderTable([
 <head>
   <meta charset="UTF-8">
   <title>Aktivitas</title>
-  <?php include BASE_PATH . '/header.php'; ?>
+  <?php include __DIR__ . '/../header.php'; ?>
   <style>
     .checkbox-cell {
       text-align: center;
@@ -100,17 +100,17 @@ $htmlTableAktivitas = renderTable([
 
 <body>
 <div id="main-wrapper" >
-  <?php include BASE_PATH . '/navbar.php'; ?>
+  <?php include __DIR__ . '/../navbar.php'; ?>
 
   <div id="main-content" <?= ($mode ?? 0) === 1 ? 'class="dark-mode"' : '' ?>>
-    <?php include BASE_PATH . '/sidebar.php'; ?>
+    <?php include __DIR__ . '/../sidebar.php'; ?>
 
     <div id="page-content-wrapper">
       <?php require 'summary_cards.php'; ?>
 
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="mb-0">Transaksi per Item</h1>
-        <?php $showExport = true; include BASE_PATH . '/components/interval_date.php'; ?>
+        <?php $showExport = true; include __DIR__ . '/../components/interval_date.php'; ?>
       </div>
       <div class="table-responsive">
       <div class="d-flex justify-content-between align-items-center mb-2">
@@ -124,7 +124,7 @@ $htmlTableAktivitas = renderTable([
     </div>
   </div>
 
-  <?php include BASE_PATH . '/footer.php'; ?>
+  <?php include __DIR__ . '/../footer.php'; ?>
 </div>
 
 <script>

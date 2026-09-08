@@ -1,12 +1,12 @@
 <?php
-require_once BASE_PATH . '/models/Order.php';
-require_once BASE_PATH . '/models/User.php';
-require_once BASE_PATH . '/models/Project.php';
-require_once BASE_PATH . '/models/Product.php';
-require_once BASE_PATH . '/models/Activity.php';
-require_once BASE_PATH . '/models/Payment.php';
-require_once BASE_PATH . '/functions/helpers.php';
-require_once BASE_PATH . '/functions/cacheHelpers.php';
+require_once __DIR__ . '/../models/Order.php';
+require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../models/Project.php';
+require_once __DIR__ . '/../models/Product.php';
+require_once __DIR__ . '/../models/Activity.php';
+require_once __DIR__ . '/../models/Payment.php';
+require_once __DIR__ . '/../functions/helpers.php';
+require_once __DIR__ . '/../functions/cacheHelpers.php';
 
 class OrderController {
     private $koneksi;

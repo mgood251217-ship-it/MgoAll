@@ -1,7 +1,7 @@
 <?php
-require_once BASE_PATH . '/models/Store.php';
-require_once BASE_PATH . '/functions/helpers.php';
-require_once BASE_PATH . '/middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../models/Store.php';
+require_once __DIR__ . '/../functions/helpers.php';
+require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 
 class StoreController {
     private $storeModel;

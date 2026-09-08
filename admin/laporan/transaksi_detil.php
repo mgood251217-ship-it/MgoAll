@@ -1,9 +1,9 @@
 <?php
-require_once '../connect.php';
-require_once BASE_PATH . '/middleware/init_auth.php';
-require_once BASE_PATH . '/functions/helpers.php';
-require_once BASE_PATH . '/components/Alert.php';
-require_once BASE_PATH . '/controllers/ReportController.php';
+require_once __DIR__ . '/../connect.php';
+require_once __DIR__ . '/../middleware/init_auth.php';
+require_once __DIR__ . '/../functions/helpers.php';
+require_once __DIR__ . '/../components/Alert.php';
+require_once __DIR__ . '/../controllers/ReportController.php';
 
 $reportController = new ReportController($koneksi);
 
@@ -27,8 +27,8 @@ $notesByOrder = $transactionsDetail['notesByOrder'];
 <head>
   <meta charset="UTF-8" />
   <title>Transaksi Detil</title>
-  <?php include BASE_PATH . '/header.php'; ?>
-  <?php include BASE_PATH . '/components/export_libraries.php'; ?>
+  <?php include __DIR__ . '/../header.php'; ?>
+  <?php include __DIR__ . '/../components/export_libraries.php'; ?>
   <style>
     .nota-block { margin-bottom: 40px; border: 1px solid #ccc; padding: 20px; border-radius: 10px; }
     .nota-header { display: flex; justify-content: space-between; flex-wrap: wrap; }
@@ -83,10 +83,10 @@ $notesByOrder = $transactionsDetail['notesByOrder'];
 
 <body>
 <div id="main-wrapper" >
-  <?php include BASE_PATH . '/navbar.php'; ?>
+  <?php include __DIR__ . '/../navbar.php'; ?>
 
   <div id="main-content" <?= (isset($mode) && $mode === 1) ? 'class="dark-mode"' : '' ?>>
-    <?php include BASE_PATH . '/sidebar.php'; ?>
+    <?php include __DIR__ . '/../sidebar.php'; ?>
 
     <div id="page-content-wrapper">
       <?php require 'summary_cards.php'; ?>
@@ -94,7 +94,7 @@ $notesByOrder = $transactionsDetail['notesByOrder'];
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <h1 class="mb-0">Transaksi Detil</h1>
         <div class="row g-2 align-items-end justify-content-end flex-nowrap" style="margin-bottom:0;">
-          <?php $showExport = true; include BASE_PATH . '/components/interval_date.php'; ?>
+          <?php $showExport = true; include __DIR__ . '/../components/interval_date.php'; ?>
         </div>
       </div>
 
@@ -427,7 +427,7 @@ $notesByOrder = $transactionsDetail['notesByOrder'];
       </div>
     </div>
   </div>
-  <?php include BASE_PATH . '/footer.php'; ?>
+  <?php include __DIR__ . '/../footer.php'; ?>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> 
 <script>

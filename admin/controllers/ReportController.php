@@ -1,15 +1,15 @@
 <?php
-require_once BASE_PATH . '/models/Order.php';
-require_once BASE_PATH . '/models/User.php';
-require_once BASE_PATH . '/models/Project.php';
-require_once BASE_PATH . '/models/Product.php';
-require_once BASE_PATH . '/models/Activity.php';
-require_once BASE_PATH . '/models/Finance.php';
-require_once BASE_PATH . '/models/Payment.php';
+require_once __DIR__ . '/../models/Order.php';
+require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../models/Project.php';
+require_once __DIR__ . '/../models/Product.php';
+require_once __DIR__ . '/../models/Activity.php';
+require_once __DIR__ . '/../models/Finance.php';
+require_once __DIR__ . '/../models/Payment.php';
 
-require_once BASE_PATH . '/middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 
-require_once BASE_PATH . '/functions/helpers.php';
+require_once __DIR__ . '/../functions/helpers.php';
 
 class ReportController {
     private $koneksi;
@@ -680,8 +680,8 @@ class ReportController {
                 $storeFolder = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
                 $urlFallback = BASE_URL . '/assets/img/buktitf/' . $storeFolder . '/' . $transfer['img'];
 
-                $pathDynamic = str_replace(BASE_URL, BASE_PATH, $urlDynamic);
-                $pathFallback = str_replace(BASE_URL, BASE_PATH, $urlFallback);
+                $pathDynamic = str_replace(BASE_URL, __DIR__ . '/../', $urlDynamic);
+                $pathFallback = str_replace(BASE_URL, __DIR__ . '/../', $urlFallback);
                 $transfer['img_link'] = file_exists($pathDynamic) ? $urlDynamic : (file_exists($pathFallback) ? $urlFallback : BASE_URL . '/assets/img/buktitf/errortf.png');
                 
                 $transfersByOrder[$transfer['order_id']][] = $transfer;

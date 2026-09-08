@@ -1,9 +1,9 @@
 <?php
-require_once BASE_PATH . '/models/User.php';
-require_once BASE_PATH . '/functions/helpers.php';
-require_once BASE_PATH . '/functions/imageHelpers.php';
-require_once BASE_PATH . '/middleware/AuthMiddleware.php';
-require_once BASE_PATH . '/functions/cacheHelpers.php';
+require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../functions/helpers.php';
+require_once __DIR__ . '/../functions/imageHelpers.php';
+require_once __DIR__ . '/../middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../functions/cacheHelpers.php';
 
 class UserController {
     private $userModel;
@@ -61,7 +61,7 @@ class UserController {
         }
 
         $errors = [];
-        $uploadDir = BASE_PATH . "/assets/img/user/";
+        $uploadDir = __DIR__ . "/../assets/img/user/";
         $old_picture = $_POST['old_picture'] ?? '';
 
         if (!empty($_FILES['picture']['name']) && $_FILES['picture']['error'] === 0) {
@@ -100,7 +100,7 @@ class UserController {
         header('Content-Type: application/json');
         $data = $this->requestData();
         $errors = [];
-        $uploadDir = BASE_PATH . "/assets/img/user/";
+        $uploadDir = __DIR__ . "/../assets/img/user/";
         $data->picture = ''; 
 
         if (!empty($_FILES['picture']['name']) && $_FILES['picture']['error'] === 0) {
@@ -149,7 +149,7 @@ class UserController {
 
         if ($this->userModel->deleteUserById($data->id)) {
             if (!empty($picture)) {
-                 $filePath = BASE_PATH . "/assets/img/" . $picture;
+                 $filePath = __DIR__ . '/../assets/img/' . $picture;
                 if (file_exists($filePath)) {
                     unlink($filePath);
                 }

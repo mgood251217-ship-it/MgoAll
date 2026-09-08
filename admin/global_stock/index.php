@@ -1,8 +1,8 @@
 <?php
 
-require_once '../connect.php';
-require_once BASE_PATH . '/middleware/init_auth.php';
-require_once BASE_PATH . '/controllers/GlobalStockController.php';
+require_once __DIR__ . '/../connect.php';
+require_once __DIR__ . '/../middleware/init_auth.php';
+require_once __DIR__ . '/../controllers/GlobalStockController.php';
 
 $globalStockController = new GlobalStockController($koneksi);
 $selected_month = isset($_GET['month']) ? $_GET['month'] : date('Y-m');
@@ -27,7 +27,7 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
 <head>
     <meta charset="UTF-8">
     <title>Global Stock</title>
-    <?php include BASE_PATH . '/header.php'; ?>
+    <?php include __DIR__ . '/../header.php'; ?>
 
     <style>
         .table-excel th, .table-excel td {
@@ -128,10 +128,10 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
 </div>
 
 <div id="main-wrapper">
-    <?php include '../navbar.php'; ?>
+    <?php include __DIR__ . '/../navbar.php'; ?>
     
     <div id="main-content" <?= ($mode === 1) ? 'class="dark-mode"' : '' ?>>
-        <?php include '../sidebar.php'; ?>
+        <?php include __DIR__ . '/../sidebar.php'; ?>
 
         <div id="page-content-wrapper">
 
@@ -319,7 +319,7 @@ $theme_colors = ['primary', 'success', 'danger', 'info', 'warning', 'secondary',
 
         </div>
     </div>
-    <?php include '../footer.php'; ?>
+    <?php include __DIR__ . '/../footer.php'; ?>
 </div>
 
 <div class="modal fade" id="historyDeliveryModal" tabindex="-1" aria-hidden="true">

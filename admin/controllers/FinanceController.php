@@ -1,8 +1,8 @@
 <?php
-require_once BASE_PATH . '/models/Finance.php';
-require_once BASE_PATH . '/functions/helpers.php';
-require_once BASE_PATH . '/middleware/AuthMiddleware.php';
-require_once BASE_PATH . '/functions/cacheHelpers.php';
+require_once __DIR__ . '/../models/Finance.php';
+require_once __DIR__ . '/../functions/helpers.php';
+require_once __DIR__ . '/../middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../functions/cacheHelpers.php';
 
 class FinanceController {
     private $koneksi;
@@ -17,7 +17,7 @@ class FinanceController {
 
     public function createTf(){
         if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
-        require_once BASE_PATH . '/functions/imageHelpers.php';
+        require_once __DIR__ . '/../functions/imageHelpers.php';
         global $store_id;
         global $storeName;
 
@@ -25,7 +25,7 @@ class FinanceController {
         $date = date('Y-m-d H:i:s');
  
         $storeNames = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
-        $uploadDir = folder(BASE_PATH . "/assets/img/buktitf/", $storeName, $date);
+        $uploadDir = folder(__DIR__ . "/../assets/img/buktitf/", $storeName, $date);
 
         if ( !empty($_FILES['picture']['name']) && $_FILES['picture']['error'] === 0){
             $result = compress( $_FILES['picture'], $uploadDir );
@@ -69,8 +69,8 @@ class FinanceController {
         $storeFolder = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
         $urlFallback = BASE_URL . '/assets/img/buktitf/' . $storeFolder . '/' . $transfer['img'];
 
-        $pathDynamic = str_replace(BASE_URL, BASE_PATH, $urlDynamic);
-        $pathFallback = str_replace(BASE_URL, BASE_PATH, $urlFallback);
+        $pathDynamic = str_replace(BASE_URL, __DIR__ . '/../', $urlDynamic);
+        $pathFallback = str_replace(BASE_URL, __DIR__ . '/../', $urlFallback);
 
         $this->financeModel->deleteTf($transfer_id);
 
@@ -100,7 +100,7 @@ class FinanceController {
         $dataPengeluaran = $this->financeModel->getExpenditureByIntervalDate($store_id, $start_date, $end_date);
 
         foreach ($dataPengeluaran as $key => $data) {
-            $url = folder(BASE_URL . '/assets/img/bukti/', $storeName, $data['date']);
+            $url = folder(__DIR__ . '/../assets/img/bukti/', $storeName, $data['date']);
             if ($data['img']) {
                 $dataPengeluaran[$key]['img_link'] = $url . $data['img'];
             }else{
@@ -307,7 +307,7 @@ class FinanceController {
         $monthFolder = date('m', strtotime($date));
         $dateFolder = date('d', strtotime($date));
         $fullDateFolder = $yearFolder . '/' . $monthFolder . '/' . $dateFolder;
-        $uploadDir = BASE_PATH . "/assets/img/bukti/$storeFolder/$fullDateFolder/";
+        $uploadDir = __DIR__ . "/../assets/img/bukti/$storeFolder/$fullDateFolder/";
 
         $pictureName = '';
 
@@ -322,7 +322,7 @@ class FinanceController {
                 exit;
             }
 
-            require_once BASE_PATH . '/functions/imageHelpers.php';
+            require_once __DIR__ . '/../functions/imageHelpers.php';
             $file = compress($_FILES['picture'], $uploadDir);
 
             if (!$file || !($file['success'] ?? false)) {
@@ -425,7 +425,7 @@ class FinanceController {
 
         $row = $this->financeModel->getExpenditureById($expenditure_id);
 
-        $uploadDir = folder(BASE_PATH . '/assets/img/bukti', $storeName, $row['date']);
+        $uploadDir = folder(__DIR__ . '/../assets/img/bukti', $storeName, $row['date']);
 
         if (!empty($row['img'])) {
             $imgPath = $uploadDir . $row['img'];

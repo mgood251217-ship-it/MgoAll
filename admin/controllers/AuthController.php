@@ -1,9 +1,9 @@
 <?php
-require_once BASE_PATH . '/models/User.php';
-require_once BASE_PATH . '/functions/helpers.php';
-require_once BASE_PATH . '/controllers/UserController.php';
+require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../functions/helpers.php';
+require_once __DIR__ . '/../controllers/UserController.php';
 if (!class_exists('AuthMiddleware')) {
-    require_once BASE_PATH . '/middleware/AuthMiddleware.php';
+    require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 }
 
 class AuthController {
@@ -30,7 +30,7 @@ class AuthController {
             Response::error('Belum login.', 401);
         }
 
-        require_once BASE_PATH . '/middleware/init_auth.php';
+        require_once __DIR__ . '/../middleware/init_auth.php';
         if ($foto) {
             $fotoLink = BASE_URL . "/assets/img/user/" . $foto;
         }else{
@@ -164,7 +164,7 @@ class AuthController {
                 $this->setInfo($fullUserData, $dataStore);
                 $this->insertActivity($fullUserData['user_id'], $address, $date);
 
-                $tempDir = BASE_PATH . '/temp/login';
+                $tempDir = __DIR__ . '/../temp/login';
                 $filePath = $tempDir . '/' . date("Y-m-d") . '.json';
 
                 if (!is_dir($tempDir)) {

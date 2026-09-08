@@ -1,6 +1,6 @@
 <?php
-require_once '../connect.php';
-require_once BASE_PATH . '/middleware/init_auth.php';
+require_once __DIR__ . '/../connect.php';
+require_once __DIR__ . '/../middleware/init_auth.php';
 
 $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
 $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
@@ -15,8 +15,8 @@ $end_date_only   = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
 <head>
   <meta charset="UTF-8" />
   <title>Data Meteran</title>
-  <?php include BASE_PATH . '/header.php'; ?>
-  <?php include BASE_PATH . '/components/export_libraries.php'; ?>
+  <?php include __DIR__ . '/../header.php'; ?>
+  <?php include __DIR__ . '/../components/export_libraries.php'; ?>
   <style>
     .excel-container {
       display: flex;
@@ -51,10 +51,10 @@ $end_date_only   = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
 </head>
 <body>
   <div id="main-wrapper">
-    <?php include '../navbar.php'; ?>
+    <?php include __DIR__ . '/../navbar.php'; ?>
 
     <div id="main-content" <?= ($mode === 1) ? 'class="dark-mode"' : '' ?>>
-      <?php include '../sidebar.php'; ?>
+      <?php include __DIR__ . '/../sidebar.php'; ?>
 
       <div id="page-content-wrapper" class="flex-grow-1 p-6">
         <div style="display:block; cursor: pointer;">
@@ -170,7 +170,7 @@ $end_date_only   = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
     <br>
     </div>
 
-    <?php include '../footer.php'; ?>
+    <?php include __DIR__ . '/../footer.php'; ?>
   </div>
 
   <script>

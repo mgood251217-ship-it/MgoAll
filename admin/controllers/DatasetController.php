@@ -1,5 +1,5 @@
 <?php
-require_once BASE_PATH . '/functions/helpers.php';
+require_once __DIR__ . '/../functions/helpers.php';
 
 class DatasetController {
     private $koneksi;
@@ -20,8 +20,8 @@ class DatasetController {
             session_write_close();
         }
 
-        $dataset_path = BASE_PATH . '/temp/dataset/store_' . $store_id . '.json';
-        $order_trigger_path = BASE_PATH . '/temp/orders/store_' . $store_id . '.json';
+        $dataset_path = __DIR__ . '/../temp/dataset/store_' . $store_id . '.json';
+        $order_trigger_path = __DIR__ . '/../temp/orders/store_' . $store_id . '.json';
 
         $data = [];
 

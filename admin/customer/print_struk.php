@@ -1,11 +1,11 @@
 <?php
-require_once '../connect.php';
-require_once BASE_PATH . '/middleware/init_auth.php';
-require_once BASE_PATH . '/models/User.php';
-require_once BASE_PATH . '/models/Store.php';
-require_once BASE_PATH . '/models/Order.php';
-require_once BASE_PATH . '/models/Payment.php';
-require_once BASE_PATH . '/functions/helpers.php';
+require_once __DIR__ . '/../connect.php';
+require_once __DIR__ . '/../middleware/init_auth.php';
+require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../models/Store.php';
+require_once __DIR__ . '/../models/Order.php';
+require_once __DIR__ . '/../models/Payment.php';
+require_once __DIR__ . '/../functions/helpers.php';
 
 $storeModel   = new Store($koneksi);
 $orderModel   = new Order($koneksi);
