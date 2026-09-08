@@ -10,7 +10,7 @@ if (AuthController::checkSession()) {
     exit;
 }
 
-$site_key   = "6LfKclYtAAAAAD9zWKtWXNNl-n3hahu0GmNXthVE";
+$site_key   = $_ENV['RECAPTCHA_SITE_KEY'] ?? '';
 $is_localhost = isLocalhostRequest();
 ?>
 <!DOCTYPE html>

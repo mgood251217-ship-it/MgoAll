@@ -105,7 +105,7 @@ class AuthController {
         date_default_timezone_set('Asia/Jakarta');
         $date = date("Y-m-d H:i:s");
 
-        $secret_key = "6LfKclYtAAAAAKEHLpfWAOv_riDy4PJOtleE0Pw9";
+        $secret_key = $_ENV['RECAPTCHA_SECRET_KEY'] ?? '';
         $is_localhost = isLocalhostRequest();
         $is_desktop_app = (($_SERVER['HTTP_X_CLIENT_TYPE'] ?? '') === 'desktop-app');
         $client_type = $_SERVER['HTTP_X_CLIENT_TYPE'] ?? '';
