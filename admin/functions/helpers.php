@@ -127,7 +127,7 @@ function redirect($url){
 
 
 function startEnk($enkdek, $enkvalue){
-    $enkkey = "kunci-rahasia-sangat-aman";
+    $enkkey = $_ENV['ENCRYPTION_KEY'] ?? '';
     $enkmethod = "aes-256-cbc";
     $iv_length = openssl_cipher_iv_length($enkmethod);
 
