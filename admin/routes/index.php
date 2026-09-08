@@ -9,8 +9,6 @@ require_once BASE_PATH . '/controllers/StoreController.php';
 require_once BASE_PATH . '/models/Order.php';
 require_once BASE_PATH . '/models/Product.php';
 require_once BASE_PATH . '/functions/helpers.php';
-require_once BASE_PATH . '/functions/Otp.php';
-require_once BASE_PATH . "/functions/setInfo.php";
 require_once BASE_PATH . '/controllers/ProductController.php';
 require_once BASE_PATH . '/controllers/AuthController.php';
 require_once BASE_PATH . '/controllers/FailureController.php';

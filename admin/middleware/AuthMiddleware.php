@@ -81,22 +81,26 @@ class AuthMiddleware {
         $GLOBALS['storeLogo'] = startEnk('dek', $_SESSION['user']['store_logo']);
     }
 
+    public function setSessionFromCookies() {
+        $_SESSION['user'] = [
+            'user_id'       => $_COOKIE['user_user_id'],
+            'store_id'      => $_COOKIE['user_store_id'],
+            'role'          => $_COOKIE['user_role'],
+            'username'      => $_COOKIE['user_username'],
+            'initial'       => $_COOKIE['user_initial'],
+            'name'          => $_COOKIE['user_name'],
+            'foto'          => $_COOKIE['user_foto'],
+            'store_name'    => $_COOKIE['store_name'],
+            'store_address' => $_COOKIE['store_address'],
+            'store_logo'    => $_COOKIE['store_logo']
+        ];
+    }
+
     public function loadFromCookie() {
         $userId = startEnk('dek', $_COOKIE['user_user_id']);
-        
+
         if ($userId) {
-            $_SESSION['user'] = [
-                'user_id'       => $_COOKIE['user_user_id'],
-                'store_id'      => $_COOKIE['user_store_id'],
-                'role'          => $_COOKIE['user_role'],
-                'username'      => $_COOKIE['user_username'],
-                'initial'       => $_COOKIE['user_initial'],
-                'name'          => $_COOKIE['user_name'],
-                'foto'          => $_COOKIE['user_foto'],
-                'store_name'    => $_COOKIE['store_name'],
-                'store_address' => $_COOKIE['store_address'],
-                'store_logo'    => $_COOKIE['store_logo']
-            ];
+            $this->setSessionFromCookies();
             $this->loadFromSession();
         } else {
             $this->redirectLogin();

@@ -2,6 +2,9 @@
 require_once BASE_PATH . '/models/User.php';
 require_once BASE_PATH . '/functions/helpers.php';
 require_once BASE_PATH . '/controllers/UserController.php';
+if (!class_exists('AuthMiddleware')) {
+    require_once BASE_PATH . '/middleware/AuthMiddleware.php';
+}
 
 class AuthController {
     private $userModel;
@@ -86,15 +89,8 @@ class AuthController {
             isset($_COOKIE['store_address']) &&
             isset($_COOKIE['store_logo']) 
         ) {
-            $_SESSION['user'] = [
-                'user_id'       => $_COOKIE['user_user_id'],
-                'store_id'      => $_COOKIE['user_store_id'],
-                'role'          => $_COOKIE['user_role'],
-                'username'      => $_COOKIE['user_username'],
-                'initial'       => $_COOKIE['user_initial'],
-                'name'          => $_COOKIE['user_name'],
-                'foto'          => $_COOKIE['user_foto']
-            ];
+            $middleware = new AuthMiddleware(null);
+            $middleware->setSessionFromCookies();
             return true;
         }
         return false;
@@ -104,7 +100,7 @@ class AuthController {
         $username_input = strtolower(trim($_POST['username'])) ?? '';
         $password = $_POST['password'] ?? '';
         $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
-        $address = getClientIP();
+        $address = $this->getClientIP();
 
         date_default_timezone_set('Asia/Jakarta');
         $date = date("Y-m-d H:i:s");
@@ -160,13 +156,13 @@ class AuthController {
 
         if ($this->userModel->checkUser($username_input)) {
             $userAuth = $this->userModel->getUserAuthData($username_input);
-            $dataStore = dataStore($userAuth['store_id']);
+            $dataStore = $this->dataStore($userAuth['store_id']);
 
             if (password_verify($password, $userAuth['password'])) {
                 $fullUserData = $this->userModel->getUserByUsername($username_input);
 
-                setInfo($fullUserData, $dataStore);
-                insertActivity($fullUserData['user_id'], $address, $date);
+                $this->setInfo($fullUserData, $dataStore);
+                $this->insertActivity($fullUserData['user_id'], $address, $date);
 
                 $tempDir = BASE_PATH . '/temp/login';
                 $filePath = $tempDir . '/' . date("Y-m-d") . '.json';
@@ -272,6 +268,137 @@ class AuthController {
             'mobile' => $data['download_url_mobile'] ?? null
         ];
         return $result;
+    }
+
+    private function getClientIP() {
+        $ipaddress = '';
+        if (isset($_SERVER['HTTP_CLIENT_IP']))
+            $ipaddress = $_SERVER['HTTP_CLIENT_IP'];
+        else if(isset($_SERVER['HTTP_X_FORWARDED_FOR']))
+            $ipaddress = $_SERVER['HTTP_X_FORWARDED_FOR'];
+        else if(isset($_SERVER['HTTP_X_FORWARDED']))
+            $ipaddress = $_SERVER['HTTP_X_FORWARDED'];
+        else if(isset($_SERVER['HTTP_FORWARDED_FOR']))
+            $ipaddress = $_SERVER['HTTP_FORWARDED_FOR'];
+        else if(isset($_SERVER['HTTP_FORWARDED']))
+            $ipaddress = $_SERVER['HTTP_FORWARDED'];
+        else if(isset($_SERVER['REMOTE_ADDR']))
+            $ipaddress = $_SERVER['REMOTE_ADDR'];
+        else
+            $ipaddress = 'UNKNOWN';
+        return $ipaddress;
+    }
+
+    private function dataStore($storeId) {
+        $stmt = $this->koneksi->prepare("SELECT name, logo, email, address FROM stores WHERE store_id = ?");
+        $stmt->bind_param("i", $storeId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result && $data = $result->fetch_assoc()) {
+            return [
+                'name' => $data['name'],
+                'logo' => $data['logo'],
+                'address' => $data['address'],
+                'email' => $data['email']
+            ];
+        }
+
+        return null;
+    }
+
+    private function setInfo($user, $dataStore) {
+        if (session_status() === PHP_SESSION_NONE) {
+            ini_set('session.cookie_domain', '.mgood.my.id');
+            ini_set('session.cookie_samesite', 'None');
+            ini_set('session.cookie_secure', 1);
+            ini_set('session.cookie_httponly', 1);
+            session_start();
+        }
+
+        session_destroy();
+
+        ini_set('session.cookie_domain', '.mgood.my.id');
+        ini_set('session.cookie_samesite', 'None');
+        ini_set('session.cookie_secure', 1);
+        ini_set('session.cookie_httponly', 1);
+        session_start();
+
+        $mode = 0;
+        $stmt = $this->koneksi->prepare("SELECT mode FROM user_setting WHERE user_id = ?");
+        $stmt->bind_param("i", $user['user_id']);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $row = $result->fetch_assoc()) {
+            $mode = (int)$row['mode'] ?? 0;
+        }
+        $stmt->close();
+
+        $encryptedData = $this->buildEncryptedUserData($user, $dataStore, $mode);
+
+        $this->setUserSession($encryptedData);
+        $this->setUserCookie($encryptedData);
+    }
+
+    private function buildEncryptedUserData($user, $dataStore, $mode) {
+        return [
+            'user_id'       => startEnk('enk', $user['user_id']),
+            'username'      => startEnk('enk', $user['username']),
+            'name'          => startEnk('enk', $user['name']),
+            'initial'       => startEnk('enk', $user['initial']),
+            'store_id'      => startEnk('enk', $user['store_id']),
+            'role'          => startEnk('enk', $user['role']),
+            'foto'          => startEnk('enk', $user['picture']),
+            'store_name'    => startEnk('enk', $dataStore['name']),
+            'store_address' => startEnk('enk', $dataStore['address']),
+            'store_logo'    => startEnk('enk', $dataStore['logo']),
+            'mode'          => startEnk('enk', $mode)
+        ];
+    }
+
+    private function insertActivity($userId, $address, $date) {
+        $insert = $this->koneksi->prepare("
+            INSERT INTO login_activity (user_id, address, date)
+            VALUES (?, ?, ?)
+        ");
+        $insert->bind_param("iss", $userId, $address, $date);
+        $insert->execute();
+        $insert->close();
+    }
+
+    private function setUserSession($encryptedData) {
+        $_SESSION['user'] = $encryptedData;
+    }
+
+    private function setUserCookie($encryptedData) {
+        $expire = time() + (1 * 24 * 60 * 60);
+
+        $options = [
+            'expires'  => $expire,
+            'path'     => '/',
+            'domain'   => '.mgood.my.id',
+            'secure'   => true,
+            'httponly' => true,
+            'samesite' => 'None',
+        ];
+
+        $cookieNameMap = [
+            'user_id'       => 'user_user_id',
+            'username'      => 'user_username',
+            'name'          => 'user_name',
+            'initial'       => 'user_initial',
+            'store_id'      => 'user_store_id',
+            'role'          => 'user_role',
+            'foto'          => 'user_foto',
+            'store_name'    => 'store_name',
+            'store_address' => 'store_address',
+            'store_logo'    => 'store_logo',
+            'mode'          => 'user_mode'
+        ];
+
+        foreach ($cookieNameMap as $dataKey => $cookieName) {
+            setcookie($cookieName, $encryptedData[$dataKey], $options);
+        }
     }
 }
 ?>
