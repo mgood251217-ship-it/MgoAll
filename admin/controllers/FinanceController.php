@@ -65,18 +65,18 @@ class FinanceController {
         $transfer_id = (int)$_POST['transfer_id'];
         $transfer = $this->financeModel->getTfById($transfer_id);
 
-        $urlDynamic = folder($_ENV['BASE_PATH_UPLOAD'] . '/image/buktitf/', $storeName, $transfer['date']) . $transfer['img'];
         $storeFolder = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
+        $urlDynamic = folder($_ENV['BASE_URL_UPLOAD'] . '/image/buktitf/', $storeName, $transfer['date']) . $transfer['img'];
         $urlFallback = $_ENV['BASE_URL_UPLOAD'] . '/image/buktitf/' . $storeFolder . '/' . $transfer['img'];
 
-        $pathDynamic = str_replace($_ENV['BASE_URL_UPLOAD'], __DIR__ . '/../', $urlDynamic);
-        $pathFallback = str_replace($_ENV['BASE_URL_UPLOAD'], __DIR__ . '/../', $urlFallback);
+        $pathDynamic = folder($_ENV['BASE_PATH_UPLOAD'] . '/image/buktitf/', $storeName, $transfer['date']) . $transfer['img'];
+        $pathFallback = rtrim($_ENV['BASE_PATH_UPLOAD'], '/') . '/image/buktitf/' . $storeFolder . '/' . $transfer['img'];
 
         $this->financeModel->deleteTf($transfer_id);
 
         if (file_exists($pathDynamic)) {
             unlink($pathDynamic);
-        }elseif (file_exists($pathFallback)) {
+        } elseif (file_exists($pathFallback)) {
             unlink($pathFallback);
         }
         updateStoreCache($store_id, 'payments');

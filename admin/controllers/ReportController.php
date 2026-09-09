@@ -676,13 +676,20 @@ class ReportController {
             $transfers = $this->koneksi->query("SELECT order_id, transfer_id, img, date FROM transfers WHERE order_id IN ($ids) ")->fetch_all(MYSQLI_ASSOC);
 
             foreach ($transfers as $key => $transfer) {
-                $urlDynamic = folder($_ENV['BASE_PATH_UPLOAD'] . '/image/buktitf/', $storeName, $transfer['date']) . $transfer['img'];
                 $storeFolder = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
+                $urlDynamic = folder($_ENV['BASE_URL_UPLOAD'] . '/image/buktitf/', $storeName, $transfer['date']) . $transfer['img'];
                 $urlFallback = $_ENV['BASE_URL_UPLOAD'] . '/image/buktitf/' . $storeFolder . '/' . $transfer['img'];
 
-                $pathDynamic = str_replace($_ENV['BASE_URL_UPLOAD'], __DIR__ . '/../', $urlDynamic);
-                $pathFallback = str_replace($_ENV['BASE_URL_UPLOAD'], __DIR__ . '/../', $urlFallback);
-                $transfer['img_link'] = file_exists($pathDynamic) ? $urlDynamic : (file_exists($pathFallback) ? $urlFallback : $_ENV['BASE_URL_UPLOAD'] . '/image/buktitf/errortf.png');
+                $pathDynamic = folder($_ENV['BASE_PATH_UPLOAD'] . '/image/buktitf/', $storeName, $transfer['date']) . $transfer['img'];
+                $pathFallback = rtrim($_ENV['BASE_PATH_UPLOAD'], '/') . '/image/buktitf/' . $storeFolder . '/' . $transfer['img'];
+
+                if (file_exists($pathDynamic)) {
+                    $transfer['img_link'] = $urlDynamic;
+                } elseif (file_exists($pathFallback)) {
+                    $transfer['img_link'] = $urlFallback;
+                } else {
+                    $transfer['img_link'] = $_ENV['BASE_URL_UPLOAD'] . '/image/buktitf/errortf.png';
+                }
 
                 $transfersByOrder[$transfer['order_id']][] = $transfer;
             }
