@@ -22,6 +22,7 @@ class AuthController {
             exit;
         }
         $data = $query->fetch_assoc();
+        $data['site_key'] = $_ENV['RECAPTCHA_SITE_KEY'] ?? '';
         send_json_response(true, "Database Connected", $data);
     }
 
