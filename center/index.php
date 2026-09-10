@@ -64,6 +64,10 @@ switch ($route) {
         require 'pages/settings.php';
         break;
 
+    case 'helpdesk':
+        require 'pages/helpdesk.php';
+        break;
+
     case 'piutang':
         require 'pages/piutang.php';
         break;

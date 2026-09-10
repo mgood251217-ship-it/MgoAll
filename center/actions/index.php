@@ -43,6 +43,18 @@ switch ($action) {
         if ($action === 'change_user_store') $userController->changeStore();
         break;
 
+    case 'update_help_status':
+        require_once __DIR__ . '/../controllers/HelpdeskController.php';
+        $helpdeskController = new HelpdeskController($koneksi);
+        if ($helpdeskController->updateStatus()) {
+            $_SESSION['swal_success'] = 'Status tiket berhasil diperbarui.';
+        } else {
+            $_SESSION['swal_error'] = 'Gagal memperbarui status tiket.';
+        }
+        header('Location: /helpdesk');
+        exit;
+        break;
+
     case 'add_product':
     case 'edit_product':
     case 'delete_product':

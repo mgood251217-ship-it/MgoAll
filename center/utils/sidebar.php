@@ -129,6 +129,7 @@
         <li><a href="/users"><i class="fas fa-users"></i> <span>Users</span></a></li>
         <li><a href="/productions"><i class="fas fa-industry"></i> <span>Productions</span></a></li>
         <li><a href="/analysis"><i class="fas fa-chart-line"></i> <span>Analysis</span></a></li>
+        <li><a href="/helpdesk"><i class="fas fa-headset"></i> <span>Help Desk</span></a></li>
         <li><a href="/setting"><i class="fas fa-cog"></i> <span>Setting</span></a></li>
     </ul>
 </div>
