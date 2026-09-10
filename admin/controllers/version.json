@@ -1,13 +1,18 @@
 {
-  "version": "2.0.3",
+  "version": "2.0.4",
   "min_required_version": "2.0.0",
-  "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.3/MgoDesktop_2.0.3_x64-setup.exe",
-  "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.3/MgoDesktop_2.0.3.apk",
+  "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.4/MgoDesktop_2.0.4_x64-setup.exe",
+  "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.4/MgoDesktop_2.0.4.apk",
   "force_update": false,
   "release_notes": [
-    "💳 feat: Modal Pembayaran di Detail Transaksi: Proses pembayaran kini dapat dilakukan secara instan langsung dari halaman detail transaksi tanpa perlu berpindah menu.",
-    "🔍 feat: Fitur Zoom In & Zoom Out Visual: Eksplorasi detail data, grafik, maupun tampilan antarmuka kini jauh lebih fleksibel dan nyaman di mata lewat kontrol zoom yang responsif.",
-    "📌 fix: Sticky Table & Tooltip di Global Stock: Navigasi stok global jadi jauh lebih presisi; posisi coloum tabel tetap terkunci saat di-scrolling, dilengkapi tooltip informatif untuk memberikan konteks data secara langsung.",
-    "🚀 perf: Pemuatan Data Instan (Cache-First Rendering): Tampilan data kini terbuka secepat kilat dengan memprioritaskan cache yang ada terlebih dahulu, memangkas waktu tunggu loading secara signifikan."
+    "🎨 feat: Berbagai Pilihan Tema Menarik: Kini tersedia beragam template tema visual yang memanjakan mata dan siap pakai untuk menyesuaikan mood Anda.",
+    "💾 feat: Simpan Otomatis (Auto-Save) Pengaturan: Bebas repot! Setiap perubahan yang Anda lakukan di halaman pengaturan kini akan tersimpan secara otomatis.",
+    "📏 feat: Pengelompokan Kategori Meteran: Item dengan satuan meteran sudah dikelompokkan secara spesifik untuk kategori Laser, Akrilik, Sublim, dan Jersey.",
+    "🛠️ refactor: Tata Letak Pengaturan Lebih Intuitif: Kami merombak ulang (refactor) tata letak halaman pengaturan agar tampilannya lebih modern, bersih, dan sangat mudah digunakan.",
+    "🔔 fix: Sinkronisasi Notifikasi Server: Sistem notifikasi kini telah disesuaikan langsung dengan server sehingga pesan dan peringatan yang tampil jauh lebih jelas.",
+    "📐 fix: Akurasi Input Bahan (m²): Kolom pengisian (input) untuk material dengan satuan meter persegi (m²) telah disempurnakan.",
+    "📱 fix: Tabel 100% Responsif: Tidak ada lagi data yang terpotong saat layar diperkecil. Seluruh tabel kini dapat beradaptasi dengan sempurna di berbagai perangkat.",
+    "🎨 fix: Konsistensi Warna Navbar & Sidebar: Tampilan navigasi Anda sekarang lebih mulus dengan perbaikan sistem pewarnaan pada Navbar dan Sidebar.",
+    "🔄 fix: Perbaikan Fitur Reset Warna: Mengembalikan warna antarmuka ke setelan bawaan (default) kini kembali berfungsi normal dan lancar di halaman pengaturan."
   ]
 }
