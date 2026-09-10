@@ -181,7 +181,7 @@ class UserController {
         $data->category = strtoupper(trim($_POST['category'] ?? ''));
         $data->subject = strtoupper(trim($_POST['subject'] ?? ''));
         $data->detail = strtoupper(trim($_POST['detail'] ?? ''));
-        $data->status = strtoupper(trim($_POST['status'] ?? ''));
+        $data->status = 'TERKIRIM';
         $data->datetime = strtoupper(trim($_POST['datetime'] ?? ''));
 
         if ($this->userModel->createHelp($data)) {
