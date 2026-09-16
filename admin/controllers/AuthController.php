@@ -165,7 +165,7 @@ class AuthController {
                 $this->setInfo($fullUserData, $dataStore);
                 $this->insertActivity($fullUserData['user_id'], $address, $date);
 
-                $tempDir = __DIR__ . '/../temp/login';
+                $tempDir = $_ENV['BASE_PATH_UPLOAD'] . '/temp/login';
                 $filePath = $tempDir . '/' . date("Y-m-d") . '.json';
 
                 if (!is_dir($tempDir)) {
