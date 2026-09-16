@@ -1,6 +1,6 @@
 <?php
 function updateStoreCache($store_id, $module) {
-    $tempDir = dirname(__DIR__) . '/../admin/temp/dataset';
+    $tempDir = $_ENV['BASE_PATH_UPLOAD'] . '/temp/dataset';
     $filePath = $tempDir . '/store_' . $store_id . '.json';
 
     if (!is_dir($tempDir)) {
@@ -20,7 +20,7 @@ function updateStoreCache($store_id, $module) {
 }
 
 function updateOrderTrigger($store_id, $order_id) {
-    $tempDir = dirname(__DIR__) . '/../admin/temp/orders';
+    $tempDir = $_ENV['BASE_PATH_UPLOAD'] . '/temp/orders';
     
     if (!is_dir($tempDir)) {
         mkdir($tempDir, 0775, true);

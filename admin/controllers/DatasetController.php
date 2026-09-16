@@ -20,8 +20,8 @@ class DatasetController {
             session_write_close();
         }
 
-        $dataset_path = __DIR__ . '/../temp/dataset/store_' . $store_id . '.json';
-        $order_trigger_path = __DIR__ . '/../temp/orders/store_' . $store_id . '.json';
+        $dataset_path = $_ENV['BASE_PATH_UPLOAD'] . '/temp/dataset/store_' . $store_id . '.json';
+        $order_trigger_path = $_ENV['BASE_PATH_UPLOAD'] . '/temp/orders/store_' . $store_id . '.json';
 
         $data = [];
 
