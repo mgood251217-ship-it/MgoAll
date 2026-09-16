@@ -48,6 +48,92 @@ if (isset($_SESSION['login_error'])) {
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    :root {
+      --login-primary: #2563eb;
+      --login-text: #0f172a;
+      --login-muted: #64748b;
+      --login-border: #dbe3ef;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: var(--login-text);
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 52%, #e0f2fe 100%);
+    }
+
+    .login-container {
+      width: min(100%, 420px);
+    }
+
+    .login-container .card {
+      overflow: hidden;
+      border: 1px solid rgba(219, 227, 239, 0.9);
+      border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+    }
+
+    .login-container .card-header {
+      padding: 28px 32px 20px;
+      color: #fff;
+      background: var(--login-primary);
+      border: 0;
+      text-align: center;
+    }
+
+    .login-container .card-header h4 {
+      margin: 0;
+      font-weight: 700;
+    }
+
+    .login-container .card-body {
+      padding: 32px;
+    }
+
+    .login-container .form-label {
+      color: var(--login-text);
+      font-weight: 600;
+    }
+
+    .login-container .form-control {
+      min-height: 46px;
+      border-color: var(--login-border);
+      border-radius: 8px;
+    }
+
+    .login-container .form-control:focus {
+      border-color: var(--login-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .login-container .btn-primary {
+      min-height: 46px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--login-primary);
+      font-weight: 600;
+    }
+
+    .login-container .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 16px;
+      }
+
+      .login-container .card-body {
+        padding: 24px;
+      }
+    }
+  </style>
   <?php if (!$is_localhost): ?>
     <script src="https://www.google.com/recaptcha/api.js?render=<?= $site_key ?>"></script>
   <?php endif; ?>
@@ -58,7 +144,6 @@ if (isset($_SESSION['login_error'])) {
     <div class="card">
       <div class="card-header">
         <h4>App Center</h4>
-        <p>Welcome back! Please login to your account.</p>
       </div>
       <div class="card-body">
         <form action="/action?action=login" method="POST">
@@ -68,7 +153,7 @@ if (isset($_SESSION['login_error'])) {
           </div>
           <div class="mb-3">
             <label class="form-label">Password</label>
-            <input autocomplete="off" type="text" name="password" class="form-control migrated-style-26" required placeholder="ΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇó">
+            <input autocomplete="off" type="password" name="password" class="form-control migrated-style-26" required placeholder="Enter your password">
           </div>
           <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response">
           <button type="submit" class="btn btn-primary w-100">Sign In</button>
