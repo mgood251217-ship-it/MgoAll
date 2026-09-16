@@ -236,7 +236,7 @@ $stores = $data['stores'];
                                 <td><?= $no++ ?></td>
                                 <td>
                                     <?php if (!empty($row['picture'])): ?>
-                                        <img src="https://mgood.my.id/admin/assets/img/user/<?= htmlspecialchars($row['picture']) ?>" alt="Foto" class="img-thumbnail-small" />
+                                        <img src="<?= $_ENV['BASE_URL_UPLOAD'] ?>/image/user/<?= htmlspecialchars($row['picture']) ?>" alt="Foto" class="img-thumbnail-small" />
                                     <?php else: ?>
                                         <div class="img-placeholder"><i class="fas fa-user"></i></div>
                                     <?php endif; ?>
