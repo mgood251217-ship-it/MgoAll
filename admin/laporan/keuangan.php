@@ -163,26 +163,26 @@ $dataPemasukan = $data['income'];
                   ]
               ];
 
-              if ($administrator) {
-                  $pengeluaranColumns[] = [
-                      'header' => 'Aksi',
-                      'type'   => 'action_buttons',
-                      'buttons' => [
-                          [
-                              'text'            => 'Edit',
-                              'color'           => 'warning',
-                              'modal'           => 'editExpenditureModal',
-                              'data_attributes' => ['id' => 'expenditure_id', 'type' => 'expenditures', 'info' => 'information', 'nominal' => 'nominal']
-                          ],
-                          [
-                              'text'            => 'Hapus',
-                              'color'           => 'danger',
-                              'modal'           => 'deleteModal',
-                              'data_attributes' => ['id' => 'expenditure_id', 'type' => 'expenditures']
-                          ]
-                      ]
-                  ];
-              }
+              // if ($administrator) {
+              //     $pengeluaranColumns[] = [
+              //         'header' => 'Aksi',
+              //         'type'   => 'action_buttons',
+              //         'buttons' => [
+              //             [
+              //                 'text'            => 'Edit',
+              //                 'color'           => 'warning',
+              //                 'modal'           => 'editExpenditureModal',
+              //                 'data_attributes' => ['id' => 'expenditure_id', 'type' => 'expenditures', 'info' => 'information', 'nominal' => 'nominal']
+              //             ],
+              //             [
+              //                 'text'            => 'Hapus',
+              //                 'color'           => 'danger',
+              //                 'modal'           => 'deleteModal',
+              //                 'data_attributes' => ['id' => 'expenditure_id', 'type' => 'expenditures']
+              //             ]
+              //         ]
+              //     ];
+              // }
 
               echo renderTable([
                   'id'          => 'tablePengeluaran',
@@ -221,40 +221,40 @@ $dataPemasukan = $data['income'];
                     ]
                 ];
 
-                if ($administrator) {
-                    $pemasukanColumns[] = [
-                        'header' => 'Aksi',
-                        'type'   => 'action_buttons',
-                        'buttons' => [
-                            [
-                                'text'            => 'Edit',
-                                'color'           => 'warning',
-                                'modal'           => 'editIncomeModal',
-                                'data_attributes' => [
-                                    'id'      => 'income_id', 
-                                    'type'    => 'income', 
-                                    'info'    => 'information', 
-                                    'nominal' => 'nominal'
-                                ],
-                                'visible'         => function($row) { 
-                                    return strpos($row['information'], 'INPUT SALDO OTOMATIS') === false; 
-                                }
-                            ],
-                            [
-                                'text'            => 'Hapus',
-                                'color'           => 'danger',
-                                'modal'           => 'deleteModal',
-                                'data_attributes' => [
-                                    'id'   => 'income_id', 
-                                    'type' => 'income'
-                                ],
-                                'visible'         => function($row) { 
-                                    return strpos($row['information'], 'INPUT SALDO OTOMATIS') === false; 
-                                }
-                            ]
-                        ]
-                    ];
-                }
+                // if ($administrator) {
+                //     $pemasukanColumns[] = [
+                //         'header' => 'Aksi',
+                //         'type'   => 'action_buttons',
+                //         'buttons' => [
+                //             [
+                //                 'text'            => 'Edit',
+                //                 'color'           => 'warning',
+                //                 'modal'           => 'editIncomeModal',
+                //                 'data_attributes' => [
+                //                     'id'      => 'income_id', 
+                //                     'type'    => 'income', 
+                //                     'info'    => 'information', 
+                //                     'nominal' => 'nominal'
+                //                 ],
+                //                 'visible'         => function($row) { 
+                //                     return strpos($row['information'], 'INPUT SALDO OTOMATIS') === false; 
+                //                 }
+                //             ],
+                //             [
+                //                 'text'            => 'Hapus',
+                //                 'color'           => 'danger',
+                //                 'modal'           => 'deleteModal',
+                //                 'data_attributes' => [
+                //                     'id'   => 'income_id', 
+                //                     'type' => 'income'
+                //                 ],
+                //                 'visible'         => function($row) { 
+                //                     return strpos($row['information'], 'INPUT SALDO OTOMATIS') === false; 
+                //                 }
+                //             ]
+                //         ]
+                //     ];
+                // }
 
                 echo renderTable([
                     'id'          => 'tablePemasukan',
@@ -344,7 +344,7 @@ $dataPemasukan = $data['income'];
         </div>
 
         <!-- Modal Edit Pengeluaran -->
-        <div class="modal fade" id="editExpenditureModal" tabindex="-1" aria-labelledby="editExpenditureModalLabel" aria-hidden="true">
+        <!-- <div class="modal fade" id="editExpenditureModal" tabindex="-1" aria-labelledby="editExpenditureModalLabel" aria-hidden="true">
           <div class="modal-dialog modal-dialog-centered">
             <form class="modal-content" id="updateExpenditureForm">
               <div class="modal-header">
@@ -371,10 +371,10 @@ $dataPemasukan = $data['income'];
               </div>
             </form>
           </div>
-        </div>
+        </div> -->
 
         <!-- Modal Edit Pemasukan -->
-        <div class="modal fade" id="editIncomeModal" tabindex="-1" aria-labelledby="editIncomeModalLabel" aria-hidden="true">
+        <!-- <div class="modal fade" id="editIncomeModal" tabindex="-1" aria-labelledby="editIncomeModalLabel" aria-hidden="true">
           <div class="modal-dialog modal-dialog-centered">
             <form class="modal-content" id="updateIncomeForm">
               <div class="modal-header">
@@ -401,7 +401,7 @@ $dataPemasukan = $data['income'];
               </div>
             </form>
           </div>
-        </div>
+        </div> -->
 
         <!-- Modal Hapus -->
         <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">

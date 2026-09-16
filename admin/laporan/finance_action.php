@@ -51,18 +51,18 @@ switch ($action) {
     case 'sync_finance_by_components/interval_date':
         $financeController->syncFinanceInterval();
         break;
-    case 'update_expenditure':
-        $financeController->updateExpenditure();
-        break;
-    case 'update_income':
-        $financeController->updateIncome();
-        break;
-    case 'delete_expenditure':
-        $financeController->deleteExpenditure();
-        break;
-    case 'delete_income':
-        $financeController->deleteIncome();
-        break;
+    // case 'update_expenditure':
+    //     $financeController->updateExpenditure();
+    //     break;
+    // case 'update_income':
+    //     $financeController->updateIncome();
+    //     break;
+    // case 'delete_expenditure':
+    //     $financeController->deleteExpenditure();
+    //     break;
+    // case 'delete_income':
+    //     $financeController->deleteIncome();
+    //     break;
     case 'create_note_detail':
         $orderController->createNoteDetail();
         break;
