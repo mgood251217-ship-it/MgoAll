@@ -18,192 +18,7 @@ $controller = new PaymentController($koneksi);
 $data = $controller->getIndexData($access);
 ?>
 
-<style>
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 24px;
-    }
-    .page-header h2 {
-        margin: 0;
-        color: #0f172a;
-        font-size: 1.5rem;
-        font-weight: 600;
-    }
-    .filter-card {
-        background-color: #ffffff;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        margin-bottom: 24px;
-    }
-    .filter-form {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 16px;
-        align-items: flex-end;
-    }
-    .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        flex: 1;
-        min-width: 150px;
-    }
-    .form-group label {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: #475569;
-    }
-    .form-control {
-        padding: 10px 16px;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        font-family: inherit;
-        font-size: 0.95rem;
-        color: #0f172a;
-        background-color: #f8fafc;
-        transition: all 0.2s;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    .form-control:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        background-color: #ffffff;
-    }
-    .btn-search {
-        background-color: #3b82f6;
-        color: #ffffff;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-weight: 500;
-        font-size: 0.95rem;
-        cursor: pointer;
-        transition: all 0.2s;
-        height: 42px;
-    }
-    .btn-search:hover {
-        background-color: #2563eb;
-    }
-    .table-container {
-        background-color: #ffffff;
-        border-radius: 12px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        overflow: hidden;
-        margin-bottom: 24px;
-    }
-    .table-modern {
-        width: 100%;
-        border-collapse: collapse;
-        text-align: left;
-    }
-    .table-modern th, .table-modern td {
-        padding: 16px 20px;
-        border-bottom: 1px solid #e2e8f0;
-        vertical-align: middle;
-    }
-    .table-modern th {
-        background-color: #f8fafc;
-        color: #475569;
-        font-weight: 600;
-        font-size: 0.875rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    .table-modern tbody tr:last-child td {
-        border-bottom: none;
-    }
-    .table-modern tbody tr:hover {
-        background-color: #f1f5f9;
-    }
-    .table-modern td {
-        color: #0f172a;
-        font-size: 0.95rem;
-    }
-    .pagination-wrapper {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 16px 20px;
-        background-color: #ffffff;
-        border-top: 1px solid #e2e8f0;
-    }
-    .pagination-info {
-        font-size: 0.875rem;
-        color: #64748b;
-    }
-    .pagination {
-        display: flex;
-        gap: 8px;
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-    .pagination-link {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 36px;
-        height: 36px;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
-        background-color: #ffffff;
-        color: #475569;
-        text-decoration: none;
-        font-size: 0.875rem;
-        font-weight: 500;
-        transition: all 0.2s;
-        padding: 0 12px;
-    }
-    .pagination-link:hover {
-        background-color: #f1f5f9;
-        border-color: #cbd5e1;
-    }
-    .pagination-link.active {
-        background-color: #3b82f6;
-        border-color: #3b82f6;
-        color: #ffffff;
-    }
-    .pagination-link.disabled {
-        background-color: #f8fafc;
-        color: #94a3b8;
-        cursor: not-allowed;
-        pointer-events: none;
-    }
-    .badge-pill {
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        display: inline-block;
-    }
-    .bg-success-light { background-color: #dcfce3; color: #15803d; }
-    .bg-warning-light { background-color: #fef3c7; color: #b45309; }
-    .text-muted-small { font-size: 0.8rem; color: #64748b; display: block; margin-top: 4px; }
-    
-    .btn-action {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        border: none;
-        transition: all 0.2s ease;
-        color: #ffffff;
-        cursor: pointer;
-    }
-    .btn-edit { background-color: #f59e0b; }
-    .btn-edit:hover { background-color: #d97706; }
-    .btn-open { background-color: #3b82f6; }
-    .btn-open:hover { background-color: #2563eb; color: #ffffff; }
-    .btn-delete { background-color: #ef4444; }
-    .btn-delete:hover { background-color: #dc2626; }
-</style>
+
 
 <div class="page-header">
     <h2>Data Transaksi / Pembayaran</h2>
@@ -211,7 +26,7 @@ $data = $controller->getIndexData($access);
 
 <div class="filter-card">
     <form method="get" action="/transactions" class="filter-form">
-        <div class="form-group" style="flex: 2;">
+        <div class="form-group migrated-style-3">
             <label for="store_id">Pilih Toko</label>
             <select name="store_id" id="store_id" class="form-control" onchange="this.form.submit()">
                 <?php if (empty($data['stores'])): ?>
@@ -236,12 +51,12 @@ $data = $controller->getIndexData($access);
             <input type="date" name="end_date" id="end_date" class="form-control" value="<?= htmlspecialchars($data['end_date']) ?>" onchange="this.form.submit()">
         </div>
         
-        <div class="form-group" style="flex: 2;">
+        <div class="form-group migrated-style-3">
             <label for="search">Cari Nomorator / Customer</label>
             <input type="text" name="search" id="search" class="form-control" value="<?= htmlspecialchars($data['search']) ?>" placeholder="Ketik pencarian...">
         </div>
         
-        <div class="form-group" style="flex: 1;">
+        <div class="form-group migrated-style-4">
             <label for="limit">Tampilkan</label>
             <select name="limit" id="limit" class="form-control" onchange="this.form.submit()">
                 <option value="25" <?= $data['limit'] == 25 ? 'selected' : '' ?>>25</option>
@@ -259,24 +74,24 @@ $data = $controller->getIndexData($access);
 </div>
 
 <div class="table-container">
-    <div style="overflow-x: auto;">
+        <div class="table-scroll">
         <table class="table-modern">
             <thead>
                 <tr>
-                    <th style="width: 60px;">No</th>
+                    <th class="migrated-style-78">No</th>
                     <th>ID / Ref</th>
                     <th>Customer</th>
                     <th>Metode</th>
                     <th>Nominal</th>
                     <th>Status</th>
                     <th>Tanggal</th>
-                    <th style="text-align: right; min-width: 100px;">Aksi</th>
+                    <th class="migrated-style-98">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($data['payments'])): ?>
                     <tr>
-                        <td colspan="8" style="text-align: center; color: #64748b; padding: 32px 0;">Tidak ada pembayaran ditemukan</td>
+                        <td class="migrated-style-80" colspan="8">Tidak ada pembayaran ditemukan</td>
                     </tr>
                 <?php else: ?>
                     <?php 
@@ -300,15 +115,15 @@ $data = $controller->getIndexData($access);
                             <td>Rp <?= number_format($row['nominal'] ?? 0, 0, ',', '.') ?></td>
                             <td><span class="badge-pill <?= $paymentBadge ?>"><?= htmlspecialchars($row['status']) ?></span></td>
                             <td><?= $tanggal ?></td>
-                            <td style="text-align: right;">
+                            <td class="migrated-style-9">
                                 <a href="<?= $orderUrl ?>" class="btn-action btn-open me-1" title="Buka Order">
                                     <i class="fas fa-folder-open"></i>
                                 </a>
-                                <button type="button" class="btn-action btn-edit me-1" title="Edit Pembayaran" 
+                                <button type="button" class="btn-action btn-warning me-1" title="Edit Pembayaran"
                                     onclick="openEditModal(<?= $row['payment_id'] ?>, <?= $row['order_id'] ?>, '<?= $row['payment_method'] ?>', <?= $row['nominal'] ?>, '<?= $isoDate ?>')">
                                     <i class="fas fa-pen"></i>
                                 </button>
-                                <button type="button" class="btn-action btn-delete" title="Hapus Pembayaran" 
+                                <button type="button" class="btn-action btn-danger" title="Hapus Pembayaran"
                                     onclick="deletePayment(<?= $row['payment_id'] ?>, <?= $row['order_id'] ?>, <?= $row['store_id'] ?>)">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -390,39 +205,39 @@ $data = $controller->getIndexData($access);
 <!-- Modal Edit Payment -->
 <div class="modal fade" id="modalEditPayment" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <form class="modal-content" style="border-radius: 16px; border: none; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);" id="formEditPayment">
+        <form class="modal-content migrated-style-15" id="formEditPayment">
             <input type="hidden" name="store_id" value="<?= htmlspecialchars($data['current_store_id']) ?>">
             <input type="hidden" name="payment_id" id="edit_payment_id">
             <input type="hidden" name="order_id" id="edit_order_id">
             
-            <div class="modal-header" style="background-color: #ffffff; border-bottom: 1px solid #f1f5f9; padding: 20px 24px;">
-                <h5 class="modal-title" style="font-weight: 600; color: #0f172a;">Edit Pembayaran</h5>
+            <div class="modal-header migrated-style-16">
+                <h5 class="modal-title migrated-style-17">Edit Pembayaran</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" style="padding: 24px; background-color: #f8fafc;">
+            <div class="modal-body migrated-style-18">
                 <div class="mb-3">
-                    <label class="form-label" style="font-weight: 500; font-size: 0.875rem;">Nominal Pembayaran (Rp)</label>
-                    <input type="number" class="form-control" name="nominal" id="edit_nominal" required style="border-radius: 8px;">
+                    <label class="form-label migrated-style-19">Nominal Pembayaran (Rp)</label>
+                    <input type="number" class="form-control migrated-style-20" name="nominal" id="edit_nominal" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" style="font-weight: 500; font-size: 0.875rem;">Metode Pembayaran</label>
-                    <select name="payment_method" id="edit_payment_method" class="form-control form-select" required style="border-radius: 8px;">
+                    <label class="form-label migrated-style-19">Metode Pembayaran</label>
+                    <select name="payment_method" id="edit_payment_method" class="form-control form-select migrated-style-20" required>
                         <option value="CASH">CASH</option>
                         <option value="TF">TRANSFER</option>
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" style="font-weight: 500; font-size: 0.875rem;">Tanggal & Waktu</label>
-                    <input type="datetime-local" class="form-control" name="tanggal" id="edit_tanggal" required style="border-radius: 8px;">
+                    <label class="form-label migrated-style-19">Tanggal & Waktu</label>
+                    <input type="datetime-local" class="form-control migrated-style-20" name="tanggal" id="edit_tanggal" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" style="font-weight: 500; font-size: 0.875rem;">Keterangan Perubahan</label>
-                    <textarea class="form-control" name="keterangan" rows="2" placeholder="Catatan perubahan..." style="border-radius: 8px;"></textarea>
+                    <label class="form-label migrated-style-19">Keterangan Perubahan</label>
+                    <textarea class="form-control migrated-style-20" name="keterangan" rows="2" placeholder="Catatan perubahan..."></textarea>
                 </div>
             </div>
-            <div class="modal-footer" style="border-top: 1px solid #f1f5f9; padding: 16px 24px; background-color: #ffffff;">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">Batal</button>
-                <button type="submit" class="btn btn-primary" style="border-radius: 8px; background-color: #3b82f6; border: none;">Simpan Perubahan</button>
+            <div class="modal-footer migrated-style-21">
+                <button type="button" class="btn btn-secondary migrated-style-20" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-primary migrated-style-22">Simpan Perubahan</button>
             </div>
         </form>
     </div>

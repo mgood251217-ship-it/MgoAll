@@ -18,196 +18,7 @@ $controller = new OrderController($koneksi);
 $data = $controller->getIndexData($access);
 ?>
 
-<style>
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 24px;
-    }
-    .page-header h2 {
-        margin: 0;
-        color: #0f172a;
-        font-size: 1.5rem;
-        font-weight: 600;
-    }
-    .filter-card {
-        background-color: #ffffff;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        margin-bottom: 24px;
-    }
-    .filter-form {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 16px;
-        align-items: flex-end;
-    }
-    .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        flex: 1;
-        min-width: 150px;
-    }
-    .form-group label {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: #475569;
-    }
-    .form-control {
-        padding: 10px 16px;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        font-family: inherit;
-        font-size: 0.95rem;
-        color: #0f172a;
-        background-color: #f8fafc;
-        transition: all 0.2s;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    .form-control:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        background-color: #ffffff;
-    }
-    .btn-search {
-        background-color: #3b82f6;
-        color: #ffffff;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-weight: 500;
-        font-size: 0.95rem;
-        cursor: pointer;
-        transition: all 0.2s;
-        height: 42px;
-    }
-    .btn-search:hover {
-        background-color: #2563eb;
-    }
-    .table-container {
-        background-color: #ffffff;
-        border-radius: 12px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        overflow: hidden;
-        margin-bottom: 24px;
-    }
-    .table-modern {
-        width: 100%;
-        border-collapse: collapse;
-        text-align: left;
-    }
-    .table-modern th, .table-modern td {
-        padding: 16px 20px;
-        border-bottom: 1px solid #e2e8f0;
-        vertical-align: middle;
-    }
-    .table-modern th {
-        background-color: #f8fafc;
-        color: #475569;
-        font-weight: 600;
-        font-size: 0.875rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    .table-modern tbody tr:last-child td {
-        border-bottom: none;
-    }
-    .table-modern tbody tr:hover {
-        background-color: #f1f5f9;
-    }
-    .table-modern td {
-        color: #0f172a;
-        font-size: 0.95rem;
-    }
-    .pagination-wrapper {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 16px 20px;
-        background-color: #ffffff;
-        border-top: 1px solid #e2e8f0;
-    }
-    .pagination-info {
-        font-size: 0.875rem;
-        color: #64748b;
-    }
-    .pagination {
-        display: flex;
-        gap: 8px;
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-    .pagination-link {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 36px;
-        height: 36px;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
-        background-color: #ffffff;
-        color: #475569;
-        text-decoration: none;
-        font-size: 0.875rem;
-        font-weight: 500;
-        transition: all 0.2s;
-        padding: 0 12px;
-    }
-    .pagination-link:hover {
-        background-color: #f1f5f9;
-        border-color: #cbd5e1;
-    }
-    .pagination-link.active {
-        background-color: #3b82f6;
-        border-color: #3b82f6;
-        color: #ffffff;
-    }
-    .pagination-link.disabled {
-        background-color: #f8fafc;
-        color: #94a3b8;
-        cursor: not-allowed;
-        pointer-events: none;
-    }
-    .badge-pill {
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        display: inline-block;
-    }
-    .bg-success-light { background-color: #dcfce3; color: #15803d; }
-    .bg-warning-light { background-color: #fef3c7; color: #b45309; }
-    .bg-danger-light { background-color: #fee2e2; color: #b91c1c; }
-    .bg-info-light { background-color: #e0f2fe; color: #0369a1; }
-    .bg-secondary-light { background-color: #f1f5f9; color: #475569; }
-    .text-muted-small { font-size: 0.8rem; color: #64748b; display: block; margin-top: 4px; }
-    
-    .btn-action {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        border: none;
-        transition: all 0.2s ease;
-        color: #ffffff;
-        cursor: pointer;
-        text-decoration: none;
-    }
-    .btn-open { background-color: #3b82f6; }
-    .btn-open:hover { background-color: #2563eb; color: #ffffff; }
-    .btn-clear { background-color: #f59e0b; }
-    .btn-clear:hover { background-color: #d97706; }
-    .btn-delete { background-color: #ef4444; }
-    .btn-delete:hover { background-color: #dc2626; }
-</style>
+
 
 <div class="page-header">
     <h2>Data Pesanan</h2>
@@ -215,7 +26,7 @@ $data = $controller->getIndexData($access);
 
 <div class="filter-card">
     <form method="get" action="/orders" class="filter-form">
-        <div class="form-group" style="flex: 2;">
+        <div class="form-group migrated-style-3">
             <label for="store_id">Pilih Toko</label>
             <select name="store_id" id="store_id" class="form-control" onchange="this.form.submit()">
                 <?php if (empty($data['stores'])): ?>
@@ -240,12 +51,12 @@ $data = $controller->getIndexData($access);
             <input type="date" name="end_date" id="end_date" class="form-control" value="<?= htmlspecialchars($data['end_date']) ?>" onchange="this.form.submit()">
         </div>
         
-        <div class="form-group" style="flex: 2;">
+        <div class="form-group migrated-style-3">
             <label for="search">Cari Nomorator / Customer</label>
             <input type="text" name="search" id="search" class="form-control" value="<?= htmlspecialchars($data['search']) ?>" placeholder="Ketik pencarian...">
         </div>
         
-        <div class="form-group" style="flex: 1;">
+        <div class="form-group migrated-style-4">
             <label for="limit">Tampilkan</label>
             <select name="limit" id="limit" class="form-control" onchange="this.form.submit()">
                 <option value="25" <?= $data['limit'] == 25 ? 'selected' : '' ?>>25</option>
@@ -263,24 +74,24 @@ $data = $controller->getIndexData($access);
 </div>
 
 <div class="table-container">
-    <div style="overflow-x: auto;">
+    <div class="table-scroll">
         <table class="table-modern">
             <thead>
                 <tr>
-                    <th style="width: 60px;">No</th>
+                    <th class="migrated-style-78">No</th>
                     <th>Nomorator</th>
                     <th>Customer</th>
                     <th>Item</th>
                     <th>Total Biaya</th>
                     <th>Terbayar</th>
                     <th>Pembayaran</th>
-                    <th style="text-align: right; min-width: 140px;">Aksi</th>
+                    <th class="migrated-style-79">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($data['orders'])): ?>
                     <tr>
-                        <td colspan="8" style="text-align: center; color: #64748b; padding: 32px 0;">Tidak ada pesanan ditemukan</td>
+                        <td class="migrated-style-80" colspan="8">Tidak ada pesanan ditemukan</td>
                     </tr>
                 <?php else: ?>
                     <?php 
@@ -316,14 +127,14 @@ $data = $controller->getIndexData($access);
                             <td>Rp <?= number_format($row['total'] ?? 0, 0, ',', '.') ?></td>
                             <td>Rp <?= number_format($row['total_paid'] ?? 0, 0, ',', '.') ?></td>
                             <td><span class="badge-pill <?= $paymentBadge ?>"><?= $paymentStatus ?></span></td>
-                            <td style="text-align: right;">
+                            <td class="migrated-style-9">
                                 <a href="<?= $orderUrl ?>" class="btn-action btn-open me-1" title="Buka Order">
                                     <i class="fas fa-folder-open"></i>
                                 </a>
-                                <button type="button" class="btn-action btn-clear me-1" title="Clear Item Order" onclick="clearOrderItems(<?= $row['order_id'] ?>)">
+                                <button type="button" class="btn-action btn-warning me-1" title="Clear Item Order" onclick="clearOrderItems(<?= $row['order_id'] ?>)">
                                     <i class="fas fa-eraser"></i>
                                 </button>
-                                <button type="button" class="btn-action btn-delete" title="Hapus Order" onclick="deleteOrder(<?= $row['order_id'] ?>)">
+                                <button type="button" class="btn-action btn-danger" title="Hapus Order" onclick="deleteOrder(<?= $row['order_id'] ?>)">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </td>

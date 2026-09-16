@@ -20,154 +20,7 @@ $stores = $data['stores'];
 $all_users = $data['all_users'];
 ?>
 
-<style>
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 24px;
-    }
-    .page-header h2 {
-        margin: 0;
-        color: #0f172a;
-        font-size: 1.5rem;
-        font-weight: 600;
-    }
-    .btn-primary-custom {
-        background-color: #3b82f6;
-        color: #ffffff;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-weight: 500;
-        font-size: 0.95rem;
-        transition: all 0.2s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none;
-    }
-    .btn-primary-custom:hover {
-        background-color: #2563eb;
-        color: #ffffff;
-        transform: translateY(-1px);
-    }
-    .table-container {
-        background-color: #ffffff;
-        border-radius: 12px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        overflow: hidden;
-    }
-    .table-modern {
-        width: 100%;
-        border-collapse: collapse;
-        text-align: left;
-        margin-bottom: 0;
-    }
-    .table-modern th, .table-modern td {
-        padding: 16px 20px;
-        border-bottom: 1px solid #e2e8f0;
-        vertical-align: middle;
-    }
-    .table-modern th {
-        background-color: #f8fafc;
-        color: #475569;
-        font-weight: 600;
-        font-size: 0.875rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    .table-modern tbody tr:last-child td {
-        border-bottom: none;
-    }
-    .table-modern tbody tr:hover {
-        background-color: #f1f5f9;
-    }
-    .table-modern td {
-        color: #0f172a;
-        font-size: 0.95rem;
-    }
-    .badge-custom {
-        padding: 6px 12px;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        background-color: #dbeafe;
-        color: #1d4ed8;
-        display: inline-block;
-    }
-    .btn-action {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        border: none;
-        transition: all 0.2s ease;
-        color: #ffffff;
-        cursor: pointer;
-    }
-    .btn-edit { background-color: #3b82f6; }
-    .btn-edit:hover { background-color: #2563eb; }
-    .btn-kelola { 
-        background-color: #ef4444; 
-        font-size: 0.875rem; 
-        width: auto; 
-        padding: 0 16px; 
-        font-weight: 500;
-    }
-    .btn-kelola:hover { background-color: #dc2626; }
-    
-    .modal-content-custom {
-        border: none;
-        border-radius: 16px;
-        overflow: hidden;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    }
-    .modal-header-custom {
-        background-color: #ffffff;
-        border-bottom: 1px solid #f1f5f9;
-        padding: 20px 24px;
-    }
-    .modal-title-custom {
-        font-weight: 600;
-        color: #0f172a;
-        font-size: 1.25rem;
-        margin: 0;
-    }
-    .modal-body-custom {
-        padding: 24px;
-        background-color: #f8fafc;
-    }
-    .modal-footer-custom {
-        border-top: 1px solid #f1f5f9;
-        padding: 16px 24px;
-        background-color: #ffffff;
-    }
-    .form-label-custom {
-        font-weight: 500;
-        font-size: 0.875rem;
-        color: #334155;
-        margin-bottom: 8px;
-        display: block;
-    }
-    .form-control-custom {
-        border-radius: 8px;
-        border: 1px solid #cbd5e1;
-        padding: 10px 16px;
-        font-size: 0.95rem;
-        background-color: #ffffff;
-        transition: all 0.2s ease;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    .form-control-custom:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-</style>
+
 
 <div class="page-header">
     <h2>Cabang & Toko</h2>
@@ -177,7 +30,7 @@ $all_users = $data['all_users'];
 </div>
 
 <div class="table-container">
-    <div style="overflow-x: auto;">
+    <div class="table-scroll">
         <table class="table-modern">
             <thead>
                 <tr>
@@ -189,14 +42,14 @@ $all_users = $data['all_users'];
                     <th>Email</th>
                     <th>Manager</th>
                     <th>Karyawan</th>
-                    <th style="text-align: center;">Aksi</th>
-                    <th style="text-align: center;">Kelola</th>
+                    <th class="migrated-style-95">Aksi</th>
+                    <th class="migrated-style-95">Kelola</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($stores)): ?>
                     <tr>
-                        <td colspan="10" style="text-align: center; color: #64748b; padding: 32px 0;">Tidak ada data toko ditemukan</td>
+                        <td class="migrated-style-80" colspan="10">Tidak ada data toko ditemukan</td>
                     </tr>
                 <?php else: ?>
                     <?php $no = 1; foreach ($stores as $row): ?>
@@ -209,8 +62,8 @@ $all_users = $data['all_users'];
                             <td><?= htmlspecialchars($row['email']) ?></td>
                             <td><?= htmlspecialchars($row['owner_name'] ?? '-') ?></td>
                             <td><span class="badge-custom"><?= (int)$row['total_karyawan'] ?> Orang</span></td>
-                            <td style="text-align: center;">
-                                <button type="button" class="btn-action btn-edit" 
+                            <td class="migrated-style-95">
+                                <button type="button" class="btn-action btn-warning"
                                     data-bs-toggle="modal" 
                                     data-bs-target="#editModal"
                                     data-store-id="<?= $row['store_id'] ?>"
@@ -223,8 +76,8 @@ $all_users = $data['all_users'];
                                     <i class="fas fa-pen"></i>
                                 </button>
                             </td>
-                            <td style="text-align: center;">
-                                <form class="kelolaForm" style="margin: 0; display: inline-block;">
+                            <td class="migrated-style-95">
+                                <form class="kelolaForm migrated-style-96">
                                     <input type="hidden" name="user_id" value="<?= $row['owner_id'] ?>">
                                     <button type="submit" class="btn-action btn-kelola">Kelola</button>
                                 </form>
@@ -280,8 +133,8 @@ $all_users = $data['all_users'];
                     </div>
                 </div>
                 <div class="modal-footer modal-footer-custom">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">Batal</button>
-                    <button type="submit" class="btn btn-success" style="border-radius: 8px;">Simpan Perubahan</button>
+                    <button type="button" class="btn btn-secondary migrated-style-20" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success migrated-style-20">Simpan Perubahan</button>
                 </div>
             </form>
         </div>
@@ -298,11 +151,11 @@ $all_users = $data['all_users'];
             <div class="modal-body modal-body-custom">
                 <div class="mb-3">
                     <label class="form-label-custom">Nama Toko</label>
-                    <input type="text" class="form-control-custom" name="name" required style="text-transform:uppercase" oninput="this.value = this.value.toUpperCase();">
+                    <input type="text" class="form-control-custom migrated-style-97" name="name" required oninput="this.value = this.value.toUpperCase();">
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Cabang</label>
-                    <input type="text" class="form-control-custom" name="branch" required style="text-transform:uppercase" oninput="this.value = this.value.toUpperCase();">
+                    <input type="text" class="form-control-custom migrated-style-97" name="branch" required oninput="this.value = this.value.toUpperCase();">
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Alamat</label>
@@ -331,8 +184,8 @@ $all_users = $data['all_users'];
                 </div>
             </div>
             <div class="modal-footer modal-footer-custom">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">Batal</button>
-                <button type="submit" class="btn-primary-custom" style="padding: 8px 20px;">Simpan Toko</button>
+                <button type="button" class="btn btn-secondary migrated-style-20" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn-primary-custom migrated-style-94">Simpan Toko</button>
             </div>
         </form>
     </div>

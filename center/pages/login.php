@@ -51,96 +51,7 @@ if (isset($_SESSION['login_error'])) {
   <?php if (!$is_localhost): ?>
     <script src="https://www.google.com/recaptcha/api.js?render=<?= $site_key ?>"></script>
   <?php endif; ?>
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      min-height: 100vh;
-      background: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80') no-repeat center center fixed;
-      background-size: cover;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0;
-    }
-    body::before {
-      content: "";
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(15, 23, 42, 0.75);
-      backdrop-filter: blur(12px);
-      z-index: 0;
-    }
-    .login-container {
-      position: relative;
-      z-index: 1;
-      width: 100%;
-      max-width: 400px;
-      padding: 20px;
-    }
-    .card {
-      background: rgba(255, 255, 255, 0.98);
-      border: none;
-      border-radius: 16px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    }
-    .card-header {
-      background: transparent;
-      border-bottom: none;
-      padding: 40px 32px 20px;
-      text-align: center;
-    }
-    .card-header h4 {
-      font-weight: 700;
-      color: #0f172a;
-      margin: 0;
-      font-size: 1.5rem;
-    }
-    .card-header p {
-      color: #64748b;
-      margin-top: 8px;
-      margin-bottom: 0;
-      font-size: 0.95rem;
-    }
-    .card-body {
-      padding: 0 32px 40px;
-    }
-    .form-label {
-      font-weight: 600;
-      color: #334155;
-      font-size: 0.875rem;
-      margin-bottom: 8px;
-    }
-    .form-control {
-      padding: 12px 16px;
-      border-radius: 10px;
-      border: 1px solid #e2e8f0;
-      background-color: #f8fafc;
-      font-size: 0.95rem;
-      transition: all 0.2s ease;
-    }
-    .form-control:focus {
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-      background-color: #ffffff;
-    }
-    .btn-primary {
-      background-color: #3b82f6;
-      border: none;
-      padding: 12px;
-      border-radius: 10px;
-      font-weight: 600;
-      font-size: 1rem;
-      margin-top: 24px;
-      transition: all 0.2s ease;
-    }
-    .btn-primary:hover {
-      background-color: #2563eb;
-      transform: translateY(-1px);
-    }
-    .btn-primary:active {
-      transform: translateY(0);
-    }
-  </style>
+  
 </head>
 <body>
   <div class="login-container">
@@ -157,7 +68,7 @@ if (isset($_SESSION['login_error'])) {
           </div>
           <div class="mb-3">
             <label class="form-label">Password</label>
-            <input autocomplete="off" type="text" name="password" class="form-control" required style="-webkit-text-security: disc;" placeholder="••••••••">
+            <input autocomplete="off" type="text" name="password" class="form-control migrated-style-26" required placeholder="ΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇó">
           </div>
           <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response">
           <button type="submit" class="btn btn-primary w-100">Sign In</button>

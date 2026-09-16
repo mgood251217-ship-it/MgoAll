@@ -33,141 +33,7 @@ $statusLabels = [
 ];
 ?>
 
-<style>
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 24px;
-    }
 
-    .page-header h2 {
-        margin: 0;
-        color: #0f172a;
-        font-size: 1.5rem;
-        font-weight: 600;
-    }
-
-    .summary-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 16px;
-        margin-bottom: 24px;
-    }
-
-    .summary-card {
-        background: #fff;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
-    }
-
-    .summary-card .label {
-        display: block;
-        margin-bottom: 8px;
-        color: #64748b;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .summary-card .value {
-        color: #0f172a;
-        font-size: 1.6rem;
-        font-weight: 700;
-    }
-
-    .table-container {
-        background-color: #ffffff;
-        border-radius: 12px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        overflow: hidden;
-    }
-
-    .table-modern {
-        width: 100%;
-        border-collapse: collapse;
-        text-align: left;
-    }
-
-    .table-modern th,
-    .table-modern td {
-        padding: 16px 18px;
-        border-bottom: 1px solid #e2e8f0;
-        vertical-align: top;
-    }
-
-    .table-modern th {
-        background-color: #f8fafc;
-        color: #475569;
-        font-size: 0.78rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .table-modern tbody tr:hover {
-        background-color: #f8fafc;
-    }
-
-    .ticket-subject {
-        font-weight: 600;
-        color: #0f172a;
-        margin-bottom: 4px;
-    }
-
-    .ticket-detail {
-        font-size: 0.82rem;
-        color: #475569;
-        line-height: 1.5;
-        max-width: 360px;
-    }
-
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 6px 12px;
-        border-radius: 999px;
-        color: #fff;
-        font-size: 0.72rem;
-        font-weight: 700;
-        text-transform: uppercase;
-    }
-
-    .user-meta {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .user-name {
-        font-weight: 600;
-        color: #0f172a;
-    }
-
-    .user-store {
-        color: #64748b;
-        font-size: 0.78rem;
-    }
-
-    .select-status {
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-        padding: 8px 10px;
-        background: #fff;
-        color: #0f172a;
-        font-size: 0.82rem;
-        min-width: 120px;
-    }
-
-    .empty-state {
-        padding: 40px 20px;
-        text-align: center;
-        color: #64748b;
-        font-size: 0.95rem;
-    }
-</style>
 
 <div class="page-header">
     <h2>Help Desk</h2>
@@ -229,7 +95,7 @@ $statusLabels = [
                             </div>
                         </td>
                         <td>
-                            <span class="status-badge" style="background: #e2e8f0; color:#0f172a;">
+                            <span class="status-badge migrated-style-23">
                                 <?= htmlspecialchars(strtoupper($ticket['category'] ?? '-')) ?>
                             </span>
                         </td>
@@ -240,16 +106,26 @@ $statusLabels = [
                             <div class="ticket-detail"><?= htmlspecialchars($ticket['detail'] ?? '-') ?></div>
                         </td>
                         <td>
-                            <form method="POST" action="/action?action=update_help_status" style="display:flex; align-items:center; gap:8px;">
+                            <form class="migrated-style-24" method="POST" action="/action?action=update_help_status">
                                 <input type="hidden" name="id" value="<?= (int) ($ticket['id'] ?? 0) ?>">
-                                <select name="status" class="select-status" aria-label="Ubah status tiket" onchange="this.form.submit()">
+                                <input type="hidden" name="status" value="<?= htmlspecialchars($status) ?>">
+                                <div class="dropdown">
+                                    <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle migrated-style-100" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ubah status tiket">
+                                        <?= htmlspecialchars($statusName) ?>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 migrated-style-20">
                                     <?php foreach ($statusLabels as $value => $label): ?>
-                                        <option value="<?= htmlspecialchars($value) ?>" <?= $status === $value ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
+                                        <li>
+                                            <button type="button" class="dropdown-item <?= $status === $value ? 'active' : '' ?>" data-status="<?= htmlspecialchars($value) ?>">
+                                                <?= htmlspecialchars($label) ?>
+                                            </button>
+                                        </li>
                                     <?php endforeach; ?>
-                                </select>
+                                    </ul>
+                                </div>
                             </form>
-                            <div style="margin-top:8px;">
-                                <span class="status-badge" style="background: <?= htmlspecialchars($statusColor) ?>;">
+                            <div class="migrated-style-25">
+                                <span class="status-badge status-<?= strtolower(htmlspecialchars($status)) ?>">
                                     <?= htmlspecialchars($statusName) ?>
                                 </span>
                             </div>
@@ -261,3 +137,13 @@ $statusLabels = [
         </table>
     <?php endif; ?>
 </div>
+
+<script>
+document.querySelectorAll('[data-status]').forEach(function(button) {
+    button.addEventListener('click', function() {
+        const form = button.closest('form');
+        form.querySelector('input[name="status"]').value = button.dataset.status;
+        form.submit();
+    });
+});
+</script>

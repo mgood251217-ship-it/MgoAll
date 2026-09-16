@@ -57,205 +57,10 @@ if (isset($_GET['ajax_payment'])) {
 }
 ?>
 
-<style>
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 24px;
-    }
-    .page-header h2 {
-        margin: 0;
-        color: #0f172a;
-        font-size: 1.5rem;
-        font-weight: 600;
-    }
-    .btn-primary-custom {
-        background-color: #3b82f6;
-        color: #ffffff;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-weight: 500;
-        font-size: 0.95rem;
-        transition: all 0.2s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none;
-        cursor: pointer;
-    }
-    .btn-primary-custom:hover {
-        background-color: #2563eb;
-        color: #ffffff;
-        transform: translateY(-1px);
-    }
-    .btn-secondary-custom {
-        background-color: #64748b;
-        color: #ffffff;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-weight: 500;
-        font-size: 0.9rem;
-        transition: all 0.2s ease;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .btn-secondary-custom:hover {
-        background-color: #475569;
-        color: #ffffff;
-    }
-    .filter-card {
-        background-color: #ffffff;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        margin-bottom: 24px;
-    }
-    
-    .top-info-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 16px;
-        margin-bottom: 24px;
-    }
-    .info-box {
-        background-color: #ffffff;
-        border-radius: 12px;
-        padding: 16px 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        border: 1px solid #f1f5f9;
-        border-left: 4px solid #3b82f6;
-    }
-    
-    .main-layout {
-        display: grid;
-        grid-template-columns: 380px 1fr;
-        gap: 24px;
-        align-items: start;
-    }
-    @media (max-width: 1024px) {
-        .main-layout {
-            grid-template-columns: 1fr;
-        }
-    }
-    
-    .bottom-split {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 24px;
-    }
-    @media (max-width: 768px) {
-        .bottom-split {
-            grid-template-columns: 1fr;
-        }
-    }
 
-    .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        margin-bottom: 16px;
-    }
-    .form-group label {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: #475569;
-    }
-    .form-control {
-        padding: 9px 14px;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        font-family: inherit;
-        font-size: 0.95rem;
-        color: #0f172a;
-        background-color: #f8fafc;
-        transition: all 0.2s;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    .form-control:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        background-color: #ffffff;
-    }
-    
-    .table-container {
-        background-color: #ffffff;
-        border-radius: 12px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        overflow: hidden;
-        margin-bottom: 24px;
-    }
-    .table-header-title {
-        padding: 16px 20px;
-        background-color: #f8fafc;
-        border-bottom: 1px solid #e2e8f0;
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #0f172a;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .table-modern {
-        width: 100%;
-        border-collapse: collapse;
-        text-align: left;
-    }
-    .table-modern th, .table-modern td {
-        padding: 14px 20px;
-        border-bottom: 1px solid #e2e8f0;
-        vertical-align: middle;
-    }
-    .table-modern th {
-        background-color: #ffffff;
-        color: #475569;
-        font-weight: 600;
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    .table-modern tbody tr:last-child td {
-        border-bottom: none;
-    }
-    .table-modern td {
-        color: #0f172a;
-        font-size: 0.95rem;
-    }
-    
-    .badge-info {
-        background-color: #e0f2fe;
-        color: #0369a1;
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        display: inline-block;
-    }
-    .btn-action {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        border: none;
-        transition: all 0.2s ease;
-        color: #ffffff;
-        cursor: pointer;
-    }
-    .btn-delete { background-color: #ef4444; }
-    .btn-delete:hover { background-color: #dc2626; }
-</style>
 
 <div class="page-header">
-    <h2>Detail Order: <span style="color: #3b82f6;"><?= sanitize($order['nomorator']) ?></span></h2>
+    <h2>Detail Order: <span class="migrated-style-27"><?= sanitize($order['nomorator']) ?></span></h2>
     <a href="/orders" class="btn-secondary-custom">
         <i class="fas fa-arrow-left"></i> Kembali
     </a>
@@ -263,19 +68,19 @@ if (isset($_GET['ajax_payment'])) {
 
 <div class="top-info-grid">
     <div class="info-box">
-        <span style="font-size: 0.8rem; color: #64748b; display: block; margin-bottom: 4px;">Nama Customer</span>
-        <strong style="font-size: 1.1rem;"><?= sanitize(title_case($order['customer_name'])) ?></strong>
+        <span class="migrated-style-28">Nama Customer</span>
+        <strong class="migrated-style-29"><?= sanitize(title_case($order['customer_name'])) ?></strong>
     </div>
     <div class="info-box">
-        <span style="font-size: 0.8rem; color: #64748b; display: block; margin-bottom: 4px;">Tanggal Order</span>
-        <strong style="font-size: 1.1rem;"><i class="far fa-calendar-alt me-1"></i> <?= date('d M Y, H:i', strtotime($order['date'])) ?></strong>
+        <span class="migrated-style-28">Tanggal Order</span>
+        <strong class="migrated-style-29"><i class="far fa-calendar-alt me-1"></i> <?= date('d M Y, H:i', strtotime($order['date'])) ?></strong>
     </div>
-    <div class="info-box" style="border-left-color: #ef4444;">
-        <span style="font-size: 0.8rem; color: #64748b; display: block; margin-bottom: 4px;">Tenggat Waktu (Deadline)</span>
-        <strong style="font-size: 1.1rem; color: #ef4444;"><i class="far fa-clock me-1"></i> <?= date('d M Y, H:i', strtotime($order['deadline'])) ?></strong>
+    <div class="info-box migrated-style-30">
+        <span class="migrated-style-28">Tenggat Waktu (Deadline)</span>
+        <strong class="migrated-style-31"><i class="far fa-clock me-1"></i> <?= date('d M Y, H:i', strtotime($order['deadline'])) ?></strong>
     </div>
-    <div class="info-box" style="border-left-color: #10b981;">
-        <span style="font-size: 0.8rem; color: #64748b; display: block; margin-bottom: 4px;">Operator Input</span>
+    <div class="info-box migrated-style-32">
+        <span class="migrated-style-28">Operator Input</span>
         <div class="badge-info mt-1"><?= sanitize($order['operator_initial']) ?></div>
     </div>
 </div>
@@ -284,7 +89,7 @@ if (isset($_GET['ajax_payment'])) {
     
     <div class="left-panel">
         <div class="filter-card">
-            <h3 class="table-header-title" style="margin: -20px -20px 20px -20px; border-radius: 12px 12px 0 0;"><i class="fas fa-cart-plus" style="color: #3b82f6;"></i> Tambah Item</h3>
+            <h3 class="table-header-title migrated-style-33"><i class="fas fa-cart-plus migrated-style-27"></i> Tambah Item</h3>
             <form id="addItemForm">
                 <input type="hidden" name="order_id" value="<?= sanitize($order_id) ?>">
                 
@@ -307,19 +112,19 @@ if (isset($_GET['ajax_payment'])) {
                     </select>
                 </div>
 
-                <div class="form-group" id="ukuranInputs" style="display:none; flex-direction: row; gap: 10px;">
-                    <div style="flex: 1;">
+                <div class="form-group migrated-style-34" id="ukuranInputs">
+                    <div class="migrated-style-4">
                         <label>Panjang (m)</label>
                         <input type="number" step="0.01" min="0" id="panjang" class="form-control" placeholder="Pjg">
                     </div>
-                    <div style="display: flex; align-items: flex-end; padding-bottom: 10px; font-weight: bold;">x</div>
-                    <div style="flex: 1;">
+                    <div class="migrated-style-35">x</div>
+                    <div class="migrated-style-4">
                         <label>Lebar (m)</label>
                         <input type="number" step="0.01" min="0" id="lebar" class="form-control" placeholder="Lbr">
                     </div>
                 </div>
 
-                <div class="form-group" id="ukuranJerseyRow" style="display:none;">
+                <div class="form-group migrated-style-36" id="ukuranJerseyRow">
                     <label for="ukuranJersey">Ukuran Jersey</label>
                     <select id="ukuranJersey" name="ukuran_jersey" class="form-control select2">
                         <option value="">-- Pilih Ukuran --</option>
@@ -335,30 +140,30 @@ if (isset($_GET['ajax_payment'])) {
                     </select>
                 </div>
 
-                <div class="form-group" id="bahanSublim" style="display:none;">
+                <div class="form-group migrated-style-36" id="bahanSublim">
                     <label>Kiloan (kg)</label>
                     <input type="number" step="0.01" min="0" id="kiloan" class="form-control" placeholder="Berat (kg)">
                 </div>
 
-                <div class="form-group" id="settingDesain" style="display:none;">
+                <div class="form-group migrated-style-36" id="settingDesain">
                     <label>Waktu Pengerjaan</label>
                     <input type="number" min="00:00" max="23:59" id="waktu" class="form-control" placeholder="Menit">
                 </div>
 
-                <div class="form-group" id="ukuranDropdownRow" style="display:none;">
+                <div class="form-group migrated-style-36" id="ukuranDropdownRow">
                     <label for="ukuranDropdown">Variasi Ukuran</label>
                     <select id="ukuranDropdown" name="ukuran_variasi" class="form-control select2">
                         <option value="">-- Pilih Ukuran --</option>
                     </select>
                 </div>
 
-                <div class="form-group" id="ukuranSublimRow" style="display:none; flex-direction: row; gap: 10px;">
-                    <div style="flex: 1;">
+                <div class="form-group migrated-style-34" id="ukuranSublimRow">
+                    <div class="migrated-style-4">
                         <label>Panjang (m)</label>
                         <input type="number" step="0.01" min="0" id="panjangSublim" class="form-control" placeholder="Pjg">
                     </div>
-                    <div style="display: flex; align-items: flex-end; padding-bottom: 10px; font-weight: bold;">x</div>
-                    <div style="flex: 1;">
+                    <div class="migrated-style-35">x</div>
+                    <div class="migrated-style-4">
                         <label>Lbr Bahan</label>
                         <select id="lebarSublim" class="form-control select2">
                             <option value="">Pilih</option>
@@ -378,22 +183,22 @@ if (isset($_GET['ajax_payment'])) {
 
                 <div class="form-group" id="finishingRow">
                     <label>Finishing</label>
-                    <div id="finishing" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px;"></div>
+                    <div class="migrated-style-37" id="finishing"></div>
                 </div>
 
-                <div class="form-group" style="flex-direction: row; align-items: center; gap: 15px;">
-                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                        <input type="checkbox" id="enableDiskon" style="width: 16px; height: 16px;">
+                <div class="form-group migrated-style-38">
+                    <label class="migrated-style-39">
+                        <input class="migrated-style-40" type="checkbox" id="enableDiskon">
                         <span>Diskon Item</span>
                     </label>
-                    <input type="number" class="form-control" id="diskonInput" style="display: none; flex: 1;" min="0" placeholder="Nominal Rp">
+                    <input type="number" class="form-control migrated-style-41" id="diskonInput" min="0" placeholder="Nominal Rp">
                 </div>
 
-                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 16px 0;">
+                <hr class="migrated-style-42">
 
-                <div style="text-align: right;">
-                    <div id="priceDisplay" style="font-size: 1.15rem; font-weight: bold; color: #3b82f6; margin-bottom: 15px;">Total Harga: Rp 0</div>
-                    <button type="button" class="btn-primary-custom" id="btnTambah" style="width: 100%; justify-content: center;">
+                <div class="migrated-style-9">
+                    <div class="migrated-style-43" id="priceDisplay">Total Harga: Rp 0</div>
+                    <button type="button" class="btn-primary-custom migrated-style-44" id="btnTambah">
                         <i class="fas fa-plus"></i> Tambah ke Order
                     </button>
                 </div>
@@ -404,8 +209,8 @@ if (isset($_GET['ajax_payment'])) {
     <div class="right-panel">
         
         <div class="table-container">
-            <h3 class="table-header-title"><i class="fas fa-list-ul" style="color: #3b82f6;"></i> Daftar Item Order</h3>
-            <div style="overflow-x: auto;">
+            <h3 class="table-header-title"><i class="fas fa-list-ul migrated-style-27"></i> Daftar Item Order</h3>
+            <div class="table-scroll">
                 <table class="table-modern" id="orderItemsTable">
                     <thead>
                         <tr>
@@ -415,7 +220,7 @@ if (isset($_GET['ajax_payment'])) {
                             <th>Qty</th>
                             <th>Sat</th>
                             <th>Jumlah</th>
-                            <th style="text-align: right;">Aksi</th>
+                            <th class="migrated-style-9">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -426,37 +231,37 @@ if (isset($_GET['ajax_payment'])) {
 
         <div class="bottom-split">
             
-            <div class="filter-card" style="margin-bottom: 0;">
-                <h3 class="table-header-title" style="margin: -20px -20px 16px -20px; border-radius: 12px 12px 0 0; border-bottom: none;"><i class="fas fa-sticky-note" style="color: #f59e0b;"></i> Catatan Internal</h3>
-                <div id="noteDisplay" style="margin-bottom: 12px;"></div>
+            <div class="filter-card migrated-style-7">
+                <h3 class="table-header-title migrated-style-45"><i class="fas fa-sticky-note migrated-style-46"></i> Catatan Internal</h3>
+                <div class="migrated-style-47" id="noteDisplay"></div>
                 <form id="addNote">
                     <div class="form-group">
                         <textarea class="form-control" id="exampleFormControlTextarea1" rows="2" name="note" placeholder="Ketik catatan khusus untuk order ini..."></textarea>
                         <input type="hidden" name="order_id" value="<?= $order_id ?>">
                     </div>
-                    <button type="submit" class="btn-primary-custom" style="background-color: #10b981; width: 100%; justify-content: center;">
+                    <button type="submit" class="btn-primary-custom migrated-style-48">
                         <i class="fas fa-save"></i> Simpan Catatan
                     </button>
                 </form>
             </div>
             
-            <div class="payment-card filter-card" id="payment-card-body" style="margin-bottom: 0;">
-                <h3 class="table-header-title" style="margin: -20px -20px 16px -20px; border-radius: 12px 12px 0 0; border-bottom: none;">
-                    <i class="fas fa-wallet" style="color: #10b981;"></i> Detail Pembayaran
+            <div class="payment-card filter-card migrated-style-7" id="payment-card-body">
+                <h3 class="table-header-title migrated-style-45">
+                    <i class="fas fa-wallet migrated-style-14"></i> Detail Pembayaran
                 </h3>
                 
-                <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #cbd5e1;">
+                <div class="payment-summary">
                     <div>
-                        <span style="font-size: 0.75rem; color: #64748b;">Total Tagihan</span><br>
+                        <span class="payment-label">Total Tagihan</span>
                         <strong id="total-tagihan-text">Rp 0</strong>
                     </div>
                     <div>
-                        <span style="font-size: 0.75rem; color: #64748b;">Terbayar</span><br>
-                        <strong style="color: #10b981;" id="terbayar-text">Rp 0</strong>
+                        <span class="payment-label">Terbayar</span>
+                        <strong class="payment-paid" id="terbayar-text">Rp 0</strong>
                     </div>
                     <div>
-                        <span style="font-size: 0.75rem; color: #64748b;">Kekurangan</span><br>
-                        <strong style="color: #ef4444;" id="kekurangan-text">Rp 0</strong>
+                        <span class="payment-label">Kekurangan</span>
+                        <strong class="payment-due" id="kekurangan-text">Rp 0</strong>
                     </div>
                 </div>
 
@@ -542,8 +347,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <td>${item.quantity}</td>
                                 <td>${item.unit}</td>
                                 <td>Rp ${Number(item.amount).toLocaleString('id-ID')}</td>
-                                <td style="text-align: right; display: flex; gap: 5px; justify-content: flex-end; align-items: center;">
-                                    <button class="btn-action btn-delete" style="flex-shrink: 0;">
+                                <td class="migrated-style-51">
+                                    <button class="btn-action btn-danger migrated-style-52">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </td>
@@ -555,17 +360,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 for (const judulKey in diskonPerProduk) {
                     const nilaiDiskon = Number(diskonPerProduk[judulKey]);
                     tbody.insertAdjacentHTML('beforeend', `
-                        <tr style="background-color: #fffbeb;">
-                            <td colspan="5" style="text-align: right; color: #d97706;"><strong>Diskon ${judulKey}</strong></td>
-                            <td colspan="2" style="color: #d97706;"><strong>- Rp ${nilaiDiskon.toLocaleString('id-ID')}</strong></td>
+                        <tr class="migrated-style-53">
+                            <td class="migrated-style-54" colspan="5"><strong>Diskon ${judulKey}</strong></td>
+                            <td class="migrated-style-55" colspan="2"><strong>- Rp ${nilaiDiskon.toLocaleString('id-ID')}</strong></td>
                         </tr>
                     `);
                 }
 
                 tbody.insertAdjacentHTML('beforeend', `
-                    <tr style="background-color: #f1f5f9;">
-                        <td colspan="5" style="text-align: right; font-size: 1.1rem;"><strong>TOTAL:</strong></td>
-                        <td colspan="2" style="font-size: 1.1rem; color: #3b82f6;"><strong>Rp ${Number(total).toLocaleString('id-ID')}</strong></td>
+                    <tr class="migrated-style-56">
+                        <td class="migrated-style-57" colspan="5"><strong>TOTAL:</strong></td>
+                        <td class="migrated-style-58" colspan="2"><strong>Rp ${Number(total).toLocaleString('id-ID')}</strong></td>
                     </tr>
                 `);
 
@@ -589,10 +394,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 data.data.forEach(product => {
                     let nameOnly = product.name;
                     if (kategoriName === 'PAKET INDOOR OUTDOOR') {
-                        nameOnly = nameOnly.replace(/\s*\d+(\.\d+)?\s*[x×X]\s*\d+(\.\d+)?/gi, '').trim();
+                        nameOnly = nameOnly.replace(/\s*\d+(\.\d+)?\s*[x├ùX]\s*\d+(\.\d+)?/gi, '').trim();
                     }
-                    const ukuranMatch = product.name.match(/(\d+(\.\d+)?\s*[x×X]\s*\d+(\.\d+)?)/i);
-                    const ukuran = ukuranMatch ? ukuranMatch[0].replace(/×/gi, 'x') : null;
+                    const ukuranMatch = product.name.match(/(\d+(\.\d+)?\s*[x├ùX]\s*\d+(\.\d+)?)/i);
+                    const ukuran = ukuranMatch ? ukuranMatch[0].replace(/├ù/gi, 'x') : null;
 
                     if (!ukuranMap[nameOnly]) ukuranMap[nameOnly] = [];
                     if (ukuran && !ukuranMap[nameOnly].includes(ukuran)) {
@@ -634,9 +439,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (!seenFinishing.has(finishing.name)) {
                             seenFinishing.add(finishing.name);
                             elFinishing.insertAdjacentHTML('beforeend', `
-                                <label style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer;">
+                                <label class="migrated-style-59">
                                     <input class="finishing-checkbox" type="checkbox" id="fin_${finishing.finishing_id}" value="${finishing.finishing_id}" data-name="${finishing.name}" data-price="${finishing.price}">
-                                    <span style="font-size: 0.85rem;">${finishing.name}</span>
+                                    <span class="migrated-style-60">${finishing.name}</span>
                                 </label>
                             `);
                         }
@@ -891,7 +696,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     document.querySelector('#orderItemsTable').addEventListener('click', function (e) {
-        const btn = e.target.closest('.btn-delete');
+        const btn = e.target.closest('.btn-danger');
         if (btn) {
             const row = btn.closest('tr');
             const orderItemId = row.dataset.orderItemId;
@@ -981,8 +786,8 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(response => {
                 if (response.data && response.data.note) {
                     document.getElementById('noteDisplay').innerHTML = `
-                        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 10px 14px; border-radius: 8px; color: #166534; font-size: 0.9rem;">
-                            <i class="fas fa-info-circle" style="margin-right: 6px;"></i> ${response.data.note}
+                        <div class="migrated-style-61">
+                            <i class="fas fa-info-circle migrated-style-62"></i> ${response.data.note}
                         </div>`;
                     document.getElementById('exampleFormControlTextarea1').value = response.data.note;
                 }
@@ -1013,20 +818,20 @@ document.addEventListener('DOMContentLoaded', function () {
         Swal.fire({
             title: 'Tambah Pembayaran',
             html: `
-                <div style="text-align: left; font-size: 0.9rem;">
-                    <label style="color: #475569; font-weight: 500;">Tipe Pembayaran</label>
-                    <select id="swal-tipe" class="form-control mb-3" style="width: 100%; margin-top: 5px;">
+                <div class="migrated-style-63">
+                    <label class="migrated-style-64">Tipe Pembayaran</label>
+                    <select id="swal-tipe" class="form-control mb-3 migrated-style-65">
                         <option value="LUNAS">LUNAS (Rp ${Number(sisa).toLocaleString('id-ID')})</option>
                         <option value="DP">DP / Sebagian</option>
                     </select>
 
-                    <div id="div-nominal" style="display: none;">
-                        <label style="color: #475569; font-weight: 500;">Nominal Pembayaran (Rp)</label>
-                        <input type="number" id="swal-nominal" class="form-control mb-3" style="width: 100%; margin-top: 5px;" placeholder="Maks: ${sisa}">
+                    <div class="migrated-style-66" id="div-nominal">
+                        <label class="migrated-style-64">Nominal Pembayaran (Rp)</label>
+                        <input type="number" id="swal-nominal" class="form-control mb-3 migrated-style-65" placeholder="Maks: ${sisa}">
                     </div>
 
-                    <label style="color: #475569; font-weight: 500;">Metode Pembayaran</label>
-                    <select id="swal-method" class="form-control mb-3" style="width: 100%; margin-top: 5px;">
+                    <label class="migrated-style-64">Metode Pembayaran</label>
+                    <select id="swal-method" class="form-control mb-3 migrated-style-65">
                         <option value="CASH">CASH</option>
                         <option value="TF">TF</option>
                     </select>
@@ -1111,21 +916,21 @@ document.addEventListener('DOMContentLoaded', function () {
         Swal.fire({
             title: 'Ubah Data Pembayaran',
             html: `
-                <div style="text-align: left; font-size: 0.9rem;">
-                    <label style="color: #475569; font-weight: 500;">Nominal Pembayaran</label>
-                    <input type="number" id="swal-nominal" class="form-control mb-3" style="width: 100%; margin-top: 5px;" value="${nominal}">
+                <div class="migrated-style-63">
+                    <label class="migrated-style-64">Nominal Pembayaran</label>
+                    <input type="number" id="swal-nominal" class="form-control mb-3 migrated-style-65" value="${nominal}">
                     
-                    <label style="color: #475569; font-weight: 500;">Metode Pembayaran</label>
-                    <select id="swal-method" class="form-control mb-3" style="width: 100%; margin-top: 5px;">
+                    <label class="migrated-style-64">Metode Pembayaran</label>
+                    <select id="swal-method" class="form-control mb-3 migrated-style-65">
                         <option value="CASH" ${method == 'CASH' ? 'selected' : ''}>CASH</option>
                         <option value="TF" ${method == 'TF' ? 'selected' : ''}>TF</option>
                     </select>
                     
-                    <label style="color: #475569; font-weight: 500;">Tanggal Pembayaran</label>
-                    <input type="datetime-local" id="swal-date" class="form-control mb-3" style="width: 100%; margin-top: 5px;" value="${dateStr}">
+                    <label class="migrated-style-64">Tanggal Pembayaran</label>
+                    <input type="datetime-local" id="swal-date" class="form-control mb-3 migrated-style-65" value="${dateStr}">
                     
-                    <label style="color: #475569; font-weight: 500;">Keterangan / Alasan Ubah <span style="color:#ef4444">*</span></label>
-                    <input type="text" id="swal-ket" class="form-control" style="width: 100%; margin-top: 5px;" placeholder="Cth: Koreksi metode pembayaran">
+                    <label class="migrated-style-64">Keterangan / Alasan Ubah <span class="migrated-style-67">*</span></label>
+                    <input type="text" id="swal-ket" class="form-control migrated-style-65" placeholder="Cth: Koreksi metode pembayaran">
                 </div>
             `,
             showCancelButton: true,
@@ -1244,36 +1049,32 @@ document.addEventListener('DOMContentLoaded', function () {
                 const listContainer = document.getElementById('payment-list-container');
                 if (res.payments.length === 0) {
                     listContainer.innerHTML = `
-                        <div style="text-align: center; color: #64748b; padding: 20px 0; background-color: #f8fafc; border-radius: 8px;">
-                            <i class="fas fa-receipt mb-2" style="font-size: 1.5rem; opacity: 0.5;"></i><br>
-                            <span style="font-size: 0.9rem;">Belum ada pembayaran.</span>
+                        <div class="payment-empty">
+                            <i class="fas fa-receipt"></i>
+                            <span>Belum ada pembayaran.</span>
                         </div>`;
                 } else {
-                    let html = '<div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; max-height: 250px; overflow-y: auto; padding-right: 5px;">';
+                    let html = '<div class="payment-list">';
                     res.payments.forEach(pay => {
                         const dateObj = new Date(pay.date.replace(' ', 'T'));
                         const dateStr = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-                        const isLunas = pay.status === 'LUNAS' ? '&nbsp;<span class="badge-info" style="background-color: #dcfce3; color: #15803d; padding: 2px 6px; font-size: 0.7rem;">LUNAS</span>' : '';
+                        const isLunas = pay.status === 'LUNAS' ? '&nbsp;<span class="payment-status">LUNAS</span>' : '';
                         const rawDate = pay.date.replace(' ', 'T').slice(0, 16);
 
                         html += `
-                            <div class="payment-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;"
+                            <div class="payment-row"
                                 data-payment-id="${pay.payment_id}"
                                 data-nominal="${pay.nominal}"
                                 data-method="${pay.payment_method}"
                                 data-date="${rawDate}">
-                                <div>
-                                    <div style="font-weight: 600; font-size: 0.95rem; color: #0f172a;">Rp ${Number(pay.nominal).toLocaleString('id-ID')}</div>
-                                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">
-                                        <i class="far fa-calendar-alt"></i> ${dateStr} &nbsp;|&nbsp; 
-                                        <strong>${pay.payment_method}</strong>${isLunas}
-                                    </div>
-                                </div>
-                                <div style="display: flex; gap: 6px;">
-                                    <button type="button" class="btn-action btn-edit-payment" style="background-color: #f59e0b;">
+                                <div class="payment-amount">Rp ${Number(pay.nominal).toLocaleString('id-ID')}</div>
+                                <div class="payment-date"><i class="far fa-calendar-alt"></i> ${dateStr}</div>
+                                <div class="payment-method"><strong>${pay.payment_method}</strong>${isLunas}</div>
+                                <div class="payment-actions">
+                                    <button type="button" class="btn-action btn-warning btn-edit-payment" title="Edit pembayaran">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button type="button" class="btn-action btn-delete btn-delete-payment">
+                                    <button type="button" class="btn-action btn-danger btn-delete-payment" title="Hapus pembayaran">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -1289,8 +1090,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         const btn = document.createElement('button');
                         btn.type = 'button';
                         btn.id = 'btn-tambah-pembayaran';
-                        btn.className = 'btn-primary-custom';
-                        btn.style = 'width: 100%; justify-content: center; margin-top: 10px;';
+                        btn.className = 'btn-primary-custom payment-add-button';
                         btn.innerHTML = '<i class="fas fa-plus"></i> Tambah Pembayaran';
                         btn.addEventListener('click', addPayment);
                         document.getElementById('payment-card-body').appendChild(btn);

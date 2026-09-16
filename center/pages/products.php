@@ -18,242 +18,11 @@ $controller = new ProductController($koneksi);
 $data = $controller->getIndexData($access);
 ?>
 
-<style>
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 24px;
-    }
-    .page-header h2 {
-        margin: 0;
-        color: #0f172a;
-        font-size: 1.5rem;
-        font-weight: 600;
-    }
-    .btn-primary-custom {
-        background-color: #3b82f6;
-        color: #ffffff;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-weight: 500;
-        font-size: 0.95rem;
-        transition: all 0.2s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none;
-    }
-    .btn-primary-custom:hover {
-        background-color: #2563eb;
-        color: #ffffff;
-        transform: translateY(-1px);
-    }
-    .btn-success-custom {
-        background-color: #10b981;
-        color: #ffffff;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-weight: 500;
-        font-size: 0.95rem;
-        transition: all 0.2s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none;
-    }
-    .btn-success-custom:hover {
-        background-color: #059669;
-        color: #ffffff;
-        transform: translateY(-1px);
-    }
-    .filter-card {
-        background-color: #ffffff;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        margin-bottom: 24px;
-    }
-    .filter-form {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 16px;
-        align-items: flex-end;
-    }
-    .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        flex: 1;
-        min-width: 200px;
-    }
-    .form-group label {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: #475569;
-    }
-    .form-control {
-        padding: 10px 16px;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        font-family: inherit;
-        font-size: 0.95rem;
-        color: #0f172a;
-        background-color: #f8fafc;
-        transition: all 0.2s;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    .form-control:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        background-color: #ffffff;
-    }
-    .btn-search {
-        background-color: #3b82f6;
-        color: #ffffff;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-weight: 500;
-        font-size: 0.95rem;
-        cursor: pointer;
-        transition: all 0.2s;
-        height: 42px;
-    }
-    .btn-search:hover {
-        background-color: #2563eb;
-    }
-    .table-container {
-        background-color: #ffffff;
-        border-radius: 12px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        overflow: hidden;
-        margin-bottom: 32px;
-    }
-    .table-header-title {
-        padding: 20px;
-        background-color: #f8fafc;
-        border-bottom: 1px solid #e2e8f0;
-        margin: 0;
-        font-size: 1.15rem;
-        font-weight: 600;
-        color: #0f172a;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .table-modern {
-        width: 100%;
-        border-collapse: collapse;
-        text-align: left;
-    }
-    .table-modern th, .table-modern td {
-        padding: 16px 20px;
-        border-bottom: 1px solid #e2e8f0;
-        vertical-align: middle;
-    }
-    .table-modern th {
-        background-color: #ffffff;
-        color: #475569;
-        font-weight: 600;
-        font-size: 0.875rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    .table-modern tbody tr:last-child td {
-        border-bottom: none;
-    }
-    .table-modern tbody tr:hover {
-        background-color: #f1f5f9;
-    }
-    .table-modern td {
-        color: #0f172a;
-        font-size: 0.95rem;
-    }
-    .badge-category {
-        background-color: #f1f5f9;
-        color: #475569;
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-    .btn-action {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        border: none;
-        transition: all 0.2s ease;
-        color: #ffffff;
-        cursor: pointer;
-    }
-    .btn-edit { background-color: #f59e0b; }
-    .btn-edit:hover { background-color: #d97706; }
-    .btn-delete { background-color: #ef4444; }
-    .btn-delete:hover { background-color: #dc2626; }
 
-    .modal-content-custom {
-        border: none;
-        border-radius: 16px;
-        overflow: hidden;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    }
-    .modal-header-custom {
-        background-color: #ffffff;
-        border-bottom: 1px solid #f1f5f9;
-        padding: 20px 24px;
-    }
-    .modal-title-custom {
-        font-weight: 600;
-        color: #0f172a;
-        font-size: 1.25rem;
-        margin: 0;
-    }
-    .modal-body-custom {
-        padding: 24px;
-        background-color: #f8fafc;
-        max-height: 70vh;
-        overflow-y: auto;
-    }
-    .modal-footer-custom {
-        border-top: 1px solid #f1f5f9;
-        padding: 16px 24px;
-        background-color: #ffffff;
-    }
-    .form-label-custom {
-        font-weight: 500;
-        font-size: 0.875rem;
-        color: #334155;
-        margin-bottom: 8px;
-        display: block;
-    }
-    .form-control-custom {
-        border-radius: 8px;
-        border: 1px solid #cbd5e1;
-        padding: 10px 16px;
-        font-size: 0.95rem;
-        background-color: #ffffff;
-        transition: all 0.2s ease;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    .form-control-custom:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-</style>
 
 <div class="page-header">
     <h2>Data Produk & Finishing</h2>
-    <div style="display: flex; gap: 12px;">
+    <div class="migrated-style-88">
         <?php if ($data['current_store_id']): ?>
             <button class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalTambahProduk">
                 <i class="fas fa-box"></i> Tambah Produk
@@ -267,7 +36,7 @@ $data = $controller->getIndexData($access);
 
 <div class="filter-card">
     <form method="get" action="/products" class="filter-form">
-        <div class="form-group" style="flex: 2;">
+        <div class="form-group migrated-style-3">
             <label for="store_id">Pilih Toko</label>
             <select name="store_id" id="store_id" class="form-control" onchange="this.form.submit()">
                 <?php if (empty($data['stores'])): ?>
@@ -282,12 +51,12 @@ $data = $controller->getIndexData($access);
             </select>
         </div>
         
-        <div class="form-group" style="flex: 3;">
+        <div class="form-group migrated-style-89">
             <label for="search">Cari Data</label>
             <input type="text" name="search" id="search" class="form-control" value="<?= htmlspecialchars($data['search']) ?>" placeholder="Ketik nama produk / finishing...">
         </div>
         
-        <div class="form-group" style="flex: 1;">
+        <div class="form-group migrated-style-4">
             <label for="limit">Tampilkan (Produk)</label>
             <select name="limit" id="limit" class="form-control" onchange="this.form.submit()">
                 <option value="25" <?= $data['limit'] == 25 ? 'selected' : '' ?>>25</option>
@@ -305,23 +74,23 @@ $data = $controller->getIndexData($access);
 </div>
 
 <div class="table-container">
-    <h3 class="table-header-title"><i class="fas fa-box" style="color: #3b82f6;"></i> Daftar Produk</h3>
-    <div style="overflow-x: auto;">
+    <h3 class="table-header-title"><i class="fas fa-box migrated-style-27"></i> Daftar Produk</h3>
+    <div class="table-scroll">
         <table class="table-modern">
             <thead>
                 <tr>
-                    <th style="width: 60px;">No</th>
+                    <th class="migrated-style-78">No</th>
                     <th>Kategori</th>
                     <th>Nama Produk</th>
                     <th>Harga</th>
                     <th>Stok</th>
-                    <th style="text-align: right;">Aksi</th>
+                    <th class="migrated-style-9">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($data['products'])): ?>
                     <tr>
-                        <td colspan="6" style="text-align: center; color: #64748b; padding: 32px 0;">Tidak ada produk ditemukan</td>
+                        <td class="migrated-style-80" colspan="6">Tidak ada produk ditemukan</td>
                     </tr>
                 <?php else: ?>
                     <?php 
@@ -334,13 +103,13 @@ $data = $controller->getIndexData($access);
                             <td>
                                 <strong><?= htmlspecialchars($row['name']) ?></strong>
                                 <?php if (!empty($row['unit_type']) && $row['unit_type'] !== '~'): ?>
-                                    <span style="font-size: 0.75rem; color: #64748b; margin-left: 4px;">(<?= htmlspecialchars($row['unit_type']) ?>)</span>
+                                    <span class="migrated-style-90">(<?= htmlspecialchars($row['unit_type']) ?>)</span>
                                 <?php endif; ?>
                             </td>
                             <td>Rp <?= number_format($row['price'] ?? 0, 0, ',', '.') ?></td>
                             <td><?= number_format($row['stock'] ?? 0, 0, ',', '.') ?></td>
-                            <td style="text-align: right;">
-                                <button type="button" class="btn-action btn-edit me-1" 
+                            <td class="migrated-style-9">
+                                <button type="button" class="btn-action btn-warning me-1"
                                     data-bs-toggle="modal" 
                                     data-bs-target="#modalEditProduk"
                                     data-id="<?= $row['product_id'] ?>"
@@ -353,7 +122,7 @@ $data = $controller->getIndexData($access);
                                     data-unit-type="<?= htmlspecialchars($row['unit_type'] ?? '~') ?>">
                                     <i class="fas fa-pen"></i>
                                 </button>
-                                <button type="button" class="btn-action btn-delete" onclick="deleteData('product', <?= $row['product_id'] ?>)">
+                                <button type="button" class="btn-action btn-danger" onclick="deleteData('product', <?= $row['product_id'] ?>)">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </td>
@@ -365,12 +134,12 @@ $data = $controller->getIndexData($access);
     </div>
     
     <?php if ($data['total_pages'] > 1): ?>
-        <div class="pagination-wrapper" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background-color: #ffffff; border-top: 1px solid #e2e8f0;">
-            <div style="font-size: 0.875rem; color: #64748b;">
+        <div class="pagination-wrapper migrated-style-91">
+            <div class="migrated-style-92">
                 Menampilkan total <?= number_format($data['total_items'], 0, ',', '.') ?> produk
             </div>
             
-            <ul style="display: flex; gap: 8px; list-style: none; padding: 0; margin: 0;">
+            <ul class="migrated-style-93">
                 <?php 
                 $queryParams = $_GET;
                 $currentPage = $data['current_page'];
@@ -384,7 +153,7 @@ $data = $controller->getIndexData($access);
                 ?>
                 
                 <li>
-                    <a href="<?= $prevUrl ?>" style="display: flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; border-radius: 8px; border: 1px solid #e2e8f0; text-decoration: none; color: #475569;" <?= $currentPage <= 1 ? 'onclick="return false;" style="pointer-events:none; opacity:0.5;"' : '' ?>>
+                    <a href="<?= $prevUrl ?>" class="pagination-link <?= $currentPage <= 1 ? 'disabled' : '' ?>" <?= $currentPage <= 1 ? 'onclick="return false;"' : '' ?>>
                         <i class="fas fa-chevron-left"></i>
                     </a>
                 </li>
@@ -398,14 +167,14 @@ $data = $controller->getIndexData($access);
                     $isActive = $i == $currentPage;
                 ?>
                     <li>
-                        <a href="?<?= http_build_query($queryParams) ?>" style="display: flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; border-radius: 8px; border: 1px solid <?= $isActive ? '#3b82f6' : '#e2e8f0' ?>; background-color: <?= $isActive ? '#3b82f6' : '#ffffff' ?>; color: <?= $isActive ? '#ffffff' : '#475569' ?>; text-decoration: none;">
+                        <a href="?<?= http_build_query($queryParams) ?>" class="pagination-link <?= $isActive ? 'active' : '' ?>">
                             <?= $i ?>
                         </a>
                     </li>
                 <?php endfor; ?>
                 
                 <li>
-                    <a href="<?= $nextUrl ?>" style="display: flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; border-radius: 8px; border: 1px solid #e2e8f0; text-decoration: none; color: #475569;" <?= $currentPage >= $totalPages ? 'onclick="return false;" style="pointer-events:none; opacity:0.5;"' : '' ?>>
+                    <a href="<?= $nextUrl ?>" class="pagination-link <?= $currentPage >= $totalPages ? 'disabled' : '' ?>" <?= $currentPage >= $totalPages ? 'onclick="return false;"' : '' ?>>
                         <i class="fas fa-chevron-right"></i>
                     </a>
                 </li>
@@ -415,23 +184,23 @@ $data = $controller->getIndexData($access);
 </div>
 
 <div class="table-container">
-    <h3 class="table-header-title"><i class="fas fa-layer-group" style="color: #10b981;"></i> Daftar Finishing</h3>
-    <div style="overflow-x: auto;">
+    <h3 class="table-header-title"><i class="fas fa-layer-group migrated-style-14"></i> Daftar Finishing</h3>
+    <div class="table-scroll">
         <table class="table-modern">
             <thead>
                 <tr>
-                    <th style="width: 60px;">No</th>
+                    <th class="migrated-style-78">No</th>
                     <th>Kategori</th>
                     <th>Nama Finishing</th>
                     <th>Harga</th>
                     <th>Stok</th>
-                    <th style="text-align: right;">Aksi</th>
+                    <th class="migrated-style-9">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($data['finishings'])): ?>
                     <tr>
-                        <td colspan="6" style="text-align: center; color: #64748b; padding: 32px 0;">Tidak ada finishing ditemukan</td>
+                        <td class="migrated-style-80" colspan="6">Tidak ada finishing ditemukan</td>
                     </tr>
                 <?php else: ?>
                     <?php 
@@ -444,13 +213,13 @@ $data = $controller->getIndexData($access);
                             <td>
                                 <strong><?= htmlspecialchars($row['name']) ?></strong>
                                 <?php if (!empty($row['unit_type']) && $row['unit_type'] !== '~'): ?>
-                                    <span style="font-size: 0.75rem; color: #64748b; margin-left: 4px;">(<?= htmlspecialchars($row['unit_type']) ?>)</span>
+                                    <span class="migrated-style-90">(<?= htmlspecialchars($row['unit_type']) ?>)</span>
                                 <?php endif; ?>
                             </td>
                             <td>Rp <?= number_format($row['price'] ?? 0, 0, ',', '.') ?></td>
                             <td><?= number_format($row['stock'] ?? 0, 0, ',', '.') ?></td>
-                            <td style="text-align: right;">
-                                <button type="button" class="btn-action btn-edit me-1" 
+                            <td class="migrated-style-9">
+                                <button type="button" class="btn-action btn-warning me-1"
                                     data-bs-toggle="modal" 
                                     data-bs-target="#modalEditFinishing"
                                     data-id="<?= $row['finishing_id'] ?>"
@@ -463,7 +232,7 @@ $data = $controller->getIndexData($access);
                                     data-unit-type="<?= htmlspecialchars($row['unit_type'] ?? '~') ?>">
                                     <i class="fas fa-pen"></i>
                                 </button>
-                                <button type="button" class="btn-action btn-delete" onclick="deleteData('finishing', <?= $row['finishing_id'] ?>)">
+                                <button type="button" class="btn-action btn-danger" onclick="deleteData('finishing', <?= $row['finishing_id'] ?>)">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </td>
@@ -524,8 +293,8 @@ $data = $controller->getIndexData($access);
                 </div>
             </div>
             <div class="modal-footer modal-footer-custom">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">Batal</button>
-                <button type="submit" class="btn-primary-custom" style="padding: 8px 20px;">Simpan Produk</button>
+                <button type="button" class="btn btn-secondary migrated-style-20" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn-primary-custom migrated-style-94">Simpan Produk</button>
             </div>
         </form>
     </div>
@@ -580,8 +349,8 @@ $data = $controller->getIndexData($access);
                 </div>
             </div>
             <div class="modal-footer modal-footer-custom">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">Batal</button>
-                <button type="submit" class="btn-primary-custom" style="padding: 8px 20px;">Simpan Perubahan</button>
+                <button type="button" class="btn btn-secondary migrated-style-20" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn-primary-custom migrated-style-94">Simpan Perubahan</button>
             </div>
         </form>
     </div>
@@ -636,8 +405,8 @@ $data = $controller->getIndexData($access);
                 </div>
             </div>
             <div class="modal-footer modal-footer-custom">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">Batal</button>
-                <button type="submit" class="btn-success-custom" style="padding: 8px 20px;">Simpan Finishing</button>
+                <button type="button" class="btn btn-secondary migrated-style-20" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn-success-custom migrated-style-94">Simpan Finishing</button>
             </div>
         </form>
     </div>
@@ -692,8 +461,8 @@ $data = $controller->getIndexData($access);
                 </div>
             </div>
             <div class="modal-footer modal-footer-custom">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">Batal</button>
-                <button type="submit" class="btn-success-custom" style="padding: 8px 20px;">Simpan Perubahan</button>
+                <button type="button" class="btn btn-secondary migrated-style-20" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn-success-custom migrated-style-94">Simpan Perubahan</button>
             </div>
         </form>
     </div>

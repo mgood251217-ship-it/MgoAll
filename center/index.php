@@ -3,9 +3,20 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 $request = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
-$basepath = '/';
-$route = str_replace($basepath, '', $request);
+$request = trim($request, '/');
+$scriptDirectory = trim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
+$route = $request;
+
+if ($scriptDirectory !== '' && ($route === $scriptDirectory || strpos($route, $scriptDirectory . '/') === 0)) {
+    $route = substr($route, strlen($scriptDirectory));
+}
+
+if ($route === 'center' || strpos($route, 'center/') === 0) {
+    $route = substr($route, strlen('center'));
+}
+
 $route = trim($route, '/');
+$route = trim($_GET['url'] ?? $route, '/');
 
 if ($route === 'action' || strpos($route, 'action/') === 0) {
     require 'actions/index.php';
