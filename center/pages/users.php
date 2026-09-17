@@ -41,7 +41,7 @@ $stores = $data['stores'];
 <?php else: ?>
     <?php foreach ($groupedUsers as $storeName => $users): ?>
         <h4 class="store-group-title"><i class="fas fa-store"></i> <?= htmlspecialchars($storeName) ?></h4>
-        <div class="table-container">
+        <div class="table-container users-table-container">
             <div class="table-scroll">
                 <table class="table-modern">
                     <thead>
@@ -88,8 +88,8 @@ $stores = $data['stores'];
                                         <i class="fas fa-trash"></i>
                                     </button>
 
-                                    <div class="dropdown d-inline-block">
-                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle migrated-style-100" type="button" data-bs-toggle="dropdown">
+                                    <div class="dropdown d-inline-block user-store-dropdown">
+                                        <button class="btn btn-sm btn-outline-primary migrated-style-100 user-store-toggle" type="button">
                                             Pindah
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 migrated-style-20">
@@ -306,6 +306,90 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('edit_store_id').value = button.getAttribute('data-store-id');
         });
     }
+
+    let openStoreMenu = null;
+    let openStoreToggle = null;
+
+    const positionStoreMenu = () => {
+        if (!openStoreMenu || !openStoreToggle) return;
+
+        const rect = openStoreToggle.getBoundingClientRect();
+        const menuWidth = openStoreMenu.offsetWidth || 180;
+        const menuHeight = openStoreMenu.offsetHeight || 0;
+        const left = Math.max(8, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8));
+        const belowTop = rect.bottom + 4;
+        const aboveTop = rect.top - menuHeight - 4;
+        const top = belowTop + menuHeight <= window.innerHeight - 8 || aboveTop < 8
+            ? Math.max(8, belowTop)
+            : aboveTop;
+
+        openStoreMenu.style.top = `${top}px`;
+        openStoreMenu.style.left = `${left}px`;
+    };
+
+    const closeStoreMenu = () => {
+        if (!openStoreMenu) return;
+        openStoreMenu.classList.remove('show');
+        openStoreMenu.classList.remove('user-store-menu-overlay');
+        openStoreMenu.style.top = '';
+        openStoreMenu.style.left = '';
+        openStoreMenu.style.position = '';
+        openStoreMenu.style.zIndex = '';
+        openStoreMenu.style.maxHeight = '';
+        openStoreMenu.style.overflowY = '';
+        openStoreMenu.style.overscrollBehavior = '';
+        openStoreToggle?.closest('.user-store-dropdown')?.appendChild(openStoreMenu);
+        openStoreMenu = null;
+        openStoreToggle = null;
+    };
+
+    document.querySelectorAll('.user-store-toggle').forEach((toggle) => {
+        toggle.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const dropdown = toggle.closest('.user-store-dropdown');
+            const menu = dropdown?.querySelector('.dropdown-menu');
+            if (!menu) return;
+            if (openStoreMenu === menu) {
+                closeStoreMenu();
+                return;
+            }
+
+            closeStoreMenu();
+            openStoreToggle = toggle;
+            openStoreMenu = menu;
+            document.body.appendChild(menu);
+            menu.classList.add('show');
+            menu.classList.add('user-store-menu-overlay');
+            menu.style.position = 'fixed';
+            menu.style.zIndex = '2000';
+            menu.style.maxHeight = Math.min(window.innerHeight * 0.7, 360) + 'px';
+            menu.style.overflowY = 'auto';
+            menu.style.overscrollBehavior = 'contain';
+
+            positionStoreMenu();
+        });
+    });
+
+    document.addEventListener('click', function(event) {
+        if (openStoreMenu && !openStoreMenu.contains(event.target) && event.target !== openStoreToggle) {
+            closeStoreMenu();
+        }
+    });
+    document.addEventListener('wheel', function(event) {
+        if (openStoreMenu?.contains(event.target)) {
+            event.preventDefault();
+            event.stopPropagation();
+            openStoreMenu.scrollTop += event.deltaY;
+        }
+    }, { capture: true, passive: false });
+    window.addEventListener('resize', positionStoreMenu);
+    window.addEventListener('scroll', function(event) {
+        if (!openStoreMenu?.contains(event.target)) {
+            positionStoreMenu();
+        }
+    }, true);
 });
 
 function deleteUser(userId) {

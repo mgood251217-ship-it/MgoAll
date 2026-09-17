@@ -418,6 +418,35 @@ a {
   overflow-x: auto;
   overflow-y: hidden;
 }
+.users-table-container:has(.dropdown.show),
+.users-table-container:has(.dropdown.show) .table-scroll {
+  overflow: visible;
+}
+.users-table-container .user-store-dropdown {
+  position: relative;
+  z-index: 1;
+}
+.users-table-container .user-store-dropdown.show {
+  z-index: 1100;
+}
+.users-table-container .user-store-dropdown .dropdown-menu {
+  z-index: 1101;
+}
+.user-store-menu-overlay {
+  width: min(240px, calc(100vw - 16px));
+  max-height: min(70vh, 360px);
+  max-width: calc(100vw - 16px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  position: fixed !important;
+  z-index: 2000 !important;
+}
+.user-store-menu-overlay .dropdown-item {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .migrated-style-1 {
   width: 100%;
   max-width: 100%;
