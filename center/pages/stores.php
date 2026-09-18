@@ -79,7 +79,7 @@ $all_users = $data['all_users'];
                             <td class="migrated-style-95">
                                 <form class="kelolaForm migrated-style-96">
                                     <input type="hidden" name="user_id" value="<?= $row['owner_id'] ?>">
-                                    <button type="submit" class="btn-action btn-kelola">Kelola</button>
+                                    <button type="submit" class="btn btn-danger">Kelola</button>
                                 </form>
                             </td>
                         </tr>
