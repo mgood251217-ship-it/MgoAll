@@ -93,5 +93,24 @@ class StoreController {
         send_json_response(true, "Berhasil mengambil data mesin", $stores);
     }
 
+    public function storeLogo(): void
+    {
+        $path = $_GET['path'] ?? null;
+        if (!$path) {
+            Response::error('path required', 400);
+            return;
+        }
+
+        $path = str_replace(['..', '\\'], '', $path);
+        $fullPath = $_ENV['BASE_PATH_UPLOAD'] . '/image/' . $path; 
+
+        if (!file_exists($fullPath)) {
+            Response::error('Logo not found', 404);
+            return;
+        }
+
+        Response::file($fullPath, mime_content_type($fullPath));
+    }
+
 }
 ?>

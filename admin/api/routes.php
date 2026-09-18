@@ -28,6 +28,7 @@ $router->add('create_machine', StoreController::class, 'createMachine', ['auth']
 $router->add('update_machine', StoreController::class, 'updateMachine', ['auth']);
 $router->add('delete_machine', StoreController::class, 'deleteMachine', ['auth']);
 $router->add('store_names', StoreController::class, 'storeName', ['auth']);
+$router->add('store_logo', StoreController::class, 'storeLogo');
 
 // Setting Controller
 $router->add('theme', SettingController::class, 'changeTheme', ['auth']);

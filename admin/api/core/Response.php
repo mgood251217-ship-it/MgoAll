@@ -33,4 +33,22 @@ class Response
 	): void {
 		self::json(false, $message, $data, $statusCode);
 	}
+
+	public static function file(
+		string $filePath,
+		string $contentType = 'image/jpeg'
+	): void {
+		if (!file_exists($filePath)) {
+			self::error('File not found', 404);
+			return;
+		}
+
+		header('Access-Control-Allow-Origin: *');
+		header('Content-Type: ' . $contentType);
+		header('Content-Length: ' . filesize($filePath));
+		header('Cache-Control: public, max-age=86400');
+
+		readfile($filePath);
+		exit;
+	}
 }
