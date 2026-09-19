@@ -439,7 +439,7 @@ class MeterController {
         }
 
         $query2 = "
-            SELECT p.name, SUM(oi.quantity) AS total_qty
+            SELECT p.name, c.name AS category_name, SUM(oi.quantity) AS total_qty
             FROM order_items oi
             JOIN orders o ON oi.order_id = o.order_id
             JOIN products p ON oi.product_id = p.product_id
@@ -448,9 +448,10 @@ class MeterController {
               AND p.store_id = ?
               AND (
                   (c.name = 'KARTU NAMA' AND p.name LIKE '%KN%') OR 
-                  (c.name = 'MERCENDISE' AND p.name LIKE '%JAM%')
+                  (c.name = 'MERCENDISE' AND p.name LIKE '%JAM%') OR
+                  (c.name = 'STAMP')
               )
-            GROUP BY p.product_id, p.name
+            GROUP BY p.product_id, p.name, c.name
         ";
 
         $stmt2 = $this->koneksi->prepare($query2);
@@ -465,12 +466,16 @@ class MeterController {
         $qty_kn = 0;
         $qty_kn_bb = 0;
         $qty_jam = 0;
+        $qty_stamp = 0;
 
         foreach ($rows2 as $row) {
             $name_upper = strtoupper($row['name']);
-            $qty = (int)$row['total_qty'];
+            $cat_upper  = strtoupper($row['category_name']);
+            $qty        = (int)$row['total_qty'];
             
-            if (strpos($name_upper, 'JAM') !== false) {
+            if ($cat_upper === 'STAMP') {
+                $qty_stamp += $qty;
+            } elseif (strpos($name_upper, 'JAM') !== false) {
                 $qty_jam += $qty;
             } elseif (strpos($name_upper, 'KN') !== false && strpos($name_upper, 'BB') !== false) {
                 $qty_kn_bb += $qty;
@@ -479,6 +484,7 @@ class MeterController {
             }
         }
 
+        // Tambahan ke AP260
         $tambahan_ap260 = ($qty_kn * 4) + ($qty_kn_bb * 8) + ($qty_jam * 1);
 
         if ($tambahan_ap260 > 0) {
@@ -494,6 +500,22 @@ class MeterController {
             
             if (!$ap260_found) {
                 $product_data_laser_a3['AP260'] = $tambahan_ap260;
+            }
+        }
+
+        if ($qty_stamp > 0) {
+            $kalkir_found = false;
+            foreach ($product_data_laser_a3 as $lname => $lqty) {
+                $lname_upper = strtoupper($lname);
+                if (strpos($lname_upper, 'KALKIR') !== false) {
+                    $product_data_laser_a3[$lname] += $qty_stamp;
+                    $kalkir_found = true;
+                    break;
+                }
+            }
+            
+            if (!$kalkir_found) {
+                $product_data_laser_a3['KALKIR'] = $qty_stamp;
             }
         }
 
