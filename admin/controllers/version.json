@@ -1,18 +1,18 @@
 {
-  "version": "2.0.4",
+  "version": "2.0.5",
   "min_required_version": "2.0.0",
-  "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.4/MgoDesktop_2.0.4_x64-setup.exe",
-  "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.4/MgoDesktop_2.0.4.apk",
+  "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.5/MgoDesktop_2.0.5_x64-setup.exe",
+  "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.5/MgoDesktop_2.0.5.apk",
   "force_update": false,
   "release_notes": [
-    "🎨 feat: Berbagai Pilihan Tema Menarik: Kini tersedia beragam template tema visual yang memanjakan mata dan siap pakai untuk menyesuaikan mood Anda.",
-    "💾 feat: Simpan Otomatis (Auto-Save) Pengaturan: Bebas repot! Setiap perubahan yang Anda lakukan di halaman pengaturan kini akan tersimpan secara otomatis.",
-    "📏 feat: Pengelompokan Kategori Meteran: Item dengan satuan meteran sudah dikelompokkan secara spesifik untuk kategori Laser, Akrilik, Sublim, dan Jersey.",
-    "🛠️ refactor: Tata Letak Pengaturan Lebih Intuitif: Kami merombak ulang (refactor) tata letak halaman pengaturan agar tampilannya lebih modern, bersih, dan sangat mudah digunakan.",
-    "🔔 fix: Sinkronisasi Notifikasi Server: Sistem notifikasi kini telah disesuaikan langsung dengan server sehingga pesan dan peringatan yang tampil jauh lebih jelas.",
-    "📐 fix: Akurasi Input Bahan (m²): Kolom pengisian (input) untuk material dengan satuan meter persegi (m²) telah disempurnakan.",
-    "📱 fix: Tabel 100% Responsif: Tidak ada lagi data yang terpotong saat layar diperkecil. Seluruh tabel kini dapat beradaptasi dengan sempurna di berbagai perangkat.",
-    "🎨 fix: Konsistensi Warna Navbar & Sidebar: Tampilan navigasi Anda sekarang lebih mulus dengan perbaikan sistem pewarnaan pada Navbar dan Sidebar.",
-    "🔄 fix: Perbaikan Fitur Reset Warna: Mengembalikan warna antarmuka ke setelan bawaan (default) kini kembali berfungsi normal dan lancar di halaman pengaturan."
+    "⏳ feat: Indikator Pemrosesan (Loading) Pesanan: Terdapat indikator loading saat menambahkan order baru untuk mencegah double-click dan input berulang.",
+    "📂 feat: Otomatisasi Penyimpanan Invoice: Manajemen berkas lebih praktis dengan tombol khusus untuk memasukkan invoice ke dalam folder tujuan secara otomatis.",
+    "🖥️ feat: Navigasi Cepat Multi-Tab: Mendukung penggunaan banyak tab sekaligus (Ctrl+Klik untuk buka tab baru, Ctrl+T, Ctrl+W, Ctrl+Tab, dan Ctrl+Shift+Tab).",
+    "📖 feat: Pusat Panduan Pintasan (F1): Tekan tombol F1 untuk membuka menu bantuan yang berisi daftar lengkap semua shortcut keyboard baru.",
+    "📊 feat: Kalkulasi Selisih Order & File: Sistem kini dapat menghitung secara otomatis selisih antara jumlah pesanan (order) yang dibuat dengan total file yang masuk.",
+    "📏 fix: Presisi Pembulatan Bahan Sublim: Sistem perhitungan dioptimalkan dengan standar pembulatan lebar otomatis ke ukuran 1.2m, 1.5m, dan 1.8m.",
+    "🚀 refactor: Pengecekan File Ekstra Cepat & Akurat: Algoritma pemeriksaan file masuk telah dirombak agar proses validasi berjalan jauh lebih gesit dengan akurasi tinggi.",
+    "🖨️ fix: Resolusi Bug Cetak PDF: Masalah hilangnya logo perusahaan saat dokumen diekspor atau dicetak ke format PDF telah diperbaiki.",
+    "🛠️ fix: Kalibrasi Meteran Stempel: Fungsi pembacaan meteran stempel (stamp) yang sebelumnya mengalami kendala kini telah diperbaiki dan berjalan normal."
   ]
 }
