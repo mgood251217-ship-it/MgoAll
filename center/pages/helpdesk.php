@@ -95,9 +95,11 @@ $statusLabels = [
                             </div>
                         </td>
                         <td>
-                            <span class="status-badge migrated-style-23">
-                                <?= htmlspecialchars(strtoupper($ticket['category'] ?? '-')) ?>
-                            </span>
+                            <div class="migrated-style-25">
+                                <span class="status-badge status-<?= strtolower(htmlspecialchars($status)) ?>">
+                                    <?= htmlspecialchars(strtoupper($ticket['category'] ?? '-')) ?>
+                                </span>
+                            </div>
                         </td>
                         <td>
                             <div class="ticket-subject"><?= htmlspecialchars($ticket['subject'] ?? '-') ?></div>
