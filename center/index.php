@@ -82,6 +82,14 @@ switch ($route) {
     case 'piutang':
         require 'pages/piutang.php';
         break;
+
+    case 'branch_check':
+        require 'pages/branch_check.php';
+        break;
+
+    case 'checklist_master':
+        require 'pages/checklist_master.php';
+        break;
         
     default:
         http_response_code(404);
