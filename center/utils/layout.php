@@ -11,7 +11,8 @@
     $centerScriptDirectory = trim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
     $centerBaseUrl = $centerScriptDirectory !== '' ? '/' . $centerScriptDirectory : '';
     ?>
-    <link rel="stylesheet" href="<?= htmlspecialchars($centerBaseUrl . '/assets/css/pages.css?v=1.0', ENT_QUOTES, 'UTF-8') ?>">
+    <?php $cssVersion = filemtime(__DIR__ . '/../assets/css/pages.css'); ?>
+    <link rel="stylesheet" href="<?= htmlspecialchars($centerBaseUrl . '/assets/css/pages.css?v=' . $cssVersion, ENT_QUOTES, 'UTF-8') ?>">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </head>
