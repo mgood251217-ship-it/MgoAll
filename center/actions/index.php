@@ -118,6 +118,44 @@ switch ($action) {
         if ($action === 'delete_income') $financeController->deleteIncome();
         break;
 
+    case 'save_branch_check':
+    case 'upload_branch_check_photo':
+    case 'delete_branch_check_photo':
+        require_once __DIR__ . '/../controllers/BranchCheckController.php';
+        $branchCheckController = new BranchCheckController($koneksi);
+        if ($action === 'save_branch_check') $branchCheckController->saveCheck();
+        if ($action === 'upload_branch_check_photo') $branchCheckController->uploadPhoto();
+        if ($action === 'delete_branch_check_photo') $branchCheckController->deletePhoto();
+        break;
+
+    case 'add_checklist_table':
+    case 'edit_checklist_table':
+    case 'delete_checklist_table':
+    case 'add_checklist_category':
+    case 'edit_checklist_category':
+    case 'delete_checklist_category':
+    case 'add_checklist_group':
+    case 'edit_checklist_group':
+    case 'delete_checklist_group':
+    case 'add_checklist_item':
+    case 'edit_checklist_item':
+    case 'delete_checklist_item':
+        require_once __DIR__ . '/../controllers/ChecklistMasterController.php';
+        $checklistMasterController = new ChecklistMasterController($koneksi);
+        if ($action === 'add_checklist_table') $checklistMasterController->addTable();
+        if ($action === 'edit_checklist_table') $checklistMasterController->editTable();
+        if ($action === 'delete_checklist_table') $checklistMasterController->deleteTable();
+        if ($action === 'add_checklist_category') $checklistMasterController->addCategory();
+        if ($action === 'edit_checklist_category') $checklistMasterController->editCategory();
+        if ($action === 'delete_checklist_category') $checklistMasterController->deleteCategory();
+        if ($action === 'add_checklist_group') $checklistMasterController->addGroup();
+        if ($action === 'edit_checklist_group') $checklistMasterController->editGroup();
+        if ($action === 'delete_checklist_group') $checklistMasterController->deleteGroup();
+        if ($action === 'add_checklist_item') $checklistMasterController->addItem();
+        if ($action === 'edit_checklist_item') $checklistMasterController->editItem();
+        if ($action === 'delete_checklist_item') $checklistMasterController->deleteItem();
+        break;
+
     default:
         http_response_code(404);
         echo "Action not found";
