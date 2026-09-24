@@ -188,13 +188,7 @@ class BranchCheckController
             return;
         }
 
-        $storeFolder = preg_replace('/[^A-Za-z0-9_-]+/', '_', $row['store_name']);
-        $dateParts = explode('-', $row['check_date']);
-        $year = $dateParts[0] ?? date('Y');
-        $month = $dateParts[1] ?? date('m');
-        $day = $dateParts[2] ?? date('d');
-
-        $relativeDir = "image/branch_check/{$storeFolder}/{$year}/{$month}/{$day}";
+        $relativeDir = $this->buildPhotoDir($row['store_name'], $row['check_date']);
         $fullDir = rtrim($_ENV['BASE_PATH_UPLOAD'], '/') . '/' . $relativeDir;
 
         if (!is_dir($fullDir) && !mkdir($fullDir, 0755, true) && !is_dir($fullDir)) {
@@ -203,7 +197,6 @@ class BranchCheckController
         }
 
         $fileName = uniqid('check_', true) . '.' . $extension;
-        $relativePath = "{$relativeDir}/{$fileName}";
         $fullPath = "{$fullDir}/{$fileName}";
 
         if (!move_uploaded_file($_FILES['photo']['tmp_name'], $fullPath)) {
@@ -211,13 +204,15 @@ class BranchCheckController
             return;
         }
 
-        $insert = $this->koneksi->prepare("INSERT INTO branch_check_photos (branch_check_id, photo_path) VALUES (?, ?)");
-        $insert->bind_param('is', $branchCheckId, $relativePath);
+        // Hanya nama filenya saja yang disimpan di kolom "img" (bukan path lengkap).
+        // Folder tujuannya selalu dihitung ulang dari data toko + tanggal pengecekan lewat buildPhotoDir().
+        $insert = $this->koneksi->prepare("INSERT INTO branch_check_photos (branch_check_id, img) VALUES (?, ?)");
+        $insert->bind_param('is', $branchCheckId, $fileName);
         $insert->execute();
         $photoId = $insert->insert_id;
         $insert->close();
 
-        $url = rtrim($_ENV['BASE_URL_UPLOAD'], '/') . '/' . $relativePath;
+        $url = rtrim($_ENV['BASE_URL_UPLOAD'], '/') . '/' . $relativeDir . '/' . $fileName;
 
         echo json_encode(['success' => true, 'message' => 'Foto berhasil diupload', 'id' => $photoId, 'url' => $url]);
     }
@@ -232,14 +227,21 @@ class BranchCheckController
             return;
         }
 
-        $stmt = $this->koneksi->prepare("SELECT photo_path FROM branch_check_photos WHERE id = ?");
+        $stmt = $this->koneksi->prepare(
+            "SELECT p.img, bc.check_date, s.name AS store_name
+             FROM branch_check_photos p
+             JOIN branch_checks bc ON bc.id = p.branch_check_id
+             JOIN stores s ON s.store_id = bc.store_id
+             WHERE p.id = ?"
+        );
         $stmt->bind_param('i', $id);
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
         if ($row) {
-            $fullPath = rtrim($_ENV['BASE_PATH_UPLOAD'], '/') . '/' . $row['photo_path'];
+            $relativeDir = $this->buildPhotoDir($row['store_name'], $row['check_date']);
+            $fullPath = rtrim($_ENV['BASE_PATH_UPLOAD'], '/') . '/' . $relativeDir . '/' . $row['img'];
             if (is_file($fullPath)) {
                 unlink($fullPath);
             }
@@ -313,7 +315,12 @@ class BranchCheckController
 
     private function getBranchCheck($storeId, $checkDate)
     {
-        $stmt = $this->koneksi->prepare("SELECT * FROM branch_checks WHERE store_id = ? AND check_date = ? LIMIT 1");
+        $stmt = $this->koneksi->prepare(
+            "SELECT bc.*, a.name AS checked_by_name
+             FROM branch_checks bc
+             LEFT JOIN administrator a ON a.administrator_id = bc.checked_by
+             WHERE bc.store_id = ? AND bc.check_date = ? LIMIT 1"
+        );
         $stmt->bind_param('is', $storeId, $checkDate);
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
@@ -325,26 +332,63 @@ class BranchCheckController
     {
         $photos = [];
         $baseUrl = rtrim($_ENV['BASE_URL_UPLOAD'] ?? '', '/');
-        $stmt = $this->koneksi->prepare("SELECT id, photo_path FROM branch_check_photos WHERE branch_check_id = ? ORDER BY id");
+
+        $infoStmt = $this->koneksi->prepare(
+            "SELECT bc.check_date, s.name AS store_name
+             FROM branch_checks bc
+             JOIN stores s ON s.store_id = bc.store_id
+             WHERE bc.id = ?"
+        );
+        $infoStmt->bind_param('i', $branchCheckId);
+        $infoStmt->execute();
+        $info = $infoStmt->get_result()->fetch_assoc();
+        $infoStmt->close();
+
+        if (!$info) {
+            return $photos;
+        }
+
+        // "img" hanya berisi nama file; folder tujuannya dihitung ulang dari toko + tanggal pengecekan.
+        $relativeDir = $this->buildPhotoDir($info['store_name'], $info['check_date']);
+
+        $stmt = $this->koneksi->prepare("SELECT id, img FROM branch_check_photos WHERE branch_check_id = ? ORDER BY id");
         $stmt->bind_param('i', $branchCheckId);
         $stmt->execute();
         $res = $stmt->get_result();
         while ($row = $res->fetch_assoc()) {
             $photos[] = [
                 'id' => (int)$row['id'],
-                'url' => $baseUrl . '/' . $row['photo_path'],
+                'url' => $baseUrl . '/' . $relativeDir . '/' . $row['img'],
             ];
         }
         $stmt->close();
         return $photos;
     }
 
+    /**
+     * Folder upload foto dihitung dari nama toko + tanggal pengecekan, bukan disimpan di DB.
+     * Dipakai bareng oleh uploadPhoto(), getPhotos(), dan deletePhoto() supaya konsisten.
+     */
+    private function buildPhotoDir($storeName, $checkDate)
+    {
+        $storeFolder = preg_replace('/[^A-Za-z0-9_-]+/', '_', $storeName);
+        $dateParts = explode('-', $checkDate);
+        $year = $dateParts[0] ?? date('Y');
+        $month = $dateParts[1] ?? date('m');
+        $day = $dateParts[2] ?? date('d');
+
+        return "image/branch_check/{$storeFolder}/{$year}/{$month}/{$day}";
+    }
+
     private function getHistory($storeId, $limit = 10)
     {
         $history = [];
         $stmt = $this->koneksi->prepare(
-            "SELECT id, check_date, checked_by, total_items, total_ok, total_not_ok
-             FROM branch_checks WHERE store_id = ? ORDER BY check_date DESC LIMIT ?"
+            "SELECT bc.id, bc.check_date, bc.checked_by, a.name AS checked_by_name,
+             bc.total_items, bc.total_ok, bc.total_not_ok
+             FROM branch_checks bc
+             LEFT JOIN administrator a ON a.administrator_id = bc.checked_by
+             WHERE bc.store_id = ? ORDER BY bc.check_date DESC LIMIT ?"
         );
         $stmt->bind_param('ii', $storeId, $limit);
         $stmt->execute();

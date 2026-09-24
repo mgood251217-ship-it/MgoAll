@@ -17,10 +17,14 @@ $access = isset($_SESSION['admin_logged_in']['access']) ? startEnk('dek', $_SESS
 $controller = new BranchCheckController($koneksi);
 $data = $controller->getIndexData($access);
 
+// NOTE: this now expects 4 tiers instead of the old 3 ('Baik' / 'Perlu Perhatian' / 'Belum Lengkap').
+// BranchCheckController::getIndexData() must be updated to return one of these 4 labels
+// in $data['summary']['label'] for the badge to pick the right color.
 $statusBadgeClass = [
-    'Baik' => 'bg-success-light',
-    'Perlu Perhatian' => 'bg-danger-light',
-    'Belum Lengkap' => 'bg-warning-light',
+    'Kurang' => 'bg-danger-light',
+    'Cukup' => 'bg-warning-light',
+    'Baik' => 'bg-info-light',
+    'Sangat Baik' => 'bg-success-light',
 ];
 
 function renderChecklistRow($no, $name, $kind, $id, $status, $notes, $parentGroupId = null)
@@ -39,6 +43,9 @@ function renderChecklistRow($no, $name, $kind, $id, $status, $notes, $parentGrou
 <div class="page-header">
     <h2>Checklist Pengecekan Cabang</h2>
     <div class="page-actions">
+        <button type="button" class="btn-secondary-custom" onclick="exportPdf()">
+            <i class="fas fa-file-pdf"></i> Export PDF
+        </button>
         <a href="/checklist_master" class="btn-secondary-custom">
             <i class="fas fa-cog"></i> Kelola Struktur Checklist
         </a>
@@ -94,7 +101,7 @@ function renderChecklistRow($no, $name, $kind, $id, $status, $notes, $parentGrou
                         ?>
                         <tr <?= $isActive ? 'style="background:var(--color-surface-hover)"' : '' ?>>
                             <td><?= date('d/m/Y', strtotime($historyRow['check_date'])) ?></td>
-                            <td><?= htmlspecialchars($historyRow['checked_by'] ?? '-') ?></td>
+                            <td><?= htmlspecialchars($historyRow['checked_by_name'] ?? '-') ?></td>
                             <td class="text-center"><?= (int)$historyRow['total_ok'] ?></td>
                             <td class="text-center"><?= (int)$historyRow['total_not_ok'] ?></td>
                             <td class="table-actions">
@@ -120,7 +127,7 @@ function renderChecklistRow($no, $name, $kind, $id, $status, $notes, $parentGrou
 
 <?php $no = 1; ?>
 <?php foreach ($data['tables'] as $table): ?>
-    <div class="table-container">
+    <div class="table-container checklist-table-container">
         <h4 class="table-title"><?= htmlspecialchars($table['name']) ?></h4>
         <div class="table-scroll">
             <table class="table-modern checklist-table">
@@ -173,6 +180,15 @@ function renderChecklistRow($no, $name, $kind, $id, $status, $notes, $parentGrou
         </div>
     </div>
 <?php endforeach; ?>
+
+<div class="summary-card" id="problemItemsCard">
+    <h4 class="table-title" style="padding:0 0 var(--space-4) 0;border:0;color:#b91c1c">
+        <i class="fas fa-triangle-exclamation"></i> Rincian Item Bermasalah
+    </h4>
+    <div id="problemItemsList">
+        <p class="cell-empty" style="padding:0">Tidak ada item bermasalah.</p>
+    </div>
+</div>
 
 <div class="summary-card">
     <h4 class="table-title" style="padding:0 0 var(--space-4) 0;border:0">Rangkuman Hasil Akhir</h4>
@@ -235,19 +251,32 @@ function renderChecklistRow($no, $name, $kind, $id, $status, $notes, $parentGrou
         <button type="button" class="btn-secondary-custom" style="margin-top:var(--space-3)" onclick="uploadPhoto(<?= $data['branch_check']['id'] ?>)">
             <i class="fas fa-upload"></i> Upload Foto
         </button>
+
+        <div class="form-group" style="margin-top:var(--space-4)">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:normal">
+                <input type="checkbox" id="includePhotosInPdf" checked>
+                Sertakan foto pengecekan ini saat Export PDF
+            </label>
+        </div>
     <?php endif; ?>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
 document.querySelectorAll('.checklist-item-row').forEach(function (row) {
     var ok = row.querySelector('.row-ok');
     var notOk = row.querySelector('.row-notok');
+    var notes = row.querySelector('.row-notes');
     ok.addEventListener('change', function () {
         if (this.checked) notOk.checked = false;
+        renderProblemItems();
     });
     notOk.addEventListener('change', function () {
         if (this.checked) ok.checked = false;
+        renderProblemItems();
     });
+    notes.addEventListener('input', renderProblemItems);
 });
 
 document.querySelectorAll('.group-toggle').forEach(function (cb) {
@@ -258,8 +287,60 @@ document.querySelectorAll('.group-toggle').forEach(function (cb) {
             row.querySelector('.row-ok').checked = checked;
             if (checked) row.querySelector('.row-notok').checked = false;
         });
+        renderProblemItems();
     });
 });
+
+// Render kartu "Rincian Item Bermasalah" di halaman web, bukan cuma di PDF.
+// Dipanggil setiap ada perubahan status/keterangan supaya selalu up-to-date.
+function escapeHtmlText(str) {
+    var div = document.createElement('div');
+    div.textContent = str == null ? '' : str;
+    return div.innerHTML;
+}
+
+function renderProblemItems() {
+    var listEl = document.getElementById('problemItemsList');
+    if (!listEl) return;
+
+    var rows = [];
+    document.querySelectorAll('.checklist-item-row').forEach(function (row) {
+        var notOk = row.querySelector('.row-notok');
+        if (notOk && notOk.checked) {
+            var container = row.closest('.checklist-table-container');
+            var tableTitleEl = container ? container.querySelector('.table-title') : null;
+            var noCell = row.querySelector('td[data-label="No"]');
+            var nameCell = row.querySelector('td[data-label="List Check"]');
+            var notesInput = row.querySelector('.row-notes');
+            rows.push({
+                table: tableTitleEl ? tableTitleEl.textContent.trim() : '',
+                no: noCell ? noCell.textContent.trim() : '',
+                name: nameCell ? nameCell.textContent.trim() : '',
+                notes: (notesInput && notesInput.value) ? notesInput.value : '-'
+            });
+        }
+    });
+
+    if (rows.length === 0) {
+        listEl.innerHTML = '<p class="cell-empty" style="padding:0">Tidak ada item bermasalah.</p>';
+        return;
+    }
+
+    var html = '<div class="table-scroll"><table class="table-modern">' +
+        '<thead><tr><th class="col-no">No</th><th>Tabel</th><th>List Check</th><th>Keterangan</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+        html += '<tr style="color:#b91c1c">' +
+            '<td data-label="No">' + escapeHtmlText(r.no) + '</td>' +
+            '<td data-label="Tabel">' + escapeHtmlText(r.table) + '</td>' +
+            '<td data-label="List Check">' + escapeHtmlText(r.name) + '</td>' +
+            '<td data-label="Keterangan">' + escapeHtmlText(r.notes) + '</td>' +
+            '</tr>';
+    });
+    html += '</tbody></table></div>';
+    listEl.innerHTML = html;
+}
+
+renderProblemItems();
 
 function saveBranchCheck() {
     var items = [];
@@ -363,5 +444,330 @@ function deletePhoto(id, btn) {
                 .catch(() => Swal.fire('Error!', 'Terjadi kesalahan sistem', 'error'));
         }
     });
+}
+
+var checkedByName = <?= json_encode($data['branch_check']['checked_by_name'] ?? '') ?>;
+
+function collectChecklistForExport() {
+    var tables = [];
+    document.querySelectorAll('.checklist-table-container').forEach(function (container) {
+        var titleEl = container.querySelector('.table-title');
+        var rows = [];
+        container.querySelectorAll('tbody tr').forEach(function (tr) {
+            if (tr.classList.contains('checklist-category-row')) {
+                rows.push({ type: 'category', text: tr.querySelector('td').textContent.trim() });
+            } else if (tr.classList.contains('checklist-group-row')) {
+                rows.push({ type: 'group', text: tr.querySelector('td').textContent.trim() });
+            } else if (tr.classList.contains('checklist-item-row')) {
+                var noCell = tr.querySelector('td[data-label="No"]');
+                var nameCell = tr.querySelector('td[data-label="List Check"]');
+                var ok = tr.querySelector('.row-ok').checked;
+                var notOk = tr.querySelector('.row-notok').checked;
+                var notes = tr.querySelector('.row-notes').value;
+                rows.push({
+                    type: 'item',
+                    no: noCell ? noCell.textContent.trim() : '',
+                    name: nameCell ? nameCell.textContent.trim() : '',
+                    status: ok ? 'Sesuai' : (notOk ? 'Tidak Sesuai' : '-'),
+                    notes: notes || '-'
+                });
+            }
+        });
+        tables.push({ title: titleEl ? titleEl.textContent.trim() : '', rows: rows });
+    });
+    return tables;
+}
+
+// Kumpulkan semua item yang statusnya "Tidak Sesuai" (bermasalah) dari semua tabel,
+// beserta keterangannya jika ada, untuk ditampilkan sebagai rincian di PDF.
+function collectProblemItems(tables) {
+    var problems = [];
+    tables.forEach(function (table) {
+        table.rows.forEach(function (row) {
+            if (row.type === 'item' && row.status === 'Tidak Sesuai') {
+                problems.push({
+                    table: table.title,
+                    no: row.no,
+                    name: row.name,
+                    notes: (row.notes && row.notes !== '-') ? row.notes : '-'
+                });
+            }
+        });
+    });
+    return problems;
+}
+
+function formatIndonesianDate(dateStr) {
+    if (!dateStr) return '-';
+    var months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    var parts = dateStr.split('-');
+    var y = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10) - 1;
+    var d = parseInt(parts[2], 10);
+    if (isNaN(y) || isNaN(m) || isNaN(d) || !months[m]) return dateStr;
+    return d + ' ' + months[m] + ' ' + y;
+}
+
+function loadImageAsDataUrl(url) {
+    return fetch(url)
+        .then(function (res) {
+            if (!res.ok) throw new Error('fetch failed');
+            return res.blob();
+        })
+        .then(function (blob) {
+            return new Promise(function (resolve, reject) {
+                var reader = new FileReader();
+                reader.onloadend = function () { resolve(reader.result); };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        });
+}
+
+async function exportPdf() {
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    var pageWidth = doc.internal.pageSize.getWidth();
+    var pageHeight = doc.internal.pageSize.getHeight();
+    var marginLeft = 14;
+    var labelX = marginLeft;
+    var colonX = marginLeft + 42;
+    var valueX = marginLeft + 45;
+
+    var storeSelect = document.getElementById('store_id');
+    var storeName = storeSelect.options[storeSelect.selectedIndex] ? storeSelect.options[storeSelect.selectedIndex].text : '-';
+    var checkDate = document.getElementById('check_date').value;
+    var checkDateDisplay = formatIndonesianDate(checkDate);
+
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('LAPORAN CHECKLIST PENGECEKAN CABANG', pageWidth / 2, 16, { align: 'center' });
+
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.text('Nama Toko', labelX, 26);
+    doc.text(':', colonX, 26);
+    doc.text(storeName, valueX, 26);
+    doc.text('Tanggal Pengecekan', labelX, 32);
+    doc.text(':', colonX, 32);
+    doc.text(checkDateDisplay, valueX, 32);
+    doc.text('Diperiksa Oleh', labelX, 38);
+    doc.text(':', colonX, 38);
+    doc.text(checkedByName || '-', valueX, 38);
+
+    var currentY = 46;
+    var tables = collectChecklistForExport();
+
+    tables.forEach(function (table) {
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'bold');
+        doc.text(table.title, marginLeft, currentY);
+        currentY += 3;
+
+        var body = [];
+        table.rows.forEach(function (row) {
+            if (row.type === 'category') {
+                body.push([{ content: row.text, colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }]);
+            } else if (row.type === 'group') {
+                body.push([{ content: row.text, colSpan: 4, styles: { fontStyle: 'bold', fillColor: [241, 245, 249], textColor: [51, 65, 85] } }]);
+            } else {
+                // Baris item yang "Tidak Sesuai" ditandai merah agar langsung terlihat di tabel utama.
+                if (row.status === 'Tidak Sesuai') {
+                    body.push([
+                        { content: row.no, styles: { textColor: [185, 28, 28] } },
+                        { content: row.name, styles: { textColor: [185, 28, 28] } },
+                        { content: row.status, styles: { textColor: [185, 28, 28], fontStyle: 'bold' } },
+                        { content: row.notes, styles: { textColor: [185, 28, 28] } }
+                    ]);
+                } else {
+                    body.push([row.no, row.name, row.status, row.notes]);
+                }
+            }
+        });
+
+        doc.autoTable({
+            startY: currentY,
+            margin: { left: marginLeft, right: marginLeft },
+            head: [['No', 'List Check', 'Status', 'Keterangan']],
+            body: body,
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 1.5 },
+            headStyles: { fillColor: [59, 130, 246], textColor: 255 },
+            columnStyles: {
+                0: { cellWidth: 10 },
+                2: { cellWidth: 25 },
+                3: { cellWidth: 45 }
+            }
+        });
+
+        currentY = doc.lastAutoTable.finalY + 8;
+    });
+
+    // Rincian item bermasalah (semua yang "Tidak Sesuai"), lengkap dengan keterangannya jika ada,
+    // dikumpulkan lintas tabel dan ditampilkan terpisah dengan warna merah agar mudah dipantau.
+    var problemItems = collectProblemItems(tables);
+    if (problemItems.length > 0) {
+        if (currentY > pageHeight - 60) {
+            doc.addPage();
+            currentY = 20;
+        }
+
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(220, 38, 38);
+        doc.text('Rincian Item Bermasalah', marginLeft, currentY);
+        doc.setTextColor(0, 0, 0);
+        currentY += 6;
+
+        doc.autoTable({
+            startY: currentY,
+            margin: { left: marginLeft, right: marginLeft },
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 2, textColor: [185, 28, 28] },
+            head: [['No', 'Tabel', 'List Check', 'Keterangan']],
+            headStyles: { fillColor: [220, 38, 38], textColor: 255 },
+            columnStyles: {
+                0: { cellWidth: 10 },
+                1: { cellWidth: 35 },
+                3: { cellWidth: 55 }
+            },
+            body: problemItems.map(function (p) {
+                return [p.no, p.table, p.name, p.notes];
+            })
+        });
+        currentY = doc.lastAutoTable.finalY + 8;
+    }
+
+    var summaryTotal = document.getElementById('summaryTotal').textContent.trim();
+    var summaryOk = document.getElementById('summaryOk').textContent.trim();
+    var summaryNotOk = document.getElementById('summaryNotOk').textContent.trim();
+    var summaryStatus = document.getElementById('summaryStatus').textContent.trim();
+    var summaryNote = document.getElementById('summary_note').value || '-';
+
+    if (currentY > pageHeight - 70) {
+        doc.addPage();
+        currentY = 20;
+    }
+
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text('Rangkuman Hasil Akhir', marginLeft, currentY);
+    currentY += 6;
+
+    doc.autoTable({
+        startY: currentY,
+        margin: { left: marginLeft, right: marginLeft },
+        theme: 'grid',
+        styles: { fontSize: 9, cellPadding: 2.5 },
+        head: [['Keterangan', 'Jumlah / Nilai']],
+        headStyles: { fillColor: [100, 116, 139], textColor: 255 },
+        columnStyles: {
+            0: { cellWidth: 60, fontStyle: 'bold' },
+            1: { cellWidth: 60 }
+        },
+        body: [
+            ['Total Item Diperiksa', summaryTotal],
+            ['Jumlah Sesuai', summaryOk],
+            ['Jumlah Tidak Sesuai', summaryNotOk],
+            ['Status Akhir', summaryStatus]
+        ]
+    });
+    currentY = doc.lastAutoTable.finalY + 6;
+
+    doc.setFont(undefined, 'bold');
+    doc.setFontSize(9);
+    doc.text('Catatan Umum:', marginLeft, currentY);
+    currentY += 5;
+    doc.setFont(undefined, 'normal');
+    var noteLines = doc.splitTextToSize(summaryNote, pageWidth - marginLeft * 2);
+    doc.text(noteLines, marginLeft, currentY);
+    currentY += noteLines.length * 5 + 6;
+
+    // Foto hanya disertakan ke PDF jika checkbox "Sertakan foto di PDF" ada dan dicentang.
+    // Jika elemennya tidak ada (belum ada pengecekan tersimpan) dianggap tidak menyertakan foto.
+    var includePhotosCheckbox = document.getElementById('includePhotosInPdf');
+    var shouldIncludePhotos = includePhotosCheckbox ? includePhotosCheckbox.checked : false;
+    var photoImgs = shouldIncludePhotos ? document.querySelectorAll('#photoGrid img') : [];
+
+    if (photoImgs.length > 0) {
+        if (currentY > pageHeight - 70) {
+            doc.addPage();
+            currentY = 20;
+        }
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'bold');
+        doc.text('Foto Pengecekan', marginLeft, currentY);
+        currentY += 6;
+
+        var imgWidth = 80;
+        var imgHeight = 55;
+        var gap = 6;
+        var col = 0;
+
+        for (var i = 0; i < photoImgs.length; i++) {
+            if (currentY + imgHeight > pageHeight - 20) {
+                doc.addPage();
+                currentY = 20;
+                col = 0;
+            }
+
+            var x = marginLeft + col * (imgWidth + gap);
+            var dataUrl = null;
+            try {
+                dataUrl = await loadImageAsDataUrl(photoImgs[i].src);
+            } catch (e) {
+                dataUrl = null;
+            }
+
+            if (dataUrl) {
+                var format = 'JPEG';
+                if (dataUrl.indexOf('image/png') !== -1) format = 'PNG';
+                try {
+                    doc.addImage(dataUrl, format, x, currentY, imgWidth, imgHeight);
+                } catch (e) {
+                    doc.setDrawColor(200);
+                    doc.rect(x, currentY, imgWidth, imgHeight);
+                    doc.setFontSize(8);
+                    doc.text('(Foto tidak dapat dimuat)', x + 5, currentY + imgHeight / 2);
+                }
+            } else {
+                doc.setDrawColor(200);
+                doc.rect(x, currentY, imgWidth, imgHeight);
+                doc.setFontSize(8);
+                doc.text('(Foto tidak dapat dimuat)', x + 5, currentY + imgHeight / 2);
+            }
+
+            col++;
+            if (col >= 2) {
+                col = 0;
+                currentY += imgHeight + gap;
+            }
+        }
+
+        if (col !== 0) {
+            currentY += imgHeight + gap;
+        }
+        currentY += 4;
+    }
+
+    if (currentY > pageHeight - 45) {
+        doc.addPage();
+        currentY = 30;
+    }
+
+    var halfWidth = (pageWidth - marginLeft * 2) / 2;
+    var leftCenterX = marginLeft + halfWidth / 2;
+    var rightCenterX = marginLeft + halfWidth + halfWidth / 2;
+
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.text('Mengetahui,', leftCenterX, currentY, { align: 'center' });
+    doc.text('Diperiksa oleh,', rightCenterX, currentY, { align: 'center' });
+    currentY += 25;
+    doc.text('( ......................... )', leftCenterX, currentY, { align: 'center' });
+    doc.text('( ' + (checkedByName || '.........................') + ' )', rightCenterX, currentY, { align: 'center' });
+
+    var fileStore = storeName.replace(/[^A-Za-z0-9]+/g, '_');
+    doc.save('checklist_' + fileStore + '_' + checkDate + '.pdf');
 }
 </script>
