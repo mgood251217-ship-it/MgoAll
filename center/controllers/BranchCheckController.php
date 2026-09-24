@@ -24,13 +24,13 @@ class BranchCheckController
 
         $itemResults = [];
         $groupResults = [];
-        $photos = [];
+        $photos = ['general' => [], 'by_item' => [], 'by_group' => []];
         if ($branchCheck) {
             [$itemResults, $groupResults] = $this->getResults($branchCheck['id']);
             $photos = $this->getPhotos($branchCheck['id']);
         }
 
-        $tables = $this->mergeResults($tables, $itemResults, $groupResults);
+        $tables = $this->mergeResults($tables, $itemResults, $groupResults, $photos['by_item'], $photos['by_group']);
         $summary = $this->calculateSummary($tables);
 
         $history = $storeId > 0 ? $this->getHistory($storeId) : [];
@@ -43,7 +43,7 @@ class BranchCheckController
             'tables' => $tables,
             'branch_check' => $branchCheck,
             'summary' => $summary,
-            'photos' => $photos,
+            'photos' => $photos['general'],
             'history' => $history,
             'history_count' => $historyCount,
         ];
@@ -157,6 +157,9 @@ class BranchCheckController
         header('Content-Type: application/json');
 
         $branchCheckId = (int)($_POST['branch_check_id'] ?? 0);
+        $kind = ($_POST['kind'] ?? '') === 'group' ? 'group' : (($_POST['kind'] ?? '') === 'item' ? 'item' : null);
+        $entityId = (int)($_POST['id'] ?? 0);
+
         if ($branchCheckId <= 0 || empty($_FILES['photo']['tmp_name'])) {
             echo json_encode(['success' => false, 'message' => 'Data tidak lengkap']);
             return;
@@ -204,17 +207,27 @@ class BranchCheckController
             return;
         }
 
-        // Hanya nama filenya saja yang disimpan di kolom "img" (bukan path lengkap).
-        // Folder tujuannya selalu dihitung ulang dari data toko + tanggal pengecekan lewat buildPhotoDir().
-        $insert = $this->koneksi->prepare("INSERT INTO branch_check_photos (branch_check_id, img) VALUES (?, ?)");
-        $insert->bind_param('is', $branchCheckId, $fileName);
+        $itemId = $kind === 'item' && $entityId > 0 ? $entityId : null;
+        $groupId = $kind === 'group' && $entityId > 0 ? $entityId : null;
+
+        $insert = $this->koneksi->prepare(
+            "INSERT INTO branch_check_photos (branch_check_id, checklist_item_id, checklist_group_id, img) VALUES (?, ?, ?, ?)"
+        );
+        $insert->bind_param('iiis', $branchCheckId, $itemId, $groupId, $fileName);
         $insert->execute();
         $photoId = $insert->insert_id;
         $insert->close();
 
         $url = rtrim($_ENV['BASE_URL_UPLOAD'], '/') . '/' . $relativeDir . '/' . $fileName;
 
-        echo json_encode(['success' => true, 'message' => 'Foto berhasil diupload', 'id' => $photoId, 'url' => $url]);
+        echo json_encode([
+            'success' => true,
+            'message' => 'Foto berhasil diupload',
+            'id' => $photoId,
+            'url' => $url,
+            'kind' => $kind,
+            'entity_id' => $entityId ?: null,
+        ]);
     }
 
     public function deletePhoto()
@@ -330,7 +343,7 @@ class BranchCheckController
 
     private function getPhotos($branchCheckId)
     {
-        $photos = [];
+        $photos = ['general' => [], 'by_item' => [], 'by_group' => []];
         $baseUrl = rtrim($_ENV['BASE_URL_UPLOAD'] ?? '', '/');
 
         $infoStmt = $this->koneksi->prepare(
@@ -348,18 +361,26 @@ class BranchCheckController
             return $photos;
         }
 
-        // "img" hanya berisi nama file; folder tujuannya dihitung ulang dari toko + tanggal pengecekan.
         $relativeDir = $this->buildPhotoDir($info['store_name'], $info['check_date']);
 
-        $stmt = $this->koneksi->prepare("SELECT id, img FROM branch_check_photos WHERE branch_check_id = ? ORDER BY id");
+        $stmt = $this->koneksi->prepare(
+            "SELECT id, img, checklist_item_id, checklist_group_id FROM branch_check_photos WHERE branch_check_id = ? ORDER BY id"
+        );
         $stmt->bind_param('i', $branchCheckId);
         $stmt->execute();
         $res = $stmt->get_result();
         while ($row = $res->fetch_assoc()) {
-            $photos[] = [
+            $photo = [
                 'id' => (int)$row['id'],
                 'url' => $baseUrl . '/' . $relativeDir . '/' . $row['img'],
             ];
+            if ($row['checklist_item_id'] !== null) {
+                $photos['by_item'][(int)$row['checklist_item_id']][] = $photo;
+            } elseif ($row['checklist_group_id'] !== null) {
+                $photos['by_group'][(int)$row['checklist_group_id']][] = $photo;
+            } else {
+                $photos['general'][] = $photo;
+            }
         }
         $stmt->close();
         return $photos;
@@ -429,7 +450,7 @@ class BranchCheckController
         return [$itemResults, $groupResults];
     }
 
-    private function mergeResults($tables, $itemResults, $groupResults)
+    private function mergeResults($tables, $itemResults, $groupResults, $photosByItem = [], $photosByGroup = [])
     {
         foreach ($tables as &$table) {
             foreach ($table['categories'] as &$category) {
@@ -438,11 +459,13 @@ class BranchCheckController
                         $group['status'] = $groupResults[$group['id']]['status'];
                         $group['notes'] = $groupResults[$group['id']]['notes'];
                     }
+                    $group['photos'] = $photosByGroup[$group['id']] ?? [];
                     foreach ($group['items'] as &$item) {
                         if (isset($itemResults[$item['id']])) {
                             $item['status'] = $itemResults[$item['id']]['status'];
                             $item['notes'] = $itemResults[$item['id']]['notes'];
                         }
+                        $item['photos'] = $photosByItem[$item['id']] ?? [];
                     }
                     unset($item);
                 }
