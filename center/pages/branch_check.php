@@ -17,9 +17,6 @@ $access = isset($_SESSION['admin_logged_in']['access']) ? startEnk('dek', $_SESS
 $controller = new BranchCheckController($koneksi);
 $data = $controller->getIndexData($access);
 
-// NOTE: this now expects 4 tiers instead of the old 3 ('Baik' / 'Perlu Perhatian' / 'Belum Lengkap').
-// BranchCheckController::getIndexData() must be updated to return one of these 4 labels
-// in $data['summary']['label'] for the badge to pick the right color.
 $statusBadgeClass = [
     'Kurang' => 'bg-danger-light',
     'Cukup' => 'bg-warning-light',
@@ -27,7 +24,7 @@ $statusBadgeClass = [
     'Sangat Baik' => 'bg-success-light',
 ];
 
-function renderChecklistRow($no, $name, $kind, $id, $status, $notes, $parentGroupId = null)
+function renderChecklistRow($no, $name, $kind, $id, $status, $notes, $photos = [], $parentGroupId = null)
 {
     $parentAttr = $parentGroupId !== null ? ' data-parent-group="' . $parentGroupId . '"' : '';
     echo '<tr class="checklist-item-row" data-kind="' . $kind . '" data-id="' . $id . '"' . $parentAttr . '>';
@@ -36,6 +33,21 @@ function renderChecklistRow($no, $name, $kind, $id, $status, $notes, $parentGrou
     echo '<td class="text-center" data-label="Sesuai"><input type="checkbox" class="checklist-checkbox row-ok" ' . ($status === 'ok' ? 'checked' : '') . '></td>';
     echo '<td class="text-center" data-label="Tidak Sesuai"><input type="checkbox" class="checklist-checkbox row-notok" ' . ($status === 'not_ok' ? 'checked' : '') . '></td>';
     echo '<td data-label="Keterangan"><input type="text" class="form-control-custom row-notes" placeholder="Keterangan..." value="' . htmlspecialchars($notes) . '"></td>';
+    echo '<td data-label="Foto" class="row-photo-cell">';
+    echo '<div class="row-photo-grid" data-kind="' . $kind . '" data-id="' . $id . '">';
+    foreach ($photos as $photo) {
+        echo '<div class="row-photo-thumb" data-photo-id="' . $photo['id'] . '">';
+        echo '<div class="row-photo-thumb-img"><a href="' . htmlspecialchars($photo['url']) . '" target="_blank" class="row-photo-view"><img src="' . htmlspecialchars($photo['url']) . '" alt="Foto"></a></div>';
+        echo '<a href="' . htmlspecialchars($photo['url']) . '" download class="row-photo-download" title="Unduh"><i class="fas fa-download"></i></a>';
+        echo '<button type="button" class="row-photo-remove" title="Hapus" onclick="deletePhoto(' . $photo['id'] . ', this)"><i class="fas fa-times"></i></button>';
+        echo '</div>';
+    }
+    echo '</div>';
+    echo '<label class="row-photo-upload-btn" title="Upload Foto">';
+    echo '<i class="fas fa-camera"></i>';
+    echo '<input type="file" class="row-photo-input" accept="image/jpeg,image/png,image/webp" onchange="uploadRowPhoto(\'' . $kind . '\', ' . $id . ', this)">';
+    echo '</label>';
+    echo '</td>';
     echo '</tr>';
 }
 ?>
@@ -138,39 +150,40 @@ function renderChecklistRow($no, $name, $kind, $id, $status, $notes, $parentGrou
                         <th class="text-center col-check">Sesuai / Baik / Berjalan</th>
                         <th class="text-center col-check">Tidak / Rusak / Terhenti</th>
                         <th>Keterangan</th>
+                        <th>Foto</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($table['categories'])): ?>
                         <tr>
-                            <td class="cell-empty" colspan="5">Belum ada kategori pada tabel ini</td>
+                            <td class="cell-empty" colspan="6">Belum ada kategori pada tabel ini</td>
                         </tr>
                     <?php endif; ?>
 
                     <?php foreach ($table['categories'] as $category): ?>
                         <tr class="checklist-category-row">
-                            <td colspan="5"><strong><?= htmlspecialchars($category['name']) ?></strong></td>
+                            <td colspan="6"><strong><?= htmlspecialchars($category['name']) ?></strong></td>
                         </tr>
 
                         <?php if (empty($category['groups'])): ?>
                             <tr>
-                                <td class="cell-empty" colspan="5">Belum ada grup pada kategori ini</td>
+                                <td class="cell-empty" colspan="6">Belum ada grup pada kategori ini</td>
                             </tr>
                         <?php endif; ?>
 
                         <?php foreach ($category['groups'] as $group): ?>
                             <?php if (empty($group['items'])): ?>
-                                <?php renderChecklistRow($no++, $group['name'], 'group', $group['id'], $group['status'], $group['notes']); ?>
+                                <?php renderChecklistRow($no++, $group['name'], 'group', $group['id'], $group['status'], $group['notes'], $group['photos'] ?? []); ?>
                             <?php else: ?>
                                 <tr class="checklist-group-row">
                                     <td colspan="2"><?= htmlspecialchars($group['name']) ?></td>
                                     <td class="text-center" data-label="Centang Semua">
                                         <input type="checkbox" class="checklist-checkbox group-toggle" data-group-id="<?= $group['id'] ?>">
                                     </td>
-                                    <td colspan="2"></td>
+                                    <td colspan="3"></td>
                                 </tr>
                                 <?php foreach ($group['items'] as $item): ?>
-                                    <?php renderChecklistRow($no++, $item['name'], 'item', $item['id'], $item['status'], $item['notes'], $group['id']); ?>
+                                    <?php renderChecklistRow($no++, $item['name'], 'item', $item['id'], $item['status'], $item['notes'], $item['photos'] ?? [], $group['id']); ?>
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         <?php endforeach; ?>
@@ -234,8 +247,11 @@ function renderChecklistRow($no, $name, $kind, $id, $status, $notes, $parentGrou
         <div id="photoGrid" style="display:flex;flex-wrap:wrap;gap:var(--space-3);margin-bottom:var(--space-4)">
             <?php foreach ($data['photos'] as $photo): ?>
                 <div class="photo-thumb" data-photo-id="<?= $photo['id'] ?>">
-                    <a href="<?= htmlspecialchars($photo['url']) ?>" target="_blank">
+                    <a href="<?= htmlspecialchars($photo['url']) ?>" target="_blank" class="photo-thumb-view">
                         <img src="<?= htmlspecialchars($photo['url']) ?>" alt="Foto pengecekan">
+                    </a>
+                    <a href="<?= htmlspecialchars($photo['url']) ?>" download class="photo-thumb-download" title="Unduh">
+                        <i class="fas fa-download"></i>
                     </a>
                     <button type="button" class="photo-thumb-remove" title="Hapus" onclick="deletePhoto(<?= $photo['id'] ?>, this)">
                         <i class="fas fa-times"></i>
@@ -261,6 +277,50 @@ function renderChecklistRow($no, $name, $kind, $id, $status, $notes, $parentGrou
     <?php endif; ?>
 </div>
 
+<style>
+.checklist-table { table-layout: fixed; font-size: 12.5px; }
+.checklist-table th, .checklist-table td { padding: 6px 8px; word-break: break-word; }
+.checklist-table th.col-no, .checklist-table td[data-label="No"] { width: 5%; }
+.checklist-table th:nth-child(2), .checklist-table td[data-label="List Check"] { width: 27%; }
+.checklist-table th.col-check, .checklist-table td[data-label="Sesuai"], .checklist-table td[data-label="Tidak Sesuai"] { width: 11%; font-size: 11px; line-height: 1.25; }
+.checklist-table th:nth-child(5), .checklist-table td[data-label="Keterangan"] { width: 24%; }
+.checklist-table th:nth-child(6), .checklist-table .row-photo-cell { width: 22%; }
+.checklist-table .row-notes { font-size: 12px; padding: 4px 6px; }
+
+.row-photo-cell { min-width: 40px; }
+.row-photo-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; }
+.row-photo-thumb { position: relative; width: 46px; height: 46px; }
+.row-photo-thumb-img { width: 100%; height: 100%; border-radius: 6px; overflow: hidden; border: 1px solid #e2e8f0; }
+.row-photo-thumb-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.row-photo-remove { position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; border-radius: 50%; background: #ef4444; color: #fff; border: none; font-size: 9px; line-height: 16px; cursor: pointer; padding: 0; z-index: 1; }
+.row-photo-download { position: absolute; bottom: -6px; right: -6px; width: 16px; height: 16px; border-radius: 50%; background: #3b82f6; color: #fff; font-size: 8px; line-height: 16px; text-align: center; text-decoration: none; z-index: 1; }
+.row-photo-upload-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 6px; border: 1px dashed #cbd5e1; cursor: pointer; color: #64748b; }
+.row-photo-upload-btn:hover { background: #f1f5f9; }
+.row-photo-upload-btn.is-uploading { opacity: .5; pointer-events: none; }
+.row-photo-upload-btn input[type="file"] { display: none; }
+
+.photo-thumb-download { position: absolute; bottom: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; background: #3b82f6; color: #fff; font-size: 9px; line-height: 18px; text-align: center; text-decoration: none; }
+
+@media (max-width: 768px) {
+    .checklist-table .row-photo-cell {
+        display: block !important;
+        width: 100% !important;
+    }
+    .checklist-table .row-photo-grid {
+        display: flex !important;
+    }
+    .checklist-table .row-photo-upload-btn {
+        display: inline-flex !important;
+    }
+    .checklist-table .row-photo-upload-btn input[type="file"] {
+        display: none !important;
+    }
+    .checklist-table .row-photo-cell::before {
+        content: 'Foto: ';
+        font-weight: 600;
+    }
+}
+</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
@@ -291,8 +351,6 @@ document.querySelectorAll('.group-toggle').forEach(function (cb) {
     });
 });
 
-// Render kartu "Rincian Item Bermasalah" di halaman web, bukan cuma di PDF.
-// Dipanggil setiap ada perubahan status/keterangan supaya selalu up-to-date.
 function escapeHtmlText(str) {
     var div = document.createElement('div');
     div.textContent = str == null ? '' : str;
@@ -342,7 +400,9 @@ function renderProblemItems() {
 
 renderProblemItems();
 
-function saveBranchCheck() {
+var currentBranchCheckId = <?= $data['branch_check']['id'] ?? 'null' ?>;
+
+function collectItemsPayload() {
     var items = [];
     document.querySelectorAll('.checklist-item-row').forEach(function (row) {
         var ok = row.querySelector('.row-ok').checked;
@@ -354,22 +414,28 @@ function saveBranchCheck() {
             notes: row.querySelector('.row-notes').value
         });
     });
+    return items;
+}
 
-    var payload = {
+function buildSavePayload() {
+    return {
         store_id: document.getElementById('store_id').value,
         check_date: document.getElementById('check_date').value,
         summary_note: document.getElementById('summary_note').value,
-        items: items
+        items: collectItemsPayload()
     };
+}
 
+function saveBranchCheck() {
     fetch('/action?action=save_branch_check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(buildSavePayload())
     })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
+                currentBranchCheckId = data.branch_check_id;
                 Swal.fire({
                     icon: 'success',
                     title: 'Berhasil',
@@ -383,7 +449,79 @@ function saveBranchCheck() {
             }
         })
         .catch(() => Swal.fire('Error!', 'Terjadi kesalahan sistem', 'error'));
-}function uploadPhoto(branchCheckId) {
+}
+
+function silentSaveBranchCheck() {
+    return fetch('/action?action=save_branch_check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildSavePayload())
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                currentBranchCheckId = data.branch_check_id;
+                return data.branch_check_id;
+            }
+            return null;
+        })
+        .catch(() => null);
+}
+
+function rowPhotoThumbHtml(id, url) {
+    return '<div class="row-photo-thumb" data-photo-id="' + id + '">' +
+        '<div class="row-photo-thumb-img"><a href="' + url + '" target="_blank" class="row-photo-view"><img src="' + url + '" alt="Foto"></a></div>' +
+        '<a href="' + url + '" download class="row-photo-download" title="Unduh"><i class="fas fa-download"></i></a>' +
+        '<button type="button" class="row-photo-remove" title="Hapus" onclick="deletePhoto(' + id + ', this)"><i class="fas fa-times"></i></button>' +
+        '</div>';
+}
+
+function uploadRowPhoto(kind, id, input) {
+    if (!input.files || !input.files[0]) return;
+    var file = input.files[0];
+    var label = input.closest('.row-photo-upload-btn');
+    label.classList.add('is-uploading');
+
+    var ensureBranchCheckId = currentBranchCheckId
+        ? Promise.resolve(currentBranchCheckId)
+        : silentSaveBranchCheck();
+
+    ensureBranchCheckId.then(function (branchCheckId) {
+        if (!branchCheckId) {
+            Swal.fire('Gagal!', 'Pengecekan belum tersimpan, simpan dulu sebelum upload foto', 'error');
+            label.classList.remove('is-uploading');
+            input.value = '';
+            return;
+        }
+
+        var formData = new FormData();
+        formData.append('branch_check_id', branchCheckId);
+        formData.append('kind', kind);
+        formData.append('id', id);
+        formData.append('photo', file);
+
+        fetch('/action?action=upload_branch_check_photo', {
+            method: 'POST',
+            body: formData
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    var grid = document.querySelector('.row-photo-grid[data-kind="' + kind + '"][data-id="' + id + '"]');
+                    grid.insertAdjacentHTML('beforeend', rowPhotoThumbHtml(data.id, data.url));
+                } else {
+                    Swal.fire('Gagal!', data.message, 'error');
+                }
+            })
+            .catch(() => Swal.fire('Error!', 'Upload foto gagal, coba lagi', 'error'))
+            .finally(() => {
+                label.classList.remove('is-uploading');
+                input.value = '';
+            });
+    });
+}
+
+function uploadPhoto(branchCheckId) {
     var input = document.getElementById('photo_input');
     if (!input.files || !input.files[0]) {
         Swal.fire('Pilih foto dulu', '', 'warning');
@@ -406,7 +544,8 @@ function saveBranchCheck() {
                 var div = document.createElement('div');
                 div.className = 'photo-thumb';
                 div.setAttribute('data-photo-id', data.id);
-                div.innerHTML = '<a href="' + data.url + '" target="_blank"><img src="' + data.url + '" alt="Foto pengecekan"></a>' +
+                div.innerHTML = '<a href="' + data.url + '" target="_blank" class="photo-thumb-view"><img src="' + data.url + '" alt="Foto pengecekan"></a>' +
+                    '<a href="' + data.url + '" download class="photo-thumb-download" title="Unduh"><i class="fas fa-download"></i></a>' +
                     '<button type="button" class="photo-thumb-remove" title="Hapus" onclick="deletePhoto(' + data.id + ', this)"><i class="fas fa-times"></i></button>';
                 grid.appendChild(div);
             } else {
@@ -436,7 +575,7 @@ function deletePhoto(id, btn) {
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        btn.closest('.photo-thumb').remove();
+                        btn.closest('.photo-thumb, .row-photo-thumb').remove();
                     } else {
                         Swal.fire('Gagal!', data.message, 'error');
                     }
@@ -478,8 +617,6 @@ function collectChecklistForExport() {
     return tables;
 }
 
-// Kumpulkan semua item yang statusnya "Tidak Sesuai" (bermasalah) dari semua tabel,
-// beserta keterangannya jika ada, untuk ditampilkan sebagai rincian di PDF.
 function collectProblemItems(tables) {
     var problems = [];
     tables.forEach(function (table) {
@@ -571,7 +708,6 @@ async function exportPdf() {
             } else if (row.type === 'group') {
                 body.push([{ content: row.text, colSpan: 4, styles: { fontStyle: 'bold', fillColor: [241, 245, 249], textColor: [51, 65, 85] } }]);
             } else {
-                // Baris item yang "Tidak Sesuai" ditandai merah agar langsung terlihat di tabel utama.
                 if (row.status === 'Tidak Sesuai') {
                     body.push([
                         { content: row.no, styles: { textColor: [185, 28, 28] } },
@@ -603,8 +739,6 @@ async function exportPdf() {
         currentY = doc.lastAutoTable.finalY + 8;
     });
 
-    // Rincian item bermasalah (semua yang "Tidak Sesuai"), lengkap dengan keterangannya jika ada,
-    // dikumpulkan lintas tabel dan ditampilkan terpisah dengan warna merah agar mudah dipantau.
     var problemItems = collectProblemItems(tables);
     if (problemItems.length > 0) {
         if (currentY > pageHeight - 60) {
@@ -683,8 +817,6 @@ async function exportPdf() {
     doc.text(noteLines, marginLeft, currentY);
     currentY += noteLines.length * 5 + 6;
 
-    // Foto hanya disertakan ke PDF jika checkbox "Sertakan foto di PDF" ada dan dicentang.
-    // Jika elemennya tidak ada (belum ada pengecekan tersimpan) dianggap tidak menyertakan foto.
     var includePhotosCheckbox = document.getElementById('includePhotosInPdf');
     var shouldIncludePhotos = includePhotosCheckbox ? includePhotosCheckbox.checked : false;
     var photoImgs = shouldIncludePhotos ? document.querySelectorAll('#photoGrid img') : [];
