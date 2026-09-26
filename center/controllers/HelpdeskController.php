@@ -16,6 +16,7 @@ class HelpdeskController {
                 hc.detail,
                 hc.status,
                 hc.datetime,
+                hc.picture,
                 u.name AS user_name,
                 u.username,
                 u.initial,

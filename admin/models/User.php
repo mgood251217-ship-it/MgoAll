@@ -132,8 +132,8 @@ class User{
     }
 
     public function createHelp($data){
-        $stmt = $this->koneksi->prepare("INSERT INTO help_center (user_id, category, subject, detail, status, datetime) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("isssss", $data->user_id, $data->category, $data->subject, $data->detail, $data->status, $data->datetime);
+        $stmt = $this->koneksi->prepare("INSERT INTO help_center (user_id, category, subject, detail, status, datetime, picture) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("issssss", $data->user_id, $data->category, $data->subject, $data->detail, $data->status, $data->datetime, $data->picture);
         $success = $stmt->execute();
         $stmt->close();
         return $success;

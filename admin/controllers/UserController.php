@@ -183,10 +183,41 @@ class UserController {
         $data->detail = strtoupper(trim($_POST['detail'] ?? ''));
         $data->status = 'TERKIRIM';
         $data->datetime = strtoupper(trim($_POST['datetime'] ?? ''));
+        $data->picture = '';
+
+        if (!empty($_FILES['picture']['name']) && $_FILES['picture']['error'] === UPLOAD_ERR_OK) {
+            $allowedExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            $ext = strtolower(pathinfo($_FILES['picture']['name'], PATHINFO_EXTENSION));
+
+            if (!in_array($ext, $allowedExt)) {
+                send_json_response(false, "Format gambar tidak didukung.");
+                exit;
+            }
+
+            $maxSize = 5 * 1024 * 1024; // 5MB
+            if ($_FILES['picture']['size'] > $maxSize) {
+                send_json_response(false, "Ukuran gambar maksimal 5MB.");
+                exit;
+            }
+
+            $picture = uniqid('help_') . '_' . time() . '.' . $ext;
+            $uploadDir = rtrim($_ENV['BASE_PATH_UPLOAD'], '/') . '/image/help_center/';
+
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+
+            if (!move_uploaded_file($_FILES['picture']['tmp_name'], $uploadDir . $picture)) {
+                send_json_response(false, "Gagal mengupload gambar.");
+                exit;
+            }
+
+            $data->picture = $picture;
+        }
 
         if ($this->userModel->createHelp($data)) {
             send_json_response(true, "Berhasil mengirim pengajuan");
-        }else {
+        } else {
             send_json_response(false, "Gagal mengirim pengajuan");
         }
     }
@@ -207,8 +238,16 @@ class UserController {
         global $user_id;
         if ($user_id) {
             $data = $this->userModel->getHelps($user_id);
+
+            foreach ($data as &$ticket) {
+                $ticket['picture_link'] = !empty($ticket['picture'])
+                    ? rtrim($_ENV['BASE_URL_UPLOAD'], '/') . '/image/help_center/' . $ticket['picture']
+                    : null;
+            }
+            unset($ticket);
+
             send_json_response(true, "Berhasil mengambil data pengajuan", $data);
-        }else {
+        } else {
             send_json_response(false, "Gagal mengambil data pengajuan");
         }
     }
