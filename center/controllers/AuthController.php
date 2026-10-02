@@ -8,8 +8,8 @@ class AuthController {
         global $koneksi;
 
         $is_localhost = in_array($_SERVER['HTTP_HOST'], ['localhost', 'center.mgoall.test', '127.0.0.1', '::1']);
-        $site_key   = "6LegPm0sAAAAACMlVF_Q0hQmj2cRMXNl2Pj8pldB";
-        $secret_key = "6LegPm0sAAAAAD028ehVM8ZVd1yn_cXLN2rNEkDA";
+        $site_key   = $_ENV['RECAPTCHA_SITE_KEY'];
+        $secret_key = $_ENV['RECAPTCHA_SECRET_KEY'];
 
         if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $username_input = strtolower(trim($_POST['usernames']));

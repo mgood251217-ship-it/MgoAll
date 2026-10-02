@@ -30,7 +30,7 @@ if (isset($_SESSION['admin_logged_in'])) {
 }
 
 $is_localhost = in_array($_SERVER['HTTP_HOST'], ['localhost', '127.0.0.1', '::1']);
-$site_key   = "6LegPm0sAAAAACMlVF_Q0hQmj2cRMXNl2Pj8pldB";
+$site_key   = $_ENV['RECAPTCHA_SITE_KEY'];
 
 $pesan_error = '';
 if (isset($_SESSION['login_error'])) {
