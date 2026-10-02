@@ -39,6 +39,20 @@ if (!isset($_SESSION['user_logged_in'])) {
 
 $ajax_routes = ['store', 'api_detail', 'api_pay', 'api_delete', 'print'];
 
+if ($module === 'order' && $action === 'next-invoice') {
+    require_once 'models/Order.php';
+    header('Content-Type: application/json');
+
+    try {
+        echo json_encode(['inv_no' => (new Order($pdo))->getNextInvoiceNumber()]);
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['message' => 'Tidak dapat mengambil nomor invoice.']);
+    }
+
+    exit();
+}
+
 if ($module === 'order' && in_array($action, $ajax_routes)) {
     include "views/order/" . $action . ".php";
     exit(); 

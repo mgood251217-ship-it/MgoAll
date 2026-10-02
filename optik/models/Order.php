@@ -7,10 +7,38 @@ class Order {
         $this->pdo = $pdo;
     }
 
-    public function createTransaction($customer_name, $inv_no, $nomor_konsumen, $items) {
+    public function getNextInvoiceNumber() {
+        return $this->buildNextInvoiceNumber();
+    }
+
+    private function buildNextInvoiceNumber() {
+        $stmt = $this->pdo->query("SELECT inv_no FROM orders WHERE inv_no REGEXP '-[0-9]{6}$' ORDER BY CAST(SUBSTRING_INDEX(inv_no, '-', -1) AS UNSIGNED) DESC, id DESC LIMIT 1");
+        $last_invoice = $stmt->fetchColumn();
+        $sequence = $last_invoice === false ? 10000 : (int) substr($last_invoice, -6) + 1;
+
+        if ($sequence > 999999) {
+            throw new RuntimeException('Nomor urut invoice sudah mencapai batas 6 angka.');
+        }
+
+        return 'INV-' . date('Ymd') . '-' . str_pad((string) $sequence, 6, '0', STR_PAD_LEFT);
+    }
+
+    public function createTransaction($customer_name, $nomor_konsumen, $items) {
+        $lock_name = 'optik_order_invoice_sequence';
+        $lock_acquired = false;
+
         try {
+            $lock_stmt = $this->pdo->prepare('SELECT GET_LOCK(:lock_name, 10)');
+            $lock_stmt->execute(['lock_name' => $lock_name]);
+            $lock_acquired = (int) $lock_stmt->fetchColumn() === 1;
+
+            if (!$lock_acquired) {
+                throw new RuntimeException('Tidak dapat membuat nomor invoice. Silakan coba kembali.');
+            }
+
             $this->pdo->beginTransaction();
             $current_time = date('Y-m-d H:i:s');
+            $inv_no = $this->buildNextInvoiceNumber();
             $real_grand_total = 0;
             $processed_items = [];
 
@@ -63,10 +91,17 @@ class Order {
             }
 
             $this->pdo->commit();
-            return $order_id;
-        } catch (PDOException $e) {
-            $this->pdo->rollBack();
-            die("Transaksi Gagal: " . $e->getMessage());
+            return ['order_id' => $order_id, 'inv_no' => $inv_no];
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
+        } finally {
+            if ($lock_acquired) {
+                $release_stmt = $this->pdo->prepare('SELECT RELEASE_LOCK(:lock_name)');
+                $release_stmt->execute(['lock_name' => $lock_name]);
+            }
         }
     }
 

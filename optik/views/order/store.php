@@ -10,7 +10,6 @@ try {
         throw new Exception("Data keranjang kosong atau format salah.");
     }
 
-    $inv_no = htmlspecialchars($data['inv_no']);
     $customer_name = htmlspecialchars($data['customer_name']);
     $nomor_konsumen = htmlspecialchars($data['nomor']);
     $items = $data['items'];
@@ -22,12 +21,13 @@ try {
 
     $orderModel = new Order($pdo);
     
-    $order_id = $orderModel->createTransaction($customer_name, $inv_no, $nomor_konsumen, $items);
+    $order = $orderModel->createTransaction($customer_name, $nomor_konsumen, $items);
 
     echo json_encode([
         'status' => 'success',
         'message' => 'Pesanan berhasil disimpan',
-        'order_id' => $order_id
+        'order_id' => $order['order_id'],
+        'inv_no' => $order['inv_no']
     ]);
 
     

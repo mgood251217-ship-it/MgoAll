@@ -591,27 +591,27 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
     
     document.getElementById('btn-proses').addEventListener('click', () => {
         if (cart.length === 0) return alert("Keranjang kosong! Silakan klik produk terlebih dahulu.");
-        
-        let date = new Date();
-        let invNo = "INV-" + date.getFullYear() + (date.getMonth()+1).toString().padStart(2, '0') + date.getDate().toString().padStart(2, '0') + "-" + Math.floor(Math.random() * 1000);
-        
-        document.getElementById('input_inv_no').value = invNo;
-        document.getElementById('input_customer').value = '';
-        document.getElementById('input_nomor').value = '';
-        checkoutModal.style.display = 'flex';
+
+        fetch('/order/next-invoice')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('input_inv_no').value = data.inv_no;
+                document.getElementById('input_customer').value = '';
+                document.getElementById('input_nomor').value = '';
+                checkoutModal.style.display = 'flex';
+            })
+            .catch(error => alert('Gagal mengambil nomor invoice: ' + error.message));
     });
 
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
     function submitTransaction() {
-        let invNo = document.getElementById('input_inv_no').value;
         let customer = document.getElementById('input_customer').value;
         let nomor = document.getElementById('input_nomor').value;
 
         if (customer.trim() === '') return alert("Nama pelanggan wajib diisi!");
 
         let payload = {
-            inv_no: invNo,
             customer_name: customer,
             nomor: nomor,
             items: cart
