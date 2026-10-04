@@ -11,12 +11,15 @@ class ChecklistMasterController
 
     public function getIndexData()
     {
+        $hidden = $this->getHiddenMap();
+
         $items = [];
         $itemRes = $this->koneksi->query("SELECT id, group_id, name FROM checklist_items WHERE is_active = 1 ORDER BY sort_order, id");
         while ($row = $itemRes->fetch_assoc()) {
             $items[$row['group_id']][] = [
                 'id' => (int)$row['id'],
                 'name' => $row['name'],
+                'hidden_stores' => $hidden['item'][(int)$row['id']] ?? [],
             ];
         }
 
@@ -26,6 +29,7 @@ class ChecklistMasterController
             $groups[$row['category_id']][] = [
                 'id' => (int)$row['id'],
                 'name' => $row['name'],
+                'hidden_stores' => $hidden['group'][(int)$row['id']] ?? [],
                 'items' => $items[$row['id']] ?? [],
             ];
         }
@@ -36,6 +40,7 @@ class ChecklistMasterController
             $categories[$row['table_id']][] = [
                 'id' => (int)$row['id'],
                 'name' => $row['name'],
+                'hidden_stores' => $hidden['category'][(int)$row['id']] ?? [],
                 'groups' => $groups[$row['id']] ?? [],
             ];
         }
@@ -46,11 +51,75 @@ class ChecklistMasterController
             $tables[] = [
                 'id' => (int)$row['id'],
                 'name' => $row['name'],
+                'hidden_stores' => $hidden['table'][(int)$row['id']] ?? [],
                 'categories' => $categories[$row['id']] ?? [],
             ];
         }
 
-        return ['tables' => $tables];
+        $stores = [];
+        $storeRes = $this->koneksi->query("SELECT store_id, name FROM stores ORDER BY name");
+        while ($row = $storeRes->fetch_assoc()) {
+            $stores[] = ['id' => (int)$row['store_id'], 'name' => $row['name']];
+        }
+
+        return ['tables' => $tables, 'stores' => $stores];
+    }
+
+    public function saveVisibility()
+    {
+        header('Content-Type: application/json');
+        $type = $_POST['entity_type'] ?? '';
+        $entityId = (int)($_POST['entity_id'] ?? 0);
+        $rawStoreIds = trim($_POST['store_ids'] ?? '');
+
+        if (!in_array($type, ['table', 'category', 'group', 'item'], true) || $entityId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Data tidak lengkap']);
+            return;
+        }
+
+        $storeIds = [];
+        if ($rawStoreIds !== '') {
+            foreach (explode(',', $rawStoreIds) as $storeId) {
+                $storeId = (int)$storeId;
+                if ($storeId > 0) {
+                    $storeIds[$storeId] = $storeId;
+                }
+            }
+        }
+
+        $this->koneksi->begin_transaction();
+
+        try {
+            $del = $this->koneksi->prepare("DELETE FROM checklist_store_hidden WHERE entity_type = ? AND entity_id = ?");
+            $del->bind_param('si', $type, $entityId);
+            $del->execute();
+            $del->close();
+
+            if (!empty($storeIds)) {
+                $ins = $this->koneksi->prepare("INSERT INTO checklist_store_hidden (store_id, entity_type, entity_id) VALUES (?, ?, ?)");
+                foreach ($storeIds as $storeId) {
+                    $ins->bind_param('isi', $storeId, $type, $entityId);
+                    $ins->execute();
+                }
+                $ins->close();
+            }
+
+            $this->koneksi->commit();
+            echo json_encode(['success' => true, 'message' => 'Pengaturan cabang berhasil disimpan']);
+        } catch (Exception $e) {
+            $this->koneksi->rollback();
+            echo json_encode(['success' => false, 'message' => 'Gagal menyimpan pengaturan cabang']);
+        }
+    }
+
+    private function getHiddenMap()
+    {
+        $map = ['table' => [], 'category' => [], 'group' => [], 'item' => []];
+        $res = $this->koneksi->query("SELECT store_id, entity_type, entity_id FROM checklist_store_hidden");
+        while ($row = $res->fetch_assoc()) {
+            $map[$row['entity_type']][(int)$row['entity_id']][] = (int)$row['store_id'];
+        }
+        return $map;
     }
 
     public function addTable()

@@ -140,6 +140,7 @@ switch ($action) {
     case 'add_checklist_item':
     case 'edit_checklist_item':
     case 'delete_checklist_item':
+    case 'save_checklist_visibility':
         require_once __DIR__ . '/../controllers/ChecklistMasterController.php';
         $checklistMasterController = new ChecklistMasterController($koneksi);
         if ($action === 'add_checklist_table') $checklistMasterController->addTable();
@@ -154,6 +155,7 @@ switch ($action) {
         if ($action === 'add_checklist_item') $checklistMasterController->addItem();
         if ($action === 'edit_checklist_item') $checklistMasterController->editItem();
         if ($action === 'delete_checklist_item') $checklistMasterController->deleteItem();
+        if ($action === 'save_checklist_visibility') $checklistMasterController->saveVisibility();
         break;
 
     default:

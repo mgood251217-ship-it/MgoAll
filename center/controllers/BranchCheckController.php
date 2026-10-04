@@ -19,7 +19,7 @@ class BranchCheckController
             $storeId = (int)$stores[0]['store_id'];
         }
 
-        $tables = $this->getChecklistTables();
+        $tables = $this->getChecklistTables($storeId);
         $branchCheck = $storeId > 0 ? $this->getBranchCheck($storeId, $checkDate) : null;
 
         $itemResults = [];
@@ -278,11 +278,18 @@ class BranchCheckController
         return $stores;
     }
 
-    private function getChecklistTables()
+    private function getChecklistTables($storeId = 0)
     {
+        $hidden = $this->getHiddenMap($storeId);
+
         $items = [];
+        $itemCount = [];
         $itemRes = $this->koneksi->query("SELECT id, group_id, name FROM checklist_items WHERE is_active = 1 ORDER BY sort_order, id");
         while ($row = $itemRes->fetch_assoc()) {
+            $itemCount[$row['group_id']] = ($itemCount[$row['group_id']] ?? 0) + 1;
+            if (isset($hidden['item'][(int)$row['id']])) {
+                continue;
+            }
             $items[$row['group_id']][] = [
                 'id' => (int)$row['id'],
                 'name' => $row['name'],
@@ -292,8 +299,16 @@ class BranchCheckController
         }
 
         $groups = [];
+        $groupCount = [];
         $groupRes = $this->koneksi->query("SELECT id, category_id, name FROM checklist_groups WHERE is_active = 1 ORDER BY sort_order, id");
         while ($row = $groupRes->fetch_assoc()) {
+            $groupCount[$row['category_id']] = ($groupCount[$row['category_id']] ?? 0) + 1;
+            if (isset($hidden['group'][(int)$row['id']])) {
+                continue;
+            }
+            if (($itemCount[$row['id']] ?? 0) > 0 && empty($items[$row['id']])) {
+                continue;
+            }
             $groups[$row['category_id']][] = [
                 'id' => (int)$row['id'],
                 'name' => $row['name'],
@@ -304,8 +319,16 @@ class BranchCheckController
         }
 
         $categories = [];
+        $categoryCount = [];
         $catRes = $this->koneksi->query("SELECT id, table_id, name FROM checklist_categories WHERE is_active = 1 ORDER BY sort_order, id");
         while ($row = $catRes->fetch_assoc()) {
+            $categoryCount[$row['table_id']] = ($categoryCount[$row['table_id']] ?? 0) + 1;
+            if (isset($hidden['category'][(int)$row['id']])) {
+                continue;
+            }
+            if (($groupCount[$row['id']] ?? 0) > 0 && empty($groups[$row['id']])) {
+                continue;
+            }
             $categories[$row['table_id']][] = [
                 'id' => (int)$row['id'],
                 'name' => $row['name'],
@@ -316,6 +339,12 @@ class BranchCheckController
         $tables = [];
         $tableRes = $this->koneksi->query("SELECT id, name FROM checklist_tables WHERE is_active = 1 ORDER BY sort_order, id");
         while ($row = $tableRes->fetch_assoc()) {
+            if (isset($hidden['table'][(int)$row['id']])) {
+                continue;
+            }
+            if (($categoryCount[$row['id']] ?? 0) > 0 && empty($categories[$row['id']])) {
+                continue;
+            }
             $tables[] = [
                 'id' => (int)$row['id'],
                 'name' => $row['name'],
@@ -324,6 +353,23 @@ class BranchCheckController
         }
 
         return $tables;
+    }
+
+    private function getHiddenMap($storeId)
+    {
+        $map = ['table' => [], 'category' => [], 'group' => [], 'item' => []];
+        if ($storeId <= 0) {
+            return $map;
+        }
+        $stmt = $this->koneksi->prepare("SELECT entity_type, entity_id FROM checklist_store_hidden WHERE store_id = ?");
+        $stmt->bind_param('i', $storeId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        while ($row = $res->fetch_assoc()) {
+            $map[$row['entity_type']][(int)$row['entity_id']] = true;
+        }
+        $stmt->close();
+        return $map;
     }
 
     private function getBranchCheck($storeId, $checkDate)

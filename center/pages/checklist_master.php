@@ -14,6 +14,15 @@ require_once __DIR__ . '/../controllers/ChecklistMasterController.php';
 
 $controller = new ChecklistMasterController($koneksi);
 $data = $controller->getIndexData();
+
+function renderVisibilityButton($type, $id, $name, $hiddenStores)
+{
+    $count = count($hiddenStores);
+    $title = $count > 0 ? 'Disembunyikan di ' . $count . ' cabang' : 'Atur Cabang';
+    echo '<button type="button" class="btn-action btn-open" title="' . $title . '" data-type="' . $type . '" data-id="' . $id . '" data-name="' . htmlspecialchars($name, ENT_QUOTES) . '" data-hidden="' . implode(',', $hiddenStores) . '" onclick="openVisibility(this)">';
+    echo '<i class="fas ' . ($count > 0 ? 'fa-eye-slash' : 'fa-eye') . '"></i>';
+    echo '</button>';
+}
 ?>
 
 <div class="page-header">
@@ -36,6 +45,7 @@ $data = $controller->getIndexData();
         <h4 class="table-title" style="display:flex;align-items:center;justify-content:space-between">
             <span><?= htmlspecialchars($table['name']) ?></span>
             <span>
+                <?php renderVisibilityButton('table', $table['id'], $table['name'], $table['hidden_stores']); ?>
                 <button type="button" class="btn-action btn-open" title="Edit Tabel" onclick="editTable(<?= $table['id'] ?>, '<?= htmlspecialchars($table['name'], ENT_QUOTES) ?>')">
                     <i class="fas fa-pen"></i>
                 </button>
@@ -58,6 +68,7 @@ $data = $controller->getIndexData();
                     <div class="checklist-master-row">
                         <strong><?= htmlspecialchars($category['name']) ?></strong>
                         <span>
+                            <?php renderVisibilityButton('category', $category['id'], $category['name'], $category['hidden_stores']); ?>
                             <button type="button" class="btn-action btn-open" title="Edit Kategori" onclick="editCategory(<?= $category['id'] ?>, '<?= htmlspecialchars($category['name'], ENT_QUOTES) ?>')">
                                 <i class="fas fa-pen"></i>
                             </button>
@@ -75,6 +86,7 @@ $data = $controller->getIndexData();
                             <div class="checklist-master-row">
                                 <span><?= htmlspecialchars($group['name']) ?></span>
                                 <span>
+                                    <?php renderVisibilityButton('group', $group['id'], $group['name'], $group['hidden_stores']); ?>
                                     <button type="button" class="btn-action btn-open" title="Edit Grup" onclick="editGroup(<?= $group['id'] ?>, '<?= htmlspecialchars($group['name'], ENT_QUOTES) ?>')">
                                         <i class="fas fa-pen"></i>
                                     </button>
@@ -91,6 +103,7 @@ $data = $controller->getIndexData();
                                 <div class="checklist-master-item">
                                     <span><?= htmlspecialchars($item['name']) ?></span>
                                     <span>
+                                        <?php renderVisibilityButton('item', $item['id'], $item['name'], $item['hidden_stores']); ?>
                                         <button type="button" class="btn-action btn-open" title="Edit Item" onclick="editItem(<?= $item['id'] ?>, '<?= htmlspecialchars($item['name'], ENT_QUOTES) ?>')">
                                             <i class="fas fa-pen"></i>
                                         </button>
@@ -109,6 +122,63 @@ $data = $controller->getIndexData();
 <?php endforeach; ?>
 
 <script>
+var CHECKLIST_STORES = <?= json_encode($data['stores']) ?>;
+
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function openVisibility(btn) {
+    var type = btn.dataset.type;
+    var id = btn.dataset.id;
+    var name = btn.dataset.name;
+    var hidden = btn.dataset.hidden ? btn.dataset.hidden.split(',').map(Number) : [];
+
+    var html = '<div style="text-align:left">';
+    html += '<p style="margin-bottom:12px;color:#64748b">Centang cabang yang <strong>tidak</strong> perlu menampilkan bagian ini di Pengecekan Cabang.</p>';
+    if (CHECKLIST_STORES.length === 0) {
+        html += '<p>Belum ada cabang</p>';
+    } else {
+        html += '<label style="display:block;margin-bottom:8px;font-weight:600"><input type="checkbox" id="visibilityAll"> Pilih semua cabang</label>';
+        CHECKLIST_STORES.forEach(function (store) {
+            var checked = hidden.indexOf(store.id) !== -1 ? 'checked' : '';
+            html += '<label style="display:block;margin-bottom:6px"><input type="checkbox" class="visibility-store" value="' + store.id + '" ' + checked + '> ' + escapeHtml(store.name) + '</label>';
+        });
+    }
+    html += '</div>';
+
+    Swal.fire({
+        title: 'Sembunyikan di Cabang',
+        html: '<div style="margin-bottom:12px;font-weight:600">' + escapeHtml(name) + '</div>' + html,
+        showCancelButton: true,
+        confirmButtonColor: '#3b82f6',
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'Simpan',
+        cancelButtonText: 'Batal',
+        customClass: { popup: 'rounded-4' },
+        didOpen: function () {
+            var all = document.getElementById('visibilityAll');
+            var boxes = document.querySelectorAll('.visibility-store');
+            if (!all) return;
+            all.checked = boxes.length > 0 && Array.prototype.every.call(boxes, function (b) { return b.checked; });
+            all.addEventListener('change', function () {
+                boxes.forEach(function (b) { b.checked = all.checked; });
+            });
+        },
+        preConfirm: function () {
+            var ids = [];
+            document.querySelectorAll('.visibility-store:checked').forEach(function (b) { ids.push(b.value); });
+            return ids.join(',');
+        }
+    }).then(function (result) {
+        if (result.isConfirmed) {
+            postAction('save_checklist_visibility', { entity_type: type, entity_id: id, store_ids: result.value });
+        }
+    });
+}
+
 function promptAndPost(title, action, extraBody, currentValue) {
     Swal.fire({
         title: title,

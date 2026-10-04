@@ -210,9 +210,9 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
                                     <button class="btn-icon btn-print" title="Print Thermal Fisik" onclick="printThermal(<?= $order['id'] ?>)">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
                                     </button>
-                                    <button class="btn-icon btn-delete" title="Hapus Order" onclick="deleteOrder(<?= $order['id'] ?>, '<?= $order['inv_no'] ?>')">
+                                    <!-- <button class="btn-icon btn-delete" title="Hapus Order" onclick="deleteOrder(<?= $order['id'] ?>, '<?= $order['inv_no'] ?>')">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path<path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
-                                    </button>
+                                    </button> -->
                                 </div>
                             </td>
                         </tr>
