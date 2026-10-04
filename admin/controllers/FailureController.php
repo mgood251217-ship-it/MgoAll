@@ -105,24 +105,24 @@ class FailureController{
                 $prod = $products_map[$pid];
                 $unit_type = $prod['unit_type'];
                 $type = $prod['category'];
-                $reasonable_price = (float)$prod['failed_price'];
+                $failed_price = (float)$prod['failed_price'];
                 $product_name = $prod['name'];
                 $size = $item['size'];
                 
-                $reasonable_price += $finishing_price;
+                $failed_price += $finishing_price;
                 
                 if ($unit_type == 'M2') {
                     if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $size, $match)) {
                         $p = floatval($match[1]);
                         $l = floatval($match[2]);
                         if ($type == 'DTF') {
-                            $hargaSatuan = $p * $reasonable_price;
+                            $hargaSatuan = $p * $failed_price;
                         } else {
-                            $hargaSatuan = $p * $l * $reasonable_price;
+                            $hargaSatuan = $p * $l * $failed_price;
                         }
                     }
                 } elseif ($unit_type == 'PCS') {
-                    $hargaSatuan = $reasonable_price;
+                    $hargaSatuan = $failed_price;
                     if ($type == 'JERSEY') {
                         $harga_jersey = 0;
                         if ($size === '5XL') {
@@ -136,9 +136,13 @@ class FailureController{
                         }
                         $hargaSatuan += $harga_jersey;
                     } elseif ($type == 'SUBLIM' && str_contains($product_name, 'BAHAN')) {
-                        $kata = explode(" ", $size);
-                        if (isset($kata[0]) && is_numeric($kata[0])) {
-                            $hargaSatuan *= (float)$kata[0];
+                        if (preg_match('/^([\d.]+)\s*KG$/i', $size, $match)) {
+                            $hargaSatuan *= (float)$match[1];
+                        } else {
+                            $kata = explode(" ", $size);
+                            if (isset($kata[0]) && is_numeric($kata[0])) {
+                                $hargaSatuan *= (float)$kata[0];
+                            }
                         }
                     }
                 }
@@ -217,7 +221,9 @@ class FailureController{
         $failure_cause = implode(',', requestArray($request, 'failure_cause'));
         $failure_cause_other = trim((string) requestValue($request, 'failure_cause_other', ''));
 
-        if ($panjang > 0 && $lebar > 0) {
+        if ($kiloan > 0) {
+            $size = rtrim(rtrim(number_format($kiloan, 2, '.', ''), '0'), '.') . 'KG';
+        } elseif ($panjang > 0 && $lebar > 0) {
             $size = "{$panjang}x{$lebar}";
         }
 
