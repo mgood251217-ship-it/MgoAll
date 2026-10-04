@@ -53,7 +53,15 @@ class BranchCheckController
     {
         header('Content-Type: application/json');
         require_once __DIR__ . '/../functions/helpers.php';
-
+        configureCenterSession();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if (!isset($_SESSION['admin_logged_in']['administrator_id'])) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Sesi login tidak valid']);
+            return;
+        }
         $payload = json_decode(file_get_contents('php://input'), true);
         if (!is_array($payload)) {
             echo json_encode(['success' => false, 'message' => 'Payload tidak valid']);
@@ -66,8 +74,8 @@ class BranchCheckController
         $entries = $payload['items'] ?? [];
 
         $checkedBy = null;
-        if (isset($_COOKIE['admin_administrator_id']) && $_COOKIE['admin_administrator_id'] !== '') {
-            $checkedBy = startEnk('dek', $_COOKIE['admin_administrator_id']);
+        if (isset($_SESSION['admin_logged_in']['administrator_id'])) {
+            $checkedBy = startEnk('dek', $_SESSION['admin_logged_in']['administrator_id']);
         }
 
         if ($storeId <= 0 || empty($entries)) {

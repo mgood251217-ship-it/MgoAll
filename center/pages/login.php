@@ -1,36 +1,21 @@
 <?php
+require_once __DIR__ . '/../functions/helpers.php';
+configureCenterSession();
 session_start();
 require_once __DIR__ . "/../config/connect.php";
-require_once __DIR__ . "/../functions/helpers.php";
 
 date_default_timezone_set('Asia/Jakarta');
 $date = date("Y-m-d H:i:s");
 
-if (isset($_SESSION['admin_logged_in'])) {
-    header("Location: /dashboard");
-    exit;
-} elseif (
-    isset($_COOKIE['admin_administrator_id']) &&
-    isset($_COOKIE['admin_username']) &&
-    isset($_COOKIE['admin_access'])
-) {
-    $administrator_id = startEnk('dek', $_COOKIE['admin_administrator_id']);
-    $username         = startEnk('dek', $_COOKIE['admin_username']);
-    $access           = startEnk('dek', $_COOKIE['admin_access']);
-
-    if ($administrator_id && $username && $access) {
-        $_SESSION['admin_logged_in'] = [
-            'administrator_id' => $_COOKIE['admin_administrator_id'],
-            'username'         => $_COOKIE['admin_username'],
-            'access'           => $_COOKIE['admin_access']
-        ];
-    }
+if (isset($_SESSION['admin_logged_in']['administrator_id'])) {
     header("Location: /dashboard");
     exit;
 }
 
-$is_localhost = in_array($_SERVER['HTTP_HOST'], ['localhost', '127.0.0.1', '::1']);
-$site_key   = $_ENV['RECAPTCHA_SITE_KEY'];
+$is_localhost = isCenterLocalRequest();
+$site_key = $_ENV['RECAPTCHA_SITE_KEY'] ?? '';
+$csrf_token = bin2hex(random_bytes(32));
+$_SESSION['login_csrf_token'] = $csrf_token;
 
 $pesan_error = '';
 if (isset($_SESSION['login_error'])) {
@@ -135,7 +120,7 @@ if (isset($_SESSION['login_error'])) {
     }
   </style>
   <?php if (!$is_localhost): ?>
-    <script src="https://www.google.com/recaptcha/api.js?render=<?= $site_key ?>"></script>
+    <script src="https://www.google.com/recaptcha/api.js?render=<?= htmlspecialchars($site_key, ENT_QUOTES, 'UTF-8') ?>"></script>
   <?php endif; ?>
   
 </head>
@@ -147,6 +132,7 @@ if (isset($_SESSION['login_error'])) {
       </div>
       <div class="card-body">
         <form action="/action?action=login" method="POST">
+          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
           <div class="mb-4">
             <label class="form-label">Username</label>
             <input autocomplete="off" type="text" name="usernames" class="form-control" required placeholder="Enter your username">
@@ -165,7 +151,7 @@ if (isset($_SESSION['login_error'])) {
 <script>
 <?php if (!$is_localhost): ?>
 grecaptcha.ready(function () {
-    grecaptcha.execute('<?= $site_key ?>', {action: 'login'})
+  grecaptcha.execute(<?= json_encode($site_key) ?>, {action: 'login'})
         .then(function (token) {
             document.getElementById('g-recaptcha-response').value = token;
         });
@@ -178,48 +164,11 @@ grecaptcha.ready(function () {
   Swal.fire({
     icon: 'error',
     title: 'Login Gagal',
-    text: <?= json_encode($pesan_error) ?>,
+    text: <?= json_encode($pesan_error, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
     confirmButtonColor: '#ef4444',
-    customClass: {
-        popup: 'rounded-4'
-    }
+    customClass: { popup: 'rounded-4' }
   });
 </script>
 <?php endif; ?>
-
-<script>
-if ("geolocation" in navigator) {
-  navigator.geolocation.getCurrentPosition(successCallback, errorCallback);
-} else {
-  console.log("Geolocation is not supported by this browser.");
-}
-
-function successCallback(position) {
-  const latitude = position.coords.latitude;
-  const longitude = position.coords.longitude;
-  console.log("Latitude:", latitude);
-  console.log("Longitude:", longitude);
-}
-
-function errorCallback(error) {
-  switch (error.code) {
-    case error.PERMISSION_DENIED:
-      console.error("User denied the request for geolocation.");
-      break;
-    case error.POSITION_UNAVAILABLE:
-      console.error("Location information is unavailable.");
-      break;
-    case error.TIMEOUT:
-      console.error("The request to get user location timed out.");
-      break;
-    case error.UNKNOWN_ERROR:
-      console.error("An unknown error occurred.");
-      break;
-  }
-}
-</script>
-<script>
-  console.log(<?= json_encode($_SESSION ?? []) ?>);
-</script>
 </body>
 </html>

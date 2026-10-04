@@ -1,37 +1,64 @@
 <?php
+require_once __DIR__ . '/../functions/helpers.php';
+
 class AuthController {
     
     public function login() {
+        configureCenterSession();
         session_start();
         require_once __DIR__ . "/../config/connect.php";
-        require_once __DIR__ . "/../functions/helpers.php";
         global $koneksi;
 
-        $is_localhost = in_array($_SERVER['HTTP_HOST'], ['localhost', 'center.mgoall.test', '127.0.0.1', '::1']);
-        $site_key   = $_ENV['RECAPTCHA_SITE_KEY'];
-        $secret_key = $_ENV['RECAPTCHA_SECRET_KEY'];
+        $host = strtolower((string)parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'), PHP_URL_HOST));
+        $is_localhost = isCenterLocalRequest();
+        $secret_key = $_ENV['RECAPTCHA_SECRET_KEY'] ?? '';
 
         if ($_SERVER["REQUEST_METHOD"] == "POST") {
-            $username_input = strtolower(trim($_POST['usernames']));
-            $password = $_POST['password'];
+            $username_input = strtolower(trim((string)($_POST['usernames'] ?? '')));
+            $password = (string)($_POST['password'] ?? '');
             $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
             $login_ok = true;
             $pesan_error = '';
+            $submittedToken = $_POST['csrf_token'] ?? '';
+            $sessionToken = $_SESSION['login_csrf_token'] ?? '';
+            unset($_SESSION['login_csrf_token']);
+
+            if (!is_string($submittedToken) || !is_string($sessionToken)
+                || $sessionToken === '' || !hash_equals($sessionToken, $submittedToken)
+            ) {
+                $_SESSION['login_error'] = 'Permintaan login tidak valid. Silakan coba lagi.';
+                header("Location: /login");
+                exit;
+            }
 
             if (!$is_localhost) {
-                if (empty($recaptcha_response)) {
-                    $pesan_error = "reCAPTCHA tidak valid!";
+                if ($secret_key === '' || !is_string($recaptcha_response) || $recaptcha_response === '') {
                     $login_ok = false;
                 } else {
                     $verify_url = "https://www.google.com/recaptcha/api/siteverify";
-                    $response = file_get_contents($verify_url . "?secret=" . $secret_key . "&response=" . $recaptcha_response);
-                    $response_keys = json_decode($response, true);
+                    $context = stream_context_create([
+                        'http' => [
+                            'method' => 'POST',
+                            'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
+                            'content' => http_build_query([
+                                'secret' => $secret_key,
+                                'response' => $recaptcha_response
+                            ]),
+                            'timeout' => 5,
+                            'ignore_errors' => true
+                        ]
+                    ]);
+                    $response = @file_get_contents($verify_url, false, $context);
+                    $response_keys = is_string($response) ? json_decode($response, true) : null;
 
-                    if (!$response_keys['success'] || $response_keys['score'] < 0.5 || $response_keys['action'] !== 'login') {
-                        $pesan_error = "Aktivitas mencurigakan terdeteksi!";
-                        $login_ok = false;
-                    }
+                    $login_ok = is_array($response_keys)
+                        && !empty($response_keys['success'])
+                        && isset($response_keys['score'], $response_keys['action'], $response_keys['hostname'])
+                        && (float)$response_keys['score'] >= 0.5
+                        && $response_keys['action'] === 'login'
+                        && strcasecmp((string)$response_keys['hostname'], $host) === 0;
                 }
+                if (!$login_ok) $pesan_error = 'Login tidak berhasil. Periksa data dan coba lagi.';
             }
 
             if ($login_ok) {
@@ -46,22 +73,9 @@ class AuthController {
 
                     if (password_verify($password, $user['password'])) {
                         unset($user['password']);
-
-                        $expire = time() + (1 * 24 * 60 * 60);
-                        $domain = 'mgood.my.id';
-
-                        $options = [
-                            'expires'  => $expire,
-                            'path'     => '/',
-                            'domain'   => $domain,
-                            'secure'   => true,
-                            'httponly' => true,
-                            'samesite' => 'None',
-                        ];
-
-                        setcookie('admin_administrator_id', startEnk('enk', $user['administrator_id']), $options);
-                        setcookie('admin_username', startEnk('enk', $user['username']), $options);
-                        setcookie('admin_access', startEnk('enk', $user['access']), $options);
+                        $_SESSION = [];
+                        session_regenerate_id(true);
+                        $this->clearHostOnlySessionCookie();
 
                         $_SESSION['admin_logged_in'] = [
                             'administrator_id' => startEnk('enk', $user['administrator_id']),
@@ -69,14 +83,17 @@ class AuthController {
                             'access'           => startEnk('enk', $user['access'])
                         ];
 
+                        $this->clearLegacyAuthCookies();
+
                         header("Location: /dashboard");
                         exit;
                     } else {
-                        $pesan_error = "Password salah!";
+                        $pesan_error = 'Login tidak berhasil. Periksa data dan coba lagi.';
                     }
                 } else {
-                    $pesan_error = "Username tidak ditemukan!";
+                    $pesan_error = 'Login tidak berhasil. Periksa data dan coba lagi.';
                 }
+                $stmt->close();
             }
 
             if ($pesan_error) {
@@ -88,26 +105,66 @@ class AuthController {
     }
     
     public function logout() {
+        configureCenterSession();
         session_start();
+        $sessionCookie = session_name();
+        $sessionParams = session_get_cookie_params();
+        $_SESSION = [];
         session_destroy();
-        
-        $domain = 'mgood.my.id';
 
-        $clearOptions = [
-            'expires'  => time() - 3600,
-            'path'     => '/',
-            'domain'   => $domain,
-            'secure'   => true,
-            'httponly' => true,
-            'samesite' => 'None',
+        $clearSessionOptions = [
+            'expires' => time() - 3600,
+            'path' => $sessionParams['path'] ?: '/',
+            'secure' => $sessionParams['secure'],
+            'httponly' => $sessionParams['httponly'],
+            'samesite' => $sessionParams['samesite'] ?? 'Strict'
         ];
+        if (!empty($sessionParams['domain'])) {
+            $clearSessionOptions['domain'] = $sessionParams['domain'];
+        }
+        setcookie($sessionCookie, '', $clearSessionOptions);
 
-        setcookie('admin_administrator_id', '', $clearOptions);
-        setcookie('admin_username', '', $clearOptions);
-        setcookie('admin_access', '', $clearOptions);
+        $hostOnlySessionOptions = $clearSessionOptions;
+        unset($hostOnlySessionOptions['domain']);
+        setcookie($sessionCookie, '', $hostOnlySessionOptions);
+
+        $domainSessionOptions = $clearSessionOptions;
+        $domainSessionOptions['domain'] = 'mgood.my.id';
+        setcookie($sessionCookie, '', $domainSessionOptions);
+        $this->clearLegacyAuthCookies();
         
         header('Location: /login');
         exit;
+    }
+
+    private function clearHostOnlySessionCookie() {
+        $sessionParams = session_get_cookie_params();
+        if (empty($sessionParams['domain'])) {
+            return;
+        }
+
+        setcookie(session_name(), '', [
+            'expires' => time() - 3600,
+            'path' => $sessionParams['path'] ?: '/',
+            'secure' => $sessionParams['secure'],
+            'httponly' => $sessionParams['httponly'],
+            'samesite' => $sessionParams['samesite'] ?? 'Strict'
+        ]);
+    }
+
+    private function clearLegacyAuthCookies() {
+        $options = [
+            'expires' => time() - 3600,
+            'path' => '/',
+            'domain' => 'mgood.my.id',
+            'secure' => true,
+            'httponly' => true,
+            'samesite' => 'None'
+        ];
+
+        foreach (['admin_administrator_id', 'admin_username', 'admin_access'] as $cookieName) {
+            setcookie($cookieName, '', $options);
+        }
     }
     
 }

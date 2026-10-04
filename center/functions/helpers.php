@@ -159,3 +159,38 @@ function folder($basePath, $storeName, $date){
 function isLocalhostRequest() {
     return in_array($_SERVER['HTTP_HOST'], ['localhost', '192.168.100.110', '127.0.0.1', '::1']);
 }
+
+function isCenterLocalRequest() {
+    $host = strtolower((string)parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'), PHP_URL_HOST));
+    $remoteAddress = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+
+    return in_array($host, ['localhost', 'center.mgoall.test', '127.0.0.1', '::1'], true)
+        && in_array($remoteAddress, ['127.0.0.1', '::1'], true);
+}
+
+function configureCenterSession() {
+    if (session_status() !== PHP_SESSION_NONE) {
+        return;
+    }
+
+    $isHttps = (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off')
+        || (string)($_SERVER['SERVER_PORT'] ?? '') === '443';
+
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.use_only_cookies', '1');
+    ini_set('session.use_trans_sid', '0');
+    ini_set('session.cookie_httponly', '1');
+    ini_set('session.gc_maxlifetime', '1800');
+    $cookieParams = [
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => $isHttps || !isCenterLocalRequest(),
+        'httponly' => true,
+        'samesite' => 'Strict'
+    ];
+    $host = strtolower((string)parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'), PHP_URL_HOST));
+    if ($host === 'mgood.my.id' || str_ends_with($host, '.mgood.my.id')) {
+        $cookieParams['domain'] = '.mgood.my.id';
+    }
+    session_set_cookie_params($cookieParams);
+}
