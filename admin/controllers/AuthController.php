@@ -79,20 +79,11 @@ class AuthController {
             isset($_SESSION['user']['store_logo']) 
         ) {
             return true;
-        } elseif (isset($_COOKIE['user_user_id']) &&
-            isset($_COOKIE['user_username']) &&
-            isset($_COOKIE['user_name']) &&
-            isset($_COOKIE['user_initial']) &&
-            isset($_COOKIE['user_store_id']) &&
-            isset($_COOKIE['user_role']) &&
-            isset($_COOKIE['user_foto']) &&
-            isset($_COOKIE['store_name']) &&
-            isset($_COOKIE['store_address']) &&
-            isset($_COOKIE['store_logo']) 
-        ) {
+        } else {
             $middleware = new AuthMiddleware(null);
-            $middleware->setSessionFromCookies();
-            return true;
+            if ($middleware->setSessionFromCookies()) {
+                return true;
+            }
         }
         return false;
     }
@@ -235,6 +226,7 @@ class AuthController {
         $cookies_to_delete = [
             'user_user_id', 'user_username', 'user_name', 'user_initial', 
             'user_store_id', 'user_role', 'user_foto', 'store_name', 
+            'user_auth_sig',
             'store_address', 'store_logo', 'user_mode'
         ];
         
@@ -324,24 +316,15 @@ class AuthController {
         ini_set('session.cookie_secure', 1);
         ini_set('session.cookie_httponly', 1);
         session_start();
+        session_regenerate_id(true);
 
-        $mode = 0;
-        $stmt = $this->koneksi->prepare("SELECT mode FROM user_setting WHERE user_id = ?");
-        $stmt->bind_param("i", $user['user_id']);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
-            $mode = (int)$row['mode'] ?? 0;
-        }
-        $stmt->close();
-
-        $encryptedData = $this->buildEncryptedUserData($user, $dataStore, $mode);
+        $encryptedData = $this->buildEncryptedUserData($user, $dataStore);
 
         $this->setUserSession($encryptedData);
         $this->setUserCookie($encryptedData);
     }
 
-    private function buildEncryptedUserData($user, $dataStore, $mode) {
+    private function buildEncryptedUserData($user, $dataStore) {
         return [
             'user_id'       => startEnk('enk', $user['user_id']),
             'username'      => startEnk('enk', $user['username']),
@@ -352,8 +335,7 @@ class AuthController {
             'foto'          => startEnk('enk', $user['picture']),
             'store_name'    => startEnk('enk', $dataStore['name']),
             'store_address' => startEnk('enk', $dataStore['address']),
-            'store_logo'    => startEnk('enk', $dataStore['logo']),
-            'mode'          => startEnk('enk', $mode)
+            'store_logo'    => startEnk('enk', $dataStore['logo'])
         ];
     }
 
@@ -393,12 +375,20 @@ class AuthController {
             'foto'          => 'user_foto',
             'store_name'    => 'store_name',
             'store_address' => 'store_address',
-            'store_logo'    => 'store_logo',
-            'mode'          => 'user_mode'
+            'store_logo'    => 'store_logo'
         ];
 
         foreach ($cookieNameMap as $dataKey => $cookieName) {
             setcookie($cookieName, $encryptedData[$dataKey], $options);
+        }
+
+        $expiredOptions = $options;
+        $expiredOptions['expires'] = time() - 86400;
+        setcookie('user_mode', '', $expiredOptions);
+
+        $signature = authCookieSignature($encryptedData);
+        if ($signature !== '') {
+            setcookie('user_auth_sig', $signature, $options);
         }
     }
 }

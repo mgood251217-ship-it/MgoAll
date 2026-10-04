@@ -12,14 +12,10 @@ class AuthMiddleware {
         $this->initSession();
         $this->setTimezone();
 
-        if ($this->hasValidCookie()) {
-            if (!$this->hasValidSession() || $_SESSION['user']['store_id'] !== $_COOKIE['user_store_id']) {
-                $this->loadFromCookie(); 
-            } else {
-                $this->loadFromSession();
-            }
-        } elseif ($this->hasValidSession()) {
+        if ($this->hasValidSession()) {
             $this->loadFromSession();
+        } elseif ($this->hasValidCookie()) {
+            $this->loadFromCookie();
         } else {
             $this->redirectLogin();
         }
@@ -55,17 +51,31 @@ class AuthMiddleware {
     }
 
     public function hasValidCookie() {
-        return isset(
-            $_COOKIE['user_user_id'],
-            $_COOKIE['user_username'],
-            $_COOKIE['user_name'],
-            $_COOKIE['user_initial'],
-            $_COOKIE['user_store_id'],
-            $_COOKIE['user_role'],
-            $_COOKIE['store_name'],
-            $_COOKIE['store_logo'],
-            $_COOKIE['store_address']
-        );
+        $cookieNameMap = [
+            'user_id' => 'user_user_id',
+            'username' => 'user_username',
+            'name' => 'user_name',
+            'initial' => 'user_initial',
+            'store_id' => 'user_store_id',
+            'role' => 'user_role',
+            'foto' => 'user_foto',
+            'store_name' => 'store_name',
+            'store_address' => 'store_address',
+            'store_logo' => 'store_logo'
+        ];
+        $encryptedData = [];
+        foreach ($cookieNameMap as $field => $cookieName) {
+            if (!isset($_COOKIE[$cookieName]) || !is_string($_COOKIE[$cookieName])) {
+                return false;
+            }
+            $encryptedData[$field] = $_COOKIE[$cookieName];
+        }
+
+        $signature = $_COOKIE['user_auth_sig'] ?? null;
+        $expectedSignature = authCookieSignature($encryptedData);
+        return $expectedSignature !== ''
+            && is_string($signature)
+            && hash_equals($expectedSignature, $signature);
     }
 
     public function loadFromSession() {
@@ -82,6 +92,10 @@ class AuthMiddleware {
     }
 
     public function setSessionFromCookies() {
+        if (!$this->hasValidCookie()) {
+            return false;
+        }
+
         $_SESSION['user'] = [
             'user_id'       => $_COOKIE['user_user_id'],
             'store_id'      => $_COOKIE['user_store_id'],
@@ -94,13 +108,17 @@ class AuthMiddleware {
             'store_address' => $_COOKIE['store_address'],
             'store_logo'    => $_COOKIE['store_logo']
         ];
+        return true;
     }
 
     public function loadFromCookie() {
+        if (!$this->setSessionFromCookies()) {
+            $this->redirectLogin();
+        }
+
         $userId = startEnk('dek', $_COOKIE['user_user_id']);
 
         if ($userId) {
-            $this->setSessionFromCookies();
             $this->loadFromSession();
         } else {
             $this->redirectLogin();
@@ -127,15 +145,20 @@ class AuthMiddleware {
             return;
         }
 
-        $stmt = $this->koneksi->prepare("SELECT user_id FROM users WHERE user_id = ? AND is_deleted = 0");
+        $stmt = $this->koneksi->prepare("SELECT store_id, role FROM users WHERE user_id = ? AND is_deleted = 0");
         $stmt->bind_param("i", $userId);
         $stmt->execute();
         $result = $stmt->get_result();
+        $user = $result->fetch_assoc();
 
-        if ($result->num_rows !== 1) {
+        if (!$user
+            || (string)$user['store_id'] !== (string)$storeId
+            || strcasecmp((string)$user['role'], (string)($GLOBALS['role'] ?? '')) !== 0
+        ) {
             $this->redirectLogin();
         }
 
+        $stmt->close();
         $_SESSION['last_db_check'] = $currentTime;
     }
 
@@ -156,7 +179,7 @@ class AuthMiddleware {
             'httponly' => true,
             'samesite' => 'None',
         ];
-        $cookiesToClear = ['user_user_id', 'user_username', 'user_name', 'user_initial', 'user_store_id', 'user_role', 'user_foto', 'store_name', 'store_address', 'store_logo', session_name()];
+        $cookiesToClear = ['user_user_id', 'user_username', 'user_name', 'user_initial', 'user_store_id', 'user_role', 'user_foto', 'store_name', 'store_address', 'store_logo', 'user_mode', 'user_auth_sig', session_name()];
         foreach ($cookiesToClear as $c) {
             if (isset($_COOKIE[$c])) {
                 setcookie($c, '', $clearOptions);
