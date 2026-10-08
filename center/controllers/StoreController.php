@@ -289,16 +289,40 @@ class StoreController {
                 'samesite' => 'None',
             ];
 
-            setcookie('user_user_id', startEnk('enk', $sesi['user_id']), $options);
-            setcookie('user_username', startEnk('enk', $sesi['username']), $options);
-            setcookie('user_name', startEnk('enk', $sesi['name']), $options);
-            setcookie('user_initial', startEnk('enk', $sesi['initial']), $options);
-            setcookie('user_store_id', startEnk('enk', $sesi['store_id']), $options);
-            setcookie('user_role', startEnk('enk', $sesi['role']), $options);
-            setcookie('user_foto', startEnk('enk', $sesi['picture']), $options);
-            setcookie('store_name', startEnk('enk', $storeName), $options);
-            setcookie('store_address', startEnk('enk', $storeAddress), $options);
-            setcookie('store_logo', startEnk('enk', $storeLogo), $options);
+            $encryptedData = [
+                'user_id' => startEnk('enk', $sesi['user_id']),
+                'username' => startEnk('enk', $sesi['username']),
+                'name' => startEnk('enk', $sesi['name']),
+                'initial' => startEnk('enk', $sesi['initial']),
+                'store_id' => startEnk('enk', $sesi['store_id']),
+                'role' => startEnk('enk', $sesi['role']),
+                'foto' => startEnk('enk', $sesi['picture']),
+                'store_name' => startEnk('enk', $storeName),
+                'store_address' => startEnk('enk', $storeAddress),
+                'store_logo' => startEnk('enk', $storeLogo),
+            ];
+
+            $cookieNameMap = [
+                'user_id' => 'user_user_id',
+                'username' => 'user_username',
+                'name' => 'user_name',
+                'initial' => 'user_initial',
+                'store_id' => 'user_store_id',
+                'role' => 'user_role',
+                'foto' => 'user_foto',
+                'store_name' => 'store_name',
+                'store_address' => 'store_address',
+                'store_logo' => 'store_logo',
+            ];
+            foreach ($cookieNameMap as $field => $cookieName) {
+                setcookie($cookieName, $encryptedData[$field], $options);
+            }
+
+            $signature = authCookieSignature($encryptedData);
+            if ($signature !== '') {
+                setcookie('user_auth_sig', $signature, $options);
+            }
+
             setcookie('user_mode', startEnk('enk', $mode), $options);
             setcookie('user_access', startEnk('enk', 'all'), $options);
             

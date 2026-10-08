@@ -145,6 +145,33 @@ function startEnk($enkdek, $enkvalue){
     }
 }
 
+function authCookieSignature(array $encryptedData){
+    $encryptionKey = $_ENV['ENCRYPTION_KEY'] ?? '';
+    if ($encryptionKey === '') {
+        return '';
+    }
+
+    $fields = [
+        'user_id', 'username', 'name', 'initial', 'store_id', 'role',
+        'foto', 'store_name', 'store_address', 'store_logo'
+    ];
+    $payload = [];
+    foreach ($fields as $field) {
+        if (!isset($encryptedData[$field]) || !is_string($encryptedData[$field])) {
+            return '';
+        }
+        $payload[$field] = $encryptedData[$field];
+    }
+
+    $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
+    if ($json === false) {
+        return '';
+    }
+
+    $signingKey = hash_hmac('sha256', 'mgo-auth-cookie-v1', $encryptionKey, true);
+    return hash_hmac('sha256', $json, $signingKey);
+}
+
 function folder($basePath, $storeName, $date){
     $storeFolder = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
     $year = date('Y', strtotime($date));

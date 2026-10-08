@@ -242,6 +242,17 @@ document.addEventListener('submit', function(e) {
         e.preventDefault();
         
         const form = e.target;
+        const adminWindow = window.open('about:blank', '_blank');
+        if (!adminWindow) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: 'Browser memblokir tab admin. Izinkan pop-up lalu coba lagi.',
+                customClass: { popup: 'rounded-4' }
+            });
+            return;
+        }
+
         const formData = new URLSearchParams(new FormData(form)).toString();
 
         fetch('/action?action=set_session', {
@@ -251,11 +262,15 @@ document.addEventListener('submit', function(e) {
             },
             body: formData
         })
-        .then(response => {
-            if (!response.ok) throw new Error('Network response was not ok');
-            window.open('https://mgood.my.id/admin/customer/');
+        .then(async response => {
+            const result = (await response.text()).trim();
+            if (!response.ok || result !== 'success') {
+                throw new Error('Gagal menyiapkan sesi admin.');
+            }
+            adminWindow.location.href = 'https://mgood.my.id/admin/customer/';
         })
         .catch(error => {
+            adminWindow.close();
             console.error('Fetch Error:', error);
             Swal.fire({
                 icon: 'error',
