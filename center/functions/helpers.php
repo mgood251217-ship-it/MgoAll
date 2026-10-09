@@ -207,9 +207,9 @@ function configureCenterSession() {
     ini_set('session.use_only_cookies', '1');
     ini_set('session.use_trans_sid', '0');
     ini_set('session.cookie_httponly', '1');
-    ini_set('session.gc_maxlifetime', '1800');
+    ini_set('session.gc_maxlifetime', '86400');
     $cookieParams = [
-        'lifetime' => 0,
+        'lifetime' => 86400,
         'path' => '/',
         'secure' => $isHttps || !isCenterLocalRequest(),
         'httponly' => true,
