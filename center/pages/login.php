@@ -13,7 +13,7 @@ if (isset($_SESSION['admin_logged_in']['administrator_id'])) {
 }
 
 $is_localhost = isCenterLocalRequest();
-$site_key = $_ENV['RECAPTCHA_SITE_KEY'] ?? '';
+$site_key = $_ENV['RECAPTCHA_SITE_KEY'] ?? getenv('RECAPTCHA_SITE_KEY') ?: '';
 $csrf_token = bin2hex(random_bytes(32));
 $_SESSION['login_csrf_token'] = $csrf_token;
 
@@ -131,7 +131,7 @@ if (isset($_SESSION['login_error'])) {
         <h4>App Center</h4>
       </div>
       <div class="card-body">
-        <form action="/action?action=login" method="POST">
+        <form id="login-form" action="/action?action=login" method="POST">
           <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
           <div class="mb-4">
             <label class="form-label">Username</label>
@@ -142,7 +142,7 @@ if (isset($_SESSION['login_error'])) {
             <input autocomplete="off" type="password" name="password" class="form-control migrated-style-26" required placeholder="Enter your password">
           </div>
           <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response">
-          <button type="submit" class="btn btn-primary w-100">Sign In</button>
+          <button type="submit" id="login-submit" class="btn btn-primary w-100">Sign In</button>
         </form>
       </div>
     </div>
@@ -150,12 +150,48 @@ if (isset($_SESSION['login_error'])) {
 
 <script>
 <?php if (!$is_localhost): ?>
-grecaptcha.ready(function () {
-  grecaptcha.execute(<?= json_encode($site_key) ?>, {action: 'login'})
+(function () {
+  var form = document.getElementById('login-form');
+  var button = document.getElementById('login-submit');
+  var busy = false;
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (busy) return;
+    busy = true;
+    button.disabled = true;
+
+    if (typeof grecaptcha === 'undefined') {
+      busy = false;
+      button.disabled = false;
+      Swal.fire({
+        icon: 'error',
+        title: 'Login Gagal',
+        text: 'reCAPTCHA gagal dimuat. Muat ulang halaman lalu coba lagi.',
+        confirmButtonColor: '#ef4444'
+      });
+      return;
+    }
+
+    grecaptcha.ready(function () {
+      grecaptcha.execute(<?= json_encode($site_key) ?>, {action: 'login'})
         .then(function (token) {
-            document.getElementById('g-recaptcha-response').value = token;
+          document.getElementById('g-recaptcha-response').value = token;
+          form.submit();
+        })
+        .catch(function () {
+          busy = false;
+          button.disabled = false;
+          Swal.fire({
+            icon: 'error',
+            title: 'Login Gagal',
+            text: 'Verifikasi reCAPTCHA gagal. Muat ulang halaman lalu coba lagi.',
+            confirmButtonColor: '#ef4444'
+          });
         });
-});
+    });
+  });
+})();
 <?php endif; ?>
 </script>
 
