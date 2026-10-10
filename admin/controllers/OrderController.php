@@ -633,6 +633,11 @@ class OrderController {
                 $unit += $extra_charge[$size] ?? 0;
             }
 
+            if($category === 'DTF' && str_contains($name, 'KAOS') && $unit_type === 'PCS') {
+                $extra_change = ['5XL' => 50000, '4XL' => 40000, '3XL' => 30000, '2XL' => 20000, 'XL' => 10000];
+                $unit += $extra_change[$size] ?? 0;
+            }
+
             $amount = $unit * $quantity;
 
             if ($category === 'AKRILIK' && $name === 'PRINT UV' && $amount < 7500) {
