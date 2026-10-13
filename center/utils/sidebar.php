@@ -15,6 +15,7 @@
         <li><a href="<?= $centerBaseUrl ?>/productions"><i class="fas fa-industry"></i> <span>Productions</span></a></li>
         <li><a href="<?= $centerBaseUrl ?>/analysis"><i class="fas fa-chart-line"></i> <span>Analysis</span></a></li>
         <li><a href="<?= $centerBaseUrl ?>/helpdesk"><i class="fas fa-headset"></i> <span>Help Desk</span></a></li>
+        <li><a href="<?= $centerBaseUrl ?>/tutorials"><i class="fas fa-play-circle"></i> <span>Tutorial</span></a></li>
         <li><a href="<?= $centerBaseUrl ?>/setting"><i class="fas fa-cog"></i> <span>Setting</span></a></li>
         <li><a href="<?= $centerBaseUrl ?>/branch_check"><i class="fas fa-clipboard-check"></i> <span>Checklist Cabang</span></a></li>
     </ul>

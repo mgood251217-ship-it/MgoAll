@@ -75,6 +75,10 @@ switch ($route) {
         require 'pages/analysis.php';
         break;
 
+    case 'tutorials':
+        require 'pages/tutorials.php';
+        break;
+
     case 'setting':
         require 'pages/settings.php';
         break;

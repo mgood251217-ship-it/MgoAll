@@ -4,6 +4,11 @@ vendor/
 
 # Upload user
 uploads/
+!center/uploads/
+center/uploads/*
+!center/uploads/tutorials/
+center/uploads/tutorials/*
+!center/uploads/tutorials/.htaccess
 storage/
 tmp/
 temp/
