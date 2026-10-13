@@ -2,7 +2,7 @@
 error_reporting(E_ALL);
 require_once __DIR__ . '/functions/helpers.php';
 $isLocalhost = isCenterLocalRequest();
-ini_set('display_errors', $isLocalhost ? '1' : '0');
+ini_set('display_errors', $isLocalhost && ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'XMLHttpRequest' ? '1' : '0');
 ini_set('log_errors', '1');
 configureCenterSession();
 $request = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);

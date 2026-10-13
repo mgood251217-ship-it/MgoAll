@@ -1,5 +1,34 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
 
+.tutorial-library { margin-top: 28px; }
+.tutorial-library-header { margin-bottom: 20px; }
+.tutorial-library-header h4 { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font-weight: 600; }
+.tutorial-library-header p { margin: 0; color: var(--color-text-muted); font-size: .875rem; }
+.tutorial-count { padding: 4px 10px; border-radius: 20px; color: #1d4ed8; background: #dbeafe; font-size: .8rem; }
+.tutorial-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 20px; align-items: start; }
+.tutorial-card { min-width: 0; overflow: hidden; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+.tutorial-media { aspect-ratio: 16 / 9; background: #0f172a; }
+.tutorial-media video { display: block; width: 100%; height: 100%; object-fit: contain; }
+.tutorial-text-cover { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: #1d4ed8; background: linear-gradient(135deg, #eff6ff, #e0e7ff); font-size: .875rem; }
+.tutorial-text-cover i { font-size: 2.5rem; }
+.tutorial-card-body { padding: 20px; }
+.tutorial-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; color: var(--color-text-muted); font-size: .75rem; }
+.tutorial-meta > span:last-child { flex-shrink: 0; }
+.tutorial-category { min-width: 0; overflow-wrap: anywhere; padding: 4px 9px; border-radius: 6px; background: var(--color-surface-hover); color: var(--color-text-soft); }
+.tutorial-card h5 { margin: 0 0 10px; font-size: 1.05rem; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.tutorial-excerpt { color: var(--color-text-muted); font-size: .875rem; line-height: 1.7; overflow-wrap: anywhere; }
+.tutorial-details summary { color: #1d4ed8; cursor: pointer; font-size: .875rem; font-weight: 500; }
+.tutorial-details summary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 4px; }
+.tutorial-details > div { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border); white-space: pre-wrap; overflow-wrap: anywhere; font-size: .875rem; line-height: 1.8; }
+.tutorial-card-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-top: 1px solid var(--color-border); background: var(--color-surface-muted); }
+.tutorial-card-footer time { color: var(--color-text-muted); font-size: .75rem; }
+.tutorial-actions { display: flex; gap: 8px; }
+.tutorial-actions form { margin: 0; }
+.tutorial-empty { padding: 48px 20px; text-align: center; background: var(--color-surface); border: 1px dashed var(--color-border-strong); border-radius: var(--radius-lg); }
+.tutorial-empty > i { margin-bottom: 18px; color: var(--color-primary); font-size: 2rem; }
+.tutorial-empty p { color: var(--color-text-muted); }
+@media (min-width: 1200px) { .tutorial-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
 :root {
   --font-sans: "Inter", sans-serif;
   --color-page: #f1f5f9;

@@ -15,9 +15,9 @@ class TutorialController
         return $this->db->query('SELECT * FROM tutorials ORDER BY created_at DESC, id DESC')->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function create($input, $file)
+    public function create($input, $file, $thumbnail = null)
     {
-        $this->save($input, $file);
+        $this->save($input, $file, null, $thumbnail);
     }
 
     public function find($id)
@@ -33,12 +33,12 @@ class TutorialController
         return $row;
     }
 
-    public function update($id, $input, $file)
+    public function update($id, $input, $file, $thumbnail = null)
     {
-        $this->save($input, $file, $id);
+        $this->save($input, $file, $id, $thumbnail);
     }
 
-    private function removeVideo($filename)
+    private function removeVideo($filename, $folder = 'video/tutorials')
     {
         if (!$filename) return;
         $base = rtrim($_ENV['BASE_PATH_UPLOAD'] ?? '', '/\\');
@@ -46,7 +46,7 @@ class TutorialController
             error_log('Tutorial: lokasi video tidak valid untuk penghapusan.');
             return;
         }
-        $path = $base . '/video/tutorials/' . $filename;
+        $path = $base . '/' . $folder . '/' . $filename;
         if (is_file($path) && !unlink($path)) {
             error_log('Tutorial: gagal menghapus video ' . $filename);
         }
@@ -60,9 +60,10 @@ class TutorialController
         if (!$stmt->execute()) throw new RuntimeException('Gagal menghapus tutorial.');
         $stmt->close();
         $this->removeVideo($old['video_filename']);
+        $this->removeVideo($old['thumbnail_filename'] ?? null, 'image/tutorials');
     }
 
-    private function save($input, $file, $id = null)
+    private function save($input, $file, $id = null, $thumbnail = null)
     {
         $old = $id !== null ? $this->find($id) : null;
         $title = trim((string)($input['title'] ?? ''));
@@ -107,19 +108,41 @@ class TutorialController
                 throw new RuntimeException('Tidak dapat menyimpan video.');
             }
         }
+        $thumbnailName = $old['thumbnail_filename'] ?? null;
+        $thumbnailDestination = null;
         try {
+            if ($thumbnail && ($thumbnail['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+                if ($thumbnail['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($thumbnail['tmp_name']) || filesize($thumbnail['tmp_name']) > 5242880) {
+                    throw new InvalidArgumentException('Upload thumbnail gagal. Maksimal 5 MB.');
+                }
+                $image = getimagesize($thumbnail['tmp_name']);
+                $types = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+                if (!$image || !isset($types[$image['mime']]) || $image[0] > 10000 || $image[1] > 10000) {
+                    throw new InvalidArgumentException('Thumbnail harus berupa JPG, PNG, atau WebP yang valid (maksimal 10000 piksel per sisi).');
+                }
+                $uploadBase = rtrim($_ENV['BASE_PATH_UPLOAD'] ?? '', '/\\');
+                if ($uploadBase === '' || empty($_ENV['BASE_URL_UPLOAD'])) throw new RuntimeException('Konfigurasi upload belum tersedia.');
+                $directory = $uploadBase . '/image/tutorials';
+                if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) throw new RuntimeException('Folder thumbnail tidak dapat dibuat.');
+                $thumbnailName = bin2hex(random_bytes(16)) . '.' . $types[$image['mime']];
+                $thumbnailDestination = $directory . '/' . $thumbnailName;
+                if (!move_uploaded_file($thumbnail['tmp_name'], $thumbnailDestination)) throw new RuntimeException('Thumbnail gagal disimpan.');
+            } elseif ($destination) {
+                throw new InvalidArgumentException('Thumbnail video belum tersedia. Pilih gambar thumbnail atau gunakan browser yang dapat membaca video tersebut.');
+            }
             if ($id !== null) {
-                $stmt = $this->db->prepare('UPDATE tutorials SET title = ?, category = ?, content = ?, video_filename = ? WHERE id = ?');
-                $stmt->bind_param('ssssi', $title, $category, $content, $filename, $id);
+                $stmt = $this->db->prepare('UPDATE tutorials SET title = ?, category = ?, content = ?, video_filename = ?, thumbnail_filename = ? WHERE id = ?');
+                $stmt->bind_param('sssssi', $title, $category, $content, $filename, $thumbnailName, $id);
             } else {
-                $stmt = $this->db->prepare('INSERT INTO tutorials (title, category, content, video_filename) VALUES (?, ?, ?, ?)');
-                $stmt->bind_param('ssss', $title, $category, $content, $filename);
+                $stmt = $this->db->prepare('INSERT INTO tutorials (title, category, content, video_filename, thumbnail_filename) VALUES (?, ?, ?, ?, ?)');
+                $stmt->bind_param('sssss', $title, $category, $content, $filename, $thumbnailName);
             }
             if (!$stmt->execute()) {
                 throw new RuntimeException('Gagal menyimpan tutorial.');
             }
             $stmt->close();
         } catch (Throwable $e) {
+            if ($thumbnailDestination && is_file($thumbnailDestination)) unlink($thumbnailDestination);
             if ($destination && is_file($destination)) {
                 unlink($destination);
             }
@@ -127,6 +150,9 @@ class TutorialController
         }
         if ($old && $destination && $old['video_filename'] !== $filename) {
             $this->removeVideo($old['video_filename']);
+        }
+        if ($old && $thumbnailDestination && ($old['thumbnail_filename'] ?? null) !== $thumbnailName) {
+            $this->removeVideo($old['thumbnail_filename'] ?? null, 'image/tutorials');
         }
     }
 }
