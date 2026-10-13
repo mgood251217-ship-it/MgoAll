@@ -25,6 +25,8 @@ $success = $_SESSION['tutorial_success'] ?? '';
 unset($_SESSION['tutorial_success']);
 $values = ['title' => '', 'category' => '', 'content' => ''];
 $tutorials = [];
+$editId = 0;
+$editing = null;
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach ($values as $key => $value) {
@@ -36,16 +38,40 @@ try {
         if (!is_string($_POST['csrf'] ?? null) || !hash_equals($_SESSION['tutorial_csrf'], $_POST['csrf'])) {
             throw new InvalidArgumentException('Sesi form tidak valid. Muat ulang halaman dan coba lagi.');
         }
-        $controller->create($values, $_FILES['video'] ?? null);
+        $action = $_POST['action'] ?? 'create';
+        $id = filter_var($_POST['id'] ?? 0, FILTER_VALIDATE_INT);
+        if ($action === 'update' || $action === 'delete') {
+            if (!$id || $id < 1) throw new InvalidArgumentException('ID tutorial tidak valid.');
+        }
+        if ($action === 'delete') {
+            $controller->delete($id);
+            $message = 'Tutorial berhasil dihapus.';
+        } elseif ($action === 'update') {
+            $editId = $id;
+            $editing = $controller->find($id);
+            $controller->update($id, $values, $_FILES['video'] ?? null);
+            $message = 'Tutorial berhasil diperbarui.';
+        } elseif ($action === 'create') {
+            $controller->create($values, $_FILES['video'] ?? null);
+            $message = 'Tutorial berhasil ditambahkan.';
+        } else {
+            throw new InvalidArgumentException('Aksi tutorial tidak valid.');
+        }
         if ($isUploadRequest) {
-            $_SESSION['tutorial_success'] = 'Tutorial berhasil ditambahkan.';
+            $_SESSION['tutorial_success'] = $message;
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['success' => true]);
             exit;
         }
-        $_SESSION['tutorial_success'] = 'Tutorial berhasil ditambahkan.';
+        $_SESSION['tutorial_success'] = $message;
         header('Location: ' . $base . '/tutorials');
         exit;
+    }
+    if (isset($_GET['edit'])) {
+        $editId = filter_var($_GET['edit'], FILTER_VALIDATE_INT);
+        if (!$editId || $editId < 1) throw new InvalidArgumentException('ID tutorial tidak valid.');
+        $editing = $controller->find($editId);
+        foreach ($values as $key => $value) $values[$key] = $editing[$key];
     }
     $tutorials = $controller->all();
 } catch (InvalidArgumentException $e) {
@@ -70,9 +96,12 @@ if ($isUploadRequest && $_SERVER['REQUEST_METHOD'] === 'POST') {
 <?php if ($success): ?><div class="alert alert-success" role="status"><?= $escape($success) ?></div><?php endif; ?>
 <?php if ($error): ?><div class="alert alert-danger" role="alert"><?= $escape($error) ?></div><?php endif; ?>
 <div class="filter-card">
-    <h4>Tambah Tutorial</h4>
+    <h4><?= $editing ? 'Edit Tutorial' : 'Tambah Tutorial' ?></h4>
     <form id="tutorial-form" method="post" action="<?= $escape($base . '/tutorials') ?>" enctype="multipart/form-data">
         <input type="hidden" name="csrf" value="<?= $escape($_SESSION['tutorial_csrf']) ?>">
+        <input type="hidden" name="action" value="<?= $editing ? 'update' : 'create' ?>">
+        <input type="hidden" name="id" value="<?= (int)$editId ?>">
+        <?php if ($editing && $editing['video_filename']): ?><p class="form-text">Video saat ini: <?= $escape($editing['video_filename']) ?>. Kosongkan upload untuk mempertahankan video, atau pilih video baru untuk menggantinya.</p><?php endif; ?>
         <div class="mb-3"><label for="tutorial-title" class="form-label">Judul</label><input class="form-control" id="tutorial-title" name="title" maxlength="200" required value="<?= $escape($values['title']) ?>"></div>
         <div class="mb-3"><label for="tutorial-category" class="form-label">Kategori (opsional)</label><input class="form-control" id="tutorial-category" name="category" maxlength="100" value="<?= $escape($values['category']) ?>"></div>
         <div class="mb-3"><label for="tutorial-content" class="form-label">Isi tutorial</label><textarea class="form-control" id="tutorial-content" name="content" rows="6" required><?= $escape($values['content']) ?></textarea></div>
@@ -83,6 +112,7 @@ if ($isUploadRequest && $_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div id="tutorial-upload-error" class="alert alert-danger" role="alert" hidden></div>
         <button id="tutorial-submit" type="submit" class="btn-primary-custom"><i class="fas fa-plus"></i> Simpan Tutorial</button>
+        <?php if ($editing): ?><a class="btn btn-secondary" href="<?= $escape($base . '/tutorials') ?>">Batal Edit</a><?php endif; ?>
     </form>
 </div>
 <script>
@@ -161,6 +191,15 @@ if ($isUploadRequest && $_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php foreach ($tutorials as $tutorial): ?>
         <article class="p-3 border-bottom">
             <h5><?= $escape($tutorial['title']) ?></h5>
+            <div class="d-flex gap-2 mb-2">
+                <a class="btn btn-sm btn-outline-primary" href="<?= $escape($base . '/tutorials?edit=' . (int)$tutorial['id']) ?>">Edit</a>
+                <form method="post" action="<?= $escape($base . '/tutorials') ?>" onsubmit="if (!confirm('Hapus tutorial beserta videonya?')) return false; this.querySelector('button').disabled = true;">
+                    <input type="hidden" name="csrf" value="<?= $escape($_SESSION['tutorial_csrf']) ?>">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="id" value="<?= (int)$tutorial['id'] ?>">
+                    <button class="btn btn-sm btn-outline-danger" type="submit">Hapus</button>
+                </form>
+            </div>
             <p class="text-muted"><?= $escape($tutorial['category'] ?: 'Tanpa kategori') ?> &middot; <?= $escape($tutorial['created_at']) ?></p>
             <details><summary>Baca tutorial</summary><div class="mt-2" style="white-space:pre-wrap;overflow-wrap:anywhere"><?= $escape($tutorial['content']) ?></div></details>
             <?php if ($tutorial['video_filename']): ?>
