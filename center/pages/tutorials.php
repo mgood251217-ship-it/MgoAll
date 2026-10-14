@@ -1,7 +1,6 @@
 <?php
 function tutorialJsonResponse($success, $message = '', $status = 200)
 {
-    // Buang output dari include/warning agar respons hanya berisi JSON.
     while (ob_get_level() > 0) ob_end_clean();
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
@@ -263,7 +262,7 @@ if ($isUploadRequest && $_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if (xhr.status >= 200 && xhr.status < 300 && result.success) {
                 status.textContent = 'Tutorial berhasil disimpan.';
-                window.location.assign(form.action);
+                window.location.assign('/tutorials');
                 return;
             }
             fail(result.message || 'Tutorial gagal disimpan. Silakan coba kembali.');
@@ -272,7 +271,6 @@ if ($isUploadRequest && $_SERVER['REQUEST_METHOD'] === 'POST') {
             fail('Koneksi terputus. Periksa daftar tutorial sebelum mencoba kembali.');
         });
         xhr.addEventListener('abort', function () { fail('Upload dibatalkan.'); });
-        // Gunakan URL halaman yang sudah berhasil dibuka, termasuk route/query-nya.
         const uploadUrl = new URL(window.location.href);
         uploadUrl.searchParams.delete('edit');
         uploadUrl.hash = '';
