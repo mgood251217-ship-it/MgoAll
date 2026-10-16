@@ -1,6 +1,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 
-<div class="page-container">
+<div class="<?= $cash_embedded ? 'cash-flow' : 'page-container' ?>">
     <div class="header-action">
         <div>
             <h2 class="page-title">Arus Kas Harian & Interval</h2>
@@ -11,7 +11,17 @@
             <button class="btn bg-danger" onclick="openModal('modalExpenditure')">- Pengeluaran</button>
             <button type="button" class="btn bg-primary" onclick="exportArusKasToExcel()">Export Excel</button>
 
-            <a href="<?= htmlspecialchars($sync_url) ?>" class="btn bg-warning">↻ Sync Interval</a>
+            <?php if (isset($cash_sync_post_url)): ?>
+                <form action="<?= htmlspecialchars($cash_sync_post_url) ?>" method="POST">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
+                    <?php foreach ($cash_form_fields as $field => $value): ?><input type="hidden" name="<?= htmlspecialchars($field) ?>" value="<?= htmlspecialchars((string) $value) ?>"><?php endforeach; ?>
+                    <input type="hidden" name="start_date" value="<?= htmlspecialchars($start_date) ?>">
+                    <input type="hidden" name="end_date" value="<?= htmlspecialchars($end_date) ?>">
+                    <button type="submit" class="btn bg-warning">↻ Sync Interval</button>
+                </form>
+            <?php else: ?>
+                <a href="<?= htmlspecialchars($sync_url) ?>" class="btn bg-warning">↻ Sync Interval</a>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -55,7 +65,15 @@
 
     </div>
 
-    <form class="filter-card" method="GET" action="/aruskas">
+    <form class="filter-card center-store-filter" method="GET" action="<?= htmlspecialchars($cash_page_url) ?>">
+        <?php if ($cash_embedded): ?>
+            <div class="form-group">
+                <label for="cash_store">Toko</label>
+                <select id="cash_store" name="store_id">
+                    <?php foreach ($store_options as $store): ?><option value="<?= (int) $store['id'] ?>" <?= $store_id === (int) $store['id'] ? 'selected' : '' ?>><?= htmlspecialchars($store['name']) ?></option><?php endforeach; ?>
+                </select>
+            </div>
+        <?php endif; ?>
         <div class="form-group">
             <label>Dari Tanggal</label><input type="date" name="start_date" value="<?= htmlspecialchars($start_date) ?>">
         </div>
@@ -82,11 +100,12 @@
                     <th class="text-center">Metode</th>
                     <th class="text-right">Masuk (+)</th>
                     <th class="text-right">Keluar (-)</th>
+                    <?php if ($cash_actions): ?><th>Aksi</th><?php endif; ?>
                 </tr>
             </thead>
             <tbody>
                 <?php if(empty($transactions)): ?>
-                <tr><td class="table-empty" colspan="5">Belum ada data pada interval tanggal ini.</td></tr>
+                <tr><td class="table-empty" colspan="<?= $cash_actions ? 6 : 5 ?>">Belum ada data pada interval tanggal ini.</td></tr>
                 <?php else: ?>
                     <?php foreach($transactions as $row): ?>
                     <tr>
@@ -109,6 +128,24 @@
                         <td class="amount-expense">
                             <?= htmlspecialchars($row['expense_display']) ?>
                         </td>
+                        <?php if ($cash_actions): ?>
+                            <td>
+                                <?php if (!empty($row['action_url'])): ?>
+                                    <div class="action-group">
+                                        <a href="<?= htmlspecialchars($row['action_url']) ?>" class="btn bg-info">Kelola</a>
+                                        <form action="<?= htmlspecialchars($cash_delete_post_url) ?>" method="POST" onsubmit="return confirm('Hapus permanen transaksi ini? Saldo akan dihitung ulang.')">
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
+                                            <?php foreach ($cash_form_fields as $field => $value): ?><input type="hidden" name="<?= htmlspecialchars($field) ?>" value="<?= htmlspecialchars((string) $value) ?>"><?php endforeach; ?>
+                                            <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
+                                            <input type="hidden" name="source" value="<?= htmlspecialchars($row['source']) ?>">
+                                            <button type="submit" class="btn bg-danger">Hapus</button>
+                                        </form>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="text-muted">Saldo bawaan</span>
+                                <?php endif; ?>
+                            </td>
+                        <?php endif; ?>
                     </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -123,7 +160,10 @@
             <h3 class="dialog-title text-info">Input Saldo / Tambahan</h3>
             <button class="close-btn" type="button" onclick="closeModal('modalIncome')">✕</button>
         </div>
-        <form action="/aruskas" method="POST">
+        <form action="<?= htmlspecialchars($cash_post_url) ?>" method="POST">
+            <?php if ($cash_embedded): ?><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>"><?php endif; ?>
+            <?php foreach ($cash_form_fields as $field => $value): ?><input type="hidden" name="<?= htmlspecialchars($field) ?>" value="<?= htmlspecialchars((string) $value) ?>"><?php endforeach; ?>
+            <input type="hidden" name="source" value="income">
             <input type="hidden" name="action" value="add_income">
             <div class="form-group mb-15"><label>Tanggal:</label><input type="date" name="date" value="<?= htmlspecialchars($today) ?>" required></div>
             <div class="form-group mb-15"><label>Keterangan:</label><input type="text" name="description" placeholder="Contoh: Tambahan Uang " required></div>
@@ -146,7 +186,10 @@
             <h3 class="dialog-title text-danger">Catat Pengeluaran</h3>
             <button class="close-btn" type="button" onclick="closeModal('modalExpenditure')">✕</button>
         </div>
-        <form action="/aruskas" method="POST">
+        <form action="<?= htmlspecialchars($cash_post_url) ?>" method="POST">
+            <?php if ($cash_embedded): ?><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>"><?php endif; ?>
+            <?php foreach ($cash_form_fields as $field => $value): ?><input type="hidden" name="<?= htmlspecialchars($field) ?>" value="<?= htmlspecialchars((string) $value) ?>"><?php endforeach; ?>
+            <input type="hidden" name="source" value="expenditure">
             <input type="hidden" name="action" value="add_expenditure">
             <div class="form-group mb-15"><label>Tanggal:</label><input type="date" name="date" value="<?= htmlspecialchars($today) ?>" required></div>
             <div class="form-group mb-15"><label>Keterangan:</label><input type="text" name="description" placeholder="Contoh: Bayar Listrik, Galon, dll" required></div>

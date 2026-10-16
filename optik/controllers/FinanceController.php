@@ -44,6 +44,11 @@ class FinanceController {
             'start_date' => $start_date,
             'end_date' => $end_date,
             'type' => $type,
+            'cash_page_url' => '/aruskas',
+            'cash_post_url' => '/aruskas',
+            'cash_form_fields' => [],
+            'cash_embedded' => false,
+            'cash_actions' => false,
             'sync_url' => '/aruskas?' . http_build_query([
                 'action' => 'sync',
                 'start_date' => $start_date,

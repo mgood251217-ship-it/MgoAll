@@ -123,7 +123,7 @@ class Finance {
 
     public function getIncomeTransactions($store_id, $start_date, $end_date) {
         $stmt = $this->pdo->prepare("
-            SELECT date, '00:00:00' as created_at, description, 'Pemasukan / Saldo' as category,
+            SELECT id, store_id, 'income' as source, date, '00:00:00' as created_at, description, 'Pemasukan / Saldo' as category,
                    payment_method, 'in' as type, amount
             FROM income WHERE store_id = ? AND date BETWEEN ? AND ?
         ");
@@ -133,7 +133,7 @@ class Finance {
 
     public function getExpenditureTransactions($store_id, $start_date, $end_date) {
         $stmt = $this->pdo->prepare("
-            SELECT date, '00:00:00' as created_at, description, 'Pengeluaran' as category,
+            SELECT id, store_id, 'expenditure' as source, date, '00:00:00' as created_at, description, 'Pengeluaran' as category,
                    payment_method, 'out' as type, amount
             FROM expenditure WHERE store_id = ? AND date BETWEEN ? AND ?
         ");
@@ -163,68 +163,13 @@ class Finance {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    private function adminLedgerSql() {
-        return "SELECT id, store_id, date, '00:00:00' AS created_at,
-                CONVERT(description USING utf8mb4) COLLATE utf8mb4_unicode_ci AS description,
-                CONVERT(payment_method USING utf8mb4) COLLATE utf8mb4_unicode_ci AS payment_method, amount,
-                'income' AS source, 'in' AS type, NULL AS order_id
-                FROM income WHERE description NOT LIKE 'Saldo Otomatis%'
-            UNION ALL
-            SELECT id, store_id, date, '00:00:00',
-                CONVERT(description USING utf8mb4) COLLATE utf8mb4_unicode_ci,
-                CONVERT(payment_method USING utf8mb4) COLLATE utf8mb4_unicode_ci,
-                amount, 'expenditure', 'out', NULL FROM expenditure
-            UNION ALL
-            SELECT p.id, p.store_id, DATE(p.create_at), TIME(p.create_at),
-                CONVERT(CONCAT('Pembayaran ', o.inv_no) USING utf8mb4) COLLATE utf8mb4_unicode_ci,
-                CONVERT(p.payment_method USING utf8mb4) COLLATE utf8mb4_unicode_ci,
-                p.nominal, 'payment', 'in', p.order_id
-                FROM payments p JOIN orders o ON o.id = p.order_id AND o.store_id = p.store_id";
-    }
-
-    public function getAdminSummary($store_id, $start_date, $end_date) {
-        $params = ['end_date' => $end_date];
-        $columns = [];
-        foreach (['awal_cash', 'awal_tf', 'masuk_cash', 'masuk_tf', 'keluar_cash', 'keluar_tf'] as $key) {
-            $method = str_ends_with($key, 'cash') ? "UPPER(l.payment_method) = 'CASH'" : "UPPER(l.payment_method) IN ('TF', 'TRANSFER')";
-            $params[$key . '_date'] = $start_date;
-            if (str_starts_with($key, 'awal')) {
-                $condition = 'l.date < :' . $key . '_date';
-                $amount = "CASE WHEN l.type = 'in' THEN l.amount ELSE -l.amount END";
-            } else {
-                $condition = 'l.date >= :' . $key . '_date AND l.type = ' . (str_starts_with($key, 'masuk') ? "'in'" : "'out'");
-                $amount = 'l.amount';
-            }
-            $columns[] = "COALESCE(SUM(CASE WHEN $condition AND $method THEN $amount ELSE 0 END), 0) AS $key";
-        }
-        $sql = 'SELECT ' . implode(', ', $columns) . ' FROM (' . $this->adminLedgerSql() . ') l WHERE l.date <= :end_date';
-        if ($store_id > 0) {
-            $sql .= ' AND l.store_id = :store_id';
-            $params['store_id'] = $store_id;
-        }
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-    public function getAdminTransactions($store_id, $start_date, $end_date, $type = '', $limit = 20, $offset = 0, $count = false) {
-        $sql = ($count ? 'SELECT COUNT(*)' : 'SELECT l.*, s.name AS store_name')
-            . ' FROM (' . $this->adminLedgerSql() . ') l LEFT JOIN stores s ON s.id = l.store_id WHERE l.date BETWEEN :start_date AND :end_date';
-        $params = ['start_date' => $start_date, 'end_date' => $end_date];
-        if ($store_id > 0) {
-            $sql .= ' AND l.store_id = :store_id';
-            $params['store_id'] = $store_id;
-        }
-        if ($type !== '') {
-            $sql .= ' AND l.type = :type';
-            $params['type'] = $type;
-        }
-        if (!$count) {
-            $sql .= ' ORDER BY l.date DESC, l.created_at DESC, l.store_id, l.source, l.id DESC LIMIT ' . max(1, (int) $limit) . ' OFFSET ' . max(0, (int) $offset);
-        }
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($params);
-        return $count ? (int) $stmt->fetchColumn() : $stmt->fetchAll(PDO::FETCH_ASSOC);
+    public function getOrderPayments($store_id, $start_date, $end_date) {
+        $stmt = $this->pdo->prepare("SELECT p.*, o.inv_no
+            FROM payments p JOIN orders o ON o.id = p.order_id AND o.store_id = p.store_id
+            WHERE p.store_id = :store_id AND DATE(p.create_at) BETWEEN :start_date AND :end_date
+            ORDER BY p.create_at DESC, p.id DESC");
+        $stmt->execute(['store_id' => $store_id, 'start_date' => $start_date, 'end_date' => $end_date]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     private function manualTable($source) {

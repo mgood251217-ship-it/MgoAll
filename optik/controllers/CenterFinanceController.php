@@ -37,48 +37,45 @@ class CenterFinanceController {
 
     private function index(array $query) {
         [$start, $end] = $this->interval($query);
+        $store_options = $this->center->getStoreOptions();
         $store_id = max(0, (int) ($query['store_id'] ?? 0));
-        if ($store_id > 0) {
-            $this->requireStore($store_id);
+        if ($store_id === 0 && $store_options) {
+            $store_id = (int) $store_options[0]['id'];
         }
+        if ($store_id === 0) {
+            return ['view' => 'aruskas', 'report_available' => false, 'store_options' => $store_options];
+        }
+        $this->requireStore($store_id);
         $type = $this->text($query, 'type');
         if (!in_array($type, ['', 'in', 'out'], true)) {
             throw new InvalidArgumentException('Filter jenis transaksi tidak valid.');
         }
-        $summary = $this->finance->getAdminSummary($store_id, $start, $end);
-        foreach (['cash', 'tf'] as $method) {
-            foreach (['awal', 'masuk', 'keluar'] as $key) {
-                $summary[$key . '_' . $method] = (float) ($summary[$key . '_' . $method] ?? 0);
-            }
-            $summary['akhir_' . $method] = $summary['awal_' . $method] + $summary['masuk_' . $method] - $summary['keluar_' . $method];
-        }
-        $cards = [];
-        foreach (['awal' => ['Saldo Awal', 'accent'], 'masuk' => ['Uang Masuk', 'success'], 'keluar' => ['Uang Keluar', 'danger'], 'akhir' => ['Saldo Akhir', 'warning']] as $key => [$label, $color]) {
-            $cards[] = ['label' => $label, 'color' => $color, 'cash' => $summary[$key . '_cash'], 'transfer' => $summary[$key . '_tf'], 'total' => $summary[$key . '_cash'] + $summary[$key . '_tf']];
-        }
-        $total = $this->finance->getAdminTransactions($store_id, $start, $end, $type, 20, 0, true);
-        $total_pages = max(1, (int) ceil($total / 20));
-        $current_page = min($total_pages, max(1, (int) ($query['hal'] ?? 1)));
-        $transactions = $this->finance->getAdminTransactions($store_id, $start, $end, $type, 20, ($current_page - 1) * 20);
-        foreach ($transactions as &$row) {
-            $row['display_date'] = date('d M Y', strtotime($row['date']));
-            $row['method_class'] = strtoupper($row['payment_method']) === 'CASH' ? 'bg-success' : 'bg-info';
-            $row['category'] = ['income' => 'Pemasukan / Saldo', 'expenditure' => 'Pengeluaran', 'payment' => 'Pembayaran Order'][$row['source']];
-            $row['action_url'] = $row['source'] === 'payment'
-                ? $this->base_url . '/order?id=' . (int) $row['order_id']
-                : $this->base_url . '/cash-entry?' . http_build_query(['store_id' => $row['store_id'], 'source' => $row['source'], 'id' => $row['id']]);
+        $report = $this->finances->index($store_id, ['start_date' => $start, 'end_date' => $end, 'type' => $type], []);
+        foreach ($report['transactions'] as &$row) {
+            $automatic = ($row['source'] ?? '') === 'income' && stripos($row['description'], 'Saldo Otomatis') === 0;
+            $row['action_url'] = !$automatic && isset($row['id'], $row['source'])
+                ? $this->base_url . '/cash-entry?' . http_build_query(['store_id' => $store_id, 'source' => $row['source'], 'id' => $row['id']])
+                : '';
         }
         unset($row);
-        $filters = ['store_id' => $store_id, 'start_date' => $start, 'end_date' => $end, 'type' => $type];
-        $page_links = [];
-        for ($page = max(1, $current_page - 2); $page <= min($total_pages, $current_page + 2); $page++) {
-            $page_links[] = ['number' => $page, 'active' => $page === $current_page, 'url' => $this->base_url . '/aruskas?' . http_build_query($filters + ['hal' => $page])];
+        $payments = $type === 'out' ? [] : $this->finance->getOrderPayments($store_id, $start, $end);
+        foreach ($payments as &$payment) {
+            $payment['display_date'] = date('d M Y, H:i', strtotime($payment['create_at']));
+            $payment['action_url'] = $this->base_url . '/order?id=' . (int) $payment['order_id'];
         }
-        return $filters + [
-            'view' => 'aruskas', 'cards' => $cards, 'transactions' => $transactions, 'total_transactions' => $total,
-            'store_options' => $this->center->getStoreOptions(), 'total_pages' => $total_pages,
-            'current_page' => $current_page, 'page_links' => $page_links
-        ];
+        unset($payment);
+        return array_replace($report, [
+            'view' => 'aruskas', 'report_available' => true,
+            'store_id' => $store_id, 'store_options' => $store_options,
+            'cash_page_url' => $this->base_url . '/aruskas',
+            'cash_post_url' => $this->base_url . '/save-cash-entry',
+            'cash_delete_post_url' => $this->base_url . '/delete-cash-entry',
+            'cash_sync_post_url' => $this->base_url . '/sync-aruskas',
+            'payment_delete_post_url' => $this->base_url . '/delete-payment',
+            'payments' => $payments,
+            'cash_form_fields' => ['store_id' => $store_id],
+            'cash_embedded' => true, 'cash_actions' => true
+        ]);
     }
 
     private function entry(array $query) {
@@ -203,8 +200,8 @@ class CenterFinanceController {
     }
 
     private function interval(array $data) {
-        $start = $this->date($this->text($data, 'start_date', date('Y-m-01')));
-        $end = $this->date($this->text($data, 'end_date', date('Y-m-t')));
+        $start = $this->date($this->text($data, 'start_date', date('Y-m-d')));
+        $end = $this->date($this->text($data, 'end_date', date('Y-m-d')));
         if ($start > $end) {
             throw new InvalidArgumentException('Tanggal awal tidak boleh melewati tanggal akhir.');
         }
