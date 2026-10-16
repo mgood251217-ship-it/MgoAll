@@ -12,9 +12,9 @@ try {
     $sukses = $orderModel->addPayment($data['order_id'], $data['nominal'], $data['payment_method'], $data['information']);
 
     if ($sukses) {
-        require_once 'models/Finance.php';
-        $financeModel = new Finance($pdo);
-        $financeModel->refreshDailyFinance($_SESSION['store_id'], date('Y-m-d'));
+        require_once __DIR__ . '/../../controllers/FinanceController.php';
+        $financeController = new FinanceController(new Finance($pdo));
+        $financeController->refreshDailyFinance($_SESSION['store_id'], date('Y-m-d'));
         echo json_encode(['status' => 'success']);
     } else {
         throw new Exception("Gagal eksekusi database.");

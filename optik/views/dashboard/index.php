@@ -1,32 +1,6 @@
 <?php
 global $pdo;
 $store_id = $_SESSION['store_id'] ?? 0;
-$today = date('Y-m-d');
-
-require_once 'models/Finance.php';
-$financeModel = new Finance($pdo);
-$financeModel->refreshDailyFinance($store_id, $today);
-
-$stmt = $pdo->prepare("
-    SELECT
-        SUM(cash_revenue + transfer_revenue + cash_income + transfer_income) -
-        SUM(cash_expenditure + transfer_expenditure) as saldo_akhir
-    FROM finance WHERE store_id = ? AND date <= ?
-");
-$stmt->execute([$store_id, $today]);
-$saldo_akhir = $stmt->fetchColumn() ?: 0;
-
-$stmt = $pdo->prepare("
-    SELECT
-        SUM(cash_revenue + transfer_revenue) as omzet_hari_ini,
-        SUM(cash_expenditure + transfer_expenditure) as keluar_hari_ini
-    FROM finance WHERE store_id = ? AND date = ?
-");
-$stmt->execute([$store_id, $today]);
-$fin_today = $stmt->fetch(PDO::FETCH_ASSOC);
-
-$omzet_hari_ini = $fin_today['omzet_hari_ini'] ?? 0;
-$keluar_hari_ini = $fin_today['keluar_hari_ini'] ?? 0;
 
 $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE store_id = ? AND DATE(create_at) = ?");
 $stmt->execute([$store_id, $today]);
@@ -48,18 +22,6 @@ $stock_data = $stmt->fetch(PDO::FETCH_ASSOC);
 $stmt = $pdo->prepare("SELECT name, stock FROM products WHERE store_id = ? AND stock < 5 ORDER BY stock ASC LIMIT 6");
 $stmt->execute([$store_id]);
 $low_stock_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-$chart_dates = [];
-$chart_omzet = [];
-
-for ($i = 6; $i >= 0; $i--) {
-    $d = date('Y-m-d', strtotime("-$i days"));
-    $chart_dates[] = date('d M', strtotime($d));
-
-    $stmt = $pdo->prepare("SELECT SUM(cash_revenue + transfer_revenue) FROM finance WHERE store_id = ? AND date = ?");
-    $stmt->execute([$store_id, $d]);
-    $chart_omzet[] = (float)($stmt->fetchColumn() ?: 0);
-}
 ?>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

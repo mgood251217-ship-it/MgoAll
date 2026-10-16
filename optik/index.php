@@ -63,6 +63,22 @@ if (!in_array($module, $allowed_pages)) {
     $module = 'order'; 
 }
 
+if ($module === 'aruskas' || $module === 'dashboard') {
+    require_once __DIR__ . '/controllers/FinanceController.php';
+    $financeController = new FinanceController(new Finance($pdo));
+    $store_id = $_SESSION['store_id'] ?? 0;
+    $financeData = $module === 'aruskas'
+        ? $financeController->index($store_id, $_GET, $_POST, $_SERVER['REQUEST_METHOD'] ?? 'GET')
+        : $financeController->getDashboardData($store_id);
+
+    if (isset($financeData['redirect'])) {
+        header('Location: ' . $financeData['redirect'], true, 303);
+        exit();
+    }
+
+    extract($financeData, EXTR_SKIP);
+}
+
 if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
     $file_path = "views/" . $module . "/index.php";
     if (file_exists($file_path)) {
