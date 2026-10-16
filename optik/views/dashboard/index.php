@@ -1,16 +1,3 @@
-<?php
-global $pdo;
-$store_id = $_SESSION['store_id'] ?? 0;
-
-$stmt = $pdo->prepare("SELECT SUM(stock) as total_stok, COUNT(*) as total_produk FROM products WHERE store_id = ?");
-$stmt->execute([$store_id]);
-$stock_data = $stmt->fetch(PDO::FETCH_ASSOC);
-
-$stmt = $pdo->prepare("SELECT name, stock FROM products WHERE store_id = ? AND stock < 5 ORDER BY stock ASC LIMIT 6");
-$stmt->execute([$store_id]);
-$low_stock_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-?>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <div class="page-container">

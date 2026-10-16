@@ -14,13 +14,6 @@ $module = $url_parts[0];
 
 $action = isset($url_parts[1]) ? $url_parts[1] : '';
 
-$product_actions = ['store_cat', 'store_brand', 'store_product', 'edit_stock', 'delete_product', 'update_product', 'api_detail', 'print_label', 'update_brand', 'delete_brand'];
-
-if ($module === 'product' && in_array($action, $product_actions)) {
-    include 'views/product/store_action.php';
-    exit();
-}
-
 if ($module === 'logout') {
     session_destroy();
     header("Location: /login");
@@ -34,6 +27,38 @@ if ($module === 'login') {
 
 if (!isset($_SESSION['user_logged_in'])) {
     header("Location: /login");
+    exit();
+}
+
+if ($module === 'product' || $module === 'dashboard') {
+    require_once __DIR__ . '/controllers/ProductController.php';
+    $productController = new ProductController(new Product($pdo));
+}
+
+$product_actions = ['store_cat', 'store_brand', 'store_product', 'edit_stock', 'delete_product', 'update_product', 'api_detail', 'print_label', 'update_brand', 'delete_brand'];
+
+if ($module === 'product' && in_array($action, $product_actions, true)) {
+    $json_response = $action === 'api_detail';
+    if ($json_response) {
+        header('Content-Type: application/json');
+    }
+
+    try {
+        $response = $productController->dispatch($action, $_SESSION['store_id'] ?? 0, $_GET, $_POST, $_FILES, $_SERVER['REQUEST_METHOD'] ?? 'GET');
+        if (isset($response['redirect'])) {
+            header('Location: ' . $response['redirect'], true, 303);
+        } elseif (array_key_exists('json', $response)) {
+            echo json_encode($response['json'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
+        } else {
+            echo $response['body'] ?? '';
+        }
+    } catch (Throwable $e) {
+        http_response_code($e instanceof InvalidArgumentException ? 400 : 500);
+        echo $json_response
+            ? json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)
+            : htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
+    }
+
     exit();
 }
 
@@ -112,6 +137,18 @@ if ($module === 'order') {
     extract($orderData, EXTR_SKIP);
 } elseif ($module === 'dashboard') {
     extract($orderController->getDashboardData($_SESSION['store_id'] ?? 0), EXTR_SKIP);
+}
+
+if ($module === 'product') {
+    $productData = $productController->index($_SESSION['store_id'] ?? 0, $_GET);
+    if (($_GET['ajax'] ?? '') === '1') {
+        header('Content-Type: application/json');
+        echo json_encode($productController->catalog($productData), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+        exit();
+    }
+    extract($productData, EXTR_SKIP);
+} elseif ($module === 'dashboard') {
+    extract($productController->getDashboardData($_SESSION['store_id'] ?? 0), EXTR_SKIP);
 }
 
 $view_action = $module === 'order' && $action === 'create' ? 'create' : 'index';
