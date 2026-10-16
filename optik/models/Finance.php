@@ -163,6 +163,114 @@ class Finance {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    private function adminLedgerSql() {
+        return "SELECT id, store_id, date, '00:00:00' AS created_at,
+                CONVERT(description USING utf8mb4) COLLATE utf8mb4_unicode_ci AS description,
+                CONVERT(payment_method USING utf8mb4) COLLATE utf8mb4_unicode_ci AS payment_method, amount,
+                'income' AS source, 'in' AS type, NULL AS order_id
+                FROM income WHERE description NOT LIKE 'Saldo Otomatis%'
+            UNION ALL
+            SELECT id, store_id, date, '00:00:00',
+                CONVERT(description USING utf8mb4) COLLATE utf8mb4_unicode_ci,
+                CONVERT(payment_method USING utf8mb4) COLLATE utf8mb4_unicode_ci,
+                amount, 'expenditure', 'out', NULL FROM expenditure
+            UNION ALL
+            SELECT p.id, p.store_id, DATE(p.create_at), TIME(p.create_at),
+                CONVERT(CONCAT('Pembayaran ', o.inv_no) USING utf8mb4) COLLATE utf8mb4_unicode_ci,
+                CONVERT(p.payment_method USING utf8mb4) COLLATE utf8mb4_unicode_ci,
+                p.nominal, 'payment', 'in', p.order_id
+                FROM payments p JOIN orders o ON o.id = p.order_id AND o.store_id = p.store_id";
+    }
+
+    public function getAdminSummary($store_id, $start_date, $end_date) {
+        $params = ['end_date' => $end_date];
+        $columns = [];
+        foreach (['awal_cash', 'awal_tf', 'masuk_cash', 'masuk_tf', 'keluar_cash', 'keluar_tf'] as $key) {
+            $method = str_ends_with($key, 'cash') ? "UPPER(l.payment_method) = 'CASH'" : "UPPER(l.payment_method) IN ('TF', 'TRANSFER')";
+            $params[$key . '_date'] = $start_date;
+            if (str_starts_with($key, 'awal')) {
+                $condition = 'l.date < :' . $key . '_date';
+                $amount = "CASE WHEN l.type = 'in' THEN l.amount ELSE -l.amount END";
+            } else {
+                $condition = 'l.date >= :' . $key . '_date AND l.type = ' . (str_starts_with($key, 'masuk') ? "'in'" : "'out'");
+                $amount = 'l.amount';
+            }
+            $columns[] = "COALESCE(SUM(CASE WHEN $condition AND $method THEN $amount ELSE 0 END), 0) AS $key";
+        }
+        $sql = 'SELECT ' . implode(', ', $columns) . ' FROM (' . $this->adminLedgerSql() . ') l WHERE l.date <= :end_date';
+        if ($store_id > 0) {
+            $sql .= ' AND l.store_id = :store_id';
+            $params['store_id'] = $store_id;
+        }
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public function getAdminTransactions($store_id, $start_date, $end_date, $type = '', $limit = 20, $offset = 0, $count = false) {
+        $sql = ($count ? 'SELECT COUNT(*)' : 'SELECT l.*, s.name AS store_name')
+            . ' FROM (' . $this->adminLedgerSql() . ') l LEFT JOIN stores s ON s.id = l.store_id WHERE l.date BETWEEN :start_date AND :end_date';
+        $params = ['start_date' => $start_date, 'end_date' => $end_date];
+        if ($store_id > 0) {
+            $sql .= ' AND l.store_id = :store_id';
+            $params['store_id'] = $store_id;
+        }
+        if ($type !== '') {
+            $sql .= ' AND l.type = :type';
+            $params['type'] = $type;
+        }
+        if (!$count) {
+            $sql .= ' ORDER BY l.date DESC, l.created_at DESC, l.store_id, l.source, l.id DESC LIMIT ' . max(1, (int) $limit) . ' OFFSET ' . max(0, (int) $offset);
+        }
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $count ? (int) $stmt->fetchColumn() : $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    private function manualTable($source) {
+        if (!in_array($source, ['income', 'expenditure'], true)) {
+            throw new InvalidArgumentException('Jenis transaksi manual tidak valid.');
+        }
+        return $source;
+    }
+
+    public function getManualEntry($source, $store_id, $id, $lock = false) {
+        $table = $this->manualTable($source);
+        $stmt = $this->pdo->prepare("SELECT * FROM $table WHERE id = :id AND store_id = :store_id" . ($lock ? ' FOR UPDATE' : ''));
+        $stmt->execute(['id' => $id, 'store_id' => $store_id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public function updateManualEntry($source, $store_id, $id, array $data) {
+        $table = $this->manualTable($source);
+        $stmt = $this->pdo->prepare("UPDATE $table SET date = :date, description = :description, amount = :amount, payment_method = :payment_method WHERE id = :id AND store_id = :store_id");
+        return $stmt->execute($data + ['id' => $id, 'store_id' => $store_id]);
+    }
+
+    public function deleteManualEntry($source, $store_id, $id) {
+        $table = $this->manualTable($source);
+        $stmt = $this->pdo->prepare("DELETE FROM $table WHERE id = :id AND store_id = :store_id");
+        return $stmt->execute(['id' => $id, 'store_id' => $store_id]);
+    }
+
+    public function transaction(callable $callback) {
+        if (!$this->pdo->beginTransaction()) {
+            throw new RuntimeException('Transaksi database tidak dapat dimulai.');
+        }
+        try {
+            $result = $callback();
+            if (!$this->pdo->commit()) {
+                throw new RuntimeException('Transaksi database gagal disimpan.');
+            }
+            return $result;
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
     public function getDailyRevenue($store_id, $date) {
         $stmt = $this->pdo->prepare("
             SELECT SUM(cash_revenue + transfer_revenue)

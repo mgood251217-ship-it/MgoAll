@@ -6,11 +6,13 @@ class CenterController {
     private $center;
     private $base_url;
     private $orders;
+    private $finances;
 
-    public function __construct(Center $center, $base_url = '/center', $orders = null) {
+    public function __construct(Center $center, $base_url = '/center', $orders = null, $finances = null) {
         $this->center = $center;
         $this->base_url = rtrim($base_url, '/');
         $this->orders = $orders;
+        $this->finances = $finances;
     }
 
     public function handle($action, array $query, array $post, array &$session, $request_method = 'GET') {
@@ -44,18 +46,20 @@ class CenterController {
 
         $data = ['admin' => $admin, 'csrf_token' => $session['center_csrf_token']];
         $order_actions = ['orders', 'order', 'update-order', 'delete-order', 'update-payment', 'delete-payment'];
-        if (in_array($action, $order_actions, true)) {
-            $writing = !in_array($action, ['orders', 'order'], true);
+        $finance_actions = ['aruskas', 'cash-entry', 'save-cash-entry', 'delete-cash-entry', 'sync-aruskas'];
+        if (in_array($action, array_merge($order_actions, $finance_actions), true)) {
+            $writing = !in_array($action, ['orders', 'order', 'aruskas', 'cash-entry'], true);
             if ($request_method !== ($writing ? 'POST' : 'GET')) {
                 return $data + ['view' => 'error', 'status_code' => 405, 'error' => 'Metode request tidak sesuai.'];
             }
             if ($writing && !$this->validToken($post, $session)) {
                 return $data + ['view' => 'error', 'status_code' => 419, 'error' => 'Sesi formulir berakhir. Muat ulang halaman dan coba lagi.'];
             }
-            if (!$this->orders) {
-                throw new RuntimeException('Pengelolaan order belum tersedia.');
+            $handler = in_array($action, $order_actions, true) ? $this->orders : $this->finances;
+            if (!$handler) {
+                throw new RuntimeException('Modul pengelolaan belum tersedia.');
             }
-            $result = $this->orders->handle($action, $query, $post);
+            $result = $handler->handle($action, $query, $post);
             if (isset($result['redirect'], $result['notice'])) {
                 $session['center_notice'] = $result['notice'];
             } elseif (!$writing && isset($session['center_notice'])) {

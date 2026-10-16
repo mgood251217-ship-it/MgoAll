@@ -18,6 +18,7 @@
                 <a href="<?= htmlspecialchars($center_base) ?>/" class="center-nav-link <?= $view === 'dashboard' ? 'active' : '' ?>" <?= $view === 'dashboard' ? 'aria-current="page"' : '' ?>>Dashboard</a>
                 <a href="<?= htmlspecialchars($center_base) ?>/stores" class="center-nav-link <?= $view === 'stores' ? 'active' : '' ?>" <?= $view === 'stores' ? 'aria-current="page"' : '' ?>>Daftar Toko</a>
                 <a href="<?= htmlspecialchars($center_base) ?>/orders" class="center-nav-link <?= in_array($view, ['orders', 'order'], true) ? 'active' : '' ?>" <?= in_array($view, ['orders', 'order'], true) ? 'aria-current="page"' : '' ?>>Order</a>
+                <a href="<?= htmlspecialchars($center_base) ?>/aruskas" class="center-nav-link <?= in_array($view, ['aruskas', 'cash-entry'], true) ? 'active' : '' ?>" <?= in_array($view, ['aruskas', 'cash-entry'], true) ? 'aria-current="page"' : '' ?>>Arus Kas</a>
             </nav>
             <div class="center-account">
                 <span class="font-semibold"><?= htmlspecialchars($admin['username']) ?></span>
@@ -42,6 +43,10 @@
             <?php require __DIR__ . '/orders.php'; ?>
         <?php elseif ($view === 'order'): ?>
             <?php require __DIR__ . '/order.php'; ?>
+        <?php elseif ($view === 'aruskas'): ?>
+            <?php require __DIR__ . '/aruskas.php'; ?>
+        <?php elseif ($view === 'cash-entry'): ?>
+            <?php require __DIR__ . '/cash_entry.php'; ?>
         <?php else: ?>
             <div class="table-container">
                 <h1 class="page-title mb-20">Halaman belum dapat ditampilkan</h1>

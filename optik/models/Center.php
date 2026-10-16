@@ -28,6 +28,12 @@ class Center {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    public function findStoreById($id) {
+        $stmt = $this->pdo->prepare('SELECT id, name FROM stores WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     public function getStoreOptions() {
         $stmt = $this->pdo->query('SELECT id, name FROM stores ORDER BY name ASC');
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
