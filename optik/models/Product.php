@@ -83,6 +83,23 @@ class Product {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    public function getStockByStore($id, $store_id) {
+        $stmt = $this->pdo->prepare('SELECT id, name, stock FROM products WHERE id = :id AND store_id = :store_id FOR UPDATE');
+        $stmt->execute(['id' => $id, 'store_id' => $store_id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public function adjustStock($id, $store_id, $quantity) {
+        $sql = 'UPDATE products SET stock = stock + :quantity WHERE id = :id AND store_id = :store_id';
+        $params = ['quantity' => $quantity, 'id' => $id, 'store_id' => $store_id];
+        if ($quantity < 0) {
+            $sql .= ' AND stock >= :required';
+            $params['required'] = -$quantity;
+        }
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute($params) && $stmt->rowCount() === 1;
+    }
+
     public function kurangiStok($product_id, $jumlah) {
         $sql = "UPDATE products SET stock = stock - :jumlah WHERE id = :id AND stock >= :jumlah";
         $stmt = $this->pdo->prepare($sql);

@@ -127,6 +127,7 @@ class OrderController {
         try {
             return $this->order->transaction(function () use ($store_id, $customer_name, $data, $total, $items) {
                 $inv_no = $this->getNextInvoiceNumber();
+                $this->adjustOrderStock($store_id, [], $items);
                 $order_id = $this->order->insertOrder([
                     'store_id' => $store_id,
                     'customer_name' => $customer_name,
@@ -192,6 +193,8 @@ class OrderController {
             $this->findOrder($store_id, $id, true);
             $dates = $this->order->getPaymentDates($store_id, $id);
 
+            $this->adjustOrderStock($store_id, $this->order->getOrderItems($store_id, $id), []);
+
             if (!$this->order->deleteOrderItems($store_id, $id) || !$this->order->deletePayments($store_id, $id) || !$this->order->deleteOrder($store_id, $id)) {
                 throw new RuntimeException('Pesanan gagal dihapus.');
             }
@@ -216,12 +219,14 @@ class OrderController {
 
         return $this->order->transaction(function() use ($store_id, $id, $customer_name, $phone, $data) {
             $order = $this->findOrder($store_id, $id, true);
-            $existing = array_column($this->order->getOrderItems($store_id, $id), 'name', 'product_id');
+            $old_items = $this->order->getOrderItems($store_id, $id);
+            $existing = array_column($old_items, 'name', 'product_id');
             [$items, $total] = $this->prepareItems($store_id, $data['items'], $existing, true);
             $total = floor($total / 500) * 500;
             if ($total < (float) $order['total_dibayar']) {
                 throw new InvalidArgumentException('Total order lebih kecil dari pembayaran yang sudah masuk. Koreksi pembayaran terlebih dahulu.');
             }
+            $this->adjustOrderStock($store_id, $old_items, $items);
             if (!$this->order->updateOrder($store_id, $id, ['customer_name' => $customer_name, 'nomor' => $phone, 'total' => $total]) || !$this->order->deleteOrderItems($store_id, $id)) {
                 throw new RuntimeException('Pesanan gagal diperbarui.');
             }
@@ -307,6 +312,41 @@ class OrderController {
             'order_hari_ini' => $this->order->countDailyOrders($store_id, date('Y-m-d')) ?: 0,
             'order_belum_lunas' => $this->order->countUnpaidOrders($store_id) ?: 0
         ];
+    }
+
+    private function adjustOrderStock($store_id, array $old_items, array $new_items) {
+        $changes = [];
+        foreach ([$old_items, $new_items] as $index => $items) {
+            foreach ($items as $item) {
+                $id = (int) $item['product_id'];
+                $quantity = (int) $item['quantity'];
+                $change = ($index === 0 ? 1 : -1) * $quantity;
+                $next = ($changes[$id] ?? 0) + $change;
+                if (!is_int($next)) {
+                    throw new InvalidArgumentException('Jumlah produk melewati batas yang didukung.');
+                }
+                $changes[$id] = $next;
+            }
+        }
+        ksort($changes, SORT_NUMERIC);
+        foreach ($changes as $id => $quantity) {
+            if ($id < 1 || $quantity === 0) {
+                continue;
+            }
+            $product = $this->product->getStockByStore($id, $store_id);
+            if (!$product) {
+                if ($quantity > 0) {
+                    continue;
+                }
+                throw new InvalidArgumentException('Produk tidak ditemukan di toko ini.');
+            }
+            if ($quantity < 0 && (int) $product['stock'] < -$quantity) {
+                throw new InvalidArgumentException('Stok ' . $product['name'] . ' tidak cukup. Tersedia ' . (int) $product['stock'] . '.');
+            }
+            if (!$this->product->adjustStock($id, $store_id, $quantity)) {
+                throw new RuntimeException('Stok produk gagal diperbarui.');
+            }
+        }
     }
 
     private function prepareItems($store_id, array $input, array $existing = [], $round_price = false) {
