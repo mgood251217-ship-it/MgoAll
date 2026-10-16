@@ -14,6 +14,11 @@ $module = $url_parts[0];
 
 $action = isset($url_parts[1]) ? $url_parts[1] : '';
 
+if ($module === 'center') {
+    require __DIR__ . '/center/index.php';
+    exit();
+}
+
 if ($module === 'logout') {
     session_destroy();
     header("Location: /login");
