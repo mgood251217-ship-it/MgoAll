@@ -65,65 +65,8 @@ for ($i = 6; $i >= 0; $i--) {
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<style>
-    .dashboard-container { padding: 30px; width: 100%; overflow-y: auto; }
-    .header-title { font-size: 24px; font-weight: 700; color: #1e293b; margin-bottom: 25px; }
 
-    .stats-grid { 
-        display: grid; 
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
-        gap: 20px; 
-        margin-bottom: 30px; 
-    }
-    .stat-card { 
-        background: #fff; 
-        padding: 20px; 
-        border-radius: 16px; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-        display: flex;
-        align-items: center;
-        border-left: 5px solid;
-    }
-    .stat-icon {
-        width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 15px; color: white;
-    }
-    .stat-icon svg { width: 26px; height: 26px; }
-    .stat-info h4 { margin: 0; font-size: 13px; color: #64748b; text-transform: uppercase; font-weight: 700; }
-    .stat-info h2 { margin: 5px 0 0 0; font-size: 22px; color: #1e293b; font-weight: 800; }
-    .stat-info p { margin: 5px 0 0 0; font-size: 12px; font-weight: 600; }
-
-    .card-saldo { border-color: #8b5cf6; } .card-saldo .stat-icon { background: #8b5cf6; }
-    .card-omzet { border-color: #10b981; } .card-omzet .stat-icon { background: #10b981; }
-    .card-order { border-color: #f59e0b; } .card-order .stat-icon { background: #f59e0b; }
-    .card-stok { border-color: #ef4444; } .card-stok .stat-icon { background: #ef4444; }
-
-    .chart-grid { 
-        display: grid; 
-        grid-template-columns: 2fr 1fr; 
-        gap: 20px; 
-    }
-    .chart-container, .side-panel {
-        background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-    }
-    .panel-title { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
-    .panel-title svg { width: 18px; height: 18px; color: #64748b; }
-
-    .list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px dashed #e2e8f0; }
-    .list-item:last-child { border-bottom: none; }
-    .list-title { font-size: 13px; font-weight: 600; color: #475569; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding-right: 10px;}
-    .list-val { font-size: 13px; font-weight: 700; background: #fee2e2; color: #dc2626; padding: 4px 10px; border-radius: 12px;}
-    .list-val.safe { background: #dcfce7; color: #166534; }
-
-    .btn-action { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-bottom: 10px; font-size: 14px; }
-    .btn-primary { background: #2b6cb0; color: white; border: none; }
-    .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
-
-    @media (max-width: 992px) {
-        .chart-grid { grid-template-columns: 1fr; }
-    }
-</style>
-
-<div class="dashboard-container">
+<div class="page-container">
     <div class="header-title">Dashboard</div>
 
     <div class="stats-grid">
@@ -134,7 +77,7 @@ for ($i = 6; $i >= 0; $i--) {
             <div class="stat-info">
                 <h4>Total Saldo</h4>
                 <h2>Rp <?= number_format($saldo_akhir, 0, ',', '.') ?></h2>
-                <p style="color:#8b5cf6;">Terkumpul Saat Ini</p>
+                <p class="text-purple">Terkumpul Saat Ini</p>
             </div>
         </div>
 
@@ -145,7 +88,7 @@ for ($i = 6; $i >= 0; $i--) {
             <div class="stat-info">
                 <h4>Omzet Hari Ini</h4>
                 <h2>Rp <?= number_format($omzet_hari_ini, 0, ',', '.') ?></h2>
-                <p style="color:#ef4444;">Pengeluaran: Rp <?= number_format($keluar_hari_ini, 0, ',', '.') ?></p>
+                <p class="text-danger">Pengeluaran: Rp <?= number_format($keluar_hari_ini, 0, ',', '.') ?></p>
             </div>
         </div>
 
@@ -156,7 +99,7 @@ for ($i = 6; $i >= 0; $i--) {
             <div class="stat-info">
                 <h4>Pesanan Hari Ini</h4>
                 <h2><?= $order_hari_ini ?> Transaksi</h2>
-                <p style="color:#f59e0b;">Belum Lunas: <?= $order_belum_lunas ?> Nota</p>
+                <p class="text-warning">Belum Lunas: <?= $order_belum_lunas ?> Nota</p>
             </div>
         </div>
 
@@ -167,7 +110,7 @@ for ($i = 6; $i >= 0; $i--) {
             <div class="stat-info">
                 <h4>Data Barang</h4>
                 <h2><?= $stock_data['total_produk'] ?? 0 ?> Produk</h2>
-                <p style="color:#64748b;">Kapasitas: <?= $stock_data['total_stok'] ?? 0 ?> Pcs</p>
+                <p class="text-muted">Kapasitas: <?= $stock_data['total_stok'] ?? 0 ?> Pcs</p>
             </div>
         </div>
     </div>
@@ -178,7 +121,7 @@ for ($i = 6; $i >= 0; $i--) {
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10z"/></svg>
                 Grafik Penjualan 7 Hari Terakhir
             </div>
-            <div style="position: relative; height: 300px; width: 100%;">
+            <div class="dashboard-chart">
                 <canvas id="salesChart"></canvas>
             </div>
         </div>
@@ -205,7 +148,7 @@ for ($i = 6; $i >= 0; $i--) {
                 </div>
             <?php endif; ?>
             
-            <div class="panel-title" style="margin-top: 30px;">
+            <div class="panel-title mt-30">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM13 2v7h7"/></svg>
                 Pintasan
             </div>

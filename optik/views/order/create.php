@@ -63,79 +63,13 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 
-<style>
-    .pos-container { display: flex; width: 100%; height: calc(100vh - 70px); }
-    
-    .main-content { flex: 1; padding: 20px 30px; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; background: #f8fafc; }
-    
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0; }
-    .brand-filter-wrapper { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; scrollbar-width: none; flex-shrink: 0; }
-    .brand-filter-wrapper::-webkit-scrollbar { display: none; }
-    
-    .brand-badge { min-width: 65px; height: 65px; background: white; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border: 2px solid #e2e8f0; transition: 0.2s; text-decoration: none; padding: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-    .brand-badge:hover { border-color: #94a3b8; transform: translateY(-2px); }
-    .brand-badge.active { border-color: #2b6cb0; background: #eff6ff; }
-    .brand-badge img { width: 35px; height: 35px; object-fit: contain; }
-    .brand-badge span { font-size: 10px; color: #475569; font-weight: 600; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55px; text-align: center;}
-
-    .search-form { display: flex; width: 100%; max-width: 450px; gap: 10px; align-items: center; }
-    .search-bar { background: white; padding: 12px 20px; border-radius: 15px; border: 1px solid #e2e8f0; width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.02); outline: none; font-size: 14px; }
-    .btn-search { background: #2b6cb0; color: white; border: none; padding: 0 20px; border-radius: 15px; cursor: pointer; font-weight: bold; }
-    
-    .btn-scan-mobile { display: none; background: #10b981; color: white; border: none; padding: 0 15px; border-radius: 15px; cursor: pointer; font-weight: bold; height: 43px; }
-
-    .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; align-content: start; }
-    .product-card { background-color: #ffffff; border-radius: 16px; padding: 12px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; transition: transform 0.15s; cursor: pointer; position: relative; }
-    .product-card:hover { transform: translateY(-4px); border-color: #2b6cb0; box-shadow: 0 10px 15px -3px rgba(43, 108, 176, 0.2); }
-    .product-card:active { transform: translateY(0); }
-    
-    .product-card.out-of-stock { opacity: 0.5; filter: grayscale(100%); cursor: not-allowed; transform: none; box-shadow: none; border-color: #e2e8f0; }
-    .stock-badge { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); color: white; font-size: 10px; padding: 2px 6px; border-radius: 8px; font-weight: bold; backdrop-filter: blur(4px); transition: 0.3s; }
-    .stock-badge.empty { background: #ef4444; }
-
-    .pagination { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 15px; padding-bottom: 15px; border-top: 1px solid #e2e8f0; flex-shrink: 0; }
-    .page-link { padding: 8px 14px; border-radius: 8px; background: white; border: 1px solid #e2e8f0; color: #475569; text-decoration: none; font-size: 13px; font-weight: 600; cursor: pointer; }
-    .page-link.active { background: #2b6cb0; color: white; border-color: #2b6cb0; }
-
-    .order-sidebar { width: 350px; background: white; padding: 20px; display: flex; flex-direction: column; box-shadow: -5px 0 15px rgba(0,0,0,0.03); border-left: 1px solid #f1f5f9; }
-    .order-header { font-size: 18px; font-weight: 600; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-    .btn-back { color: #64748b; text-decoration: none; font-size: 14px; }
-    .order-items { flex: 1; overflow-y: auto; padding-right: 5px; }
-    .order-summary { margin-top: 20px; padding-top: 20px; border-top: 1px dashed #ccc; }
-    .summary-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; color: #666; }
-    .summary-total { display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: #333; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; }
-    .btn-place-order { width: 100%; padding: 15px; background: #2b6cb0; color: white; border: none; border-radius: 15px; font-size: 16px; font-weight: 600; margin-top: 20px; cursor: pointer; transition: 0.2s;}
-    .btn-place-order:hover { background: #1e4e8c; }
-
-    @media (max-width: 1024px) {
-        .pos-container { flex-direction: column; height: 100%; overflow-y: auto; }
-        .main-content { padding: 15px; overflow: visible; flex: none; }
-        .search-form { width: 100%; max-width: 100%; }
-        .btn-scan-mobile { display: block; }
-        
-        .order-sidebar { width: 100%; border-left: none; border-top: 3px solid #f1f5f9; border-radius: 20px 20px 0 0; margin-top: 10px; overflow: visible; flex: none; }
-        .modal-box { width: 90%; max-width: 400px; padding: 20px; }
-    }
-
-    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; justify-content: center; align-items: center; }
-    .modal-box { background: white; width: 400px; padding: 30px; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
-    .modal-title { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 20px; display: flex; justify-content: space-between; }
-    .form-group { margin-bottom: 15px; }
-    .form-group label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 5px; }
-    .form-group input { width: 100%; padding: 12px 15px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; outline: none; }
-    .modal-actions { display: flex; gap: 10px; margin-top: 25px; }
-    .btn-cancel { flex: 1; padding: 12px; background: #f1f5f9; color: #475569; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
-    .btn-submit { flex: 1; padding: 12px; background: #2b6cb0; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
-
-    #reader { width: 100%; border-radius: 10px; overflow: hidden; margin-bottom: 15px; }
-</style>
 
 <div class="pos-container">
     <div class="main-content">
         
         <div class="brand-filter-wrapper">
             <button type="button" onclick="loadData('', document.getElementById('search-input').value)" class="brand-badge <?= ($brand_id === '') ? 'active' : '' ?>" data-brand="">
-                <div style="font-size:20px; color:#94a3b8; margin-bottom:2px;">❖</div>
+                <div class="brand-all-icon-small">❖</div>
                 <span>Semua</span>
             </button>
             <?php foreach($brands as $b): ?>
@@ -146,7 +80,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
             <?php endforeach; ?>
         </div>
 
-        <div class="header">
+        <div class="header-action">
             <form class="search-form" onsubmit="event.preventDefault(); loadData(currentBrand, document.getElementById('search-input').value);">
                 <input type="text" id="search-input" class="search-bar" placeholder="Cari kode frame/info..." value="<?= htmlspecialchars($search) ?>" autocomplete="off">
                 <button type="submit" class="btn-search">Cari</button>
@@ -161,23 +95,22 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                         
                         <div class="stock-badge" id="stock-badge-<?= $item['id']; ?>"><?= $item['stock']; ?></div>
                         
-                        <img src="/assets/products/<?= $item['img']; ?>" 
-                            style="width: 100%; height: 90px; object-fit: contain; margin-bottom: 8px; background: #f1f5f9; border-radius: 10px;" 
+                        <img class="catalog-product-image" src="/assets/products/<?= $item['img']; ?>"
                             onerror="this.src='/assets/web/default.png'; this.style.opacity='0.3';">
                         
-                        <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="<?= htmlspecialchars($item['name']) ?>">
+                        <div class="catalog-product-name" title="<?= htmlspecialchars($item['name']) ?>">
                             <?= htmlspecialchars($item['name']); ?>
                         </div>
-                        <div style="font-size: 10px; color: #64748b; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        <div class="catalog-product-info">
                             <?= htmlspecialchars($item['info']); ?>
                         </div>
-                        <div style="font-size: 13px; color: #2b6cb0; font-weight:800;">
+                        <div class="catalog-product-price">
                             Rp <?= number_format($item['price'], 0, ',', '.'); ?>
                         </div>
                     </div>
                 <?php endforeach; ?>
             <?php else: ?>
-                <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #94a3b8;">Tidak ada produk yang ditemukan.</div>
+                <div class="catalog-empty">Tidak ada produk yang ditemukan.</div>
             <?php endif; ?>
         </div>
 
@@ -199,7 +132,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
             <a href="/order" class="btn-back">✕ Batal</a>
         </div>
         <div class="order-items" id="cart-items">
-            <p style="text-align:center; color:#888; font-size:13px; margin-top:50px;">Keranjang masih kosong</p>
+            <p class="cart-empty">Keranjang masih kosong</p>
         </div>
         <div class="order-summary">
             <div class="summary-row"><span>Subtotal</span><span id="cart-subtotal">Rp 0</span></div>
@@ -211,10 +144,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
 
 <div class="modal-overlay" id="checkoutModal">
     <div class="modal-box">
-        <div class="modal-title">Selesaikan Pesanan</div>
+        <div class="modal-header">Selesaikan Pesanan</div>
         <div class="form-group">
             <label>Nomor Invoice (Otomatis)</label>
-            <input type="text" id="input_inv_no" readonly style="background:#f8fafc; font-weight:bold; color:#2b6cb0;">
+            <input class="invoice-readonly" type="text" id="input_inv_no" readonly>
         </div>
         <div class="form-group">
             <label>Nama Pelanggan</label>
@@ -233,12 +166,12 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
 
 <div class="modal-overlay" id="scannerModal">
     <div class="modal-box">
-        <div class="modal-title">
+        <div class="modal-header">
             Scan Barcode Produk
-            <span style="color:#ef4444; cursor:pointer;" onclick="closeCameraScanner()">✕</span>
+            <span class="close-btn" onclick="closeCameraScanner()">✕</span>
         </div>
         <div id="reader"></div>
-        <div style="text-align:center; font-size:12px; color:#64748b;">Arahkan kamera ke barcode/QR Code produk</div>
+        <div class="scanner-help">Arahkan kamera ke barcode/QR Code produk</div>
     </div>
 </div>
 
@@ -297,7 +230,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
         grid.innerHTML = '';
         
         if (products.length === 0) {
-            grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #94a3b8;">Tidak ada produk yang ditemukan.</div>';
+            grid.innerHTML = '<div class="catalog-empty">Tidak ada produk yang ditemukan.</div>';
             return;
         }
 
@@ -305,17 +238,16 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
             grid.innerHTML += `
                 <div class="product-card" id="card-${item.id}" onclick="addToCart(${item.id})">
                     <div class="stock-badge" id="stock-badge-${item.id}">${item.maxStock}</div>
-                    <img src="/assets/products/${item.img || ''}" 
-                         style="width: 100%; height: 90px; object-fit: contain; margin-bottom: 8px; background: #f1f5f9; border-radius: 10px;" 
+                    <img class="catalog-product-image" src="/assets/products/${item.img || ''}"
                          onerror="this.src='/assets/web/default.png'; this.style.opacity='0.3';">
                     
-                    <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.name}">
+                    <div class="catalog-product-name" title="${item.name}">
                         ${item.name}
                     </div>
-                    <div style="font-size: 10px; color: #64748b; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    <div class="catalog-product-info">
                         ${item.info || ''}
                     </div>
-                    <div style="font-size: 13px; color: #2b6cb0; font-weight:800;">
+                    <div class="catalog-product-price">
                         Rp ${new Intl.NumberFormat('id-ID').format(item.price)}
                     </div>
                 </div>
@@ -393,7 +325,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
         let total = 0;
 
         if (cart.length === 0) {
-            cartContainer.innerHTML = '<p style="text-align:center; color:#888; font-size:13px; margin-top:50px;">Keranjang masih kosong</p>';
+            cartContainer.innerHTML = '<p class="cart-empty">Keranjang masih kosong</p>';
         } else {
             cart.forEach((item, index) => {
                 let discountAmount = item.price * (item.discount / 100);
@@ -404,26 +336,25 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 let isDiscounted = item.discount > 0;
 
                 cartContainer.innerHTML += `
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; border-bottom: 1px dashed #f1f5f9; padding-bottom: 10px;">
-                        <div style="flex: 1; padding-right: 10px;">
-                            <div style="font-size: 13px; color: #1e293b; font-weight:700;">${item.name}</div>
-                            <div style="font-size: 12px; color: #64748b; text-decoration: ${isDiscounted ? 'line-through' : 'none'};">
+                    <div class="cart-item">
+                        <div class="cart-item-info">
+                            <div class="cart-item-name">${item.name}</div>
+                            <div class="cart-original-price ${isDiscounted ? 'is-discounted' : ''}">
                                 ${formatRupiah(item.price)}
                             </div>
-                            ${isDiscounted ? `<div style="font-size: 13px; color: #ef4444; font-weight:bold;">${formatRupiah(finalPrice)}</div>` : ''}
+                            ${isDiscounted ? `<div class="cart-discount-price">${formatRupiah(finalPrice)}</div>` : ''}
                         </div>
                         
-                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-                            <div style="display:flex; align-items:center; gap:4px;">
-                                <span style="font-size:10px; color:#94a3b8; font-weight:600;">Disc %</span>
-                                <input type="number" min="0" max="100" value="${item.discount}" 
-                                       onchange="changeDiscount(${index}, this.value)" 
-                                       style="width:40px; padding:2px; font-size:11px; text-align:center; border:1px solid #cbd5e1; border-radius:4px; outline:none;">
+                        <div class="cart-item-controls">
+                            <div class="cart-discount-control">
+                                <span class="cart-discount-label">Disc %</span>
+                                <input class="cart-discount-input" type="number" min="0" max="100" value="${item.discount}"
+                                       onchange="changeDiscount(${index}, this.value)">
                             </div>
-                            <div style="display: flex; align-items: center; gap: 8px; background: #f1f5f9; border-radius: 8px; padding: 2px;">
-                                <button onclick="changeQty(${index}, -1)" style="width:26px; height:26px; border:none; background:transparent; font-weight:bold; color:#475569; cursor:pointer;">-</button>
-                                <span style="font-size:13px; font-weight:bold; min-width: 15px; text-align: center;">${item.quantity}</span>
-                                <button onclick="changeQty(${index}, 1)" style="width:26px; height:26px; border:none; background:transparent; font-weight:bold; color:#475569; cursor:pointer;">+</button>
+                            <div class="cart-quantity-control">
+                                <button class="cart-quantity-button" onclick="changeQty(${index}, -1)">-</button>
+                                <span class="cart-quantity">${item.quantity}</span>
+                                <button class="cart-quantity-button" onclick="changeQty(${index}, 1)">+</button>
                             </div>
                         </div>
                     </div>

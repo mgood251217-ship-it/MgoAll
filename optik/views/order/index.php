@@ -24,102 +24,32 @@ $orders = $orderModel->getOrders($start_date, $end_date, $search_query);
 $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id");
 ?>
 
-<style>
-    .order-container { padding: 30px; width: 100%; overflow-y: auto; }
-    .header-action { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-    
-    .btn-primary { background: #2b6cb0; color: white; padding: 10px 20px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 14px; border: none; cursor: pointer; transition: 0.2s;}
-    .btn-primary:hover { background: #1e4e8c; }
-    
-    .filter-card { background: white; padding: 20px; border-radius: 16px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); display: flex; gap: 15px; align-items: flex-end; }
-    .input-group { display: flex; flex-direction: column; gap: 5px; }
-    .input-group label { font-size: 13px; font-weight: 600; color: #475569; }
-    .input-group input, .input-select { padding: 10px 15px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; outline: none; }
-    
-    .btn-filter { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 8px; font-weight: 600; border: 1px solid #e2e8f0; cursor: pointer; }
-    .btn-filter:hover { background: #e2e8f0; }
 
-    .table-container { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
-    .table-modern { width: 100%; border-collapse: collapse; }
-    .table-modern th { background: #f8fafc; color: #475569; padding: 15px; text-align: left; font-size: 13px; text-transform: uppercase; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
-    .table-modern td { padding: 15px; border-bottom: 1px solid #f1f5f9; color: #333; font-size: 14px; vertical-align: middle; }
-    .table-modern tr:hover { background: #f8fafc; }
-
-    .action-group { display: flex; gap: 8px; align-items: center; }
-    .btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; border: none; cursor: pointer; transition: 0.2s; color: white; text-decoration: none; }
-    .btn-icon svg { width: 16px; height: 16px; stroke-width: 2; stroke: currentColor; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-    
-    .btn-detail { background: #3b82f6; } .btn-detail:hover { background: #2563eb; }
-    .btn-payment { background: #10b981; } .btn-payment:hover { background: #059669; }
-    .btn-pdf { background: #ef4444; } .btn-pdf:hover { background: #dc2626; }
-    .btn-print { background: #f59e0b; } .btn-print:hover { background: #d97706; }
-    .btn-disabled { background: #cbd5e1; color: #94a3b8; cursor: not-allowed; }
-    .btn-delete { background: #9e1010; color: #d3dae4; } .btn-delete:hover { background: #5f0505; color: #e4e9f0; }
-
-    .btn-wa { background: #22c55e; color: #fff; border: none; } 
-
-    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; justify-content: center; align-items: center; }
-    .modal-box { background: #ffffff; width: 500px; max-height: 90vh; overflow-y: auto; padding: 30px; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
-    .modal-header { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-    .close-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b; }
-    
-    @media (max-width: 768px) {
-        .order-container { padding: 15px; }
-        .header-action { flex-direction: column; align-items: flex-start; gap: 15px; }
-        .btn-primary { width: 100%; text-align: center; }
-        .filter-card { flex-direction: column; align-items: stretch; }
-        .table-container { overflow-x: auto; padding: 10px; }
-        .table-modern th, .table-modern td { white-space: nowrap; }
-        .modal-box { width: 95% !important; padding: 20px; }
-    }
-    .print-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.85); z-index: 9999; display: none; justify-content: center; align-items: center; flex-direction: column; }
-    .spinner { width: 50px; height: 50px; border: 5px solid #e2e8f0; border-top: 5px solid #f59e0b; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-    .global-loading {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.45);
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .global-loading .loading-content {
-      color: #fff;
-      text-align: center;
-    }
-
-    .d-none{
-        display: none;
-    }
-</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-<div class="order-container">
+<div class="page-container">
     <div class="header-action">
         <div>
-            <h2 style="color: #1e293b; margin-bottom: 5px;">Riwayat Pesanan</h2>
-            <p style="color: #64748b; font-size: 14px;">Daftar transaksi kasir optik</p>
+            <h2 class="page-title">Riwayat Pesanan</h2>
+            <p class="page-subtitle">Daftar transaksi kasir optik</p>
         </div>
         <a href="/order/create" class="btn-primary">+ Buat Pesanan Baru</a>
     </div>
 
     <form class="filter-card" method="GET" action="/order">
-        <div class="input-group">
+        <div class="form-group">
             <label>Dari Tanggal</label>
             <input type="date" name="start" value="<?= htmlspecialchars($start_date) ?>">
         </div>
-        <div class="input-group">
+        <div class="form-group">
             <label>Sampai Tanggal</label>
             <input type="date" name="end" value="<?= htmlspecialchars($end_date) ?>">
         </div>
-        <div class="input-group" style="flex: 1;">
+        <div class="form-group flex-1">
             <label>Pencarian</label>
             <input type="text" name="search" placeholder="Cari No. Invoice, Nama..." value="<?= htmlspecialchars($search_query) ?>">
         </div>
-        <button type="submit" class="btn-filter" style="background:#2b6cb0; color:white; border:none;">Cari Data</button>
+        <button type="submit" class="btn-primary">Cari Data</button>
     </form>
 
     <div class="table-container">
@@ -129,7 +59,7 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
                     <th>No. Invoice</th>
                     <th>Pelanggan</th>
                     <th>Total Tagihan</th>
-                    <th style="text-align:center;">Status</th>
+                    <th class="text-center">Status</th>
                     <th>Tanggal</th>
                     <th>Aksi</th>
                 </tr>
@@ -145,28 +75,28 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
 
                             if ($sisa_tagihan <= 0) {
                                 $status_text = 'Lunas';
-                                $badge_style = 'background: #dcfce7; color: #166534;'; 
+                                $badge_class = 'badge-paid';
                                 $is_lunas = true;
                             } elseif ($total_dibayar > 0) {
                                 $status_text = 'DP';
-                                $badge_style = 'background: #fef3c7; color: #b45309;'; 
+                                $badge_class = 'badge-partial';
                                 $is_lunas = false;
                             } else {
                                 $status_text = 'Belum Bayar';
-                                $badge_style = 'background: #fee2e2; color: #991b1b;'; 
+                                $badge_class = 'badge-unpaid';
                                 $is_lunas = false;
                             }
                         ?>
                         <tr>
-                            <td style="font-weight: 600; color: #2b6cb0;"><?= htmlspecialchars($order['inv_no']) ?></td>
-                            <td style="font-weight: 500;">
+                            <td class="text-semibold-primary"><?= htmlspecialchars($order['inv_no']) ?></td>
+                            <td class="font-medium">
                                 <?= htmlspecialchars($order['customer_name']) ?><br>
-                                <small style="color:#64748b;"><?= htmlspecialchars($order['nomor']) ?></small>
+                                <small class="text-muted"><?= htmlspecialchars($order['nomor']) ?></small>
                             </td>
-                            <td style="font-weight: 600;">Rp <?= number_format($order['total'], 0, ',', '.') ?></td>
+                            <td class="font-semibold">Rp <?= number_format($order['total'], 0, ',', '.') ?></td>
                             
-                            <td style="text-align: center;">
-                                <span style="padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; <?= $badge_style ?>">
+                            <td class="text-center">
+                                <span class="status-badge <?= $badge_class ?>">
                                     <?= $status_text ?>
                                 </span>
                             </td>
@@ -189,7 +119,7 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
                                         </svg>
                                     </a>
 
-                                    <button class="btn-icon btn-detail" title="Detail Pesanan" onclick="openDetail(<?= $order['id'] ?>, '<?= $order['inv_no'] ?>')">
+                                    <button class="btn-icon btn-info" title="Detail Pesanan" onclick="openDetail(<?= $order['id'] ?>, '<?= $order['inv_no'] ?>')">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                                     </button>
                                     
@@ -198,16 +128,16 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                         </button>
                                     <?php else: ?>
-                                        <button class="btn-icon btn-payment" title="Bayar / DP" onclick="openPayment(<?= $order['id'] ?>, <?= $sisa_tagihan ?>)">
+                                        <button class="btn-icon btn-success" title="Bayar / DP" onclick="openPayment(<?= $order['id'] ?>, <?= $sisa_tagihan ?>)">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                                         </button>
                                     <?php endif; ?>
                                     
-                                    <button class="btn-icon btn-pdf" title="Download PDF Struk" onclick="downloadStrukPDF(<?= $order['id'] ?>)">
+                                    <button class="btn-icon btn-danger" title="Download PDF Struk" onclick="downloadStrukPDF(<?= $order['id'] ?>)">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><polyline points="9 15 12 18 15 15"></polyline></svg>
                                     </button>
 
-                                    <button class="btn-icon btn-print" title="Print Thermal Fisik" onclick="printThermal(<?= $order['id'] ?>)">
+                                    <button class="btn-icon btn-warning" title="Print Thermal Fisik" onclick="printThermal(<?= $order['id'] ?>)">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
                                     </button>
                                     <!-- <button class="btn-icon btn-delete" title="Hapus Order" onclick="deleteOrder(<?= $order['id'] ?>, '<?= $order['inv_no'] ?>')">
@@ -218,7 +148,7 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
                         </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <tr><td colspan="6" style="text-align:center; padding: 30px; color: #64748b;">Data tidak ditemukan.</td></tr>
+                    <tr><td class="table-empty" colspan="6">Data tidak ditemukan.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
@@ -226,12 +156,12 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
 </div>
 
 <div class="modal-overlay" id="detailModal">
-    <div class="modal-box" style="width: 600px;">
+    <div class="modal-box modal-detail">
         <div class="modal-header">
             <span id="detailTitle">Detail Pesanan</span>
             <button class="close-btn" onclick="closeModal('detailModal')">✕</button>
         </div>
-        <table class="table-modern" style="margin-bottom: 20px;">
+        <table class="table-modern mb-20">
             <thead><tr><th>Item</th><th>Qty</th><th>Harga</th><th>Subtotal</th></tr></thead>
             <tbody id="detailBody"></tbody>
         </table>
@@ -248,20 +178,20 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
         <input type="hidden" id="pay_order_id">
         <input type="hidden" id="pay_sisa_tagihan"> 
 
-        <div class="input-group" style="margin-bottom: 15px;">
+        <div class="form-group mb-15">
             <label>Sisa Tagihan yang Belum Dibayar</label>
-            <input type="text" id="pay_total" readonly style="background:#f8fafc; font-weight:bold; color:#ef4444; border-color:#e2e8f0; cursor:not-allowed;">
+            <input class="payment-total-readonly" type="text" id="pay_total" readonly>
         </div>
-        
-        <div class="input-group" style="margin-bottom: 15px;">
+
+        <div class="form-group mb-15">
             <label>Nominal Bayar</label>
-            <div style="display: flex; gap: 10px;">
-                <input type="number" id="pay_nominal" placeholder="Masukkan jumlah bayar" style="flex: 1;" oninput="checkPaymentStatus()">
-                <button type="button" class="btn-primary" style="background: #10b981; border-radius: 8px;" onclick="setLunas()">Lunaskan</button>
+            <div class="payment-entry">
+                <input class="flex-1" type="number" id="pay_nominal" placeholder="Masukkan jumlah bayar" oninput="checkPaymentStatus()">
+                <button type="button" class="btn-success" onclick="setLunas()">Lunaskan</button>
             </div>
         </div>
         
-        <div class="input-group" style="margin-bottom: 15px;">
+        <div class="form-group mb-15">
             <label>Metode Pembayaran</label>
             <select id="pay_method" class="input-select">
                 <option value="Cash">Cash</option>
@@ -269,22 +199,22 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
             </select>
         </div>
         
-        <div class="input-group" style="margin-bottom: 20px;">
+        <div class="form-group mb-20">
             <label>Status Pembayaran (Otomatis)</label>
-            <input type="text" id="pay_info" readonly style="background:#f1f5f9; font-weight:bold; cursor:not-allowed;" placeholder="Lunas / DP">
+            <input class="payment-info-readonly" type="text" id="pay_info" readonly placeholder="Lunas / DP">
         </div>
-        
-        <button class="btn-primary" id="submit_payment" style="width: 100%;" onclick="submitPayment()">Simpan Pembayaran</button>
+
+        <button class="btn-primary w-full" id="submit_payment" onclick="submitPayment()">Simpan Pembayaran</button>
     </div>
 </div>
-<iframe id="thermalFrame" style="display:none;"></iframe>
+<iframe class="is-hidden" id="thermalFrame"></iframe>
 
 <div class="print-overlay" id="loadingPrint">
     <div class="spinner"></div>
-    <h2 style="color: #1e293b; font-size: 18px;" id="loadingText">Memproses Struk...</h2>
+    <h2 class="loading-title" id="loadingText">Memproses Struk...</h2>
 </div>
 
-<div id="global-loading" class="global-loading d-none">
+<div id="global-loading" class="global-loading is-hidden">
     <div class="loading-content">
     <div class="spinner-border text-light" role="status"></div>
     <div class="mt-2">Loading...</div>
@@ -294,11 +224,11 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
 <script>
 
 function showGlobalLoading() {
-  document.getElementById('global-loading').classList.remove('d-none');
+  document.getElementById('global-loading').classList.remove('is-hidden');
 }
 
 function hideGlobalLoading() {
-  document.getElementById('global-loading').classList.add('d-none');
+  document.getElementById('global-loading').classList.add('is-hidden');
 }
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
@@ -307,7 +237,7 @@ function hideGlobalLoading() {
 
     function openDetail(order_id, inv_no) {
         document.getElementById('detailTitle').innerText = 'Detail Pesanan: ' + inv_no;
-        document.getElementById('detailBody').innerHTML = '<tr><td colspan="4" style="text-align:center;">Memuat data...</td></tr>';
+        document.getElementById('detailBody').innerHTML = '<tr><td class="text-center" colspan="4">Memuat data...</td></tr>';
         openModal('detailModal');
 
         fetch('/order/api_detail?id=' + order_id)
@@ -319,7 +249,7 @@ function hideGlobalLoading() {
                     <td>${item.name}</td>
                     <td>${item.quantity}</td>
                     <td>${formatRp(item.price)}</td>
-                    <td style="font-weight:600;">${formatRp(item.amount)}</td>
+                    <td class="font-semibold">${formatRp(item.amount)}</td>
                 </tr>`;
             });
             document.getElementById('detailBody').innerHTML = html;
@@ -418,36 +348,26 @@ function hideGlobalLoading() {
 
             let logoHTML = '';
             if (data.store.img) {
-                logoHTML = `<img src="/assets/stores/${data.store.img}" style="width: 45px; margin-bottom: 5px;" onerror="this.style.display='none'">`;
+                logoHTML = `<img class="receipt-logo" src="/assets/stores/${data.store.img}" onerror="this.style.display='none'">`;
             }
 
             let html = `
             <html>
             <head>
-                <style>
-                    @page { margin: 0; size: 58mm;}
-                    body { font-family: 'Courier New', Courier, monospace; margin: 0; padding: 10px; width: 100%; box-sizing: border-box; font-size: 12px; color: #000; }
-                    .text-center { text-align: center; }
-                    .text-left { text-align: left; }
-                    .text-right { text-align: right; }
-                    .font-bold { font-weight: bold; }
-                    .dashed-line { border-top: 1px dashed #000; margin: 5px 0; }
-                    table { width: 100%; border-collapse: collapse; font-size: 12px; }
-                    td { vertical-align: top; padding-bottom: 2px; }
-                </style>
+                <link rel="stylesheet" href="${document.getElementById('pageStyles').href}">
             </head>
-            <body>
+            <body class="thermal-page">
                 <div class="text-center">
                     ${logoHTML}
-                    <div class="font-bold" style="font-size:16px; text-transform:uppercase;">${data.store.name}</div>
-                    <div style="font-size:10px; margin-top:2px;">${data.store.address}</div>
+                    <div class="font-bold receipt-store-name">${data.store.name}</div>
+                    <div class="receipt-address">${data.store.address}</div>
                 </div>
                 
-                <div class="dashed-line" style="margin-top:8px;"></div>
-                
-                <div class="text-left" style="margin-bottom: 8px; font-size:11px; line-height:1.4;">
-                    <table style="width: 100%;">
-                        <tr><td style="width: 45px;">Inv</td><td>: ${data.order.inv_no}</td></tr>
+                <div class="dashed-line mt-8"></div>
+
+                <div class="text-left receipt-details">
+                    <table class="w-full">
+                        <tr><td class="receipt-label">Inv</td><td>: ${data.order.inv_no}</td></tr>
                         <tr><td>Nama</td><td>: ${data.order.customer_name}</td></tr>
                         <tr><td>Waktu</td><td>: ${data.order.create_at}</td></tr>
                     </table>
@@ -471,7 +391,7 @@ function hideGlobalLoading() {
                     <tr><td>Sisa</td><td class="text-right">${formatRp(data.payment.sisa)}</td></tr>
                 </table>
                 <div class="dashed-line"></div>
-                <div class="text-center" style="margin-top:10px;">Terima Kasih Atas Kunjungan Anda!</div>
+                <div class="text-center mt-10">Terima Kasih Atas Kunjungan Anda!</div>
             </body>
             </html>`;
 

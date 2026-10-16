@@ -1,77 +1,4 @@
-<style>
-    .sidebar {
-        position: fixed;
-        top: 0; left: 0; bottom: 0;
-        width: 70px; 
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        overflow: hidden;
-        display: flex; flex-direction: column;
-        z-index: 1000;
-        white-space: nowrap; 
-        box-shadow: 4px 0 15px rgba(0,0,0,0.05);
-    }
-    .sidebar:hover { width: 250px; }
 
-    .sidebar-logo-container {
-        display: flex; align-items: center; 
-        height: 70px; margin-bottom: 20px;
-    }
-    .sidebar-logo-icon {
-        min-width: 70px; text-align: center;
-        font-size: 22px; font-weight: 700; color: white;
-    }
-    .sidebar-logo-text {
-        font-size: 18px; font-weight: 600; color: white;
-        opacity: 0; transition: opacity 0.3s;
-    }
-    .sidebar:hover .sidebar-logo-text { opacity: 1; }
-
-    .sidebar-item {
-        display: flex; align-items: center; 
-        height: 50px; margin: 5px 10px; 
-        border-radius: 12px; text-decoration: none; color: rgba(255,255,255,0.7);
-        transition: all 0.3s; cursor: pointer; padding: 0; 
-    }
-    .sidebar-item:hover { background-color: rgba(255,255,255,0.1); color: white; }
-    .sidebar-item.active { background-color: white; color: #667eea; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-
-    .sidebar-icon {
-        min-width: 50px; height: 50px;
-        display: flex; justify-content: center; align-items: center; font-size: 20px;
-    }
-    .sidebar-text {
-        font-size: 14px; font-weight: 500; opacity: 0; transition: opacity 0.3s; padding-right: 15px; 
-    }
-    .sidebar:hover .sidebar-text { opacity: 1; }
-    .sidebar-bottom { margin-top: auto; margin-bottom: 20px; }
-
-    @media screen and (max-width: 768px) {
-        .sidebar {
-            position: fixed !important;
-            top: auto !important; bottom: 0 !important; left: 0 !important; right: 0 !important;
-            width: 100% !important; height: 70px !important;
-            flex-direction: row !important; justify-content: space-evenly !important; align-items: center !important;
-            border-radius: 20px 20px 0 0 !important; z-index: 9999 !important;
-            padding: 0 !important; box-shadow: 0 -4px 15px rgba(0,0,0,0.1) !important;
-        }
-        .sidebar:hover { width: 100% !important; }
-        
-        .sidebar-logo-container { display: none !important; }
-        
-        .sidebar-item { 
-            margin: 0 !important; padding: 0 !important; 
-            height: 50px !important; width: 50px !important;
-            display: flex !important; justify-content: center !important; align-items: center !important;
-        }
-        .sidebar-icon { font-size: 24px !important; min-width: auto !important; height: auto !important; margin: 0 !important; }
-        .sidebar-text { display: none !important; }
-        
-        .sidebar-bottom { 
-            display: contents !important; 
-        }
-    }
-</style>
 
 <div class="sidebar">
     <div class="sidebar-logo-container">
@@ -130,7 +57,7 @@
         
     <div class="sidebar-bottom">
 
-        <a href="/logout" class="sidebar-item" style="color: #fca5a5;">
+        <a href="/logout" class="sidebar-item sidebar-logout">
             <div class="sidebar-icon">
                 <!-- Logout / Exit -->
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">

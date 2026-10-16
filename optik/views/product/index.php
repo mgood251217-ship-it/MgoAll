@@ -43,155 +43,16 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
 }
 ?>
 
-<style>
-    .product-container { padding: 30px; }
-    .header-action { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; gap: 15px; }
 
-    .search-box{ position: relative; min-width: 280px; }
-    .search-box input{ width: 100%; padding: 12px 16px 12px 42px; border-radius: 14px; border: 1px solid #e2e8f0; outline: none; font-size: 14px; background: white; transition: 0.2s; }
-    .search-box input:focus{ border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.1);}
-    .search-box svg{ position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #94a3b8;}
-    .btn-search {position: absolute;right: 5px;top: 50%;transform: translateY(-50%);height: calc(100% - 10px);padding: 0 16px;border: none;background: #3b82f6;color: white;font-size: 13px;font-weight: 600;cursor: pointer;border-radius: 10px;transition: 0.2s;z-index: 2;}
-    .btn-search:hover{ background: #2563eb; }
-
-    .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
-    .btn-primary { background: #2b6cb0; color: white; padding: 10px 20px; border-radius: 12px; border: none; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(43, 108, 176, 0.2); }
-    .btn-primary:hover { background: #1e4e8c; transform: translateY(-1px); box-shadow: 0 6px 12px rgba(43, 108, 176, 0.3); }
-    
-    .brand-section-title { font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 15px; }
-    
-    .brand-flex { 
-        display: flex; 
-        gap: 16px; 
-        overflow-x: auto; 
-        padding: 10px 5px 25px 5px; /* Jarak bawah agar shadow hover tidak terpotong */
-        scrollbar-width: thin; 
-    }
-    .brand-flex::-webkit-scrollbar { height: 6px; }
-    .brand-flex::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-    .brand-flex::-webkit-scrollbar-track { background: #f8fafc; }
-
-    .brand-card {
-        position: relative;
-        min-width: 130px; 
-        background: #ffffff; 
-        padding: 16px; 
-        border-radius: 20px; 
-        text-align: center; 
-        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-        border: 2px solid #f1f5f9;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        cursor: pointer;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-decoration: none;
-        color: inherit;
-    }
-
-    .brand-card:hover { 
-        transform: translateY(-5px); 
-        box-shadow: 0 12px 20px rgba(0,0,0,0.06);
-        border-color: #e2e8f0;
-    }
-    
-    .brand-card.active { 
-        border-color: #3b82f6; 
-        background: linear-gradient(145deg, #ffffff 0%, #eff6ff 100%);
-        box-shadow: 0 8px 15px rgba(59, 130, 246, 0.15);
-    }
-    
-    .brand-card img { 
-        width: 65px; height: 65px; 
-        object-fit: contain; 
-        margin-bottom: 12px; 
-        border-radius: 12px;
-        transition: transform 0.3s ease;
-    }
-    .brand-card:hover img { transform: scale(1.05); }
-
-    .brand-card span { font-size: 14px; font-weight: 700; color: #334155; display: block; }
-    .brand-card small { color: #94a3b8; font-size: 11px; font-weight: 600; margin-top: 4px; letter-spacing: 0.5px;}
-
-    /* Tombol Aksi Melayang yang Modern */
-    .brand-actions { 
-        position: absolute; 
-        top: -8px; left: -8px; right: -8px; 
-        display: flex; 
-        justify-content: space-between; 
-        opacity: 0; 
-        transition: all 0.2s ease-in-out; 
-        pointer-events: none; 
-        z-index: 10;
-    }
-    .brand-card:hover .brand-actions { 
-        opacity: 1; 
-        pointer-events: auto; 
-        transform: translateY(4px);
-    }
-    
-    .brand-actions button { 
-        background: #ffffff; 
-        border: 1px solid #e2e8f0; 
-        border-radius: 50%; 
-        width: 30px; height: 30px; 
-        display: flex; align-items: center; justify-content: center; 
-        cursor: pointer; 
-        color: #64748b; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-        transition: all 0.2s;
-    }
-    .btn-edit-brand:hover { color: #ffffff !important; background: #3b82f6; border-color: #3b82f6; }
-    .btn-del-brand:hover { color: #ffffff !important; background: #ef4444; border-color: #ef4444; }
-    
-    .table-container { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); overflow-x: auto; }
-    .table-modern { width: 100%; border-collapse: collapse; min-width: 800px; }
-    .table-modern th { background: #f8fafc; color: #475569; padding: 15px; text-align: left; font-size: 13px; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; }
-    .table-modern td { padding: 15px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; font-size: 14px; }
-    
-    .badge-stock { background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-
-    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: none; justify-content: center; align-items: center; padding: 20px; }
-    .modal-box { background: white; width: 100%; max-width: 500px; padding: 30px; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); max-height: 90vh; overflow-y: auto; }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-weight: 700; font-size: 18px; }
-    .close-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b; }
-
-    .form-group { margin-bottom: 15px; }
-    .form-group label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 5px; }
-    .form-group input, .input-select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0; outline: none; font-size: 14px; }
-
-    .pagination { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 15px; padding-bottom: 15px; border-top: 1px solid #e2e8f0; flex-shrink: 0; }
-    .page-link { padding: 8px 14px; border-radius: 8px; background: white; border: 1px solid #e2e8f0; color: #475569; text-decoration: none; font-size: 13px; font-weight: 600; cursor: pointer; }
-    .page-link.active { background: #2b6cb0; color: white; border-color: #2b6cb0; }
-
-    @media (max-width: 768px) {
-        .header-action { flex-direction: column; align-items: stretch; }
-        .product-container { padding: 15px; }
-    }
-    .action-group { display: flex; gap: 8px; align-items: center; }
-    .btn-icon {
-        display: inline-flex; align-items: center; justify-content: center;
-        width: 32px; height: 32px; border-radius: 8px; border: none; cursor: pointer; transition: 0.2s; color: white; text-decoration: none;
-    }
-    .btn-icon svg { width: 16px; height: 16px; stroke-width: 2; stroke: currentColor; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-    
-    .btn-add-stock { background: #10b981; } .btn-add-stock:hover { background: #059669; }
-    .btn-edit-item { background: #3b82f6; } .btn-edit-item:hover { background: #2563eb; }
-    .btn-delete-item { background: #ef4444; } .btn-delete-item:hover { background: #dc2626; }
-    .btn-print-label { background: #f59e0b; } .btn-print-label:hover { background: #d97706; }
-    .print-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.85); z-index: 9999; display: none; justify-content: center; align-items: center; flex-direction: column; }
-    .spinner { width: 50px; height: 50px; border: 5px solid #e2e8f0; border-top: 5px solid #f59e0b; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-</style>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
-<div class="product-container">
+<div class="page-container">
     <div class="header-action">
         <div>
-            <h2 style="color: #1e293b;">Manajemen Produk</h2>
-            <p style="color: #64748b; font-size: 14px;">Total: <?= count($products) ?> Produk terdaftar</p>
+            <h2 class="text-dark">Manajemen Produk</h2>
+            <p class="page-subtitle">Total: <?= count($products) ?> Produk terdaftar</p>
         </div>
         <div class="btn-group">
         <div class="search-box">
@@ -202,8 +63,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
             <input type="text" id="searchProduct" placeholder="Cari produk...">
             <button class="btn-search" onclick="loadData(currentBrand, document.getElementById('searchProduct').value)">Cari</button>
         </div>
-            <button class="btn-primary" onclick="openModal('modalCat')" style="background:#10b981;">+ Kategori</button>
-            <button class="btn-primary" onclick="openModal('modalBrand')" style="background:#8b5cf6;">+ Brand</button>
+            <button class="btn-primary bg-green" onclick="openModal('modalCat')">+ Kategori</button>
+            <button class="btn-primary bg-purple" onclick="openModal('modalBrand')">+ Brand</button>
             <button class="btn-primary" onclick="openModal('modalProduct')">+ Produk Baru</button>
         </div>
     </div>
@@ -213,9 +74,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
     <div class="brand-flex">
         
         <a href="?" class="brand-card <?= ($brand_id === '') ? 'active' : '' ?>">
-            <div style="font-size:28px; color:#94a3b8; height:65px; display:flex; align-items:center; justify-content:center; margin-bottom:12px;">❖</div>
+            <div class="brand-all-icon">❖</div>
             <span>Semua Brand</span>
-            <small style="color:transparent;">-</small>
+            <small class="text-transparent">-</small>
         </a>
 
         <?php if(!empty($brands)): ?>
@@ -237,7 +98,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 </a>
             <?php endforeach; ?>
         <?php else: ?>
-            <p style="color:#94a3b8; font-size:14px; padding: 20px;">Belum ada brand terdaftar.</p>
+            <p class="brand-empty">Belum ada brand terdaftar.</p>
         <?php endif; ?>
     </div>
 </div>
@@ -266,32 +127,32 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                             <?= $i; $i++ ?>
                         </td>
                         <td>
-                            <img src="/assets/products/<?= $p['img'] ?>" width="55" height="55" style="border-radius:10px; object-fit: contain;" onerror="this.src='/assets/web/default.png'; this.style.opacity='0.3';">
+                            <img class="product-thumbnail" src="/assets/products/<?= $p['img'] ?>" width="55" height="55" onerror="this.src='/assets/web/default.png'; this.style.opacity='0.3';">
                         </td>
                         <td>
-                            <div style="font-weight: 600; color: #1e293b;"><?= htmlspecialchars($p['name']) ?></div>
-                            <small style="color:#64748b;"><?= htmlspecialchars($p['product_code']) ?></small><br>
-                            <small style="color:#64748b;"><?= htmlspecialchars($p['info']) ?> | <?= htmlspecialchars($p['color']) ?></small>
+                            <div class="text-semibold-dark"><?= htmlspecialchars($p['name']) ?></div>
+                            <small class="text-muted"><?= htmlspecialchars($p['product_code']) ?></small><br>
+                            <small class="text-muted"><?= htmlspecialchars($p['info']) ?> | <?= htmlspecialchars($p['color']) ?></small>
                         </td>
                         <td>
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                 <span style="font-weight:500;"><?= htmlspecialchars($p['brand_name'] ?? '-') ?></span>
+                            <div class="product-brand-info">
+                                 <span class="font-medium"><?= htmlspecialchars($p['brand_name'] ?? '-') ?></span>
                             </div>
                         </td>
                         <td><?= htmlspecialchars($p['cat_name'] ?? '-') ?></td>
                         <td><?= htmlspecialchars($p['color'] ?? '-') ?></td>
                         
                         <td>
-                            <span style="font-weight:600; color:#475569; background:#f1f5f9; padding:4px 8px; border-radius:6px; font-size:12px;">
+                            <span class="product-category-badge">
                                 <?= htmlspecialchars($p['year'] ?? '-') ?>
                             </span>
                         </td>
                         
                         <td><span class="badge-stock"><?= $p['stock'] ?> Pcs</span></td>
-                        <td style="font-weight:700; color: #2b6cb0;">Rp <?= number_format($p['price'], 0, ',', '.') ?></td>
+                        <td class="product-price">Rp <?= number_format($p['price'], 0, ',', '.') ?></td>
                         <td>
                             <div class="action-group">
-                                <button class="btn-icon btn-add-stock" title="Edit Stok" onclick="openEditStock(<?= $p['id'] ?>, <?= $p['stock'] ?>)">
+                                <button class="btn-icon btn-success" title="Edit Stok" onclick="openEditStock(<?= $p['id'] ?>, <?= $p['stock'] ?>)">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                                         <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
@@ -299,14 +160,14 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                                     </svg>
                                 </button>
                                 
-                                <button class="btn-icon btn-edit-item" title="Edit Produk" onclick="openEditProduct(<?= $p['id'] ?>)">
+                                <button class="btn-icon btn-info" title="Edit Produk" onclick="openEditProduct(<?= $p['id'] ?>)">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                     </svg>
                                 </button>
                                 
-                                <a href="/product/delete_product?id=<?= $p['id'] ?>" class="btn-icon btn-delete-item" title="Hapus Produk" onclick="return confirm('Peringatan: Apakah Anda yakin ingin menghapus produk ini secara permanen?')">
+                                <a href="/product/delete_product?id=<?= $p['id'] ?>" class="btn-icon btn-danger" title="Hapus Produk" onclick="return confirm('Peringatan: Apakah Anda yakin ingin menghapus produk ini secara permanen?')">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <polyline points="3 6 5 6 21 6"></polyline>
                                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -315,7 +176,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                                     </svg>
                                 </a>
                                 
-                                <button type="button" onclick="downloadLabel(<?= $p['id'] ?>)" class="btn-icon btn-print-label" title="Download Label 3x2">
+                                <button type="button" onclick="downloadLabel(<?= $p['id'] ?>)" class="btn-icon btn-warning" title="Download Label 3x2">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"></path>
                                     </svg>
@@ -325,7 +186,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                     </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <tr><td colspan="8" style="text-align:center; padding: 50px; color: #94a3b8;">Belum ada produk. Klik "Produk Baru" untuk menambahkan.</td></tr>
+                    <tr><td class="product-empty" colspan="8">Belum ada produk. Klik "Produk Baru" untuk menambahkan.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
@@ -350,7 +211,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 <label>Nama Kategori</label>
                 <input type="text" name="name" placeholder="Misal: Frame, Liquid" required>
             </div>
-            <button type="submit" class="btn-primary" style="width:100%; padding: 15px;">Simpan Kategori</button>
+            <button type="submit" class="btn-primary button-save">Simpan Kategori</button>
         </form>
     </div>
 </div>
@@ -371,19 +232,19 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 <label>Logo Brand</label>
                 <input type="file" name="img" accept="image/*">
             </div>
-            <button type="submit" class="btn-primary" style="width:100%; padding: 15px;">Simpan Brand</button>
+            <button type="submit" class="btn-primary button-save">Simpan Brand</button>
         </form>
     </div>
 </div>
 
 <div class="modal-overlay" id="modalProduct">
-    <div class="modal-box" style="max-width: 650px;">
+    <div class="modal-box modal-product">
         <div class="modal-header"><span>Tambah Produk Baru</span><button type="button" class="close-btn" onclick="closeModal('modalProduct')">✕</button></div>
         <form action="/product/store_product" method="POST" enctype="multipart/form-data">
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div class="product-form-grid">
                 <div class="form-group">
                     <label>Kode Produk</label>
-                    <input type="text" value="Otomatis (9 Angka Random)" readonly style="background:#f8fafc; color:#94a3b8; font-weight:600; cursor:not-allowed;">
+                    <input class="product-code-auto" type="text" value="Otomatis (9 Angka Random)" readonly>
                 </div>
                 <div class="form-group"><label>Nama Produk</label><input type="text" name="name" required></div>
                 <div class="form-group"><label>Info</label><input type="text" name="info" required></div>
@@ -433,25 +294,25 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 <div class="form-group"><label>Harga Jual (Rp)</label><input type="number" name="price" required></div>
             </div>
             
-            <div class="form-group" style="margin-top:10px;">
+            <div class="form-group mt-10">
                 <label>Foto Produk</label>
                 <input type="file" name="img" accept="image/*">
             </div>
             
-            <button type="submit" class="btn-primary" style="width:100%; padding: 15px; margin-top: 10px;">Simpan Produk Ke Katalog</button>
+            <button type="submit" class="btn-primary button-save mt-10">Simpan Produk Ke Katalog</button>
             <br><br><br>
         </form>
     </div>
 </div>
 
 <div class="modal-overlay" id="modalEditProduct">
-    <div class="modal-box" style="max-width: 650px;">
+    <div class="modal-box modal-product">
         <div class="modal-header"><span>Edit Data Produk</span><button type="button" class="close-btn" onclick="closeModal('modalEditProduct')">✕</button></div>
         <form action="/product/update_product" method="POST" enctype="multipart/form-data">
             <input type="hidden" name="product_id" id="edit_product_id">
             
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                <div class="form-group"><label>Kode Produk</label><input type="text" name="product_code" id="edit_product_code" style="background:#f1f5f9; color:#94a3b8; cursor:not-allowed;" readonly></div>
+            <div class="product-form-grid">
+                <div class="form-group"><label>Kode Produk</label><input class="product-code-readonly" type="text" name="product_code" id="edit_product_code" readonly></div>
                 <div class="form-group"><label>Nama Produk</label><input type="text" name="name" id="edit_name" required></div>
                 <div class="form-group"><label>Info</label><input type="text" name="info" id="edit_info" required></div>
                 <div class="form-group"><label>Tahun (Year)</label><input type="number" name="year" id="edit_year" required></div>
@@ -498,17 +359,17 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 <div class="form-group"><label>Harga Jual (Rp)</label><input type="number" name="price" id="edit_price" required></div>
             </div>
             
-            <div class="form-group" style="margin-top:10px;">
+            <div class="form-group mt-10">
                 <label>Update Foto (Kosongkan jika tidak mengubah foto)</label>
                 <input type="file" name="img" accept="image/*">
             </div>
             
-            <button type="submit" class="btn-primary" style="width:100%; padding: 15px; margin-top: 10px; background:#3b82f6;">Simpan Perubahan</button>
+            <button type="submit" class="btn-primary button-save mt-10 bg-blue">Simpan Perubahan</button>
         </form>
     </div>
 </div>
 <div class="modal-overlay" id="modalEditStock">
-    <div class="modal-box" style="max-width: 400px;">
+    <div class="modal-box modal-stock">
         <div class="modal-header">
             <span>Edit Stok Aktual</span>
             <button type="button" class="close-btn" onclick="closeModal('modalEditStock')">✕</button>
@@ -519,7 +380,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 <label>Jumlah Stok Saat Ini</label>
                 <input type="number" name="new_stock" id="stock_current_qty" required>
             </div>
-            <button type="submit" class="btn-primary" style="width:100%; padding: 15px;">Simpan Perubahan Stok</button>
+            <button type="submit" class="btn-primary button-save">Simpan Perubahan Stok</button>
         </form>
     </div>
 </div>
@@ -540,14 +401,14 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 <label>Update Logo (Opsional)</label>
                 <input type="file" name="img" accept="image/*">
             </div>
-            <button type="submit" class="btn-primary" style="width:100%; padding: 15px;">Simpan Perubahan Brand</button>
+            <button type="submit" class="btn-primary button-save">Simpan Perubahan Brand</button>
         </form>
     </div>
 </div>
 <div class="print-overlay" id="loadingPrint">
     <div class="spinner"></div>
-    <h2 style="color: #1e293b; font-size: 18px;">Memproses Label 3x2cm...</h2>
-    <p style="color: #64748b; font-size: 14px;">Mohon tunggu, file PDF sedang dibuat.</p>
+    <h2 class="loading-title">Memproses Label 3x2cm...</h2>
+    <p class="page-subtitle">Mohon tunggu, file PDF sedang dibuat.</p>
 </div>
 
 <script>
