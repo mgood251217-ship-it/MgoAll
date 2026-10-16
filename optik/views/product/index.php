@@ -4,14 +4,13 @@ $productModel = new Product($pdo);
 
 $store_id = $_SESSION['store_id'];
 
-$limit  = 14; 
+$limit  = 14;
 $hal    = isset($_GET['hal']) ? (int)$_GET['hal'] : 1;
 if ($hal < 1) { $hal = 1; }
 $offset = ($hal - 1) * $limit;
 $brand_id = isset($_GET['brand']) ? $_GET['brand'] : '';
 $search = isset($_GET['search']) ? $_GET['search'] : '';
 
-// $products = $productModel->getProductsByBrand($store_id, $brand_id);
 $products = $productModel->getProductsByStorePaginated($store_id, $brand_id, $search, $limit, $offset);
 
 $brands   = $productModel->getBrandsByStore($store_id);
@@ -43,7 +42,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
 }
 ?>
 
-
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
@@ -51,7 +49,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
 <div class="page-container">
     <div class="header-action">
         <div>
-            <h2 class="text-dark">Manajemen Produk</h2>
+            <h2 class="text">Manajemen Produk</h2>
             <p class="page-subtitle">Total: <?= count($products) ?> Produk terdaftar</p>
         </div>
         <div class="btn-group">
@@ -61,18 +59,18 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
             <input type="text" id="searchProduct" placeholder="Cari produk...">
-            <button class="btn-search" onclick="loadData(currentBrand, document.getElementById('searchProduct').value)">Cari</button>
+            <button class="btn-search btn bg-primary" onclick="loadData(currentBrand, document.getElementById('searchProduct').value)">Cari</button>
         </div>
-            <button class="btn-primary bg-green" onclick="openModal('modalCat')">+ Kategori</button>
-            <button class="btn-primary bg-purple" onclick="openModal('modalBrand')">+ Brand</button>
-            <button class="btn-primary" onclick="openModal('modalProduct')">+ Produk Baru</button>
+            <button class="btn bg-success" onclick="openModal('modalCat')">+ Kategori</button>
+            <button class="btn bg-accent" onclick="openModal('modalBrand')">+ Brand</button>
+            <button class="btn bg-primary" onclick="openModal('modalProduct')">+ Produk Baru</button>
         </div>
     </div>
 
     <div class="brand-section">
     <h3 class="brand-section-title">Daftar Brand Tersedia</h3>
     <div class="brand-flex">
-        
+
         <a href="?" class="brand-card <?= ($brand_id === '') ? 'active' : '' ?>">
             <div class="brand-all-icon">❖</div>
             <span>Semua Brand</span>
@@ -82,12 +80,12 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
         <?php if(!empty($brands)): ?>
             <?php foreach($brands as $b): ?>
                 <a onclick="loadData('<?= $b['id'] ?>', document.getElementById('searchProduct').value)" class="brand-card <?= ($brand_id == $b['id']) ? 'active' : '' ?>" data-brandcode="<?= htmlspecialchars($b['brand_code'] ?? '') ?>">
-                    
+
                     <div class="brand-actions">
-                        <button type="button" class="btn-edit-brand" title="Edit Brand" onclick="event.preventDefault(); openEditBrand(<?= $b['id'] ?>, '<?= htmlspecialchars($b['name']) ?>', '<?= htmlspecialchars($b['brand_code'] ?? '') ?>')">
+                        <button type="button" class="btn-icon bg-info" title="Edit Brand" onclick="event.preventDefault(); openEditBrand(<?= $b['id'] ?>, '<?= htmlspecialchars($b['name']) ?>', '<?= htmlspecialchars($b['brand_code'] ?? '') ?>')">
                             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                         </button>
-                        <button type="button" class="btn-del-brand" title="Hapus Brand" onclick="event.preventDefault(); if(confirm('Yakin hapus brand <?= htmlspecialchars($b['name']) ?>?')) window.location.href='/product/delete_brand?id=<?= $b['id'] ?>'">
+                        <button type="button" class="btn-icon bg-danger" title="Hapus Brand" onclick="event.preventDefault(); if(confirm('Yakin hapus brand <?= htmlspecialchars($b['name']) ?>?')) window.location.href='/product/delete_brand?id=<?= $b['id'] ?>'">
                             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                         </button>
                     </div>
@@ -141,33 +139,33 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                         </td>
                         <td><?= htmlspecialchars($p['cat_name'] ?? '-') ?></td>
                         <td><?= htmlspecialchars($p['color'] ?? '-') ?></td>
-                        
+
                         <td>
                             <span class="product-category-badge">
                                 <?= htmlspecialchars($p['year'] ?? '-') ?>
                             </span>
                         </td>
-                        
-                        <td><span class="badge-stock"><?= $p['stock'] ?> Pcs</span></td>
+
+                        <td><span class="status-badge bg-success"><?= $p['stock'] ?> Pcs</span></td>
                         <td class="product-price">Rp <?= number_format($p['price'], 0, ',', '.') ?></td>
                         <td>
                             <div class="action-group">
-                                <button class="btn-icon btn-success" title="Edit Stok" onclick="openEditStock(<?= $p['id'] ?>, <?= $p['stock'] ?>)">
+                                <button class="btn-icon bg-success" title="Edit Stok" onclick="openEditStock(<?= $p['id'] ?>, <?= $p['stock'] ?>)">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                                         <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
                                         <line x1="12" y1="22.08" x2="12" y2="12"></line>
                                     </svg>
                                 </button>
-                                
-                                <button class="btn-icon btn-info" title="Edit Produk" onclick="openEditProduct(<?= $p['id'] ?>)">
+
+                                <button class="btn-icon bg-info" title="Edit Produk" onclick="openEditProduct(<?= $p['id'] ?>)">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                     </svg>
                                 </button>
-                                
-                                <a href="/product/delete_product?id=<?= $p['id'] ?>" class="btn-icon btn-danger" title="Hapus Produk" onclick="return confirm('Peringatan: Apakah Anda yakin ingin menghapus produk ini secara permanen?')">
+
+                                <a href="/product/delete_product?id=<?= $p['id'] ?>" class="btn-icon bg-danger" title="Hapus Produk" onclick="return confirm('Peringatan: Apakah Anda yakin ingin menghapus produk ini secara permanen?')">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <polyline points="3 6 5 6 21 6"></polyline>
                                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -175,8 +173,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                                         <line x1="14" y1="11" x2="14" y2="17"></line>
                                     </svg>
                                 </a>
-                                
-                                <button type="button" onclick="downloadLabel(<?= $p['id'] ?>)" class="btn-icon btn-warning" title="Download Label 3x2">
+
+                                <button type="button" onclick="downloadLabel(<?= $p['id'] ?>)" class="btn-icon bg-warning" title="Download Label 3x2">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"></path>
                                     </svg>
@@ -211,7 +209,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 <label>Nama Kategori</label>
                 <input type="text" name="name" placeholder="Misal: Frame, Liquid" required>
             </div>
-            <button type="submit" class="btn-primary button-save">Simpan Kategori</button>
+            <button type="submit" class="btn bg-primary button-save">Simpan Kategori</button>
         </form>
     </div>
 </div>
@@ -232,7 +230,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 <label>Logo Brand</label>
                 <input type="file" name="img" accept="image/*">
             </div>
-            <button type="submit" class="btn-primary button-save">Simpan Brand</button>
+            <button type="submit" class="btn bg-primary button-save">Simpan Brand</button>
         </form>
     </div>
 </div>
@@ -249,7 +247,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 <div class="form-group"><label>Nama Produk</label><input type="text" name="name" required></div>
                 <div class="form-group"><label>Info</label><input type="text" name="info" required></div>
                 <div class="form-group"><label>Tahun (Year)</label><input type="number" name="year" placeholder="Misal: 2026" required></div>
-                
+
                 <div class="form-group">
                     <label>Warna</label>
                     <select name="color" class="input-select" required>
@@ -273,7 +271,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                         <option value="GUN">GUN</option>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Brand</label>
                     <select name="brand_id" class="input-select" required>
@@ -281,7 +279,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                         <?php foreach($brands as $b): ?><option value="<?= $b['id'] ?>"><?= $b['name'] ?></option><?php endforeach; ?>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Kategori</label>
                     <select name="category_id" class="input-select" required>
@@ -289,17 +287,17 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                         <?php foreach($cats as $c): ?><option value="<?= $c['id'] ?>"><?= $c['name'] ?></option><?php endforeach; ?>
                     </select>
                 </div>
-                
+
                 <div class="form-group"><label>Stok Awal</label><input type="number" name="stock" value="0" required></div>
                 <div class="form-group"><label>Harga Jual (Rp)</label><input type="number" name="price" required></div>
             </div>
-            
+
             <div class="form-group mt-10">
                 <label>Foto Produk</label>
                 <input type="file" name="img" accept="image/*">
             </div>
-            
-            <button type="submit" class="btn-primary button-save mt-10">Simpan Produk Ke Katalog</button>
+
+            <button type="submit" class="btn bg-primary button-save mt-10">Simpan Produk Ke Katalog</button>
             <br><br><br>
         </form>
     </div>
@@ -310,13 +308,13 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
         <div class="modal-header"><span>Edit Data Produk</span><button type="button" class="close-btn" onclick="closeModal('modalEditProduct')">✕</button></div>
         <form action="/product/update_product" method="POST" enctype="multipart/form-data">
             <input type="hidden" name="product_id" id="edit_product_id">
-            
+
             <div class="product-form-grid">
                 <div class="form-group"><label>Kode Produk</label><input class="product-code-readonly" type="text" name="product_code" id="edit_product_code" readonly></div>
                 <div class="form-group"><label>Nama Produk</label><input type="text" name="name" id="edit_name" required></div>
                 <div class="form-group"><label>Info</label><input type="text" name="info" id="edit_info" required></div>
                 <div class="form-group"><label>Tahun (Year)</label><input type="number" name="year" id="edit_year" required></div>
-                
+
                 <div class="form-group">
                     <label>Warna</label>
                     <select name="color" id="edit_color" class="input-select" required>
@@ -340,7 +338,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                         <option value="GUN">GUN</option>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Brand</label>
                     <select name="brand_id" id="edit_brand_id" class="input-select" required>
@@ -348,23 +346,23 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                         <?php foreach($brands as $b): ?><option value="<?= $b['id'] ?>"><?= $b['name'] ?></option><?php endforeach; ?>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Kategori</label>
                     <select name="category_id" id="edit_category_id" class="input-select" required>
                         <?php foreach($cats as $c): ?><option value="<?= $c['id'] ?>"><?= $c['name'] ?></option><?php endforeach; ?>
                     </select>
                 </div>
-                
+
                 <div class="form-group"><label>Harga Jual (Rp)</label><input type="number" name="price" id="edit_price" required></div>
             </div>
-            
+
             <div class="form-group mt-10">
                 <label>Update Foto (Kosongkan jika tidak mengubah foto)</label>
                 <input type="file" name="img" accept="image/*">
             </div>
-            
-            <button type="submit" class="btn-primary button-save mt-10 bg-blue">Simpan Perubahan</button>
+
+            <button type="submit" class="btn button-save mt-10 bg-info">Simpan Perubahan</button>
         </form>
     </div>
 </div>
@@ -380,7 +378,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 <label>Jumlah Stok Saat Ini</label>
                 <input type="number" name="new_stock" id="stock_current_qty" required>
             </div>
-            <button type="submit" class="btn-primary button-save">Simpan Perubahan Stok</button>
+            <button type="submit" class="btn bg-primary button-save">Simpan Perubahan Stok</button>
         </form>
     </div>
 </div>
@@ -401,7 +399,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 <label>Update Logo (Opsional)</label>
                 <input type="file" name="img" accept="image/*">
             </div>
-            <button type="submit" class="btn-primary button-save">Simpan Perubahan Brand</button>
+            <button type="submit" class="btn bg-primary button-save">Simpan Perubahan Brand</button>
         </form>
     </div>
 </div>
@@ -436,7 +434,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
         document.getElementById('stock_current_qty').value = currentStock;
         openModal('modalEditStock');
     }
-    
+
     function openEditProduct(id) {
         fetch('/product/api_detail?id=' + id)
         .then(res => res.json())
@@ -446,12 +444,12 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 document.getElementById('edit_product_code').value = data.product_code;
                 document.getElementById('edit_name').value = data.name;
                 document.getElementById('edit_info').value = data.info;
-                document.getElementById('edit_year').value = data.year; 
+                document.getElementById('edit_year').value = data.year;
                 document.getElementById('edit_color').value = data.color;
                 document.getElementById('edit_price').value = data.price;
                 document.getElementById('edit_brand_id').value = data.brand_id;
                 document.getElementById('edit_category_id').value = data.category_id;
-                
+
                 openModal('modalEditProduct');
             }
         })
@@ -460,15 +458,15 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
 </script>
 
 <script>
-    function openModal(id) { 
-        document.getElementById(id).style.display = 'flex'; 
+    function openModal(id) {
+        document.getElementById(id).style.display = 'flex';
         document.body.style.overflow = 'hidden';
     }
-    function closeModal(id) { 
-        document.getElementById(id).style.display = 'none'; 
-        document.body.style.overflow = 'auto'; 
+    function closeModal(id) {
+        document.getElementById(id).style.display = 'none';
+        document.body.style.overflow = 'auto';
     }
-    
+
     window.onclick = function(event) {
         if (event.target.classList.contains('modal-overlay')) {
             event.target.style.display = 'none';
@@ -492,38 +490,41 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
 
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            
-            canvas.width = 472;
-            canvas.height = 354; 
+            const printTheme = getComputedStyle(document.documentElement);
+            const printPaper = printTheme.getPropertyValue('--white').trim();
+            const printInk = printTheme.getPropertyValue('--black').trim();
 
-            ctx.fillStyle = '#FFFFFF';
+            canvas.width = 472;
+            canvas.height = 354;
+
+            ctx.fillStyle = printPaper;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.strokeStyle = '#000000';
+            ctx.strokeStyle = printInk;
             ctx.lineWidth = 1;
             ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
 
             ctx.save();
-            
+
             ctx.translate(236, 88.5);
             ctx.rotate(Math.PI);
             ctx.translate(-236, -88.5);
 
-            ctx.fillStyle = '#000000';
+            ctx.fillStyle = printInk;
             ctx.font = 'bold 30px Calibri';
             ctx.textAlign = 'left';
-            ctx.fillText(data.name || '-', 15, 38, 200); 
-            
+            ctx.fillText(data.name || '-', 15, 38, 200);
+
             ctx.font = 'bold 26px Calibri';
             ctx.textAlign = 'right';
-            ctx.fillText((data.info || '-').substring(0, 20), 457, 38, 200); 
+            ctx.fillText((data.info || '-').substring(0, 20), 457, 38, 200);
 
             ctx.font = 'bold 45px Courier New';
             ctx.textAlign = 'center';
             ctx.fillText("Rp " + formatRp(data.price), 236, 126, 300);
 
             ctx.restore();
-            ctx.fillStyle = '#000000';
+            ctx.fillStyle = printInk;
 
             let barcodeCanvas = document.createElement("canvas");
             JsBarcode(barcodeCanvas, data.product_code, {
@@ -531,14 +532,14 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 displayValue: true,
                 fontSize: 40,
                 margin: 0,
-                width: 4, 
-                height: 90 
+                width: 4,
+                height: 90
             });
             ctx.drawImage(barcodeCanvas, 180, 225, 275, 100);
 
             let qrCanvas = document.createElement('canvas');
             let qrData = data.brand_code ? data.brand_code : 'NO';
-            
+
             new QRious({
                 element: qrCanvas,
                 value: qrData,
@@ -549,7 +550,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
 
             let shortYear = data.year ? String(data.year).slice(-2) : '00';
             let brandText = qrData + ' ' + shortYear;
-            
+
             ctx.font = 'bold 18px Calibri';
             ctx.textAlign = 'center';
             ctx.fillText(brandText, 80, 332, 140);
@@ -588,10 +589,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 barcodeBuffer = '';
             }
         } else {
-            if (e.key.length === 1) { 
+            if (e.key.length === 1) {
                 barcodeBuffer += e.key;
                 clearTimeout(barcodeTimeout);
-                barcodeTimeout = setTimeout(() => { barcodeBuffer = ''; }, 100); 
+                barcodeTimeout = setTimeout(() => { barcodeBuffer = ''; }, 100);
             }
         }
     });

@@ -1,5 +1,4 @@
 <?php
-// views/order/create.php
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -7,7 +6,7 @@ error_reporting(E_ALL);
 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-global $pdo; 
+global $pdo;
 if (!isset($pdo) || $pdo === null) {
     if(file_exists('config.php')) require_once 'config.php';
     elseif(file_exists('koneksi.php')) require_once 'koneksi.php';
@@ -21,7 +20,7 @@ if (!isset($pdo) || $pdo === null) {
 $productModel = new Product($pdo);
 $store_id = $_SESSION['store_id'] ?? 0;
 
-$limit  = 14; 
+$limit  = 14;
 $hal    = isset($_GET['hal']) ? (int)$_GET['hal'] : 1;
 if ($hal < 1) { $hal = 1; }
 $offset = ($hal - 1) * $limit;
@@ -63,10 +62,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 
-
 <div class="pos-container">
     <div class="main-content">
-        
+
         <div class="brand-filter-wrapper">
             <button type="button" onclick="loadData('', document.getElementById('search-input').value)" class="brand-badge <?= ($brand_id === '') ? 'active' : '' ?>" data-brand="">
                 <div class="brand-all-icon-small">❖</div>
@@ -83,8 +81,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
         <div class="header-action">
             <form class="search-form" onsubmit="event.preventDefault(); loadData(currentBrand, document.getElementById('search-input').value);">
                 <input type="text" id="search-input" class="search-bar" placeholder="Cari kode frame/info..." value="<?= htmlspecialchars($search) ?>" autocomplete="off">
-                <button type="submit" class="btn-search">Cari</button>
-                <button type="button" class="btn-scan-mobile" onclick="openCameraScanner()">📷 Scan</button>
+                <button type="submit" class="btn-search btn bg-primary">Cari</button>
+                <button type="button" class="btn-scan-mobile btn bg-success" onclick="openCameraScanner()">📷 Scan</button>
             </form>
         </div>
 
@@ -92,12 +90,12 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
             <?php if(!empty($produk_db)): ?>
                 <?php foreach($produk_db as $item): ?>
                     <div class="product-card" id="card-<?= $item['id']; ?>" onclick="addToCart(<?= $item['id']; ?>)">
-                        
+
                         <div class="stock-badge" id="stock-badge-<?= $item['id']; ?>"><?= $item['stock']; ?></div>
-                        
+
                         <img class="catalog-product-image" src="/assets/products/<?= $item['img']; ?>"
                             onerror="this.src='/assets/web/default.png'; this.style.opacity='0.3';">
-                        
+
                         <div class="catalog-product-name" title="<?= htmlspecialchars($item['name']) ?>">
                             <?= htmlspecialchars($item['name']); ?>
                         </div>
@@ -137,7 +135,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
         <div class="order-summary">
             <div class="summary-row"><span>Subtotal</span><span id="cart-subtotal">Rp 0</span></div>
             <div class="summary-total"><span>Total</span><span id="cart-total">Rp 0</span></div>
-            <button class="btn-place-order" id="btn-proses">Simpan Transaksi</button>
+            <button class="btn-place-order btn bg-primary" id="btn-proses">Simpan Transaksi</button>
         </div>
     </div>
 </div>
@@ -158,8 +156,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
             <input type="text" id="input_nomor" placeholder="Contoh: 08123456789" autocomplete="off">
         </div>
         <div class="modal-actions">
-            <button class="btn-cancel" onclick="closeModal('checkoutModal')">Batal</button>
-            <button class="btn-submit" onclick="submitTransaction()">Simpan Transaksi</button>
+            <button class="btn-submit btn bg-secondary text-muted" onclick="closeModal('checkoutModal')">Batal</button>
+            <button class="btn-submit btn bg-primary" onclick="submitTransaction()">Simpan Transaksi</button>
         </div>
     </div>
 </div>
@@ -176,7 +174,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
 </div>
 
 <script>
-    let cart = []; 
+    let cart = [];
     let html5QrcodeScanner = null;
 
     let currentBrand = '<?= htmlspecialchars($brand_id) ?>';
@@ -214,10 +212,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
         fetch(currentUrl.toString())
             .then(res => res.json())
             .then(data => {
-                globalProducts = data.products; 
+                globalProducts = data.products;
                 renderGrid(data.products);
                 renderPagination(data.total_pages, data.current_page);
-                syncStockUI(); 
+                syncStockUI();
             })
             .catch(err => {
                 console.error("Gagal mengambil data JSON: ", err);
@@ -228,7 +226,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
     function renderGrid(products) {
         const grid = document.getElementById('product-grid-container');
         grid.innerHTML = '';
-        
+
         if (products.length === 0) {
             grid.innerHTML = '<div class="catalog-empty">Tidak ada produk yang ditemukan.</div>';
             return;
@@ -240,7 +238,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                     <div class="stock-badge" id="stock-badge-${item.id}">${item.maxStock}</div>
                     <img class="catalog-product-image" src="/assets/products/${item.img || ''}"
                          onerror="this.src='/assets/web/default.png'; this.style.opacity='0.3';">
-                    
+
                     <div class="catalog-product-name" title="${item.name}">
                         ${item.name}
                     </div>
@@ -277,13 +275,13 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
             if (existingItem) {
                 existingItem.quantity += 1;
             } else {
-                cart.push({ 
-                    product_id: product.id, 
-                    name: product.name, 
-                    price: product.price, 
-                    quantity: 1, 
+                cart.push({
+                    product_id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    quantity: 1,
                     maxStock: product.maxStock,
-                    discount: 0 
+                    discount: 0
                 });
             }
             updateCartUI();
@@ -296,20 +294,20 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
         globalProducts.forEach(p => {
             let badgeEl = document.getElementById('stock-badge-' + p.id);
             let cardEl = document.getElementById('card-' + p.id);
-            
+
             if(badgeEl && cardEl) {
                 let cartItem = cart.find(c => c.product_id == p.id);
                 let qtyInCart = cartItem ? cartItem.quantity : 0;
-                
+
                 let remainingStock = p.maxStock - qtyInCart;
-                
+
                 badgeEl.innerText = remainingStock;
-                
+
                 if(remainingStock <= 0) {
-                    badgeEl.classList.add('empty');
+                    badgeEl.classList.add('bg-danger');
                     cardEl.classList.add('out-of-stock');
                 } else {
-                    badgeEl.classList.remove('empty');
+                    badgeEl.classList.remove('bg-danger');
                     cardEl.classList.remove('out-of-stock');
                 }
             }
@@ -320,7 +318,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
         let cartContainer = document.getElementById('cart-items');
         let cartTotal = document.getElementById('cart-total');
         let cartSubtotal = document.getElementById('cart-subtotal');
-        
+
         cartContainer.innerHTML = '';
         let total = 0;
 
@@ -344,7 +342,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                             </div>
                             ${isDiscounted ? `<div class="cart-discount-price">${formatRupiah(finalPrice)}</div>` : ''}
                         </div>
-                        
+
                         <div class="cart-item-controls">
                             <div class="cart-discount-control">
                                 <span class="cart-discount-label">Disc %</span>
@@ -367,7 +365,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
         cartSubtotal.innerText = formatRupiah(total);
         cartTotal.innerText = formatRupiah(total);
         cartContainer.scrollTop = cartContainer.scrollHeight;
-        
+
         syncStockUI();
     }
 
@@ -382,7 +380,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
 
         item.quantity = newQty;
         if (item.quantity <= 0) { cart.splice(index, 1); }
-        
+
         updateCartUI();
     }
 
@@ -390,7 +388,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
         let val = parseFloat(value);
         if (isNaN(val) || val < 0) val = 0;
         if (val > 100) val = 100;
-        
+
         cart[index].discount = val;
         updateCartUI();
     }
@@ -407,11 +405,11 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                 barcodeBuffer = '';
             }
         } else {
-            if (e.key.length === 1) { 
+            if (e.key.length === 1) {
                 barcodeBuffer += e.key;
                 clearTimeout(barcodeTimeout);
-                // Delay dinaikkan ke 250ms agar scanner yang sedikit lambat tidak error
-                barcodeTimeout = setTimeout(() => { barcodeBuffer = ''; }, 250); 
+
+                barcodeTimeout = setTimeout(() => { barcodeBuffer = ''; }, 250);
             }
         }
     });
@@ -423,30 +421,30 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
         if (isFetchingBarcode) return;
 
         let matchedProduct = globalProducts.find(p => p.code === code);
-        
+
         if (matchedProduct) {
             addToCart(matchedProduct.id);
         } else {
             isFetchingBarcode = true;
             document.getElementById('search-input').value = code;
-            
+
             let currentUrl = new URL(window.location.href);
             currentUrl.searchParams.set('hal', 1);
             currentUrl.searchParams.set('brand', '');
             currentUrl.searchParams.set('search', code);
-            
+
             window.history.pushState({}, '', currentUrl.toString());
             currentUrl.searchParams.set('ajax', '1');
 
             fetch(currentUrl.toString())
                 .then(res => res.json())
                 .then(data => {
-                    globalProducts = data.products; 
+                    globalProducts = data.products;
                     renderGrid(data.products);
                     renderPagination(data.total_pages, data.current_page);
-                    
+
                     let fetchedProduct = globalProducts.find(p => p.code === code);
-                    
+
                     if (fetchedProduct) {
                         addToCart(fetchedProduct.id);
                         document.getElementById('search-input').value = '';
@@ -454,9 +452,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
                     } else {
                         alert("Barcode '" + code + "' tidak terdaftar di database!");
                         document.getElementById('search-input').value = '';
-                        loadData('', ''); 
+                        loadData('', '');
                     }
-                    syncStockUI(); 
+                    syncStockUI();
                     isFetchingBarcode = false;
                 })
                 .catch(err => {
@@ -501,10 +499,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
             html5QrcodeScanner.stop().then(() => {
                 html5QrcodeScanner.clear();
                 document.getElementById('scannerModal').style.display = 'none';
-                html5QrcodeScanner = null; // PENTING: Bebaskan kamera
+                html5QrcodeScanner = null;
             }).catch(() => {
                 document.getElementById('scannerModal').style.display = 'none';
-                html5QrcodeScanner = null; // PENTING: Bebaskan kamera meskipun error
+                html5QrcodeScanner = null;
             });
         } else {
             document.getElementById('scannerModal').style.display = 'none';
@@ -519,7 +517,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
     function onScanFailure(error) {  }
 
     const checkoutModal = document.getElementById('checkoutModal');
-    
+
     document.getElementById('btn-proses').addEventListener('click', () => {
         if (cart.length === 0) return alert("Keranjang kosong! Silakan klik produk terlebih dahulu.");
 
@@ -556,10 +554,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                cart = []; 
+                cart = [];
                 updateCartUI();
                 closeModal('checkoutModal');
-                window.location.href = '/order'; 
+                window.location.href = '/order';
             } else {
                 alert('Gagal: ' + data.message);
             }

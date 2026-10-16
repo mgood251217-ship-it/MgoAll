@@ -1,5 +1,5 @@
 <?php
-// file: models/Finance.php
+
 
 class Finance {
     private $pdo;
@@ -96,7 +96,7 @@ class Finance {
     }
 
     public function getSummary($store_id, $start_date, $end_date) {
-        // 1. SALDO AWAL (Histori murni sebelum tanggal start_date)
+
         $stmt = $this->pdo->prepare("
             SELECT 
                 SUM(cash_revenue + cash_income) - SUM(cash_expenditure) as saldo_awal_cash,
@@ -110,7 +110,7 @@ class Finance {
         $awal_cash = $awal['saldo_awal_cash'] ?? 0;
         $awal_tf = $awal['saldo_awal_tf'] ?? 0;
 
-        // 2. PERGERAKAN PADA INTERVAL
+
         $stmt2 = $this->pdo->prepare("
             SELECT 
                 SUM(cash_revenue) as omzet_cash, SUM(transfer_revenue) as omzet_tf,

@@ -63,15 +63,12 @@ if (!in_array($module, $allowed_pages)) {
     $module = 'order'; 
 }
 
-// =======================================================
-// TAMBAHKAN INI: Bypass Layout jika ada request AJAX
-// =======================================================
 if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
     $file_path = "views/" . $module . "/index.php";
     if (file_exists($file_path)) {
         include $file_path;
     }
-    exit(); // Hentikan proses, jangan load footer
+    exit();
 }
 
 include 'views/layout/header.php';

@@ -19,10 +19,10 @@ $type       = $_GET['type'] ?? '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $date = $_POST['date'] ?? date('Y-m-d'); $desc = $_POST['description'] ?? '';
     $amount = $_POST['amount'] ?? 0; $method = $_POST['payment_method'] ?? 'Cash';
-    
+
     if ($_POST['action'] === 'add_income') $financeModel->addIncome($store_id, $date, $desc, $amount, $method);
     elseif ($_POST['action'] === 'add_expenditure') $financeModel->addExpenditure($store_id, $date, $desc, $amount, $method);
-    
+
     echo "<script>window.location.href='/aruskas?start_date=$start_date&end_date=$end_date';</script>"; exit;
 }
 
@@ -38,7 +38,6 @@ if (!is_array($transactions)) $transactions = [];
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 
-
 <div class="page-container">
     <div class="header-action">
         <div>
@@ -46,35 +45,35 @@ if (!is_array($transactions)) $transactions = [];
             <p class="page-subtitle">Laporan Keuangan Real Time</p>
         </div>
         <div class="action-buttons">
-            <button class="btn-primary bg-sky" onclick="openModal('modalIncome')">+ Saldo Awal / Modal</button>
-            <button class="btn-danger" onclick="openModal('modalExpenditure')">- Pengeluaran</button>
-            <button type="button" class="btn-primary" onclick="exportArusKasToExcel()">Export Excel</button>
-            
-            <a href="/aruskas?action=sync&start_date=<?= $start_date ?>&end_date=<?= $end_date ?>" class="btn-filter btn-sync">↻ Sync Interval</a>
+            <button class="btn bg-info" onclick="openModal('modalIncome')">+ Saldo Awal / Modal</button>
+            <button class="btn bg-danger" onclick="openModal('modalExpenditure')">- Pengeluaran</button>
+            <button type="button" class="btn bg-primary" onclick="exportArusKasToExcel()">Export Excel</button>
+
+            <a href="/aruskas?action=sync&start_date=<?= $start_date ?>&end_date=<?= $end_date ?>" class="btn bg-warning">↻ Sync Interval</a>
         </div>
     </div>
 
     <div class="cash-summary-grid">
 
-        <div class="filter-card cash-summary-card cash-summary-opening">
+        <div class="filter-card cash-summary-card border-accent">
             <div class="cash-summary-label">Saldo Awal (Bawaan Kemarin)</div>
-            <h3 class="cash-summary-amount text-purple">Rp <?= number_format($summary['awal_cash'] + $summary['awal_tf'], 0, ',', '.') ?></h3>
+            <h3 class="cash-summary-amount text-accent">Rp <?= number_format($summary['awal_cash'] + $summary['awal_tf'], 0, ',', '.') ?></h3>
             <div class="money-split">
                 <div><span>Cash</span><span class="val-cash"><?= number_format($summary['awal_cash'], 0, ',', '.') ?></span></div>
                 <div class="text-right"><span>Transfer</span><span class="val-tf"><?= number_format($summary['awal_tf'], 0, ',', '.') ?></span></div>
             </div>
         </div>
 
-        <div class="filter-card cash-summary-card cash-summary-income">
+        <div class="filter-card cash-summary-card border-success">
             <div class="cash-summary-label">Masuk (Omzet + Modal)</div>
-            <h3 class="cash-summary-amount text-green">+ Rp <?= number_format($summary['omzet_cash'] + $summary['masuk_lain_cash'] + $summary['omzet_tf'] + $summary['masuk_lain_tf'], 0, ',', '.') ?></h3>
+            <h3 class="cash-summary-amount text-success">+ Rp <?= number_format($summary['omzet_cash'] + $summary['masuk_lain_cash'] + $summary['omzet_tf'] + $summary['masuk_lain_tf'], 0, ',', '.') ?></h3>
             <div class="money-split">
                 <div><span>Cash</span><span class="val-cash"><?= number_format($summary['omzet_cash'] + $summary['masuk_lain_cash'], 0, ',', '.') ?></span></div>
                 <div class="text-right"><span>Transfer</span><span class="val-tf"><?= number_format($summary['omzet_tf'] + $summary['masuk_lain_tf'], 0, ',', '.') ?></span></div>
             </div>
         </div>
 
-        <div class="filter-card cash-summary-card cash-summary-expense">
+        <div class="filter-card cash-summary-card border-danger">
             <div class="cash-summary-label">Pengeluaran</div>
             <h3 class="cash-summary-amount text-danger">- Rp <?= number_format($summary['keluar_cash'] + $summary['keluar_tf'], 0, ',', '.') ?></h3>
             <div class="money-split">
@@ -83,7 +82,7 @@ if (!is_array($transactions)) $transactions = [];
             </div>
         </div>
 
-        <div class="filter-card cash-summary-card cash-summary-closing">
+        <div class="filter-card cash-summary-card border-warning">
             <div class="cash-summary-label">Saldo Akhir Terkini</div>
             <h3 class="cash-summary-amount text-warning">Rp <?= number_format($summary['akhir_cash'] + $summary['akhir_tf'], 0, ',', '.') ?></h3>
             <div class="money-split">
@@ -91,7 +90,7 @@ if (!is_array($transactions)) $transactions = [];
                 <div class="text-right"><span>Sisa Transfer</span><span class="val-tf text-warning"><?= number_format($summary['akhir_tf'], 0, ',', '.') ?></span></div>
             </div>
         </div>
-        
+
     </div>
 
     <form class="filter-card" method="GET" action="/aruskas">
@@ -109,7 +108,7 @@ if (!is_array($transactions)) $transactions = [];
                 <option value="out" <?= ($type == 'out') ? 'selected' : '' ?>>Uang Keluar Saja</option>
             </select>
         </div>
-        <button type="submit" class="btn-primary">Tampilkan</button>
+        <button type="submit" class="btn bg-primary">Tampilkan</button>
     </form>
 
     <div class="table-container">
@@ -138,7 +137,7 @@ if (!is_array($transactions)) $transactions = [];
                             <small class="text-muted"><?= htmlspecialchars($row['category']) ?></small>
                         </td>
                         <td class="text-center">
-                            <?php $method_class = strtoupper($row['payment_method']) == 'CASH' ? 'badge-paid' : 'badge-transfer'; ?>
+                            <?php $method_class = strtoupper($row['payment_method']) == 'CASH' ? 'bg-success' : 'bg-info'; ?>
                             <span class="status-badge <?= $method_class ?>">
                                 <?= htmlspecialchars($row['payment_method']) ?>
                             </span>
@@ -160,7 +159,7 @@ if (!is_array($transactions)) $transactions = [];
 <div class="modal-overlay" id="modalIncome">
     <div class="modal-box">
         <div class="modal-header">
-            <h3 class="dialog-title text-sky">Input Saldo / Tambahan</h3>
+            <h3 class="dialog-title text-info">Input Saldo / Tambahan</h3>
             <button class="close-btn" type="button" onclick="closeModal('modalIncome')">✕</button>
         </div>
         <form action="/aruskas" method="POST">
@@ -175,7 +174,7 @@ if (!is_array($transactions)) $transactions = [];
                     <option value="Transfer">Transfer / Bank</option>
                 </select>
             </div>
-            <button type="submit" class="btn-primary button-full bg-sky">Simpan Saldo</button>
+            <button type="submit" class="btn button-full bg-info">Simpan Saldo</button>
         </form>
     </div>
 </div>
@@ -198,7 +197,7 @@ if (!is_array($transactions)) $transactions = [];
                     <option value="Transfer">Transfer (Potong Saldo Bank)</option>
                 </select>
             </div>
-            <button type="submit" class="btn-danger button-full">Simpan Pengeluaran</button>
+            <button type="submit" class="btn bg-danger button-full">Simpan Pengeluaran</button>
         </form>
     </div>
 </div>
@@ -222,13 +221,13 @@ if (!is_array($transactions)) $transactions = [];
 
         const headerRow = sheet.addRow(['TANGGAL & JAM', 'KETERANGAN', 'METODE', 'MASUK (+)', 'KELUAR (-)']);
         headerRow.eachCell(cell => { cell.font={bold:true}; cell.alignment={horizontal:'center'}; cell.border={bottom:{style:'medium'}}; });
-        
+
         let inTotal = 0; let outTotal = 0;
         transactions.forEach(row => {
             let m = row.type === 'in' ? parseFloat(row.amount) : 0;
             let k = row.type === 'out' ? parseFloat(row.amount) : 0;
             inTotal += m; outTotal += k;
-            
+
             let dt = `${row.date} ${row.created_at ? row.created_at.substring(0,5) : ''}`;
             const dr = sheet.addRow([dt, row.description, row.payment_method, m||'-', k||'-']);
             if(m>0) dr.getCell(4).numFmt = 'Rp #,##0';
