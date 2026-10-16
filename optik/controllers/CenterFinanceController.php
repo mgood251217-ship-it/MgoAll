@@ -75,6 +75,10 @@ class CenterFinanceController {
             'cash_sync_post_url' => $this->base_url . '/sync-aruskas',
             'payment_delete_post_url' => $this->base_url . '/delete-payment',
             'payments' => $payments,
+            'cash_tables' => [
+                ['title' => 'Uang Masuk', 'color' => 'success', 'type' => 'in', 'rows' => array_values(array_filter($report['transactions'], fn($row) => $row['type'] === 'in'))],
+                ['title' => 'Uang Keluar', 'color' => 'danger', 'type' => 'out', 'rows' => array_values(array_filter($report['transactions'], fn($row) => $row['type'] === 'out'))]
+            ],
             'cash_form_fields' => ['store_id' => $store_id],
             'cash_embedded' => true, 'cash_actions' => true
         ]);
