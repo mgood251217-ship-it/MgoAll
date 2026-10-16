@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/FinanceController.php';
+require_once __DIR__ . '/OrderController.php';
 require_once __DIR__ . '/../models/Center.php';
 
 class CenterFinanceController {
@@ -60,6 +61,7 @@ class CenterFinanceController {
         unset($row);
         $payments = $type === 'out' ? [] : $this->finance->getOrderPayments($store_id, $start, $end);
         foreach ($payments as &$payment) {
+            $payment['payment_type'] = OrderController::paymentType($payment['order_total'], $payment['paid_before'], $payment['nominal']);
             $payment['display_date'] = date('d M Y, H:i', strtotime($payment['create_at']));
             $payment['action_url'] = $this->base_url . '/order?id=' . (int) $payment['order_id'];
         }

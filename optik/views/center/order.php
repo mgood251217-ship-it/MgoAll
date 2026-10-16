@@ -43,13 +43,13 @@
 <section class="table-container mb-20">
     <h2 class="page-title mb-20">Riwayat Pembayaran</h2>
     <table class="table-modern center-store-table">
-        <thead><tr><th>Tanggal</th><th>Nominal</th><th>Keterangan</th><th>Metode Pembayaran</th><th>Aksi</th></tr></thead>
+        <thead><tr><th>Tanggal</th><th>Nominal</th><th>Jenis Pembayaran</th><th>Metode Pembayaran</th><th>Aksi</th></tr></thead>
         <tbody>
             <?php foreach ($payments as $payment): ?>
                 <tr>
                     <td><?= htmlspecialchars($payment['display_date']) ?></td>
                     <td>Rp <?= number_format($payment['nominal'], 0, ',', '.') ?></td>
-                    <td><?= htmlspecialchars($payment['information'] ?? '') ?></td>
+                    <td><span class="font-semibold"><?= htmlspecialchars($payment['payment_type']) ?></span><?php if ($payment['payment_note'] !== ''): ?><br><small class="text-muted"><?= htmlspecialchars($payment['payment_note']) ?></small><?php endif; ?></td>
                     <td>
                         <form action="<?= htmlspecialchars($center_base) ?>/update-payment" method="POST" class="center-payment-method">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">

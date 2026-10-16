@@ -110,9 +110,11 @@ class CenterOrderController {
             $item['gross_price'] = $discount < 100 ? rtrim(rtrim(sprintf('%.10F', (float) $item['price'] / (1 - $discount / 100)), '0'), '.') : '0';
         }
         unset($item);
-        $payments = $this->order->getPayments($store_id, $id);
+        $payments = OrderController::labelPayments($this->order->getPayments($store_id, $id), $order['total']);
         foreach ($payments as &$payment) {
             $payment['method_value'] = strtoupper($payment['payment_method']) === 'CASH' ? 'Cash' : 'TF';
+            $note = trim($payment['information'] ?? '');
+            $payment['payment_note'] = in_array(strtoupper($note), ['DP', 'LUNAS', 'PELUNASAN', 'LANGSUNG LUNAS'], true) ? '' : $note;
             $payment['display_date'] = date('d M Y, H:i', strtotime($payment['create_at']));
         }
         unset($payment);

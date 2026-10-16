@@ -164,7 +164,11 @@ class Finance {
     }
 
     public function getOrderPayments($store_id, $start_date, $end_date) {
-        $stmt = $this->pdo->prepare("SELECT p.*, o.inv_no
+        $stmt = $this->pdo->prepare("SELECT p.*, o.inv_no, o.total AS order_total,
+            (SELECT COALESCE(SUM(prior_payment.nominal), 0) FROM payments prior_payment
+                WHERE prior_payment.order_id = p.order_id AND prior_payment.store_id = p.store_id
+                AND (prior_payment.create_at < p.create_at
+                    OR (prior_payment.create_at = p.create_at AND prior_payment.id < p.id))) AS paid_before
             FROM payments p JOIN orders o ON o.id = p.order_id AND o.store_id = p.store_id
             WHERE p.store_id = :store_id AND DATE(p.create_at) BETWEEN :start_date AND :end_date
             ORDER BY p.create_at DESC, p.id DESC");

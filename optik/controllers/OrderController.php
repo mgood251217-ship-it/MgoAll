@@ -282,6 +282,26 @@ class OrderController {
         ];
     }
 
+    public static function paymentType($total, $paid_before, $nominal) {
+        if (round((float) $paid_before + (float) $nominal, 2) < round((float) $total, 2)) {
+            return 'DP';
+        }
+        return (float) $paid_before > 0 ? 'Pelunasan' : 'Langsung Lunas';
+    }
+
+    public static function labelPayments(array $payments, $total) {
+        usort($payments, function($a, $b) {
+            return strcmp($a['create_at'], $b['create_at']) ?: ((int) ($a['id'] ?? 0) <=> (int) ($b['id'] ?? 0));
+        });
+        $paid = 0;
+        foreach ($payments as &$payment) {
+            $payment['payment_type'] = self::paymentType($total, $paid, $payment['nominal']);
+            $paid += (float) $payment['nominal'];
+        }
+        unset($payment);
+        return array_reverse($payments);
+    }
+
     public function getDashboardData($store_id) {
         return [
             'order_hari_ini' => $this->order->countDailyOrders($store_id, date('Y-m-d')) ?: 0,

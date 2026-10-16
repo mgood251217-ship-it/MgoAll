@@ -6,12 +6,13 @@
                 <div><h2 class="page-title">Pembayaran Order</h2><p class="page-subtitle">Kelola pembayaran pada toko dan periode yang dipilih.</p></div>
             </div>
             <table class="table-modern center-store-table">
-                <thead><tr><th>Invoice</th><th>Tanggal</th><th>Metode</th><th>Nominal</th><th>Aksi</th></tr></thead>
+                <thead><tr><th>Invoice</th><th>Tanggal</th><th>Jenis Pembayaran</th><th>Metode</th><th>Nominal</th><th>Aksi</th></tr></thead>
                 <tbody>
                     <?php foreach ($payments as $payment): ?>
                         <tr>
                             <td class="font-semibold"><?= htmlspecialchars($payment['inv_no']) ?></td>
                             <td><?= htmlspecialchars($payment['display_date']) ?></td>
+                            <td><?= htmlspecialchars($payment['payment_type']) ?></td>
                             <td><?= htmlspecialchars($payment['payment_method']) ?></td>
                             <td>Rp <?= number_format($payment['nominal'], 0, ',', '.') ?></td>
                             <td>
@@ -27,7 +28,7 @@
                             </td>
                         </tr>
                     <?php endforeach; ?>
-                    <?php if (empty($payments)): ?><tr><td colspan="5" class="table-empty">Belum ada pembayaran pada periode ini.</td></tr><?php endif; ?>
+                    <?php if (empty($payments)): ?><tr><td colspan="6" class="table-empty">Belum ada pembayaran pada periode ini.</td></tr><?php endif; ?>
                 </tbody>
             </table>
         </section>
