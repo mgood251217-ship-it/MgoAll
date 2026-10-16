@@ -212,7 +212,8 @@
 
     async function exportArusKasToExcel() {
         const transactions = <?= json_encode($transactions, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-        if(transactions.length === 0) { alert("Tidak ada data tabel!"); return; }
+        const payments = <?= json_encode($cash_embedded ? ($payments ?? []) : [], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+        if(transactions.length === 0 && payments.length === 0) { alert("Tidak ada data tabel!"); return; }
 
         const workbook = new ExcelJS.Workbook();
         const sheet = workbook.addWorksheet('Detail Arus Kas', {views: [{showGridLines: false}]});
@@ -241,6 +242,30 @@
         const totalRow = sheet.addRow(['', 'TOTAL KESELURUHAN', '', inTotal, outTotal]);
         totalRow.font = {bold:true}; totalRow.getCell(4).numFmt='Rp #,##0'; totalRow.getCell(5).numFmt='Rp #,##0';
         sheet.getColumn(2).width = 30; sheet.getColumn(4).width = 20; sheet.getColumn(5).width = 20;
+
+        if (payments.length > 0) {
+            const paymentSheet = workbook.addWorksheet('Riwayat Pembayaran', {views: [{showGridLines: false}]});
+            paymentSheet.mergeCells('A1:E1');
+            paymentSheet.getCell('A1').value = 'RIWAYAT PEMBAYARAN ORDER';
+            paymentSheet.getCell('A1').font = sheet.getCell('A1').font;
+            paymentSheet.getCell('A1').fill = sheet.getCell('A1').fill;
+            paymentSheet.getCell('A1').alignment = { horizontal: 'center' };
+            const paymentHeader = paymentSheet.getRow(3);
+            paymentHeader.values = ['TANGGAL & JAM', 'INVOICE', 'JENIS PEMBAYARAN', 'METODE', 'NOMINAL'];
+            paymentHeader.eachCell(cell => { cell.font = {bold: true}; cell.alignment = {horizontal: 'center'}; cell.border = {bottom: {style: 'medium'}}; });
+            let paymentTotal = 0;
+            payments.forEach(payment => {
+                const nominal = Number(payment.nominal);
+                paymentTotal += nominal;
+                const row = paymentSheet.addRow([payment.create_at, payment.inv_no, payment.payment_type, payment.payment_method, nominal]);
+                row.getCell(5).numFmt = 'Rp #,##0';
+            });
+            const paymentTotalRow = paymentSheet.addRow(['', 'TOTAL PEMBAYARAN', '', '', paymentTotal]);
+            paymentTotalRow.font = {bold: true};
+            paymentTotalRow.getCell(5).numFmt = 'Rp #,##0';
+            [24, 30, 22, 18, 22].forEach((width, index) => { paymentSheet.getColumn(index + 1).width = width; });
+            paymentSheet.autoFilter = 'A3:E3';
+        }
 
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
