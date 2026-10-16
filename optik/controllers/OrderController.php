@@ -118,48 +118,7 @@ class OrderController {
             throw new InvalidArgumentException('Nama pelanggan dan data keranjang wajib diisi.');
         }
 
-        $items = [];
-        $total = 0;
-
-        foreach ($data['items'] as $item) {
-            if (!is_array($item)) {
-                throw new InvalidArgumentException('Data item pesanan tidak valid.');
-            }
-
-            $product_id = filter_var($item['product_id'] ?? 0, FILTER_VALIDATE_INT);
-            $quantity = filter_var($item['quantity'] ?? 0, FILTER_VALIDATE_INT);
-            $price = $item['price'] ?? null;
-            $discount = $item['discount'] ?? 0;
-
-            if (!$product_id || $product_id < 1 || !$quantity || $quantity < 1 || !is_numeric($price) || !is_numeric($discount)) {
-                throw new InvalidArgumentException('Produk, jumlah, harga, atau diskon tidak valid.');
-            }
-
-            $price = (float) $price;
-            $discount = (float) $discount;
-
-            if (!is_finite($price) || !is_finite($discount) || $price < 0 || $discount < 0 || $discount > 100) {
-                throw new InvalidArgumentException('Harga atau diskon tidak valid.');
-            }
-
-            $product = $this->product->getProductById($product_id);
-
-            if (!$product || (int) $product['store_id'] !== (int) $store_id) {
-                throw new InvalidArgumentException('Produk tidak ditemukan di toko ini.');
-            }
-
-            $final_price = $price - $price * ($discount / 100);
-            $amount = $final_price * $quantity;
-            $total += $amount;
-            $items[] = [
-                'name' => $product['name'],
-                'product_id' => $product_id,
-                'quantity' => $quantity,
-                'price' => $final_price,
-                'diskon' => $discount,
-                'amount' => $amount
-            ];
-        }
+        [$items, $total] = $this->prepareItems($store_id, $data['items']);
 
         if (!$this->order->acquireInvoiceLock()) {
             throw new RuntimeException('Tidak dapat membuat nomor invoice. Silakan coba kembali.');
@@ -207,7 +166,7 @@ class OrderController {
         }
 
         return $this->order->transaction(function () use ($store_id, $id, $nominal, $data) {
-            $order = $this->findOrder($store_id, $id);
+            $order = $this->findOrder($store_id, $id, true);
             $remaining = (float) $order['total'] - (float) $order['total_dibayar'];
             $method = strtoupper(trim($data['payment_method'] ?? 'Cash'));
             $today = date('Y-m-d');
@@ -230,7 +189,7 @@ class OrderController {
 
     public function delete($store_id, $id) {
         return $this->order->transaction(function () use ($store_id, $id) {
-            $this->findOrder($store_id, $id);
+            $this->findOrder($store_id, $id, true);
             $dates = $this->order->getPaymentDates($store_id, $id);
 
             if (!$this->order->deleteOrderItems($store_id, $id) || !$this->order->deletePayments($store_id, $id) || !$this->order->deleteOrder($store_id, $id)) {
@@ -244,6 +203,62 @@ class OrderController {
             }
 
             return ['success' => true];
+        });
+    }
+
+    public function update($store_id, array $data) {
+        $id = (int) ($data['order_id'] ?? 0);
+        $customer_name = is_string($data['customer_name'] ?? null) ? trim($data['customer_name']) : '';
+        $phone = is_string($data['nomor'] ?? null) ? trim($data['nomor']) : '';
+        if ($id < 1 || $customer_name === '' || empty($data['items']) || !is_array($data['items'])) {
+            throw new InvalidArgumentException('Nama pelanggan dan minimal satu item wajib diisi.');
+        }
+
+        return $this->order->transaction(function() use ($store_id, $id, $customer_name, $phone, $data) {
+            $order = $this->findOrder($store_id, $id, true);
+            $existing = array_column($this->order->getOrderItems($store_id, $id), 'name', 'product_id');
+            [$items, $total] = $this->prepareItems($store_id, $data['items'], $existing, true);
+            $total = floor($total / 500) * 500;
+            if ($total < (float) $order['total_dibayar']) {
+                throw new InvalidArgumentException('Total order lebih kecil dari pembayaran yang sudah masuk. Koreksi pembayaran terlebih dahulu.');
+            }
+            if (!$this->order->updateOrder($store_id, $id, ['customer_name' => $customer_name, 'nomor' => $phone, 'total' => $total]) || !$this->order->deleteOrderItems($store_id, $id)) {
+                throw new RuntimeException('Pesanan gagal diperbarui.');
+            }
+            foreach ($items as $item) {
+                $this->order->insertOrderItem(['order_id' => $id] + $item);
+            }
+            return ['status' => 'success'];
+        });
+    }
+
+    public function changePaymentMethod($store_id, $order_id, $payment_id, $method) {
+        if (!is_string($method) || !in_array(strtoupper(trim($method)), ['CASH', 'TF', 'TRANSFER'], true)) {
+            throw new InvalidArgumentException('Pilih metode Cash atau Transfer.');
+        }
+        $method = strtoupper(trim($method)) === 'CASH' ? 'Cash' : 'TF';
+        return $this->mutatePayment($store_id, $order_id, $payment_id, function() use ($store_id, $order_id, $payment_id, $method) {
+            return $this->order->updatePaymentMethod($store_id, $order_id, $payment_id, $method);
+        });
+    }
+
+    public function deletePayment($store_id, $order_id, $payment_id) {
+        return $this->mutatePayment($store_id, $order_id, $payment_id, function() use ($store_id, $order_id, $payment_id) {
+            return $this->order->deletePayment($store_id, $order_id, $payment_id);
+        });
+    }
+
+    private function mutatePayment($store_id, $order_id, $payment_id, callable $save) {
+        return $this->order->transaction(function() use ($store_id, $order_id, $payment_id, $save) {
+            $this->findOrder($store_id, $order_id, true);
+            $payment = $this->order->getPaymentById($store_id, $order_id, $payment_id);
+            if (!$payment) {
+                throw new InvalidArgumentException('Pembayaran tidak ditemukan pada order ini.');
+            }
+            if (!$save() || !$this->finance->refreshDailyFinance($store_id, substr($payment['create_at'], 0, 10))) {
+                throw new RuntimeException('Perubahan pembayaran gagal disimpan.');
+            }
+            return ['status' => 'success'];
         });
     }
 
@@ -274,8 +289,65 @@ class OrderController {
         ];
     }
 
-    private function findOrder($store_id, $id) {
-        $order = $this->order->getOrderById($store_id, $id);
+    private function prepareItems($store_id, array $input, array $existing = [], $round_price = false) {
+        $items = [];
+        $total = 0;
+
+        foreach ($input as $item) {
+            if (!is_array($item)) {
+                throw new InvalidArgumentException('Data item pesanan tidak valid.');
+            }
+
+            $product_id = filter_var($item['product_id'] ?? 0, FILTER_VALIDATE_INT);
+            $quantity = filter_var($item['quantity'] ?? 0, FILTER_VALIDATE_INT);
+            $price = $item['price'] ?? null;
+            $discount = $item['discount'] ?? 0;
+
+            if (!$product_id || $product_id < 1 || !$quantity || $quantity < 1 || !is_numeric($price) || !is_numeric($discount)) {
+                throw new InvalidArgumentException('Produk, jumlah, harga, atau diskon tidak valid.');
+            }
+
+            $price = (float) $price;
+            $discount = (float) $discount;
+
+            if (!is_finite($price) || !is_finite($discount) || $price < 0 || $discount < 0 || $discount > 100) {
+                throw new InvalidArgumentException('Harga atau diskon tidak valid.');
+            }
+
+            $product = $this->product->getProductById($product_id);
+
+            if (!$product && isset($existing[$product_id])) {
+                $product = ['store_id' => $store_id, 'name' => $existing[$product_id]];
+            }
+
+            if (!$product || (int) $product['store_id'] !== (int) $store_id) {
+                throw new InvalidArgumentException('Produk tidak ditemukan di toko ini.');
+            }
+
+            $final_price = $price - $price * ($discount / 100);
+            if ($round_price) {
+                $final_price = round($final_price, 2);
+            }
+            $amount = $final_price * $quantity;
+            $total += $amount;
+            if (!is_finite($total)) {
+                throw new InvalidArgumentException('Total pesanan tidak valid.');
+            }
+            $items[] = [
+                'name' => $product['name'],
+                'product_id' => $product_id,
+                'quantity' => $quantity,
+                'price' => $final_price,
+                'diskon' => $discount,
+                'amount' => $amount
+            ];
+        }
+
+        return [$items, $total];
+    }
+
+    private function findOrder($store_id, $id, $lock = false) {
+        $order = $this->order->getOrderById($store_id, $id, $lock);
 
         if (!$order) {
             throw new RuntimeException('Pesanan tidak ditemukan.');

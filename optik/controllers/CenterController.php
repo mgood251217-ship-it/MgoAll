@@ -5,10 +5,12 @@ require_once __DIR__ . '/../models/Center.php';
 class CenterController {
     private $center;
     private $base_url;
+    private $orders;
 
-    public function __construct(Center $center, $base_url = '/center') {
+    public function __construct(Center $center, $base_url = '/center', $orders = null) {
         $this->center = $center;
         $this->base_url = rtrim($base_url, '/');
+        $this->orders = $orders;
     }
 
     public function handle($action, array $query, array $post, array &$session, $request_method = 'GET') {
@@ -40,11 +42,33 @@ class CenterController {
             return ['redirect' => $this->base_url . '/login', 'regenerate_session' => true];
         }
 
+        $data = ['admin' => $admin, 'csrf_token' => $session['center_csrf_token']];
+        $order_actions = ['orders', 'order', 'update-order', 'delete-order', 'update-payment', 'delete-payment'];
+        if (in_array($action, $order_actions, true)) {
+            $writing = !in_array($action, ['orders', 'order'], true);
+            if ($request_method !== ($writing ? 'POST' : 'GET')) {
+                return $data + ['view' => 'error', 'status_code' => 405, 'error' => 'Metode request tidak sesuai.'];
+            }
+            if ($writing && !$this->validToken($post, $session)) {
+                return $data + ['view' => 'error', 'status_code' => 419, 'error' => 'Sesi formulir berakhir. Muat ulang halaman dan coba lagi.'];
+            }
+            if (!$this->orders) {
+                throw new RuntimeException('Pengelolaan order belum tersedia.');
+            }
+            $result = $this->orders->handle($action, $query, $post);
+            if (isset($result['redirect'], $result['notice'])) {
+                $session['center_notice'] = $result['notice'];
+            } elseif (!$writing && isset($session['center_notice'])) {
+                $result['notice'] = $session['center_notice'];
+                unset($session['center_notice']);
+            }
+            return $data + $result;
+        }
+
         if ($request_method !== 'GET') {
             return ['view' => 'error', 'status_code' => 405, 'error' => 'Metode request tidak sesuai.'];
         }
 
-        $data = ['admin' => $admin, 'csrf_token' => $session['center_csrf_token']];
         if ($action === '' || $action === 'dashboard') {
             return $data + [
                 'view' => 'dashboard',

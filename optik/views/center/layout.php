@@ -17,6 +17,7 @@
             <nav class="center-nav" aria-label="Menu admin center">
                 <a href="<?= htmlspecialchars($center_base) ?>/" class="center-nav-link <?= $view === 'dashboard' ? 'active' : '' ?>" <?= $view === 'dashboard' ? 'aria-current="page"' : '' ?>>Dashboard</a>
                 <a href="<?= htmlspecialchars($center_base) ?>/stores" class="center-nav-link <?= $view === 'stores' ? 'active' : '' ?>" <?= $view === 'stores' ? 'aria-current="page"' : '' ?>>Daftar Toko</a>
+                <a href="<?= htmlspecialchars($center_base) ?>/orders" class="center-nav-link <?= in_array($view, ['orders', 'order'], true) ? 'active' : '' ?>" <?= in_array($view, ['orders', 'order'], true) ? 'aria-current="page"' : '' ?>>Order</a>
             </nav>
             <div class="center-account">
                 <span class="font-semibold"><?= htmlspecialchars($admin['username']) ?></span>
@@ -28,17 +29,24 @@
         </header>
     <?php endif; ?>
     <main class="<?= $view === 'login' ? 'center-login' : 'page-container center-content' ?>">
+        <?php if (!empty($notice)): ?>
+            <div class="center-alert border-success text-success" role="status"><?= htmlspecialchars($notice) ?></div>
+        <?php endif; ?>
         <?php if ($view === 'login'): ?>
             <?php require __DIR__ . '/login.php'; ?>
         <?php elseif ($view === 'dashboard'): ?>
             <?php require __DIR__ . '/dashboard.php'; ?>
         <?php elseif ($view === 'stores'): ?>
             <?php require __DIR__ . '/stores.php'; ?>
+        <?php elseif ($view === 'orders'): ?>
+            <?php require __DIR__ . '/orders.php'; ?>
+        <?php elseif ($view === 'order'): ?>
+            <?php require __DIR__ . '/order.php'; ?>
         <?php else: ?>
             <div class="table-container">
                 <h1 class="page-title mb-20">Halaman belum dapat ditampilkan</h1>
                 <p role="alert" class="text-danger mb-20"><?= htmlspecialchars($error) ?></p>
-                <a href="<?= htmlspecialchars($center_base) ?>/" class="btn bg-primary">Kembali ke Center</a>
+                <a href="<?= htmlspecialchars($return_url ?? ($center_base . '/')) ?>" class="btn bg-primary">Kembali</a>
             </div>
         <?php endif; ?>
     </main>

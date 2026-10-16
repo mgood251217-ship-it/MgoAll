@@ -28,6 +28,11 @@ class Center {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    public function getStoreOptions() {
+        $stmt = $this->pdo->query('SELECT id, name FROM stores ORDER BY name ASC');
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public function countStores($search = '') {
         $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM stores WHERE name LIKE :name_search OR address LIKE :address_search');
         $stmt->execute(['name_search' => '%' . $search . '%', 'address_search' => '%' . $search . '%']);

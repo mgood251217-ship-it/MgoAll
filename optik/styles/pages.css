@@ -1871,6 +1871,11 @@ body.thermal-page {
     gap: 12px;
 }
 
+.center-nav,
+.center-store-filter {
+    flex-wrap: wrap;
+}
+
 .center-nav-link {
     padding: 10px 14px;
     border-radius: 10px;
@@ -1960,6 +1965,40 @@ body.thermal-page {
 
 .center-pagination .page-link {
     text-decoration: none;
+}
+
+.center-order-items {
+    overflow-x: auto;
+    margin-bottom: 20px;
+}
+
+.center-edit-table {
+    min-width: 800px;
+}
+
+.center-edit-table input[type="number"] {
+    width: 100%;
+    min-width: 85px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.center-payment-method {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.center-delete-order {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    border-width: 1px;
+    border-style: solid;
 }
 
 @media (max-width: 640px) {

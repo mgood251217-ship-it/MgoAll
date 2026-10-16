@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 date_default_timezone_set('Asia/Jakarta');
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../controllers/CenterController.php';
+require_once __DIR__ . '/../controllers/CenterOrderController.php';
 
 $script_directory = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/center/index.php')), '/');
 $app_base = basename($script_directory) === 'center'
@@ -14,7 +15,12 @@ $app_base = basename($script_directory) === 'center'
 $center_base = $app_base . '/center';
 $center_action = isset($module) && $module === 'center' ? $action : ($_GET['action'] ?? '');
 $center_action = is_string($center_action) ? trim($center_action, '/') : '';
-$centerController = new CenterController(new Center($pdo), $center_base);
+$centerModel = new Center($pdo);
+$orderModel = new Order($pdo);
+$productModel = new Product($pdo);
+$orderController = new OrderController($orderModel, $productModel, new FinanceController(new Finance($pdo)));
+$centerOrders = new CenterOrderController($centerModel, $orderModel, $productModel, $orderController, $center_base);
+$centerController = new CenterController($centerModel, $center_base, $centerOrders);
 header('Cache-Control: no-store');
 
 try {
