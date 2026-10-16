@@ -37,25 +37,39 @@ if (!isset($_SESSION['user_logged_in'])) {
     exit();
 }
 
-$ajax_routes = ['store', 'api_detail', 'api_pay', 'api_delete', 'print'];
+if ($module === 'order' || $module === 'dashboard') {
+    require_once __DIR__ . '/controllers/OrderController.php';
+    $orderController = new OrderController(
+        new Order($pdo),
+        new Product($pdo),
+        new FinanceController(new Finance($pdo))
+    );
+}
 
-if ($module === 'order' && $action === 'next-invoice') {
-    require_once 'models/Order.php';
+$order_actions = ['store', 'api_detail', 'api_pay', 'api_delete', 'print', 'next-invoice'];
+
+if ($module === 'order' && in_array($action, $order_actions, true)) {
     header('Content-Type: application/json');
 
     try {
-        echo json_encode(['inv_no' => (new Order($pdo))->getNextInvoiceNumber()]);
+        $response = $orderController->dispatch(
+            $action,
+            $_SESSION['store_id'] ?? 0,
+            $_GET,
+            file_get_contents('php://input'),
+            $_SESSION
+        );
+        echo json_encode($response, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
     } catch (Throwable $e) {
         http_response_code(500);
-        echo json_encode(['message' => 'Tidak dapat mengambil nomor invoice.']);
+        $message = $action === 'next-invoice' ? 'Tidak dapat mengambil nomor invoice.' : $e->getMessage();
+        $response = $action === 'api_delete'
+            ? ['success' => false, 'message' => $message]
+            : ['status' => 'error', 'message' => $message];
+        echo json_encode($response, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
     }
 
     exit();
-}
-
-if ($module === 'order' && in_array($action, $ajax_routes)) {
-    include "views/order/" . $action . ".php";
-    exit(); 
 }
 
 $allowed_pages = ['dashboard', 'order', 'product', 'pelanggan', 'setting', 'aruskas'];
@@ -79,8 +93,31 @@ if ($module === 'aruskas' || $module === 'dashboard') {
     extract($financeData, EXTR_SKIP);
 }
 
+if ($module === 'order') {
+    if (!isset($orderController)) {
+        require_once __DIR__ . '/controllers/OrderController.php';
+        $orderController = new OrderController(new Order($pdo), new Product($pdo), new FinanceController(new Finance($pdo)));
+    }
+
+    $orderData = $action === 'create'
+        ? $orderController->create($_SESSION['store_id'] ?? 0, $_GET)
+        : $orderController->index($_SESSION['store_id'] ?? 0, $_GET);
+
+    if ($action === 'create' && ($_GET['ajax'] ?? '') === '1') {
+        header('Content-Type: application/json');
+        echo json_encode($orderController->catalog($orderData), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+        exit();
+    }
+
+    extract($orderData, EXTR_SKIP);
+} elseif ($module === 'dashboard') {
+    extract($orderController->getDashboardData($_SESSION['store_id'] ?? 0), EXTR_SKIP);
+}
+
+$view_action = $module === 'order' && $action === 'create' ? 'create' : 'index';
+$file_path = "views/" . $module . "/" . $view_action . ".php";
+
 if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
-    $file_path = "views/" . $module . "/index.php";
     if (file_exists($file_path)) {
         include $file_path;
     }
@@ -95,7 +132,6 @@ echo '<div class="main-layout">';
     include 'views/layout/navbar.php'; 
     
     echo '<div class="content-area">'; 
-        $file_path = "views/" . $module . "/index.php";
         if (file_exists($file_path)) {
             include $file_path;
         } else {

@@ -1,29 +1,3 @@
-<?php
-
-$action = isset($url_parts[1]) ? $url_parts[1] : 'list';
-
-if ($action === 'create') {
-    include 'views/order/create.php';
-    return;
-}
-
-if ($action === 'store') {
-    include 'views/order/store.php';
-    return;
-}
-
-require_once 'models/Order.php';
-$orderModel = new Order($pdo);
-
-$start_date = isset($_GET['start']) ? $_GET['start'] : date('Y-m-01');
-$end_date = isset($_GET['end']) ? $_GET['end'] : date('Y-m-t');
-$search_query = isset($_GET['search']) ? $_GET['search'] : '';
-
-$orders = $orderModel->getOrders($start_date, $end_date, $search_query);
-
-$stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id");
-?>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <div class="page-container">
@@ -66,26 +40,6 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
             <tbody>
                 <?php if(!empty($orders)): ?>
                     <?php foreach($orders as $order): ?>
-                        <?php
-                            $stmtSum->execute(['id' => $order['id']]);
-                            $total_dibayar = (float) $stmtSum->fetchColumn();
-
-                            $sisa_tagihan = $order['total'] - $total_dibayar;
-
-                            if ($sisa_tagihan <= 0) {
-                                $status_text = 'Lunas';
-                                $badge_class = 'bg-success';
-                                $is_lunas = true;
-                            } elseif ($total_dibayar > 0) {
-                                $status_text = 'DP';
-                                $badge_class = 'bg-warning';
-                                $is_lunas = false;
-                            } else {
-                                $status_text = 'Belum Bayar';
-                                $badge_class = 'bg-danger';
-                                $is_lunas = false;
-                            }
-                        ?>
                         <tr>
                             <td class="text-semibold-primary"><?= htmlspecialchars($order['inv_no']) ?></td>
                             <td class="font-medium">
@@ -95,23 +49,15 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
                             <td class="font-semibold">Rp <?= number_format($order['total'], 0, ',', '.') ?></td>
 
                             <td class="text-center">
-                                <span class="status-badge <?= $badge_class ?>">
-                                    <?= $status_text ?>
+                                <span class="status-badge <?= htmlspecialchars($order['badge_class']) ?>">
+                                    <?= htmlspecialchars($order['status_text']) ?>
                                 </span>
                             </td>
 
-                            <td><?= date('d M Y, H:i', strtotime($order['create_at'])) ?></td>
+                            <td><?= htmlspecialchars($order['display_date']) ?></td>
                             <td>
-                                <?php
-                                    $wa_number = isset($order['nomor']) ? $order['nomor'] : '';
-                                    $wa_number = preg_replace('/[^0-9]/', '', $wa_number);
-
-                                    if (substr($wa_number, 0, 1) === '0') {
-                                        $wa_number = '62' . substr($wa_number, 1);
-                                    }
-                                ?>
                                 <div class="action-group">
-                                    <a href="https://wa.me/<?= $wa_number ?>" target="_blank" class="btn-icon bg-success" title="Chat WhatsApp Pelanggan">
+                                    <a href="https://wa.me/<?= htmlspecialchars($order['wa_number']) ?>" target="_blank" class="btn-icon bg-success" title="Chat WhatsApp Pelanggan">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M3 21l1.65 -3.8a9 9 0 1 1 3.4 2.9l-5.05 .9"></path>
                                             <path d="M9 10a.5 .5 0 0 0 1 0v-1a.5 .5 0 0 0 -1 0v1a5 5 0 0 0 5 5h1a.5 .5 0 0 0 0 -1h-1a.5 .5 0 0 0 0 1"></path>
@@ -122,12 +68,12 @@ $stmtSum = $pdo->prepare("SELECT SUM(nominal) FROM payments WHERE order_id = :id
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                                     </button>
 
-                                    <?php if($is_lunas): ?>
+                                    <?php if($order['is_lunas']): ?>
                                         <button class="btn-icon btn-disabled bg-secondary text-muted" disabled title="Sudah Lunas">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                         </button>
                                     <?php else: ?>
-                                        <button class="btn-icon bg-success" title="Bayar / DP" onclick="openPayment(<?= $order['id'] ?>, <?= $sisa_tagihan ?>)">
+                                        <button class="btn-icon bg-success" title="Bayar / DP" onclick="openPayment(<?= $order['id'] ?>, <?= $order['sisa_tagihan'] ?>)">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                                         </button>
                                     <?php endif; ?>

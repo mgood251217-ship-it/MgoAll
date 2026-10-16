@@ -2,19 +2,6 @@
 global $pdo;
 $store_id = $_SESSION['store_id'] ?? 0;
 
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE store_id = ? AND DATE(create_at) = ?");
-$stmt->execute([$store_id, $today]);
-$order_hari_ini = $stmt->fetchColumn() ?: 0;
-
-$stmt = $pdo->prepare("
-    SELECT COUNT(*)
-    FROM orders o
-    LEFT JOIN (SELECT order_id, SUM(nominal) as paid FROM payments GROUP BY order_id) p ON o.id = p.order_id
-    WHERE o.store_id = ? AND (p.paid IS NULL OR p.paid < o.total)
-");
-$stmt->execute([$store_id]);
-$order_belum_lunas = $stmt->fetchColumn() ?: 0;
-
 $stmt = $pdo->prepare("SELECT SUM(stock) as total_stok, COUNT(*) as total_produk FROM products WHERE store_id = ?");
 $stmt->execute([$store_id]);
 $stock_data = $stmt->fetch(PDO::FETCH_ASSOC);

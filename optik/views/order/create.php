@@ -1,65 +1,3 @@
-<?php
-
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-if (session_status() === PHP_SESSION_NONE) { session_start(); }
-
-global $pdo;
-if (!isset($pdo) || $pdo === null) {
-    if(file_exists('config.php')) require_once 'config.php';
-    elseif(file_exists('koneksi.php')) require_once 'koneksi.php';
-}
-
-require_once 'models/Product.php';
-if (!isset($pdo) || $pdo === null) {
-    die("<b>CRITICAL ERROR:</b> Koneksi Database (\$pdo) tidak terdeteksi.");
-}
-
-$productModel = new Product($pdo);
-$store_id = $_SESSION['store_id'] ?? 0;
-
-$limit  = 14;
-$hal    = isset($_GET['hal']) ? (int)$_GET['hal'] : 1;
-if ($hal < 1) { $hal = 1; }
-$offset = ($hal - 1) * $limit;
-
-$brand_id = isset($_GET['brand']) ? $_GET['brand'] : '';
-$search   = isset($_GET['search']) ? $_GET['search'] : '';
-
-$brands         = $productModel->getBrandsByStore($store_id);
-$total_products = $productModel->countProductsByStore($store_id, $brand_id, $search);
-$total_pages    = ceil($total_products / $limit);
-$produk_db      = $productModel->getProductsByStorePaginated($store_id, $brand_id, $search, $limit, $offset);
-
-if (!is_array($brands)) $brands = [];
-if (!is_array($produk_db)) $produk_db = [];
-
-$mapped_products = array_map(function($p) {
-    return [
-        'id' => $p['id'],
-        'code' => $p['product_code'] ?? '',
-        'name' => $p['name'] ?? '',
-        'price' => $p['price'] ?? 0,
-        'maxStock' => $p['stock'] ?? 0,
-        'img' => $p['img'] ?? '',
-        'info' => $p['info'] ?? ''
-    ];
-}, $produk_db);
-
-if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
-    while (ob_get_level()) { ob_end_clean(); }
-    header('Content-Type: application/json');
-    echo json_encode([
-        'products' => $mapped_products,
-        'total_pages' => $total_pages,
-        'current_page' => $hal
-    ]);
-    exit;
-}
-?>
-
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <div class="pos-container">
@@ -177,11 +115,11 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
     let cart = [];
     let html5QrcodeScanner = null;
 
-    let currentBrand = '<?= htmlspecialchars($brand_id) ?>';
-    let currentSearch = '<?= htmlspecialchars($search) ?>';
+    let currentBrand = <?= json_encode($brand_id, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    let currentSearch = <?= json_encode($search, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     let currentHal = <?= $hal ?>;
 
-    let globalProducts = <?= json_encode($mapped_products) ?>;
+    let globalProducts = <?= json_encode($mapped_products, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
     function formatRupiah(angka) {
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
