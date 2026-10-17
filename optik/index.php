@@ -19,6 +19,7 @@ if ($module === 'center') {
     exit();
 }
 
+require_once __DIR__ . '/config/session.php';
 require_once __DIR__ . '/controllers/AuthController.php';
 require_once __DIR__ . '/middleware/AuthMiddleware.php';
 
@@ -60,7 +61,7 @@ if ($module === 'product' && in_array($action, $product_actions, true)) {
     }
 
     try {
-        $response = $productController->dispatch($action, $_SESSION['store_id'] ?? 0, $_GET, $_POST, $_FILES, $_SERVER['REQUEST_METHOD'] ?? 'GET');
+        $response = $productController->dispatch($action, $store_id, $_GET, $_POST, $_FILES, $_SERVER['REQUEST_METHOD'] ?? 'GET');
         if (isset($response['redirect'])) {
             header('Location: ' . $response['redirect'], true, 303);
         } elseif (array_key_exists('json', $response)) {
@@ -95,10 +96,9 @@ if ($module === 'order' && in_array($action, $order_actions, true)) {
     try {
         $response = $orderController->dispatch(
             $action,
-            $_SESSION['store_id'] ?? 0,
+            $store_id,
             $_GET,
-            file_get_contents('php://input'),
-            $_SESSION
+            file_get_contents('php://input')
         );
         echo json_encode($response, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
     } catch (Throwable $e) {
@@ -121,7 +121,6 @@ if (!in_array($module, $allowed_pages)) {
 if ($module === 'aruskas' || $module === 'dashboard') {
     require_once __DIR__ . '/controllers/FinanceController.php';
     $financeController = new FinanceController(new Finance($pdo));
-    $store_id = $_SESSION['store_id'] ?? 0;
     $financeData = $module === 'aruskas'
         ? $financeController->index($store_id, $_GET, $_POST, $_SERVER['REQUEST_METHOD'] ?? 'GET')
         : $financeController->getDashboardData($store_id);
@@ -141,8 +140,8 @@ if ($module === 'order') {
     }
 
     $orderData = $action === 'create'
-        ? $orderController->create($_SESSION['store_id'] ?? 0, $_GET)
-        : $orderController->index($_SESSION['store_id'] ?? 0, $_GET);
+        ? $orderController->create($store_id, $_GET)
+        : $orderController->index($store_id, $_GET);
 
     if ($action === 'create' && ($_GET['ajax'] ?? '') === '1') {
         header('Content-Type: application/json');
@@ -152,11 +151,11 @@ if ($module === 'order') {
 
     extract($orderData, EXTR_SKIP);
 } elseif ($module === 'dashboard') {
-    extract($orderController->getDashboardData($_SESSION['store_id'] ?? 0), EXTR_SKIP);
+    extract($orderController->getDashboardData($store_id), EXTR_SKIP);
 }
 
 if ($module === 'product') {
-    $productData = $productController->index($_SESSION['store_id'] ?? 0, $_GET);
+    $productData = $productController->index($store_id, $_GET);
     if (($_GET['ajax'] ?? '') === '1') {
         header('Content-Type: application/json');
         echo json_encode($productController->catalog($productData), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
@@ -164,7 +163,7 @@ if ($module === 'product') {
     }
     extract($productData, EXTR_SKIP);
 } elseif ($module === 'dashboard') {
-    extract($productController->getDashboardData($_SESSION['store_id'] ?? 0), EXTR_SKIP);
+    extract($productController->getDashboardData($store_id), EXTR_SKIP);
 }
 
 $view_action = $module === 'order' && $action === 'create' ? 'create' : 'index';

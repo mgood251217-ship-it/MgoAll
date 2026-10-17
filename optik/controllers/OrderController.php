@@ -81,7 +81,7 @@ class OrderController {
         ];
     }
 
-    public function dispatch($action, $store_id, array $query, $body, array $session) {
+    public function dispatch($action, $store_id, array $query, $body) {
         switch ($action) {
             case 'next-invoice':
                 return ['inv_no' => $this->getNextInvoiceNumber()];
@@ -94,7 +94,7 @@ class OrderController {
             case 'api_delete':
                 return $this->delete($store_id, (int) ($query['id'] ?? 0));
             case 'print':
-                return $this->printData($store_id, (int) ($query['id'] ?? 0), $session);
+                return $this->printData($store_id, (int) ($query['id'] ?? 0));
         }
 
         throw new InvalidArgumentException('Aksi pesanan tidak tersedia.');
@@ -267,7 +267,9 @@ class OrderController {
         });
     }
 
-    public function printData($store_id, $id, array $session) {
+    public function printData($store_id, $id) {
+        global $store_name, $store_img, $store_address;
+
         $order = $this->findOrder($store_id, $id);
         $paid = (float) $order['total_dibayar'];
 
@@ -280,9 +282,9 @@ class OrderController {
                 'sisa' => (float) $order['total'] - $paid
             ],
             'store' => [
-                'name' => $session['store_name'] ?? 'OPTIK KITA',
-                'img' => $session['store_img'] ?? '',
-                'address' => $session['store_address'] ?? ''
+                'name' => $store_name,
+                'img' => $store_img,
+                'address' => $store_address
             ]
         ];
     }
