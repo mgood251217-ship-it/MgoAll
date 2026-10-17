@@ -12,14 +12,14 @@ class AuthController {
     }
 
     public function login(array $post, array &$session, $request_method = 'GET') {
-        if (!empty($session['user_logged_in'])) {
+        if (!empty($session['user_logged_in_optik'])) {
             return ['redirect' => $this->base_url . '/order'];
         }
-        if (empty($session['auth_csrf_token'])) {
-            $session['auth_csrf_token'] = bin2hex(random_bytes(32));
+        if (empty($session['auth_csrf_token_optik'])) {
+            $session['auth_csrf_token_optik'] = bin2hex(random_bytes(32));
         }
         $data = [
-            'error' => '', 'username' => '', 'csrf_token' => $session['auth_csrf_token'],
+            'error' => '', 'username' => '', 'csrf_token' => $session['auth_csrf_token_optik'],
             'login_action' => $this->base_url . '/index.php?page=login'
         ];
         if ($request_method === 'GET') {
@@ -28,7 +28,7 @@ class AuthController {
         if ($request_method !== 'POST') {
             return array_replace($data, ['status_code' => 405, 'error' => 'Metode request tidak sesuai.']);
         }
-        if (!is_string($post['csrf_token'] ?? null) || !hash_equals($session['auth_csrf_token'], $post['csrf_token'])) {
+        if (!is_string($post['csrf_token'] ?? null) || !hash_equals($session['auth_csrf_token_optik'], $post['csrf_token'])) {
             return array_replace($data, ['status_code' => 419, 'error' => 'Sesi formulir berakhir. Muat ulang halaman dan coba lagi.']);
         }
         $username = is_string($post['username'] ?? null) ? trim($post['username']) : '';
@@ -46,20 +46,20 @@ class AuthController {
         if (!$user || !is_string($user['password'] ?? null) || !password_verify($password, $user['password'])) {
             return array_replace($data, ['error' => 'Username atau password salah.']);
         }
-        $session['user_logged_in'] = true;
-        $session['user_id'] = $user['id'];
-        $session['nama_user'] = $user['name'] ?? '';
-        $session['user_img'] = $user['img'] ?? 'default-user.png';
-        $session['store_id'] = $user['store_id'];
-        $session['store_name'] = $user['store_name'] ?? '';
-        $session['store_img'] = $user['store_img'] ?? 'default-store.png';
-        $session['store_address'] = $user['store_address'] ?? '';
-        $session['auth_csrf_token'] = bin2hex(random_bytes(32));
+        $session['user_logged_in_optik'] = true;
+        $session['user_id_optik'] = $user['id'];
+        $session['user_name_optik'] = $user['name'] ?? '';
+        $session['user_img_optik'] = $user['img'] ?? 'default-user.png';
+        $session['store_id_optik'] = $user['store_id'];
+        $session['store_name_optik'] = $user['store_name'] ?? '';
+        $session['store_img_optik'] = $user['store_img'] ?? 'default-store.png';
+        $session['store_address_optik'] = $user['store_address'] ?? '';
+        $session['auth_csrf_token_optik'] = bin2hex(random_bytes(32));
         return ['redirect' => $this->base_url . '/order', 'regenerate_session' => true];
     }
 
     public function logout(array &$session) {
-        foreach (['user_logged_in', 'user_id', 'nama_user', 'user_img', 'store_id', 'store_name', 'store_img', 'store_address', 'auth_csrf_token'] as $key) {
+        foreach (['user_logged_in_optik', 'user_id_optik', 'user_name_optik', 'user_img_optik', 'store_id_optik', 'store_name_optik', 'store_img_optik', 'store_address_optik', 'auth_csrf_token_optik'] as $key) {
             unset($session[$key]);
         }
         return ['redirect' => $this->base_url . '/login', 'regenerate_session' => true];

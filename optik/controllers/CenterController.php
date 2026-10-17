@@ -16,19 +16,19 @@ class CenterController {
     }
 
     public function handle($action, array $query, array $post, array &$session, $request_method = 'GET') {
-        if (empty($session['center_csrf_token'])) {
-            $session['center_csrf_token'] = bin2hex(random_bytes(32));
+        if (empty($session['center_csrf_token_optik'])) {
+            $session['center_csrf_token_optik'] = bin2hex(random_bytes(32));
         }
 
         if ($action === 'login') {
             return $this->login($post, $session, $request_method);
         }
 
-        $admin = isset($session['center_admin']['id'])
-            ? $this->center->findById($session['center_admin']['id'])
+        $admin = isset($session['center_admin_optik']['id'])
+            ? $this->center->findById($session['center_admin_optik']['id'])
             : false;
         if (!$admin) {
-            unset($session['center_admin']);
+            unset($session['center_admin_optik']);
             return ['redirect' => $this->base_url . '/login'];
         }
 
@@ -39,12 +39,12 @@ class CenterController {
             if (!$this->validToken($post, $session)) {
                 return ['view' => 'error', 'status_code' => 419, 'error' => 'Sesi formulir berakhir. Muat ulang halaman dan coba lagi.'];
             }
-            unset($session['center_admin']);
-            $session['center_csrf_token'] = bin2hex(random_bytes(32));
+            unset($session['center_admin_optik']);
+            $session['center_csrf_token_optik'] = bin2hex(random_bytes(32));
             return ['redirect' => $this->base_url . '/login', 'regenerate_session' => true];
         }
 
-        $data = ['admin' => $admin, 'csrf_token' => $session['center_csrf_token']];
+        $data = ['admin' => $admin, 'csrf_token' => $session['center_csrf_token_optik']];
         $order_actions = ['orders', 'order', 'update-order', 'delete-order', 'update-payment', 'delete-payment'];
         $finance_actions = ['aruskas', 'cash-entry', 'save-cash-entry', 'delete-cash-entry', 'sync-aruskas'];
         if (in_array($action, array_merge($order_actions, $finance_actions), true)) {
@@ -61,10 +61,10 @@ class CenterController {
             }
             $result = $handler->handle($action, $query, $post);
             if (isset($result['redirect'], $result['notice'])) {
-                $session['center_notice'] = $result['notice'];
-            } elseif (!$writing && isset($session['center_notice'])) {
-                $result['notice'] = $session['center_notice'];
-                unset($session['center_notice']);
+                $session['center_notice_optik'] = $result['notice'];
+            } elseif (!$writing && isset($session['center_notice_optik'])) {
+                $result['notice'] = $session['center_notice_optik'];
+                unset($session['center_notice_optik']);
             }
             return $data + $result;
         }
@@ -110,14 +110,14 @@ class CenterController {
     }
 
     private function login(array $post, array &$session, $request_method) {
-        if (isset($session['center_admin']['id'])) {
-            if ($this->center->findById($session['center_admin']['id'])) {
+        if (isset($session['center_admin_optik']['id'])) {
+            if ($this->center->findById($session['center_admin_optik']['id'])) {
                 return ['redirect' => $this->base_url . '/'];
             }
-            unset($session['center_admin']);
+            unset($session['center_admin_optik']);
         }
 
-        $data = ['view' => 'login', 'error' => '', 'username' => '', 'csrf_token' => $session['center_csrf_token']];
+        $data = ['view' => 'login', 'error' => '', 'username' => '', 'csrf_token' => $session['center_csrf_token_optik']];
         if ($request_method === 'GET') {
             return $data;
         }
@@ -135,12 +135,12 @@ class CenterController {
             return array_replace($data, ['username' => $username, 'error' => 'Username atau password salah.']);
         }
 
-        $session['center_admin'] = ['id' => $account['id'], 'username' => $account['username']];
-        $session['center_csrf_token'] = bin2hex(random_bytes(32));
+        $session['center_admin_optik'] = ['id' => $account['id'], 'username' => $account['username']];
+        $session['center_csrf_token_optik'] = bin2hex(random_bytes(32));
         return ['redirect' => $this->base_url . '/', 'regenerate_session' => true];
     }
 
     private function validToken(array $post, array $session) {
-        return is_string($post['csrf_token'] ?? null) && hash_equals($session['center_csrf_token'], $post['csrf_token']);
+        return is_string($post['csrf_token'] ?? null) && hash_equals($session['center_csrf_token_optik'], $post['csrf_token']);
     }
 }

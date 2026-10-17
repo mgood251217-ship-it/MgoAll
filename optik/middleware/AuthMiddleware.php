@@ -2,11 +2,9 @@
 
 class AuthMiddleware{
     public static function authCheck(){
-        if (session_status() === PHP_SESSION_NONE){
-            session_start();
-        }
+        require_once __DIR__ . '/../config/session_start.php';
 
-        if (empty($_SESSION['user_logged_in'])){
+        if (empty($_SESSION['user_logged_in_optik'])){
             header('Location: /login');
             exit();
         }
