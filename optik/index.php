@@ -19,21 +19,32 @@ if ($module === 'center') {
     exit();
 }
 
-if ($module === 'logout') {
-    session_destroy();
-    header("Location: /login");
+require_once __DIR__ . '/controllers/AuthController.php';
+require_once __DIR__ . '/middleware/AuthMiddleware.php';
+
+if ($module === 'login' || $module === 'logout') {
+    header('Cache-Control: no-store');
+    $auth_base = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/index.php')), '/.');
+    $authController = new AuthController(new User($pdo), $auth_base);
+    $authData = $module === 'logout'
+        ? $authController->logout($_SESSION)
+        : $authController->login($_POST, $_SESSION, $_SERVER['REQUEST_METHOD'] ?? 'GET');
+
+    if (!empty($authData['regenerate_session'])) {
+        session_regenerate_id(true);
+    }
+    if (isset($authData['redirect'])) {
+        header('Location: ' . $authData['redirect'], true, ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' ? 303 : 302);
+        exit();
+    }
+    http_response_code($authData['status_code'] ?? 200);
+    extract($authData, EXTR_SKIP);
+    $styles_url = $auth_base . '/styles/pages.css?v=' . filemtime(__DIR__ . '/styles/pages.css');
+    require __DIR__ . '/login.php';
     exit();
 }
 
-if ($module === 'login') {
-    include 'login.php';
-    exit();
-}
-
-if (!isset($_SESSION['user_logged_in'])) {
-    header("Location: /login");
-    exit();
-}
+AuthMiddleware::authCheck();
 
 if ($module === 'product' || $module === 'dashboard') {
     require_once __DIR__ . '/controllers/ProductController.php';
