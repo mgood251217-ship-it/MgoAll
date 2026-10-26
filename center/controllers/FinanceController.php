@@ -83,7 +83,13 @@ class FinanceController {
         $totalOmset = $totalOffline + $totalOnline;
         $totalCash = $totalOmset - $totalTransfer;
 
-        $expQuery = "SELECT e.*, s.name as store_name FROM expenditures e JOIN stores s ON e.store_id = s.store_id WHERE e.date BETWEEN ? AND ?";
+        $expQuery = "SELECT e.*, s.name AS store_name,
+            CASE WHEN e.expenditure_category_id = 0 THEN 'Lainnya'
+                ELSE ec.name END AS expenditure_category_name
+            FROM expenditures e
+            JOIN stores s ON e.store_id = s.store_id
+            LEFT JOIN expenditure_categories ec ON ec.id = e.expenditure_category_id
+            WHERE e.date BETWEEN ? AND ?";
         $expParams = [$startDate, $endDate];
         $expTypes = "ss";
 
@@ -134,7 +140,10 @@ class FinanceController {
         }
         $stmtInc->close();
 
+        $expenditureCategories = $this->koneksi->query("SELECT id, name FROM expenditure_categories WHERE id <> 0 ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+
         return [
+            'expenditure_categories' => $expenditureCategories,
             'stores' => $stores,
             'current_store_id' => $store_id,
             'startDate' => $startDateF,
@@ -387,13 +396,24 @@ class FinanceController {
         $this->koneksi->begin_transaction();
 
         try {
-            $stmt = $this->koneksi->prepare("SELECT store_id, nominal, information, date, DATE(date) as old_date FROM expenditures WHERE expenditure_id = ?");
+            $stmt = $this->koneksi->prepare("SELECT store_id, nominal, information, date, expenditure_category_id, DATE(date) as old_date FROM expenditures WHERE expenditure_id = ?");
             $stmt->bind_param("i", $expenditure_id);
             $stmt->execute();
             $res = $stmt->get_result()->fetch_assoc();
             $stmt->close();
 
             if (!$res) throw new Exception("Data tidak ditemukan");
+
+            $category_id = filter_var($_POST['expenditure_category_id'] ?? ($res['expenditure_category_id'] ?? 0), FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+            if ($category_id === false) throw new Exception("Kategori pengeluaran tidak valid.");
+            if ($category_id > 0) {
+                $stmtCategory = $this->koneksi->prepare("SELECT id FROM expenditure_categories WHERE id = ?");
+                $stmtCategory->bind_param("i", $category_id);
+                $stmtCategory->execute();
+                $category = $stmtCategory->get_result()->fetch_assoc();
+                $stmtCategory->close();
+                if (!$category) throw new Exception("Kategori pengeluaran tidak ditemukan.");
+            }
 
             $store_id = $res['store_id'];
             $old_date = $res['old_date'];
@@ -404,6 +424,11 @@ class FinanceController {
                 $messageLog = "UBAH PENGELUARAN DARI:\nNOMINAL: " . $res['nominal'] . " => " . $nominal . "\nINFO: " . $res['information'] . " => " . $information . "\nTANGGAL: " . $res['date'] . " => " . $datetime;
             }
 
+            if ((int)($res['expenditure_category_id'] ?? 0) !== $category_id) {
+                if ($messageLog === "") $messageLog = "UBAH PENGELUARAN DARI:";
+                $messageLog .= "\nID KATEGORI: " . ($res['expenditure_category_id'] ?? 0) . " => " . $category_id;
+            }
+
             if ($messageLog != "") {
                 $title = "UBAH PENGELUARAN";
                 $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, done, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
@@ -412,8 +437,8 @@ class FinanceController {
                 $stmtAct->close();
             }
 
-            $stmtUpd = $this->koneksi->prepare("UPDATE expenditures SET nominal = ?, information = ?, date = ? WHERE expenditure_id = ?");
-            $stmtUpd->bind_param("issi", $nominal, $information, $datetime, $expenditure_id);
+            $stmtUpd = $this->koneksi->prepare("UPDATE expenditures SET nominal = ?, information = ?, date = ?, expenditure_category_id = ? WHERE expenditure_id = ?");
+            $stmtUpd->bind_param("dssii", $nominal, $information, $datetime, $category_id, $expenditure_id);
             $stmtUpd->execute();
             $stmtUpd->close();
 

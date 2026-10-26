@@ -136,6 +136,7 @@ $data = $controller->getIndexData($access);
                 <thead>
                     <tr>
                         <th>Toko</th>
+                        <th>Kategori</th>
                         <th>Keterangan</th>
                         <th class="migrated-style-9">Nominal</th>
                         <th class="migrated-style-9">Tanggal</th>
@@ -145,7 +146,7 @@ $data = $controller->getIndexData($access);
                 <tbody>
                     <?php if (empty($data['expenditures'])): ?>
                         <tr>
-                            <td class="migrated-style-10" colspan="5">Tidak ada pengeluaran ditemukan</td>
+                            <td class="migrated-style-10" colspan="6">Tidak ada pengeluaran ditemukan</td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($data['expenditures'] as $exp): 
@@ -153,6 +154,7 @@ $data = $controller->getIndexData($access);
                         ?>
                             <tr>
                                 <td><strong><?= htmlspecialchars($exp['store_name']) ?></strong></td>
+                                <td><?= htmlspecialchars($exp['expenditure_category_name'] ?? '-') ?></td>
                                 <td><?= htmlspecialchars($exp['information'] ?? '-') ?></td>
                                 <td class="text-danger migrated-style-11">
                                     Rp <?= number_format($exp['nominal'] ?? 0, 0, ',', '.') ?>
@@ -161,7 +163,7 @@ $data = $controller->getIndexData($access);
                                     <?= date('d/m/Y', strtotime($exp['date'])) ?>
                                 </td>
                                 <td class="migrated-style-13">
-                                    <button type="button" class="btn-action btn-warning me-1" onclick="openEditModal('expenditure', <?= $exp['expenditure_id'] ?>, '<?= htmlspecialchars(addslashes($exp['information'] ?? '')) ?>', <?= $exp['nominal'] ?>, '<?= $isoDateExp ?>')">
+                                    <button type="button" class="btn-action btn-warning me-1" onclick="openEditModal('expenditure', <?= $exp['expenditure_id'] ?>, '<?= htmlspecialchars(addslashes($exp['information'] ?? '')) ?>', <?= $exp['nominal'] ?>, '<?= $isoDateExp ?>', <?= (int)($exp['expenditure_category_id'] ?? 0) ?>)">
                                         <i class="fas fa-pen"></i>
                                     </button>
                                     <button type="button" class="btn-action btn-danger" onclick="deleteRecord('expenditure', <?= $exp['expenditure_id'] ?>)">
@@ -236,6 +238,16 @@ $data = $controller->getIndexData($access);
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body migrated-style-18">
+                <div class="mb-3" id="edit_category_group" hidden>
+                    <label for="edit_expenditure_category_id" class="form-label migrated-style-19">Kategori Pengeluaran</label>
+                    <select class="form-control migrated-style-20" name="expenditure_category_id" id="edit_expenditure_category_id" disabled required>
+                        <option value="" disabled>Pilih kategori pengeluaran</option>
+                        <?php foreach ($data['expenditure_categories'] as $category): ?>
+                            <option value="<?= (int)$category['id'] ?>"><?= htmlspecialchars($category['name']) ?></option>
+                        <?php endforeach; ?>
+                        <option value="0">Lainnya</option>
+                    </select>
+                </div>
                 <div class="mb-3">
                     <label class="form-label migrated-style-19">Info / Keterangan Transaksi</label>
                     <input type="text" class="form-control migrated-style-20" name="information" id="edit_information" required>
@@ -262,11 +274,15 @@ $data = $controller->getIndexData($access);
 </div>
 
 <script>
-function openEditModal(type, id, information, nominal, isoDate) {
+function openEditModal(type, id, information, nominal, isoDate, categoryId = 0) {
     document.getElementById('edit_type').value = type;
     document.getElementById('edit_information').value = information;
     document.getElementById('edit_nominal').value = nominal;
     document.getElementById('edit_date').value = isoDate;
+    const categorySelect = document.getElementById('edit_expenditure_category_id');
+    document.getElementById('edit_category_group').hidden = type !== 'expenditure';
+    categorySelect.disabled = type !== 'expenditure';
+    categorySelect.value = String(categoryId);
     
     if (type === 'expenditure') {
         document.getElementById('modalTitle').textContent = 'Edit Pengeluaran';
