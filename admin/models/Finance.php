@@ -76,7 +76,15 @@ class Finance{
     }
 
     public function getExpenditureByIntervalDate($store_id, $start_date, $end_date){
-        $stmt = $this->koneksi->prepare("SELECT * FROM expenditures WHERE store_id = ? AND date BETWEEN ? AND ? ORDER BY date ASC");
+        $stmt = $this->koneksi->prepare("
+            SELECT e.*,
+                CASE WHEN e.expenditure_category_id = 0 THEN 'Lainnya'
+                    ELSE ec.name END AS expenditure_category_name
+            FROM expenditures e
+            LEFT JOIN expenditure_categories ec ON ec.id = e.expenditure_category_id
+            WHERE e.store_id = ? AND e.date BETWEEN ? AND ?
+            ORDER BY e.date ASC
+        ");
         $stmt->bind_param("iss", $store_id, $start_date, $end_date);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -94,8 +102,8 @@ class Finance{
     }
     
     public function createExpenditure($data){
-        $stmt = $this->koneksi->prepare("INSERT INTO expenditures (store_id, information, nominal, img, date) VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("isiss", $data->store_id, $data->information, $data->nominal, $data->img, $data->date);
+        $stmt = $this->koneksi->prepare("INSERT INTO expenditures (store_id, information, nominal, img, date, expenditure_category_id) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("isissi", $data->store_id, $data->information, $data->nominal, $data->img, $data->date, $data->expenditure_category_id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;

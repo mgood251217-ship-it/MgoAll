@@ -88,6 +88,7 @@ $router->add('finance', FinanceController::class, 'finance', ['auth']);
 $router->add('create_income', FinanceController::class, 'createIncome', ['auth']);
 $router->add('update_income', FinanceController::class, 'updateIncome', ['auth']);
 $router->add('delete_income', FinanceController::class, 'deleteIncome', ['auth']);
+$router->add('expenditure_categories', FinanceController::class, 'expenditureCategories', ['auth']);
 $router->add('create_expenditure', FinanceController::class, 'createExpenditure', ['auth']);
 $router->add('update_expenditure', FinanceController::class, 'updateExpenditure', ['auth']);
 $router->add('delete_expenditure', FinanceController::class, 'deleteExpenditure', ['auth']);

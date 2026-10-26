@@ -300,6 +300,7 @@ class FinanceController {
 
         $info    = strtoupper(trim($_POST['information']));
         $nominal = $_POST['nominal'] ?? 0;
+        $expenditure_category_id = $_POST['expenditure_category_id'];
         $date = trim($_POST['date']);
 
         $storeFolder = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
@@ -339,7 +340,8 @@ class FinanceController {
             'information' => $info,
             'nominal' => $nominal,
             'img' => $pictureName,
-            'date' => $date
+            'date' => $date,
+            'expenditure_category_id' => $expenditure_category_id
         ];
         $this->financeModel->createExpenditure($data); 
 
@@ -373,93 +375,12 @@ class FinanceController {
 
     }
 
-    // public function updateExpenditure(){
-    //     if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
-    //     global $store_id;
-
-    //     $information     = strtoupper(trim($_POST['information'] ?? ''));
-    //     $nominal  = (int)($_POST['nominal'] ?? 0);
-    //     $expenditure_id  = (int)($_POST['expenditure_id'] ?? 0);
-    //     $date     = strtoupper(trim($_POST['date'] ?? date('Y-m-d')));
-
-    //     $data = (object)[
-    //         'nominal' => $nominal,
-    //         'information' => $information,
-    //         'expenditure_id' => $expenditure_id
-    //     ];
-    //     $this->financeModel->updateExpenditure($data);
-    //     $this->refreshFinance($store_id, $date);
-    //     updateStoreCache($store_id, 'finance');
-    //     updateStoreCache($store_id, 'payments');
-    //     send_json_response(true, "Berhasil Memperbarui Pengeluaran");
-    // }
-
-    // public function updateIncome(){
-    //     if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
-    //     global $store_id;
-
-    //     $information     = strtoupper(trim($_POST['information'] ?? ''));
-    //     $nominal  = (int)($_POST['nominal'] ?? 0);
-    //     $income_id  = (int)($_POST['income_id'] ?? 0);
-    //     $date     = strtoupper(trim($_POST['date'] ?? date('Y-m-d')));
-
-    //     $data = (object)[
-    //         'nominal' => $nominal,
-    //         'information' => $information,
-    //         'income_id' => $income_id
-    //     ];
-    //     $this->financeModel->updateIncome($data);
-    //     $this->refreshFinance($store_id, $date);
-    //     updateStoreCache($store_id, 'finance');
-    //     updateStoreCache($store_id, 'payments');
-    //     send_json_response(true, "Berhasil Memperbarui Pemasukan");
-    // }
-
-    // public function deleteExpenditure(){
-    //     if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
-    //     global $store_id;
-    //     global $storeName;
-
-    //     $expenditure_id = (int)($_POST['id'] ?? 0);
-    //     $start_date = $_POST['start_date_hapus'] ?? '';
-
-    //     $row = $this->financeModel->getExpenditureById($expenditure_id);
-
-    //     $uploadDir = folder($_ENV['BASE_PATH_UPLOAD'] . '/image/bukti', $storeName, $row['date']);
-
-    //     if (!empty($row['img'])) {
-    //         $imgPath = $uploadDir . $row['img'];
-    //         if (file_exists($imgPath)) {
-    //             unlink($imgPath);
-    //         }
-    //     }
-
-    //     if ($this->financeModel->deleteExpenditure($expenditure_id, $store_id)) {
-    //         $this->refreshFinance($store_id, $start_date);
-    //         updateStoreCache($store_id, 'finance');
-    //         updateStoreCache($store_id, 'payments');
-    //         send_json_response(true, 'Pengeluaran berhasil dihapus');
-    //     } else {
-    //         send_json_response(false, 'Gagal menghapus pengeluaran');
-    //     }
-    // }
-
-    // public function deleteIncome(){
-    //     if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
-    //     global $store_id;
-
-    //     $income_id = (int)($_POST['id'] ?? 0);
-    //     $start_date = $_POST['start_date_hapus'] ?? '';
-
-    //     if ($this->financeModel->deleteIncome($income_id, $store_id)) {
-    //         $this->refreshFinance($store_id, $start_date);
-    //         updateStoreCache($store_id, 'finance');
-    //         updateStoreCache($store_id, 'payments');
-    //         send_json_response(true, 'Pemasukan berhasil dihapus');
-    //     } else {
-    //         send_json_response(false, 'Gagal menghapus pemasukan');
-    //     }
-    // }
+    public function expenditureCategories(){
+        if ($this->authMiddleware->isAdminOrManager() == false) { return [];}
+        global $store_id;
+        $data = $this->koneksi->query("SELECT * FROM expenditure_categories")->fetch_all(MYSQLI_ASSOC);
+        send_json_response(true, "Sukses Mengambil data", $data);
+    }
 
 }
 ?>
