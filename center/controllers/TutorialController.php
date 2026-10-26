@@ -131,10 +131,10 @@ class TutorialController
                 throw new InvalidArgumentException('Thumbnail video belum tersedia. Pilih gambar thumbnail atau gunakan browser yang dapat membaca video tersebut.');
             }
             if ($id !== null) {
-                $stmt = $this->db->prepare('UPDATE tutorials SET title = ?, category = ?, content = ?, video_filename = ?, thumbnail_filename = ? WHERE id = ?');
+                $stmt = $this->db->prepare('UPDATE tutorials SET title = ?, category = ?, content = ?, video_filename = ?, thumbnail_filename = ?, updated_at = NOW() WHERE id = ?');
                 $stmt->bind_param('sssssi', $title, $category, $content, $filename, $thumbnailName, $id);
             } else {
-                $stmt = $this->db->prepare('INSERT INTO tutorials (title, category, content, video_filename, thumbnail_filename) VALUES (?, ?, ?, ?, ?)');
+                $stmt = $this->db->prepare('INSERT INTO tutorials (title, category, content, video_filename, thumbnail_filename, updated_at) VALUES (?, ?, ?, ?, ?, NOW())');
                 $stmt->bind_param('sssss', $title, $category, $content, $filename, $thumbnailName);
             }
             if (!$stmt->execute()) {
