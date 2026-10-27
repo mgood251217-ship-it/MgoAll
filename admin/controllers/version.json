@@ -1,19 +1,20 @@
 {
-  "version": "2.0.6",
-  "min_required_version": "2.0.0",
-  "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.6/MgoDesktop_2.0.6_x64-setup.exe",
-  "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.6/MgoDesktop_2.0.6.apk",
+  "version": "2.0.7",
+  "min_required_version": "2.0.7",
+  "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.7/MgoDesktop_2.0.7_x64-setup.exe",
+  "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.7/MgoDesktop_2.0.7.apk",
   "force_update": false,
   "release_notes": [
-    "🖨️ feat: Cetak Struk Langsung dari Transaksi Detail: Struk transaksi kini bisa langsung dicetak dari halaman Laporan Detail Transaksi.",
-    "📎 feat: Upload Lampiran Gambar di Help Center: Sekarang bisa melampirkan gambar (screenshot, foto, dll) langsung saat membuat pengajuan di Help Center.",
-    "📁 feat: Buka Folder Explorer dari Order: Satu klik untuk langsung membuka folder desain terkait sebuah order di komputer.",
-    "🧹 feat: Clear All Cache: Tersedia tombol khusus untuk membersihkan seluruh cache aplikasi sekaligus.",
-    "🔗 feat: Buka Detail Order di Tab Baru: Mengecek detail order kini bisa dibuka di tab baru tanpa kehilangan posisi di halaman utama.",
-    "💬 feat: Tooltip saat Hover Order: Arahkan kursor ke sebuah order untuk langsung melihat informasi tambahan tanpa membuka detailnya.",
-    "📱 feat: Tabel Responsif untuk Mobile: Tampilan tabel kini menyesuaikan diri secara otomatis di layar kecil.",
-    "🔄 fix: Sinkronisasi Data Lebih Akurat: Proses refresh kini mengambil data langsung dari server secara lebih konsisten.",
-    "🩹 fix: Perbaikan Data Kosong & Kegagalan Booting: Mengatasi kendala saat aplikasi menampilkan data kosong atau gagal dimuat saat pertama kali dibuka.",
-    "🖼️ update: Pembaruan Ikon Folder: Tampilan ikon folder diperbarui agar lebih jelas dan konsisten."
+    "👕 feat: Harga Kaos per Ukuran: Kini harga kaos dapat diatur berdasarkan ukuran, sehingga penetapan harga menjadi lebih fleksibel.",
+    "📖 feat: Halaman Panduan: Tersedia halaman panduan untuk membantu Anda memahami fitur dan cara menggunakan aplikasi.",
+    "🗂️ feat: Kategori Pengeluaran: Menambahkan kategori pengeluaran agar pencatatan biaya lebih rapi dan mudah ditelusuri.",
+    "📁 feat: Pengaturan Lokasi Folder Bulan & Produk: Kini lokasi folder bulan dan folder produk dapat disesuaikan melalui pengaturan aplikasi.",
+    "📊 feat: Subfolder Analisis: Menambahkan subfolder analisis untuk membantu pengelompokan berkas agar lebih terstruktur.",
+    "🩹 fix: Perbaikan Error saat Booting: Memperbaiki kendala saat aplikasi mulai dimuat yang sebelumnya terlewat dalam penanganan.",
+    "💳 update: Pembaruan Informasi Pembayaran Invoice: Informasi pembayaran pada invoice diperbarui agar lebih jelas dan mudah dipahami.",
+    "🔍 fix: Perbaikan Tampilan saat Zoom Out: Mengatasi munculnya kotak berlebih saat tampilan diperkecil, sehingga halaman tetap rapi.",
+    "📋 update: Upload File Menggunakan Salinan: Proses upload kini menyalin file, bukan memindahkannya, sehingga file asli tetap tersimpan di lokasi semula.",
+    "🎬 update: Cache Lokal untuk Video: Video kini menggunakan cache lokal untuk mengurangi pengunduhan berulang dan meringankan beban server.",
+    "🛡️ update: Penggantian reCAPTCHA dengan Rate Limiter: Verifikasi reCAPTCHA diganti dengan pembatasan jumlah permintaan untuk membantu mencegah penyalahgunaan dan mempermudah akses pengguna."
   ]
 }
