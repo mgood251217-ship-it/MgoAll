@@ -300,7 +300,7 @@ class FinanceController {
 
         $info    = strtoupper(trim($_POST['information']));
         $nominal = $_POST['nominal'] ?? 0;
-        $expenditure_category_id = $_POST['expenditure_category_id'];
+        $expenditure_category_id = $_POST['expenditure_category_id'] ?? 0;
         $date = trim($_POST['date']);
 
         $storeFolder = preg_replace('/[^a-zA-Z0-9_-]/', '_', $storeName ?? 'Toko');
