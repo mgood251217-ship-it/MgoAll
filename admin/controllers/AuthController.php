@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../functions/helpers.php';
+require_once __DIR__ . '/../functions/LoginRateLimiter.php';
 require_once __DIR__ . '/../controllers/UserController.php';
 if (!class_exists('AuthMiddleware')) {
     require_once __DIR__ . '/../middleware/AuthMiddleware.php';
@@ -89,7 +90,7 @@ class AuthController {
     }
 
     public function login() {
-        $username_input = strtolower(trim($_POST['username'])) ?? '';
+        $username_input = strtolower(trim((string)($_POST['username'] ?? '')));
         $password = $_POST['password'] ?? '';
         $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
         $address = $this->getClientIP();
@@ -102,6 +103,21 @@ class AuthController {
         $is_desktop_app = (($_SERVER['HTTP_X_CLIENT_TYPE'] ?? '') === 'desktop-app');
         $client_type = $_SERVER['HTTP_X_CLIENT_TYPE'] ?? '';
 
+        try {
+            $retryAfter = (new LoginRateLimiter())->consume($username_input, $_SERVER['REMOTE_ADDR'] ?? 'unknown');
+        } catch (Throwable $e) {
+            error_log('MGO login limiter unavailable: ' . $e->getMessage());
+            http_response_code(503);
+            send_json_response(false, 'Layanan login sementara tidak tersedia. Coba lagi nanti.');
+            exit;
+        }
+        if ($retryAfter > 0) {
+            http_response_code(429);
+            header('Retry-After: ' . $retryAfter);
+            send_json_response(false, 'Terlalu banyak percobaan login. Coba lagi dalam ' . ceil($retryAfter / 60) . ' menit.');
+            exit;
+        }
+
         if ($client_type === 'mobile-app') {
             $score_threshold = 0.1;
         } elseif ($client_type === 'desktop-app') {
@@ -110,7 +126,7 @@ class AuthController {
             $score_threshold = 0.5;
         }
 
-        if (!$is_localhost) {
+        if (!$is_localhost && !$is_desktop_app) {
             if (empty($recaptcha_response)) {
                 send_json_response(false, "reCAPTCHA tidak valid!");
                 exit;
