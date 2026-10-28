@@ -71,7 +71,9 @@ class ProductController {
             $offset = ($page - 1) * $limit;
 
             $stmt = $this->koneksi->prepare("
-                SELECT p.*, c.name AS category 
+                SELECT p.*, c.name AS category,
+                    (SELECT COUNT(*) FROM order_items oi
+                     WHERE oi.product_id = p.product_id AND oi.store_id = p.store_id) AS order_item_count
                 FROM products p
                 LEFT JOIN categories c ON p.category_id = c.category_id
                 WHERE p.store_id = ? AND p.name LIKE ? 

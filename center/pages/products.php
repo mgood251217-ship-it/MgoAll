@@ -91,17 +91,19 @@ $data = $controller->getIndexData($access);
             <thead>
                 <tr>
                     <th class="migrated-style-78">No</th>
+                    <th>Product ID</th>
                     <th>Kategori</th>
                     <th>Nama Produk</th>
                     <th>Harga</th>
                     <th>Stok</th>
+                    <th title="Jumlah baris order_items pada toko ini, bukan total quantity">Jumlah Item Order</th>
                     <th class="migrated-style-9">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($data['products'])): ?>
                     <tr>
-                        <td class="migrated-style-80" colspan="6">Tidak ada produk ditemukan</td>
+                        <td class="migrated-style-80" colspan="8">Tidak ada produk ditemukan</td>
                     </tr>
                 <?php else: ?>
                     <?php 
@@ -110,6 +112,7 @@ $data = $controller->getIndexData($access);
                     ?>
                         <tr>
                             <td><?= $no++ ?></td>
+                            <td><?= (int)$row['product_id'] ?></td>
                             <td><span class="badge-category"><?= htmlspecialchars($row['category'] ?? 'Tanpa Kategori') ?></span></td>
                             <td>
                                 <strong><?= htmlspecialchars($row['name']) ?></strong>
@@ -119,6 +122,7 @@ $data = $controller->getIndexData($access);
                             </td>
                             <td>Rp <?= number_format($row['price'] ?? 0, 0, ',', '.') ?></td>
                             <td><?= number_format($row['stock'] ?? 0, 0, ',', '.') ?></td>
+                            <td><?= number_format($row['order_item_count'] ?? 0, 0, ',', '.') ?></td>
                             <td class="migrated-style-9">
                                 <button type="button" class="btn-action btn-warning me-1"
                                     data-bs-toggle="modal" 
