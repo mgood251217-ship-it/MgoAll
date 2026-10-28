@@ -52,6 +52,130 @@ class StoreController {
         ];
     }
 
+    private function catalogQuery($sql, $params = []) {
+        $stmt = $this->koneksi->prepare($sql);
+        if (!$stmt) throw new RuntimeException('Gagal menyiapkan impor produk.');
+        if ($params) $stmt->bind_param(str_repeat('s', count($params)), ...$params);
+        if (!$stmt->execute()) {
+            $stmt->close();
+            throw new RuntimeException('Gagal menjalankan impor produk.');
+        }
+        return $stmt;
+    }
+
+    public function copyCatalogData($sourceId, $targetId, $access) {
+        if ($sourceId <= 0 || $targetId <= 0 || $sourceId === $targetId) {
+            throw new InvalidArgumentException('Pilih toko sumber dan tujuan yang berbeda.');
+        }
+        if (!$this->koneksi->begin_transaction()) throw new RuntimeException('Gagal memulai transaksi.');
+        try {
+            $stmt = $this->catalogQuery('SELECT store_id, administrator FROM stores WHERE store_id IN (?, ?) ORDER BY store_id FOR UPDATE', [$sourceId, $targetId]);
+            $stores = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+            if (count($stores) !== 2) throw new InvalidArgumentException('Toko sumber atau tujuan tidak ditemukan.');
+            foreach ($stores as $store) {
+                if ($access !== 'ALL' && ($access === '' || (string)$store['administrator'] !== (string)$access)) {
+                    throw new InvalidArgumentException('Anda tidak memiliki akses ke toko sumber atau tujuan.');
+                }
+            }
+            $source = [];
+            foreach (['categories', 'products', 'finishings'] as $table) {
+                $stmt = $this->catalogQuery("SELECT 1 FROM $table WHERE store_id = ? LIMIT 1 FOR UPDATE", [$targetId]);
+                $hasData = $stmt->get_result()->num_rows > 0;
+                $stmt->close();
+                if ($hasData) throw new InvalidArgumentException('Toko tujuan sudah memiliki kategori, produk, atau finishing. Impor dibatalkan agar tidak duplikat.');
+                $stmt = $this->catalogQuery("SELECT * FROM $table WHERE store_id = ? FOR UPDATE", [$sourceId]);
+                $source[$table] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                $stmt->close();
+            }
+            if (!array_filter($source)) throw new InvalidArgumentException('Toko sumber belum memiliki data untuk diimpor.');
+            $categoryMap = [];
+            foreach ($source['categories'] as $category) {
+                $stmt = $this->catalogQuery('INSERT INTO categories (name, store_id, created_at, updated_at) VALUES (?, ?, NOW(), NOW())', [$category['name'], $targetId]);
+                $categoryMap[$category['category_id']] = $this->koneksi->insert_id;
+                $stmt->close();
+            }
+            foreach (['products', 'finishings'] as $table) {
+                $columns = $table === 'products'
+                    ? ['category_id', 'type', 'unit_type', 'name', 'price', 'reasonable_price', 'failed_price', 'store_id', 'stock']
+                    : ['category_id', 'unit_type', 'name', 'price', 'reasonable_price', 'failed_price', 'store_id', 'stock'];
+                foreach ($source[$table] as $row) {
+                    $oldId = $row['category_id'];
+                    if ($oldId !== null && !isset($categoryMap[$oldId])) {
+                        throw new InvalidArgumentException('Kategori produk atau finishing di toko sumber tidak valid. Perbaiki relasinya terlebih dahulu.');
+                    }
+                    $row['category_id'] = $oldId === null ? null : $categoryMap[$oldId];
+                    $row['store_id'] = $targetId;
+                    $params = array_map(function ($column) use ($row) { return $row[$column]; }, $columns);
+                    $names = implode(', ', $columns);
+                    $values = implode(', ', array_fill(0, count($columns), '?'));
+                    if ($table === 'finishings') {
+                        $names .= ', created_at, updated_at';
+                        $values .= ', NOW(), NOW()';
+                    }
+                    $stmt = $this->catalogQuery("INSERT INTO $table ($names) VALUES ($values)", $params);
+                    $stmt->close();
+                }
+            }
+            if (!$this->koneksi->commit()) throw new RuntimeException('Gagal menyimpan hasil impor.');
+            return array_map('count', $source);
+        } catch (Throwable $e) {
+            $this->koneksi->rollback();
+            throw $e;
+        }
+    }
+
+    private function verifyCopyPassword($password) {
+        if (!is_string($password) || $password === '') {
+            throw new InvalidArgumentException('Masukkan sandi akun Anda.');
+        }
+        $adminId = (int)startEnk('dek', $_SESSION['admin_logged_in']['administrator_id'] ?? '');
+        $stmt = $this->koneksi->prepare('SELECT password, access FROM administrator WHERE administrator_id = ?');
+        $stmt->bind_param('i', $adminId);
+        $stmt->execute();
+        $admin = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$admin || !password_verify($password, $admin['password'])) {
+            throw new InvalidArgumentException('Sandi salah. Data tidak diimpor.');
+        }
+        return $admin['access'];
+    }
+
+    public function copyCatalog() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        require_once __DIR__ . '/../functions/helpers.php';
+        try {
+            if (empty($_SESSION['admin_logged_in']) || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+                throw new InvalidArgumentException('Silakan login kembali.');
+            }
+            if (!is_string($_POST['csrf'] ?? null) || empty($_SESSION['store_copy_csrf']) || !hash_equals($_SESSION['store_copy_csrf'], $_POST['csrf'])) {
+                throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
+            }
+            if (($_POST['confirmed'] ?? '') !== '1') {
+                throw new InvalidArgumentException('Konfirmasi impor terlebih dahulu.');
+            }
+            $access = $this->verifyCopyPassword($_POST['password'] ?? '');
+            $sourceId = filter_var($_POST['source_store_id'] ?? '', FILTER_VALIDATE_INT);
+            $targetId = filter_var($_POST['target_store_id'] ?? '', FILTER_VALIDATE_INT);
+            $counts = $this->copyCatalogData($sourceId, $targetId, $access);
+        } catch (Throwable $e) {
+            $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : 'Impor gagal. Tidak ada data yang ditambahkan; silakan coba lagi.';
+            error_log('Store catalog copy failed: ' . $e->getMessage());
+            header('Location: /stores');
+            exit;
+        }
+
+        try {
+            require_once __DIR__ . '/../functions/cacheHelper.php';
+            foreach (array_keys($counts) as $module) updateStoreCache($targetId, $module);
+        } catch (Throwable $e) {
+            error_log('Store catalog cache refresh failed: ' . $e->getMessage());
+        }
+        $_SESSION['swal_success'] = "Berhasil mengimpor {$counts['categories']} kategori, {$counts['products']} produk, dan {$counts['finishings']} finishing.";
+        header('Location: /stores');
+        exit;
+    }
+
     public function editStore() {
         if (session_status() === PHP_SESSION_NONE) session_start();
         

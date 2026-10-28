@@ -21,11 +21,13 @@ switch ($action) {
         
     case 'add_store':
     case 'edit_store':
+    case 'copy_store_catalog':
     case 'set_session':
         require_once __DIR__ . '/../controllers/StoreController.php';
         $storeController = new StoreController($koneksi);
         if ($action === 'add_store') $storeController->addStore();
         if ($action === 'edit_store') $storeController->editStore();
+        if ($action === 'copy_store_catalog') $storeController->copyCatalog();
         if ($action === 'set_session') $storeController->setSession();
         break;
 

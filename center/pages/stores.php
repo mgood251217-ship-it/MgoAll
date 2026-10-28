@@ -18,6 +18,7 @@ $controller = new StoreController($koneksi);
 $data = $controller->getIndexData($access);
 $stores = $data['stores'];
 $all_users = $data['all_users'];
+$_SESSION['store_copy_csrf'] = $_SESSION['store_copy_csrf'] ?? bin2hex(random_bytes(32));
 ?>
 
 
@@ -75,6 +76,11 @@ $all_users = $data['all_users'];
                                     data-owner-id="<?= $row['owner_id'] ?>">
                                     <i class="fas fa-pen"></i>
                                 </button>
+                                <button type="button" class="btn-action btn-kelola btn-open" data-bs-toggle="modal"
+                                    data-bs-target="#copyCatalogModal" data-store-id="<?= (int)$row['store_id'] ?>"
+                                    data-store-name="<?= htmlspecialchars($row['name'] . ' - ' . $row['branch'], ENT_QUOTES, 'UTF-8') ?>">
+                                    <i class="fas fa-file-import me-1"></i> Impor Produk
+                                </button>
                             </td>
                             <td class="migrated-style-95">
                                 <form class="kelolaForm migrated-style-96">
@@ -87,6 +93,42 @@ $all_users = $data['all_users'];
                 <?php endif; ?>
             </tbody>
         </table>
+    </div>
+</div>
+
+<div class="modal fade" id="copyCatalogModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content modal-content-custom" method="post" action="/action?action=copy_store_catalog" id="copyCatalogForm">
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['store_copy_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="target_store_id" id="copy_target_store_id">
+            <input type="hidden" name="confirmed" id="copy_confirmed" value="0">
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title-custom">Impor Produk dari Toko Lain</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body modal-body-custom">
+                <p>Toko tujuan: <strong id="copy_target_store_name"></strong></p>
+                <div class="mb-3">
+                    <label for="copy_source_store_id" class="form-label-custom">Toko sumber</label>
+                    <select id="copy_source_store_id" name="source_store_id" class="form-control-custom form-select" required>
+                        <option value="">-- Pilih Toko Sumber --</option>
+                        <?php foreach ($stores as $store): ?>
+                            <option value="<?= (int)$store['store_id'] ?>"><?= htmlspecialchars($store['name'] . ' - ' . $store['branch'], ENT_QUOTES, 'UTF-8') ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="copy_password" class="form-label-custom">Sandi akun Anda</label>
+                    <input type="password" id="copy_password" name="password" class="form-control-custom" autocomplete="current-password" required>
+                    <small>Masukkan sandi akun administrator yang sedang login.</small>
+                </div>
+                <p class="mb-0">Tambahkan kategori, produk, dan finishing dari toko sumber ke toko ini, termasuk harga dan stok. Data toko sumber tetap utuh. Toko tujuan harus belum memiliki kategori, produk, atau finishing.</p>
+            </div>
+            <div class="modal-footer modal-footer-custom">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn-primary-custom">Impor Produk</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -221,6 +263,60 @@ $all_users = $data['all_users'];
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const copyModal = document.getElementById('copyCatalogModal');
+    const copyForm = document.getElementById('copyCatalogForm');
+    copyModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        if (!button) return;
+        copyForm.reset();
+        delete copyForm.dataset.submitting;
+        const targetId = button.dataset.storeId;
+        document.getElementById('copy_target_store_id').value = targetId;
+        document.getElementById('copy_target_store_name').textContent = button.dataset.storeName;
+        const sourceSelect = document.getElementById('copy_source_store_id');
+        sourceSelect.value = '';
+        Array.from(sourceSelect.options).forEach(option => {
+            option.disabled = option.value === targetId;
+        });
+        const submit = copyForm.querySelector('button[type="submit"]');
+        submit.disabled = false;
+        submit.textContent = 'Impor Produk';
+    });
+    copyModal.addEventListener('hidden.bs.modal', function() {
+        document.getElementById('copy_password').value = '';
+        document.getElementById('copy_confirmed').value = '0';
+    });
+    copyForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        if (copyForm.dataset.submitting || !copyForm.reportValidity()) return;
+        copyForm.dataset.submitting = '1';
+        const submit = copyForm.querySelector('button[type="submit"]');
+        submit.disabled = true;
+        try {
+            const source = document.getElementById('copy_source_store_id').selectedOptions[0].textContent.trim();
+            const target = document.getElementById('copy_target_store_name').textContent;
+            const result = await Swal.fire({
+                icon: 'question',
+                title: 'Konfirmasi Impor Produk',
+                text: `Tambahkan kategori, produk, dan finishing dari ${source} ke ${target}, termasuk harga dan stok?`,
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Impor Sekarang',
+                cancelButtonText: 'Batal',
+                focusCancel: true
+            });
+            if (result.isConfirmed) {
+                document.getElementById('copy_confirmed').value = '1';
+                submit.textContent = 'Mengimpor...';
+                copyForm.submit();
+                return;
+            }
+        } finally {
+            if (document.getElementById('copy_confirmed').value !== '1') {
+                delete copyForm.dataset.submitting;
+                submit.disabled = false;
+            }
+        }
+    });
     const editModal = document.getElementById('editModal');
     if (editModal) {
         editModal.addEventListener('show.bs.modal', function(event) {
