@@ -33,14 +33,21 @@ class ProductController {
         if ($store_id === null && !empty($stores)) {
             $store_id = $stores[0]['store_id'];
         }
+        if (!in_array($store_id, array_column($stores, 'store_id'))) $store_id = null;
 
         $productsData = [];
         $finishingsData = [];
         $categories = [];
+        $migrationProducts = [];
         $totalPages = 0;
         $total = 0;
 
         if ($store_id !== null) {
+            $migrationStmt = $this->koneksi->prepare('SELECT product_id, category_id, name FROM products WHERE store_id = ? ORDER BY name, product_id');
+            $migrationStmt->bind_param('i', $store_id);
+            $migrationStmt->execute();
+            $migrationProducts = $migrationStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $migrationStmt->close();
             $catStmt = $this->koneksi->prepare("SELECT category_id, name FROM categories WHERE store_id = ? ORDER BY name ASC");
             $catStmt->bind_param("i", $store_id);
             $catStmt->execute();
@@ -116,6 +123,7 @@ class ProductController {
             'stores' => $stores,
             'current_store_id' => $store_id,
             'categories' => $categories,
+            'migration_products' => $migrationProducts,
             'current_category_id' => $category_id,
             'products' => $productsData,
             'finishings' => $finishingsData,
@@ -125,6 +133,102 @@ class ProductController {
             'search' => $search,
             'limit' => $limit
         ];
+    }
+
+    private function productReturnUrl() {
+        $filters = is_array($_POST['return_filters'] ?? null) ? $_POST['return_filters'] : [];
+        return '/products?' . http_build_query([
+            'store_id' => max(0, (int)($filters['store_id'] ?? $_POST['store_id'] ?? 0)),
+            'category_id' => max(0, (int)($filters['category_id'] ?? 0)),
+            'search' => is_string($filters['search'] ?? null) ? $filters['search'] : '',
+            'limit' => max(1, (int)($filters['limit'] ?? 25)),
+            'page' => max(1, (int)($filters['page'] ?? 1)),
+        ]);
+    }
+
+    public function migrateProduct() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $storeId = (int)($_POST['store_id'] ?? 0);
+        $sourceId = (int)($_POST['source_product_id'] ?? 0);
+        $targetId = (int)($_POST['target_product_id'] ?? 0);
+        $transaction = false;
+        $migrated = false;
+        $driver = new mysqli_driver();
+        $previousMode = $driver->report_mode;
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+        try {
+            if (empty($_SESSION['admin_logged_in']) || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+                throw new InvalidArgumentException('Silakan login kembali.');
+            }
+            if (!is_string($_POST['csrf'] ?? null) || empty($_SESSION['product_migration_csrf']) || !hash_equals($_SESSION['product_migration_csrf'], $_POST['csrf'])) {
+                throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
+            }
+            if (($_POST['confirmed'] ?? '') !== '1' || $sourceId <= 0 || $targetId <= 0 || $sourceId === $targetId || $storeId <= 0) {
+                throw new InvalidArgumentException('Pilih produk pengganti dan konfirmasi migrasi.');
+            }
+            $adminId = (int)startEnk('dek', $_SESSION['admin_logged_in']['administrator_id'] ?? '');
+            $stmt = $this->koneksi->prepare('SELECT password, access FROM administrator WHERE administrator_id = ?');
+            $stmt->bind_param('i', $adminId);
+            $stmt->execute();
+            $admin = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            $password = $_POST['password'] ?? '';
+            if (!$admin || !is_string($password) || !password_verify($password, $admin['password'])) {
+                throw new InvalidArgumentException('Sandi salah. Migrasi dibatalkan.');
+            }
+
+            $this->koneksi->begin_transaction();
+            $transaction = true;
+            $stmt = $this->koneksi->prepare('SELECT administrator FROM stores WHERE store_id = ? FOR UPDATE');
+            $stmt->bind_param('i', $storeId);
+            $stmt->execute();
+            $store = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$store || ($admin['access'] !== 'ALL' && ((string)$admin['access'] === '' || (string)$store['administrator'] !== (string)$admin['access']))) {
+                throw new InvalidArgumentException('Anda tidak memiliki akses ke toko ini.');
+            }
+            $stmt = $this->koneksi->prepare('SELECT product_id, category_id FROM products WHERE store_id = ? AND product_id IN (?, ?) ORDER BY product_id FOR UPDATE');
+            $stmt->bind_param('iii', $storeId, $sourceId, $targetId);
+            $stmt->execute();
+            $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+            if (count($products) !== 2 || $products[0]['category_id'] !== $products[1]['category_id']) {
+                throw new InvalidArgumentException('Produk sumber dan tujuan harus berada di toko dan kategori yang sama.');
+            }
+
+            // Hanya ganti referensi produk, tanpa mengubah quantity, harga, atau total nota.
+            $stmt = $this->koneksi->prepare('SELECT DISTINCT order_id FROM order_items WHERE store_id = ? AND product_id = ? FOR UPDATE');
+            $stmt->bind_param('ii', $storeId, $sourceId);
+            $stmt->execute();
+            $orders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+            $stmt = $this->koneksi->prepare('UPDATE order_items SET product_id = ? WHERE store_id = ? AND product_id = ?');
+            $stmt->bind_param('iii', $targetId, $storeId, $sourceId);
+            $stmt->execute();
+            $count = $stmt->affected_rows;
+            $stmt->close();
+            $this->koneksi->commit();
+            $transaction = false;
+            $migrated = true;
+            $_SESSION['swal_success'] = "$count item order berhasil dimigrasikan dari produk #$sourceId ke #$targetId. Produk lama tetap tersedia.";
+        } catch (Throwable $e) {
+            if ($transaction) $this->koneksi->rollback();
+            $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : 'Migrasi gagal. Perubahan dibatalkan.';
+            error_log('Product migration failed: ' . $e->getMessage());
+        } finally {
+            mysqli_report($previousMode);
+        }
+        if ($migrated) {
+            try {
+                require_once __DIR__ . '/../functions/cacheHelper.php';
+                updateStoreCache($storeId, 'orders');
+                foreach ($orders as $order) updateOrderTrigger($storeId, $order['order_id']);
+            } catch (Throwable $e) {
+                error_log('Product migration cache refresh failed: ' . $e->getMessage());
+            }
+        }
+        header('Location: ' . $this->productReturnUrl());
+        exit;
     }
 
     public function addProduct() {
@@ -182,7 +286,7 @@ class ProductController {
             $_SESSION['swal_error'] = "Toko dan nama wajib diisi.";
         }
 
-        header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "/products?store_id=" . $store_id));
+        header('Location: ' . $this->productReturnUrl());
         exit;
     }
 
@@ -221,7 +325,7 @@ class ProductController {
             $_SESSION['swal_error'] = "Nama wajib diisi.";
         }
 
-        header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "/products"));
+        header('Location: ' . $this->productReturnUrl());
         exit;
     }
 

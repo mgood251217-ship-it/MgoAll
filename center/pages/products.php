@@ -16,6 +16,19 @@ $access = isset($_SESSION['admin_logged_in']['access']) ? startEnk('dek', $_SESS
 
 $controller = new ProductController($koneksi);
 $data = $controller->getIndexData($access);
+$returnFilters = [
+    'store_id' => $data['current_store_id'],
+    'category_id' => $data['current_category_id'],
+    'search' => $data['search'],
+    'limit' => $data['limit'],
+    'page' => $data['current_page'],
+];
+$returnInputs = '';
+foreach ($returnFilters as $key => $value) {
+    $returnInputs .= '<input type="hidden" name="return_filters[' . $key . ']" value="' . htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8') . '">';
+}
+
+$_SESSION['product_migration_csrf'] = $_SESSION['product_migration_csrf'] ?? bin2hex(random_bytes(32));
 ?>
 
 
@@ -140,6 +153,12 @@ $data = $controller->getIndexData($access);
                                 <button type="button" class="btn-action btn-danger" onclick="deleteData('product', <?= $row['product_id'] ?>)">
                                     <i class="fas fa-trash"></i>
                                 </button>
+                                <button type="button" class="btn-action btn-kelola btn-open" data-bs-toggle="modal" data-bs-target="#migrateProductModal"
+                                    data-id="<?= (int)$row['product_id'] ?>" data-category="<?= htmlspecialchars((string)($row['category_id'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                    data-name="<?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>" data-count="<?= (int)$row['order_item_count'] ?>"
+                                    <?= empty($row['order_item_count']) ? 'disabled' : '' ?>>
+                                    Migrasi
+                                </button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -262,6 +281,7 @@ $data = $controller->getIndexData($access);
 <div class="modal fade" id="modalTambahProduk" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <form class="modal-content modal-content-custom" method="post" action="/action?action=add_product">
+            <?= $returnInputs ?>
             <input type="hidden" name="store_id" value="<?= htmlspecialchars($data['current_store_id']) ?>">
             <div class="modal-header modal-header-custom">
                 <h5 class="modal-title-custom">Tambah Produk Baru</h5>
@@ -318,6 +338,7 @@ $data = $controller->getIndexData($access);
 <div class="modal fade" id="modalEditProduk" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <form class="modal-content modal-content-custom" method="post" action="/action?action=edit_product">
+            <?= $returnInputs ?>
             <input type="hidden" name="product_id" id="edit_product_id">
             <div class="modal-header modal-header-custom">
                 <h5 class="modal-title-custom">Edit Produk</h5>
@@ -374,6 +395,7 @@ $data = $controller->getIndexData($access);
 <div class="modal fade" id="modalTambahFinishing" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <form class="modal-content modal-content-custom" method="post" action="/action?action=add_finishing">
+            <?= $returnInputs ?>
             <input type="hidden" name="store_id" value="<?= htmlspecialchars($data['current_store_id']) ?>">
             <div class="modal-header modal-header-custom">
                 <h5 class="modal-title-custom">Tambah Finishing Baru</h5>
@@ -430,6 +452,7 @@ $data = $controller->getIndexData($access);
 <div class="modal fade" id="modalEditFinishing" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <form class="modal-content modal-content-custom" method="post" action="/action?action=edit_finishing">
+            <?= $returnInputs ?>
             <input type="hidden" name="finishing_id" id="edit_finishing_id">
             <div class="modal-header modal-header-custom">
                 <h5 class="modal-title-custom">Edit Finishing</h5>
@@ -483,6 +506,46 @@ $data = $controller->getIndexData($access);
     </div>
 </div>
 
+<div class="modal fade" id="migrateProductModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form id="migrateProductForm" class="modal-content modal-content-custom" method="post" action="/action?action=migrate_product">
+            <?= $returnInputs ?>
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['product_migration_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="store_id" value="<?= (int)$data['current_store_id'] ?>">
+            <input type="hidden" name="source_product_id">
+            <input type="hidden" name="confirmed" value="0">
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title-custom">Migrasi Item Order</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body modal-body-custom">
+                <p id="migrationSummary"></p>
+                <div class="mb-3">
+                    <label for="migrationTarget" class="form-label-custom">Produk pengganti (kategori yang sama)</label>
+                    <select id="migrationTarget" name="target_product_id" class="form-control-custom form-select" required>
+                        <option value="">-- Pilih Produk Pengganti --</option>
+                        <?php foreach ($data['migration_products'] as $product): ?>
+                            <option value="<?= (int)$product['product_id'] ?>" data-category="<?= htmlspecialchars((string)($product['category_id'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                                #<?= (int)$product['product_id'] ?> - <?= htmlspecialchars($product['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small id="migrationEmpty" hidden>Tidak ada produk pengganti pada kategori ini.</small>
+                </div>
+                <div class="mb-3">
+                    <label for="migrationPassword" class="form-label-custom">Sandi akun Anda</label>
+                    <input id="migrationPassword" name="password" type="password" class="form-control-custom" autocomplete="current-password" required>
+                </div>
+                <p class="mb-0">Semua item order produk lama di toko ini akan memakai produk pengganti. Quantity, harga, dan total nota tetap. Produk lama tidak dihapus.</p>
+            </div>
+            <div class="modal-footer modal-footer-custom">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn-primary-custom">Migrasi</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <?php if (isset($_SESSION['swal_success'])): ?>
 <script>
     Swal.fire({
@@ -513,6 +576,56 @@ $data = $controller->getIndexData($access);
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const migrationModal = document.getElementById('migrateProductModal');
+    const migrationForm = document.getElementById('migrateProductForm');
+    const migrationTarget = document.getElementById('migrationTarget');
+    const migrationSubmit = migrationForm.querySelector('button[type="submit"]');
+    migrationModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        if (!button) return;
+        migrationForm.reset();
+        delete migrationForm.dataset.busy;
+        migrationForm.elements.source_product_id.value = button.dataset.id;
+        document.getElementById('migrationSummary').textContent = `Produk #${button.dataset.id} - ${button.dataset.name}: ${button.dataset.count} item order.`;
+        let available = 0;
+        Array.from(migrationTarget.options).forEach(option => {
+            if (!option.value) return;
+            const allowed = option.value !== button.dataset.id && option.dataset.category === button.dataset.category;
+            option.hidden = !allowed;
+            option.disabled = !allowed;
+            if (allowed) available++;
+        });
+        document.getElementById('migrationEmpty').hidden = available > 0;
+        migrationSubmit.disabled = available === 0;
+        migrationSubmit.textContent = 'Migrasi';
+    });
+    migrationModal.addEventListener('hidden.bs.modal', function() {
+        migrationForm.elements.password.value = '';
+    });
+    migrationForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        if (migrationForm.dataset.busy || !migrationForm.reportValidity()) return;
+        migrationForm.dataset.busy = '1';
+        migrationSubmit.disabled = true;
+        try {
+            const result = await Swal.fire({
+                icon: 'warning', title: 'Konfirmasi Migrasi',
+                text: `${document.getElementById('migrationSummary').textContent} Pindahkan semua item order tersebut ke ${migrationTarget.selectedOptions[0].textContent.trim()}?`,
+                showCancelButton: true, confirmButtonText: 'Ya, Migrasikan', cancelButtonText: 'Batal', focusCancel: true
+            });
+            if (result.isConfirmed) {
+                migrationForm.elements.confirmed.value = '1';
+                migrationSubmit.textContent = 'Memigrasikan...';
+                migrationForm.submit();
+                return;
+            }
+        } finally {
+            if (migrationForm.elements.confirmed.value !== '1') {
+                delete migrationForm.dataset.busy;
+                migrationSubmit.disabled = false;
+            }
+        }
+    });
     const editProdukModal = document.getElementById('modalEditProduk');
     if (editProdukModal) {
         editProdukModal.addEventListener('show.bs.modal', function(event) {

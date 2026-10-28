@@ -64,6 +64,7 @@ switch ($action) {
     case 'edit_finishing':
     case 'delete_finishing':
     case 'get_product':
+    case 'migrate_product':
     case 'get_finishing':
         require_once __DIR__ . '/../controllers/ProductController.php';
         $productController = new ProductController($koneksi);
@@ -74,6 +75,7 @@ switch ($action) {
         if ($action === 'edit_finishing') $productController->editFinishing();
         if ($action === 'delete_finishing') $productController->deleteFinishing();
         if ($action === 'get_product') $productController->getProductByCategoryId();
+        if ($action === 'migrate_product') $productController->migrateProduct();
         if ($action === 'get_finishing') $productController->getFinishingByCategoryId();
         break;
 
