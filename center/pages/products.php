@@ -38,7 +38,7 @@ $data = $controller->getIndexData($access);
     <form method="get" action="/products" class="filter-form">
         <div class="form-group migrated-style-3">
             <label for="store_id">Pilih Toko</label>
-            <select name="store_id" id="store_id" class="form-control" onchange="this.form.submit()">
+            <select name="store_id" id="store_id" class="form-control" onchange="this.form.elements.category_id.value = '0'; this.form.submit()">
                 <?php if (empty($data['stores'])): ?>
                     <option value="">Tidak ada toko tersedia</option>
                 <?php else: ?>
@@ -51,6 +51,17 @@ $data = $controller->getIndexData($access);
             </select>
         </div>
         
+        <div class="form-group migrated-style-3">
+            <label for="filter_category_id">Kategori</label>
+            <select name="category_id" id="filter_category_id" class="form-control" onchange="this.form.submit()">
+                <option value="0">Semua Kategori</option>
+                <?php foreach ($data['categories'] as $category): ?>
+                    <option value="<?= (int)$category['category_id'] ?>" <?= $data['current_category_id'] == $category['category_id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($category['name']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
         <div class="form-group migrated-style-89">
             <label for="search">Cari Data</label>
             <input type="text" name="search" id="search" class="form-control" value="<?= htmlspecialchars($data['search']) ?>" placeholder="Ketik nama produk / finishing...">

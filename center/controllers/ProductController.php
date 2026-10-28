@@ -27,6 +27,7 @@ class ProductController {
         $store_id = isset($_GET['store_id']) && $_GET['store_id'] !== '' ? (int)$_GET['store_id'] : null;
         $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
         $search = $_GET['search'] ?? '';
+        $category_id = max(0, (int)($_GET['category_id'] ?? 0));
         $limit = isset($_GET['limit']) ? max(1, (int)$_GET['limit']) : 25;
 
         if ($store_id === null && !empty($stores)) {
@@ -50,14 +51,18 @@ class ProductController {
                 }
             }
             $catStmt->close();
+            if (!in_array($category_id, array_column($categories, 'category_id'))) {
+                $category_id = 0;
+            }
 
             $search_param = "%" . $search . "%";
             $countStmt = $this->koneksi->prepare("
                 SELECT COUNT(*) 
                 FROM products 
                 WHERE store_id = ? AND name LIKE ?
+                    AND (? = 0 OR category_id = ?)
             ");
-            $countStmt->bind_param("is", $store_id, $search_param);
+            $countStmt->bind_param("isii", $store_id, $search_param, $category_id, $category_id);
             $countStmt->execute();
             $total = $countStmt->get_result()->fetch_row()[0];
             $countStmt->close();
@@ -70,10 +75,11 @@ class ProductController {
                 FROM products p
                 LEFT JOIN categories c ON p.category_id = c.category_id
                 WHERE p.store_id = ? AND p.name LIKE ? 
+                    AND (? = 0 OR p.category_id = ?)
                 ORDER BY p.product_id DESC 
                 LIMIT ? OFFSET ?
             ");
-            $stmt->bind_param("isii", $store_id, $search_param, $limit, $offset);
+            $stmt->bind_param("isiiii", $store_id, $search_param, $category_id, $category_id, $limit, $offset);
             $stmt->execute();
             
             $result = $stmt->get_result();
@@ -89,9 +95,10 @@ class ProductController {
                 FROM finishings f
                 LEFT JOIN categories c ON f.category_id = c.category_id
                 WHERE f.store_id = ? AND f.name LIKE ? 
+                    AND (? = 0 OR f.category_id = ?)
                 ORDER BY f.finishing_id DESC
             ");
-            $fStmt->bind_param("is", $store_id, $search_param);
+            $fStmt->bind_param("isii", $store_id, $search_param, $category_id, $category_id);
             $fStmt->execute();
             
             $fResult = $fStmt->get_result();
@@ -107,6 +114,7 @@ class ProductController {
             'stores' => $stores,
             'current_store_id' => $store_id,
             'categories' => $categories,
+            'current_category_id' => $category_id,
             'products' => $productsData,
             'finishings' => $finishingsData,
             'current_page' => $page,
