@@ -48,7 +48,15 @@ class ProductController {
             $migrationStmt->execute();
             $migrationProducts = $migrationStmt->get_result()->fetch_all(MYSQLI_ASSOC);
             $migrationStmt->close();
-            $catStmt = $this->koneksi->prepare("SELECT category_id, name FROM categories WHERE store_id = ? ORDER BY name ASC");
+            $catStmt = $this->koneksi->prepare("
+                SELECT c.category_id, c.name,
+                    (SELECT COUNT(*) FROM products p
+                     WHERE p.category_id = c.category_id AND p.store_id = c.store_id) AS product_count,
+                    (SELECT COUNT(*) FROM finishings f
+                     WHERE f.category_id = c.category_id AND f.store_id = c.store_id) AS finishing_count
+                FROM categories c
+                WHERE c.store_id = ? ORDER BY c.name ASC
+            ");
             $catStmt->bind_param("i", $store_id);
             $catStmt->execute();
             $catResult = $catStmt->get_result();

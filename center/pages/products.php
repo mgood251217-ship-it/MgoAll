@@ -97,7 +97,7 @@ $_SESSION['product_migration_csrf'] = $_SESSION['product_migration_csrf'] ?? bin
     </form>
 </div>
 
-<div class="table-container">
+<div class="table-container" id="daftar-produk">
     <h3 class="table-header-title"><i class="fas fa-box migrated-style-27"></i> Daftar Produk</h3>
     <div class="table-scroll">
         <table class="table-modern">
@@ -269,6 +269,51 @@ $_SESSION['product_migration_csrf'] = $_SESSION['product_migration_csrf'] ?? bin
                                 <button type="button" class="btn-action btn-danger" onclick="deleteData('finishing', <?= $row['finishing_id'] ?>)">
                                     <i class="fas fa-trash"></i>
                                 </button>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="table-container">
+    <h3 class="table-header-title"><i class="fas fa-tags migrated-style-27"></i> Daftar Kategori</h3>
+    <div class="table-scroll">
+        <table class="table-modern">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Category ID</th>
+                    <th>Nama Kategori</th>
+                    <th>Jumlah Produk</th>
+                    <th>Jumlah Finishing</th>
+                    <th class="migrated-style-9">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($data['categories'])): ?>
+                    <tr><td class="migrated-style-80" colspan="6">Tidak ada kategori pada toko ini</td></tr>
+                <?php else: ?>
+                    <?php foreach ($data['categories'] as $index => $category): ?>
+                        <?php
+                        $categoryUrl = '/products?' . http_build_query([
+                            'store_id' => $data['current_store_id'],
+                            'category_id' => $category['category_id'],
+                            'search' => $data['search'],
+                            'limit' => $data['limit'],
+                            'page' => 1,
+                        ]) . '#daftar-produk';
+                        ?>
+                        <tr>
+                            <td><?= $index + 1 ?></td>
+                            <td><?= (int)$category['category_id'] ?></td>
+                            <td><?= htmlspecialchars($category['name']) ?></td>
+                            <td><?= number_format($category['product_count'] ?? 0, 0, ',', '.') ?></td>
+                            <td><?= number_format($category['finishing_count'] ?? 0, 0, ',', '.') ?></td>
+                            <td class="migrated-style-9">
+                                <a class="btn btn-sm btn-primary" href="<?= htmlspecialchars($categoryUrl, ENT_QUOTES, 'UTF-8') ?>">Lihat Produk</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
