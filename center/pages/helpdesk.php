@@ -13,6 +13,7 @@ require_once __DIR__ . '/../controllers/HelpdeskController.php';
 
 $helpdesk = new HelpdeskController($koneksi);
 $tickets = $helpdesk->getTickets();
+$_SESSION['helpdesk_csrf'] = $_SESSION['helpdesk_csrf'] ?? bin2hex(random_bytes(32));
 
 $badgeColors = [
     'SENT' => '#0ea5e9',
@@ -62,6 +63,14 @@ $statusLabels = [
     </div>
 </div>
 
+<?php foreach (['swal_success' => 'success', 'swal_error' => 'danger'] as $key => $type): ?>
+    <?php if (isset($_SESSION[$key])): ?>
+        <div class="alert alert-<?= $type ?>" role="alert"><?= htmlspecialchars($_SESSION[$key], ENT_QUOTES, 'UTF-8') ?></div>
+        <?php unset($_SESSION[$key]); ?>
+    <?php endif; ?>
+<?php endforeach; ?>
+
+<div class="table-container"><div class="table-scroll">
 <table class="table-modern">
     <thead>
         <tr>
@@ -70,6 +79,7 @@ $statusLabels = [
             <th>Kategori</th>
             <th>Subjek</th>
             <th>Detail</th>
+            <th>Jawaban</th>
             <th>Lampiran</th>
             <th>Status</th>
             <th>Waktu</th>
@@ -105,6 +115,13 @@ $statusLabels = [
                 </td>
                 <td>
                     <div class="ticket-detail"><?= htmlspecialchars($ticket['detail'] ?? '-') ?></div>
+                </td>
+                <td>
+                    <div class="ticket-detail mb-2"><?= trim($ticket['answer'] ?? '') === '' ? '<span class="text-muted">Belum dijawab</span>' : nl2br(htmlspecialchars($ticket['answer'], ENT_QUOTES, 'UTF-8')) ?></div>
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#answerModal"
+                        data-id="<?= (int)$ticket['id'] ?>" data-answer="<?= htmlspecialchars($ticket['answer'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                        <?= trim($ticket['answer'] ?? '') === '' ? 'Tambah Jawaban' : 'Edit Jawaban' ?>
+                    </button>
                 </td>
                 <td>
                     <?php if ($pictureUrl): ?>
@@ -145,8 +162,45 @@ $statusLabels = [
         <?php endforeach; ?>
     </tbody>
 </table>
+</div></div>
+
+<div class="modal fade" id="answerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content modal-content-custom" method="post" action="/action?action=update_help_answer" id="answerForm">
+            <input type="hidden" name="id" id="answer_ticket_id">
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['helpdesk_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title-custom" id="answerTitle">Jawaban Tiket</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body modal-body-custom">
+                <label for="ticket_answer" class="form-label-custom">Jawaban</label>
+                <textarea name="answer" id="ticket_answer" class="form-control-custom" rows="6" placeholder="Tulis jawaban untuk tiket ini..."></textarea>
+            </div>
+            <div class="modal-footer modal-footer-custom">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn-primary-custom">Simpan Jawaban</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <script>
+document.getElementById('answerModal').addEventListener('show.bs.modal', function(event) {
+    const button = event.relatedTarget;
+    if (!button) return;
+    document.getElementById('answer_ticket_id').value = button.dataset.id;
+    document.getElementById('ticket_answer').value = button.dataset.answer;
+    document.getElementById('answerTitle').textContent = `Jawaban Tiket #${button.dataset.id}`;
+    const submit = document.querySelector('#answerForm button[type="submit"]');
+    submit.disabled = false;
+    submit.textContent = 'Simpan Jawaban';
+});
+document.getElementById('answerForm').addEventListener('submit', function() {
+    const submit = this.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    submit.textContent = 'Menyimpan...';
+});
 document.querySelectorAll('[data-status]').forEach(function(button) {
     button.addEventListener('click', function() {
         const form = button.closest('form');

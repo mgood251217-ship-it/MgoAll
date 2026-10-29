@@ -45,6 +45,17 @@ switch ($action) {
         if ($action === 'change_user_store') $userController->changeStore();
         break;
 
+    case 'update_help_answer':
+        require_once __DIR__ . '/../controllers/HelpdeskController.php';
+        $helpdeskController = new HelpdeskController($koneksi);
+        if ($helpdeskController->updateAnswer()) {
+            $_SESSION['swal_success'] = 'Jawaban tiket berhasil diperbarui.';
+        } else {
+            $_SESSION['swal_error'] = 'Gagal memperbarui jawaban tiket. Muat ulang halaman dan coba lagi.';
+        }
+        header('Location: /helpdesk');
+        exit;
+
     case 'update_help_status':
         require_once __DIR__ . '/../controllers/HelpdeskController.php';
         $helpdeskController = new HelpdeskController($koneksi);

@@ -14,6 +14,7 @@ class HelpdeskController {
                 hc.category,
                 hc.subject,
                 hc.detail,
+                hc.answer,
                 hc.status,
                 hc.datetime,
                 hc.picture,
@@ -38,6 +39,35 @@ class HelpdeskController {
         }
 
         return $tickets;
+    }
+
+    public function updateAnswer() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        if (empty($_SESSION['admin_logged_in']) || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') return false;
+        if (!is_string($_POST['csrf'] ?? null) || empty($_SESSION['helpdesk_csrf']) || !hash_equals($_SESSION['helpdesk_csrf'], $_POST['csrf'])) return false;
+
+        $id = (int)($_POST['id'] ?? 0);
+        $answer = $_POST['answer'] ?? null;
+        if ($id <= 0 || !is_string($answer)) return false;
+        $answer = trim($answer);
+
+        try {
+            $stmt = $this->koneksi->prepare('SELECT id FROM help_center WHERE id = ?');
+            $stmt->bind_param('i', $id);
+            $stmt->execute();
+            $exists = $stmt->get_result()->num_rows > 0;
+            $stmt->close();
+            if (!$exists) return false;
+
+            $stmt = $this->koneksi->prepare('UPDATE help_center SET answer = ? WHERE id = ?');
+            $stmt->bind_param('si', $answer, $id);
+            $success = $stmt->execute();
+            $stmt->close();
+            return $success;
+        } catch (Throwable $e) {
+            error_log('Helpdesk answer update failed: ' . $e->getMessage());
+            return false;
+        }
     }
 
     public function updateStatus() {
