@@ -25,14 +25,7 @@ class AuthMiddleware {
     }
 
     public function initSession() {
-        ini_set('session.cookie_domain', '.mgood.my.id'); 
-        ini_set('session.cookie_samesite', 'None');
-        ini_set('session.cookie_secure', 1);
-        ini_set('session.cookie_httponly', 1);
-
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        startAdminSession();
     }
 
     public function hasValidSession() {
@@ -171,14 +164,7 @@ class AuthMiddleware {
         session_unset();
         session_destroy();
         
-        $clearOptions = [
-            'expires'  => time() - 3600,
-            'path'     => '/',
-            'domain'   => '.mgood.my.id',
-            'secure'   => true,
-            'httponly' => true,
-            'samesite' => 'None',
-        ];
+        $clearOptions = ['expires' => time() - 3600] + adminCookieOptions();
         $cookiesToClear = ['user_user_id', 'user_username', 'user_name', 'user_initial', 'user_store_id', 'user_role', 'user_foto', 'store_name', 'store_address', 'store_logo', 'user_mode', 'user_auth_sig', session_name()];
         foreach ($cookiesToClear as $c) {
             if (isset($_COOKIE[$c])) {

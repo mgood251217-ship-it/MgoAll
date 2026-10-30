@@ -1,4 +1,24 @@
 <?php
+function adminCookieOptions() {
+    $host = strtolower((string)parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST));
+    $production = $host === 'mgood.my.id' || str_ends_with($host, '.mgood.my.id');
+    $https = !empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off';
+    return [
+        'path' => '/',
+        'domain' => $production ? '.mgood.my.id' : '',
+        'secure' => $production || $https,
+        'httponly' => true,
+        'samesite' => ($production || $https) ? 'None' : 'Lax',
+    ];
+}
+
+function startAdminSession() {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_set_cookie_params(['lifetime' => 0] + adminCookieOptions());
+        session_start();
+    }
+}
+
 function sanitize($data) {
     return htmlspecialchars(strip_tags(trim($data)), ENT_QUOTES, 'UTF-8');
 }

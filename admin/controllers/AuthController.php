@@ -68,6 +68,7 @@ class AuthController {
     }
 
     public static function checkSession() {
+        startAdminSession();
         if (isset($_SESSION['user']['user_id']) &&
             isset($_SESSION['user']['store_id']) &&
             isset($_SESSION['user']['role']) &&
@@ -233,27 +234,18 @@ class AuthController {
     }
 
     public static function logout() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        startAdminSession();
         session_unset();
         session_destroy();
 
         $cookies_to_delete = [
             'user_user_id', 'user_username', 'user_name', 'user_initial', 
             'user_store_id', 'user_role', 'user_foto', 'store_name', 
-            'user_auth_sig',
+            'user_auth_sig', session_name(),
             'store_address', 'store_logo', 'user_mode'
         ];
         
-        $options = [
-            'expires'  => time() - (86400 * 365),
-            'path'     => '/',
-            'domain'   => '.mgood.my.id',
-            'secure'   => true,
-            'httponly' => true,
-            'samesite' => 'None',
-        ];
+        $options = ['expires' => time() - (86400 * 365)] + adminCookieOptions();
 
         foreach ($cookies_to_delete as $cookie_name) {
             if (isset($_COOKIE[$cookie_name])) {
@@ -317,21 +309,8 @@ class AuthController {
     }
 
     private function setInfo($user, $dataStore) {
-        if (session_status() === PHP_SESSION_NONE) {
-            ini_set('session.cookie_domain', '.mgood.my.id');
-            ini_set('session.cookie_samesite', 'None');
-            ini_set('session.cookie_secure', 1);
-            ini_set('session.cookie_httponly', 1);
-            session_start();
-        }
-
-        session_destroy();
-
-        ini_set('session.cookie_domain', '.mgood.my.id');
-        ini_set('session.cookie_samesite', 'None');
-        ini_set('session.cookie_secure', 1);
-        ini_set('session.cookie_httponly', 1);
-        session_start();
+        startAdminSession();
+        $_SESSION = [];
         session_regenerate_id(true);
 
         $encryptedData = $this->buildEncryptedUserData($user, $dataStore);
@@ -372,14 +351,7 @@ class AuthController {
     private function setUserCookie($encryptedData) {
         $expire = time() + (1 * 24 * 60 * 60);
 
-        $options = [
-            'expires'  => $expire,
-            'path'     => '/',
-            'domain'   => '.mgood.my.id',
-            'secure'   => true,
-            'httponly' => true,
-            'samesite' => 'None',
-        ];
+        $options = ['expires' => $expire] + adminCookieOptions();
 
         $cookieNameMap = [
             'user_id'       => 'user_user_id',
