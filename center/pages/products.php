@@ -16,6 +16,7 @@ $access = isset($_SESSION['admin_logged_in']['access']) ? startEnk('dek', $_SESS
 
 $controller = new ProductController($koneksi);
 $data = $controller->getIndexData($access);
+$_SESSION['category_csrf'] = $_SESSION['category_csrf'] ?? bin2hex(random_bytes(32));
 $returnFilters = [
     'store_id' => $data['current_store_id'],
     'category_id' => $data['current_category_id'],
@@ -37,6 +38,9 @@ $_SESSION['product_migration_csrf'] = $_SESSION['product_migration_csrf'] ?? bin
     <h2>Data Produk & Finishing</h2>
     <div class="migrated-style-88">
         <?php if ($data['current_store_id']): ?>
+            <button class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalTambahKategori">
+                <i class="fas fa-tags"></i> Tambah Kategori
+            </button>
             <button class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalTambahProduk">
                 <i class="fas fa-box"></i> Tambah Produk
             </button>
@@ -320,6 +324,33 @@ $_SESSION['product_migration_csrf'] = $_SESSION['product_migration_csrf'] ?? bin
                 <?php endif; ?>
             </tbody>
         </table>
+    </div>
+</div>
+
+<div class="modal fade" id="modalTambahKategori" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content modal-content-custom" method="post" action="/action?action=add_category" id="addCategoryForm">
+            <?= $returnInputs ?>
+            <input type="hidden" name="store_id" value="<?= (int)$data['current_store_id'] ?>">
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['category_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title-custom">Tambah Kategori</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body modal-body-custom">
+                <?php foreach ($data['stores'] as $store): ?>
+                    <?php if ($store['store_id'] == $data['current_store_id']): ?>
+                        <p>Toko: <strong><?= htmlspecialchars($store['name']) ?></strong></p>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+                <label for="new_category_name" class="form-label-custom">Nama Kategori</label>
+                <input type="text" name="name" id="new_category_name" class="form-control-custom" placeholder="Masukkan nama kategori" required>
+            </div>
+            <div class="modal-footer modal-footer-custom">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn-primary-custom">Simpan Kategori</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -621,6 +652,11 @@ $_SESSION['product_migration_csrf'] = $_SESSION['product_migration_csrf'] ?? bin
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('addCategoryForm').addEventListener('submit', function() {
+        const button = this.querySelector('button[type="submit"]');
+        button.disabled = true;
+        button.textContent = 'Menyimpan...';
+    });
     const migrationModal = document.getElementById('migrateProductModal');
     const migrationForm = document.getElementById('migrateProductForm');
     const migrationTarget = document.getElementById('migrationTarget');

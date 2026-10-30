@@ -69,6 +69,7 @@ switch ($action) {
         break;
 
     case 'add_product':
+    case 'add_category':
     case 'edit_product':
     case 'delete_product':
     case 'add_finishing':
@@ -80,6 +81,7 @@ switch ($action) {
         require_once __DIR__ . '/../controllers/ProductController.php';
         $productController = new ProductController($koneksi);
         if ($action === 'add_product') $productController->addProduct();
+        if ($action === 'add_category') $productController->addCategory();
         if ($action === 'edit_product') $productController->editProduct();
         if ($action === 'delete_product') $productController->deleteProduct();
         if ($action === 'add_finishing') $productController->addFinishing();

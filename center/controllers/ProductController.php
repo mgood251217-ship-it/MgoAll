@@ -239,6 +239,68 @@ class ProductController {
         exit;
     }
 
+    public function addCategory() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $storeId = (int)($_POST['store_id'] ?? 0);
+        $name = is_string($_POST['name'] ?? null) ? trim($_POST['name']) : '';
+        $transaction = false;
+        $saved = false;
+        $driver = new mysqli_driver();
+        $previousMode = $driver->report_mode;
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+        try {
+            if (empty($_SESSION['admin_logged_in']) || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+                throw new InvalidArgumentException('Silakan login kembali.');
+            }
+            if (!is_string($_POST['csrf'] ?? null) || empty($_SESSION['category_csrf']) || !hash_equals($_SESSION['category_csrf'], $_POST['csrf'])) {
+                throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
+            }
+            if ($storeId <= 0 || $name === '') throw new InvalidArgumentException('Toko dan nama kategori wajib diisi.');
+            $access = startEnk('dek', $_SESSION['admin_logged_in']['access'] ?? '');
+            $this->koneksi->begin_transaction();
+            $transaction = true;
+            $stmt = $this->koneksi->prepare('SELECT administrator FROM stores WHERE store_id = ? FOR UPDATE');
+            $stmt->bind_param('i', $storeId);
+            $stmt->execute();
+            $store = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$store || ($access !== 'ALL' && ((string)$access === '' || (string)$store['administrator'] !== (string)$access))) {
+                throw new InvalidArgumentException('Anda tidak memiliki akses ke toko ini.');
+            }
+            $stmt = $this->koneksi->prepare('SELECT category_id FROM categories WHERE store_id = ? AND LOWER(TRIM(name)) = LOWER(?) LIMIT 1');
+            $stmt->bind_param('is', $storeId, $name);
+            $stmt->execute();
+            $exists = $stmt->get_result()->num_rows > 0;
+            $stmt->close();
+            if ($exists) throw new InvalidArgumentException('Nama kategori sudah ada di toko ini.');
+
+            $stmt = $this->koneksi->prepare('INSERT INTO categories (name, store_id, created_at, updated_at) VALUES (?, ?, NOW(), NOW())');
+            $stmt->bind_param('si', $name, $storeId);
+            $stmt->execute();
+            $stmt->close();
+            $this->koneksi->commit();
+            $transaction = false;
+            $saved = true;
+            $_SESSION['swal_success'] = 'Kategori berhasil ditambahkan.';
+        } catch (Throwable $e) {
+            if ($transaction) $this->koneksi->rollback();
+            $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : 'Gagal menambahkan kategori.';
+            error_log('Add category failed: ' . $e->getMessage());
+        } finally {
+            mysqli_report($previousMode);
+        }
+        if ($saved) {
+            try {
+                require_once __DIR__ . '/../functions/cacheHelper.php';
+                updateStoreCache($storeId, 'categories');
+            } catch (Throwable $e) {
+                error_log('Category cache refresh failed: ' . $e->getMessage());
+            }
+        }
+        header('Location: ' . $this->productReturnUrl());
+        exit;
+    }
+
     public function addProduct() {
         if (session_status() === PHP_SESSION_NONE) session_start();
         $this->saveData('products', 'product');
