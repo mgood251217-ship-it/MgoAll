@@ -601,7 +601,7 @@ class OrderController {
             $unit_type = $product['unit_type'] ?? '';
 
             if ($unit_type === 'M2') {
-                $unit *= ($category === 'DTF') ? $panjang : ($panjang * $lebar);
+                $unit *= ($category === 'DTF' || $category === 'DTF UV') ? $panjang : ($panjang * $lebar);
             }
 
             if ($unit_type === 'CM2') {
