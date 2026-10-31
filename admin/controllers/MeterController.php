@@ -10,20 +10,10 @@ require_once __DIR__ . '/../functions/helpers.php';
 class MeterController {
     private $koneksi;
     private $orderModel;
-    private $userModel;
-    private $projectModel;
-    private $productModel;
-    private $paymentModel;
-    private $activityModel;
 
     public function __construct($koneksi) {
         $this->koneksi = $koneksi;
         $this->orderModel = new Order($koneksi);
-        $this->userModel = new User($koneksi);
-        $this->projectModel = new Project($koneksi);
-        $this->productModel = new Product($koneksi);
-        $this->paymentModel = new Payment($koneksi);
-        $this->activityModel = new Activity($koneksi);
     }
 
     public function getOrderIds(){
@@ -720,15 +710,12 @@ class MeterController {
         $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
         $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
 
-        $dtf_biasa_names = ['DTF', 'DTF A3', 'DTF TEBAL', 'DTF 28'];
-        $dtf_uv_names = ['DTF UV GLOSSY', 'DTF UV DOFF', 'DTF UV A3'];
-
         $data_assoc = [];
         $total_panjang_dtf = 0;
         $total_panjang_dtf_uv = 0;
 
         $queryStr = "
-            SELECT p.product_id, p.name, oi_filtered.size, oi_filtered.quantity 
+            SELECT p.product_id, p.name, c.name AS category_name, oi_filtered.size, oi_filtered.quantity 
             FROM products p 
             JOIN categories c ON p.category_id = c.category_id
             LEFT JOIN (
@@ -737,7 +724,7 @@ class MeterController {
                 JOIN orders o ON oi.order_id = o.order_id
                 WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
             ) oi_filtered ON p.product_id = oi_filtered.product_id
-            WHERE c.name = 'DTF' AND p.store_id = ?
+            WHERE c.name IN ('DTF', 'DTF UV') AND p.store_id = ?
         ";
 
         $stmt = $this->koneksi->prepare($queryStr);
@@ -750,12 +737,9 @@ class MeterController {
             $name = $row['name'];
             $name_upper = strtoupper($name);
             
-            $isA3 = ($name_upper === 'DTF A3' || str_contains($name_upper, 'KAOS'));
-            $isUV = in_array($name_upper, $dtf_uv_names);
-            $isUV_A3 = ($name_upper === 'DTF UV A3');
-            $isDTFBiasa = (in_array($name_upper, $dtf_biasa_names) || (strtok($name_upper, ' ') == 'DTF' && !str_contains($name_upper, 'UV')));
-
-            if (!$isDTFBiasa && !$isUV) continue;
+            $isUV = strtoupper(trim($row['category_name'])) === 'DTF UV';
+            $isA3 = !$isUV && ($name_upper === 'DTF A3' || str_contains($name_upper, 'KAOS'));
+            $isUV_A3 = $isUV && ($name_upper === 'DTF UV A3');
 
             if (!isset($data_assoc[$name])) {
                 $data_assoc[$name] = [
