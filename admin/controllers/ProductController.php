@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../models/Product.php';
+require_once __DIR__ . '/../models/ProductFinishingPrice.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../functions/cacheHelpers.php';
@@ -7,9 +8,11 @@ require_once __DIR__ . '/../functions/cacheHelpers.php';
 class ProductController {
     private $productModel;
     private $authMiddleware;
+    private $packagePrices;
 
     public function __construct($koneksi) {
         $this->productModel = new Product($koneksi);
+        $this->packagePrices = new ProductFinishingPrice($koneksi);
         $this->authMiddleware = new AuthMiddleware($koneksi);
     }
 
@@ -51,6 +54,16 @@ class ProductController {
         global $store_id;
         $finishings = $this->productModel->getFinishingByStoreId($store_id);
         send_json_response(true, 'Finishings retrieved successfully.', $finishings);
+    }
+
+    public function getProductFinishingPrices() {
+        global $store_id;
+        $category_id = max(0, (int)($_GET['category_id'] ?? 0));
+        $rows = $this->packagePrices->getByStore($store_id, $category_id, false);
+        // Kompatibilitas MgoApp lama: semua paket langsung aktif, tanpa kolom active di tabel.
+        foreach ($rows as &$row) $row['active'] = 1;
+        unset($row);
+        send_json_response(true, 'Harga paket', $rows);
     }
 
     public function getCategory() {

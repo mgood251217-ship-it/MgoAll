@@ -186,6 +186,12 @@ if (isset($_GET['ajax_payment'])) {
                     <div class="migrated-style-37" id="finishing"></div>
                 </div>
 
+                <div class="form-group" id="packageSizeRow" style="display:none">
+                    <label for="packageSize">Ukuran Paket</label>
+                    <select id="packageSize" class="form-control"></select>
+                    <small>Harga per set sudah termasuk bahan dan finishing.</small>
+                </div>
+
                 <div class="form-group migrated-style-38">
                     <label class="migrated-style-39">
                         <input class="migrated-style-40" type="checkbox" id="enableDiskon">
@@ -279,6 +285,7 @@ window.sisaTagihanGlobal = 0;
 document.addEventListener('DOMContentLoaded', function () {
     const store_id = <?= (int) $store_id ?>;
     let ukuranMap = {};
+    let packageRules = [];
 
     const elKategori = document.getElementById('kategori');
     const elJudul = document.getElementById('judul');
@@ -297,6 +304,50 @@ document.addEventListener('DOMContentLoaded', function () {
     const elKiloan = document.getElementById('kiloan');
     const elWaktu = document.getElementById('waktu');
     const size = document.getElementById('ukuranDropdown');
+    const packageSize = document.getElementById('packageSize');
+
+    function updatePackageView() {
+        const productRules = packageRules.filter(rule => Number(rule.valid) === 1 && String(rule.product_id) === String(elJudul.value));
+        const mappedIds = new Set(packageRules.map(rule => String(rule.finishing_id)));
+        const checkboxes = Array.from(document.querySelectorAll('.finishing-checkbox'));
+        checkboxes.forEach(cb => {
+            const packageOnly = mappedIds.has(cb.value) || (['INDOOR', 'OUTDOOR'].includes(getKategoriName()) && ['XBANNER', 'ROLLUP'].includes(cb.dataset.name.trim().toUpperCase()) && Number(cb.dataset.price) === 0);
+            const available = !packageOnly || productRules.some(rule => String(rule.finishing_id) === cb.value);
+            cb.closest('label').style.display = available ? '' : 'none';
+            if (!available) cb.checked = false;
+        });
+        const checked = checkboxes.filter(cb => cb.checked).map(cb => cb.value);
+        const choices = productRules.filter(rule => checked.includes(String(rule.finishing_id)));
+        const hasPackage = choices.length > 0;
+        const requiresPackageSize = choices.some(rule => Number(rule.panjang) > 0 && Number(rule.lebar) > 0);
+        document.getElementById('packageSizeRow').style.display = hasPackage && requiresPackageSize ? '' : 'none';
+        packageSize.required = hasPackage && requiresPackageSize;
+        packageSize.replaceChildren(new Option('Pilih ukuran paket', ''));
+        choices.forEach(rule => packageSize.add(new Option(`${Number(rule.panjang) > 0 && Number(rule.lebar) > 0 ? `${Number(rule.panjang)} × ${Number(rule.lebar)} m` : 'Tanpa ukuran'} — Rp${Number(rule.price).toLocaleString('id-ID')}/set`, String(rule.id))));
+        if (hasPackage) {
+            const rule = choices.find(row => Number(row.panjang) === Number(elPanjang.value) && Number(row.lebar) === Number(elLebar.value))
+                || (choices.length === 1 ? choices[0] : null);
+            if (rule) {
+                packageSize.value = String(rule.id);
+                elPanjang.value = requiresPackageSize ? Number(rule.panjang) : '';
+                elLebar.value = requiresPackageSize ? Number(rule.lebar) : '';
+            } else {
+                elPanjang.value = '';
+                elLebar.value = '';
+            }
+        }
+        elPanjang.readOnly = hasPackage;
+        elLebar.readOnly = hasPackage || ['DTF', 'DTF UV'].includes(getKategoriName());
+    }
+
+    packageSize.addEventListener('change', () => {
+        const rule = packageRules.find(row => String(row.id) === packageSize.value);
+        if (rule) {
+            elPanjang.value = Number(rule.panjang) > 0 ? Number(rule.panjang) : '';
+            elLebar.value = Number(rule.lebar) > 0 ? Number(rule.lebar) : '';
+        }
+        updatePricePreview();
+    });
 
     function setValueAndDispatch(el, value) {
         if (!el) return;
@@ -424,14 +475,21 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function loadFinishingOptions(kategori) {
+        packageRules = [];
+        document.getElementById('packageSizeRow').style.display = 'none';
+        packageSize.required = false;
         if (elFinishing) {
             elFinishing.innerHTML = '';
         }
 
         if (kategori) {
-            fetch(`/action?action=get_finishing&category_id=${encodeURIComponent(kategori)}`)
-                .then(response => response.json())
-                .then(data => {
+            Promise.all([
+                fetch(`/action?action=get_finishing&category_id=${encodeURIComponent(kategori)}`).then(response => response.json()),
+                fetch(`/action?action=get_product_finishing_prices&category_id=${encodeURIComponent(kategori)}&store_id=${store_id}`)
+                    .then(response => response.json()).catch(() => ({ data: [] }))
+            ]).then(([data, packages]) => {
+                    if (String(elKategori.value) !== String(kategori)) return;
+                    packageRules = Array.isArray(packages.data) ? packages.data : [];
                     if (!data.data) return;
 
                     const seenFinishing = new Set();
@@ -446,6 +504,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             `);
                         }
                     });
+                    updatePackageView();
                 });
         }
     }
@@ -613,7 +672,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
     document.addEventListener('change', (e) => {
-        if (e.target.classList.contains('finishing-checkbox')) updatePricePreview();
+        if (e.target.classList.contains('finishing-checkbox')) {
+            const mappedIds = new Set(packageRules.map(rule => String(rule.finishing_id)));
+            if (e.target.checked) {
+                document.querySelectorAll('.finishing-checkbox:checked').forEach(cb => {
+                    if (cb !== e.target && (mappedIds.has(e.target.value) || mappedIds.has(cb.value))) cb.checked = false;
+                });
+            }
+            updatePackageView();
+            updatePricePreview();
+        }
+    });
+    elJudul.addEventListener('change', () => {
+        const mappedIds = new Set(packageRules.map(rule => String(rule.finishing_id)));
+        document.querySelectorAll('.finishing-checkbox').forEach(cb => {
+            if (mappedIds.has(cb.value)) cb.checked = false;
+        });
+        updatePackageView();
+        updatePricePreview();
     });
 
     if (elEnableDiskon) {
@@ -769,6 +845,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (elPanjang) elPanjang.value = sizeParts[0];
                     if (elLebar) elLebar.value = sizeParts[1];
                 }
+
+                updatePackageView();
 
                 updatePricePreview();
 

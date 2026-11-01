@@ -1,15 +1,18 @@
 <?php
+require_once __DIR__ . '/../../admin/models/ProductFinishingPrice.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../functions/cacheHelper.php';
 require_once 'ProductController.php';
 require_once 'PaymentController.php';
 class OrderController {
     private $koneksi;
+    private $packagePrices;
     private $productController;
     private $paymentController;
 
     public function __construct($db) {
         $this->koneksi = $db;
+        $this->packagePrices = new ProductFinishingPrice($db);
         $this->productController = new ProductController($db);
         $this->paymentController = new PaymentController($db);
     }
@@ -457,7 +460,7 @@ class OrderController {
             
             $is_outdoor = (($type === 'OUTDOOR' || ($type === 'SUBLIM' && $unit_type == 'M2')) && $product_name != 'ONEWAY');
 
-            if ($is_outdoor) {
+            if ($is_outdoor && empty($row['product_finishing_price_id'])) {
                 $pid = $row['product_id'];
                 
                 if (!isset($outdoorGroups[$pid])) {
@@ -536,6 +539,9 @@ class OrderController {
         if (!$product) {
             return ['error' => 'Produk tidak ditemukan', 'status' => 404];
         }
+        if ((int)$product['store_id'] !== (int)$store_id) {
+            return ['error' => 'Produk bukan milik toko ini', 'status' => 400];
+        }
 
         if ($product['category'] === 'PAKET INDOOR OUTDOOR') {
             $nama_pencarian = trim($judul . ' ' . $size);
@@ -549,12 +555,22 @@ class OrderController {
             }
         }
 
-        $diskonInput = (int)($data['diskon'] ?? 0);
-        $diskon = $this->discount($order_id, $product_id, $diskonInput);
-
         $finishing = trim($data['finishing'] ?? '-');
+        try {
+            $package = $product['category'] === 'PAKET INDOOR OUTDOOR' ? null
+                : $this->packagePrices->resolve($store_id, $product_id, $finishing, $panjang, $lebar);
+        } catch (InvalidArgumentException $e) {
+            return ['error' => $e->getMessage(), 'status' => 400];
+        }
+        $diskonInput = (int)($data['diskon'] ?? 0);
+        // Diskon paket dihitung per set; tidak mengubah diskon bahan per meter.
+        $diskon = $package ? max(0, $diskonInput) : $this->discount($order_id, $product_id, $diskonInput);
         $waktu = (float)($data['waktu'] ?? 0);
         $kiloan = (float)($data['kiloan'] ?? 0);
+        if ($package && empty($package['requires_size'])) {
+            $panjang = $lebar = $kiloan = $waktu = 0;
+            $size = '-';
+        }
 
         $stok_butuh = 0;
         if ($product['category'] === 'DTF' && $panjang > 0) {
@@ -567,7 +583,13 @@ class OrderController {
             $stok_butuh = $quantity;
         }
 
-        $fData = $this->finishingData($finishing, $panjang, $lebar);
+        $fData = $package ? [
+            'ids' => [(int)$package['finishing_id']],
+            'price' => 0,
+            'stocks' => $package['finishing_unit_type'] === '~' ? [] : [[
+                'finishing_id' => (int)$package['finishing_id'], 'qty' => 1
+            ]],
+        ] : $this->finishingData($finishing, $panjang, $lebar);
         $finishing_ids = $fData['ids'] ?? [];
         $finishing_price = $fData['price'] ?? 0;
         $finishing_str = count($finishing_ids) ? implode(',', $finishing_ids) : '-';
@@ -583,7 +605,8 @@ class OrderController {
         }
 
         $base_unit_price = $product['price'] - $diskon;
-        $pricing = $this->calculatePricingDetails($product, $base_unit_price, $finishing_price, $quantity, $panjang, $lebar, $waktu, $kiloan, $size);
+        $pricing = $package ? ProductFinishingPrice::calculate($package, $quantity, $diskon)
+            : $this->calculatePricingDetails($product, $base_unit_price, $finishing_price, $quantity, $panjang, $lebar, $waktu, $kiloan, $size);
 
         $unit = is_array($pricing) ? ($pricing['unit'] ?? 0) : ($pricing->unit ?? 0);
         $amount = is_array($pricing) ? ($pricing['amount'] ?? 0) : ($pricing->amount ?? 0);
@@ -600,6 +623,7 @@ class OrderController {
             'stok_butuh' => $stok_butuh,
             'finishing_str' => $finishing_str,
             'finishing_to_reduce' => $finishing_to_reduce,
+            'product_finishing_price_id' => $package ? (int)$package['id'] : null,
             'unit' => $unit,
             'amount' => $amount
         ];
@@ -807,10 +831,11 @@ class OrderController {
                 'quantity' => $itemData['quantity'],
                 'unit' => round($itemData['unit'], 2),
                 'amount' => round($itemData['amount'], 2),
-                'finishing_str' => $itemData['finishing_str']
+                'finishing_str' => $itemData['finishing_str'],
+                'product_finishing_price_id' => $itemData['product_finishing_price_id'],
             ];
 
-            $rowExist = $this->cekOrderItem($itemData['order_id'], $itemData['judul'], $itemData['finishing_str'], $itemData['size']);
+            $rowExist = $this->cekOrderItem($itemData['order_id'], $itemData['judul'], $itemData['finishing_str'], $itemData['size'], $itemData['product_finishing_price_id'], $itemData['product_id'], $itemData['unit']);
             
             if ($rowExist) {
                 $data_item->quantity = $rowExist['quantity'] + $itemData['quantity'];
@@ -906,20 +931,37 @@ class OrderController {
             $lebar = (float)$matches[2];
         }
 
-        if ($unit_type === 'M2' || $unit_type === 'CM2') {
+        if (!empty($item['product_finishing_price_id'])) {
+            $stok_kembali = $panjang > 0 && $lebar > 0 ? $panjang * $lebar * $quantity : $quantity;
+        } elseif ($unit_type === 'M2' || $unit_type === 'CM2') {
             $stok_kembali = round(($panjang / 100) * ($lebar / 100) * $quantity, 4);
         }
         if (strtoupper($type) === 'SPANDUK') {
             $stok_kembali = round((($panjang + 5) * ($lebar + 5)) / 10000 * $quantity, 4);
         }
 
-        $this->productController->addStock($product_id, $stok_kembali);
+        if (!empty($item['product_finishing_price_id'])) {
+            if ($unit_type !== '~') $this->productController->addStock($stok_kembali, $product_id);
+        } else {
+            $this->productController->addStock($product_id, $stok_kembali);
+        }
 
         if ($finishing_ids !== '-') {
             $finishing_array = explode(',', $finishing_ids);
             foreach ($finishing_array as $fid) {
                 $fid = (int)$fid;
                 if ($fid === 0) continue;
+                if (!empty($item['product_finishing_price_id'])) {
+                    $stmt = $this->koneksi->prepare("SELECT unit_type FROM finishings WHERE finishing_id = ? AND store_id = ?");
+                    $stmt->bind_param("ii", $fid, $store_id);
+                    $stmt->execute();
+                    $f = $stmt->get_result()->fetch_assoc();
+                    $stmt->close();
+                    if ($f && $f['unit_type'] !== '~') {
+                        $this->productController->addFinishingStock($quantity, $fid);
+                    }
+                    continue;
+                }
 
                 $fin_product = $this->productController->getProductById($fid);
                 $fin_type = strtoupper($fin_product['category'] ?? '');
@@ -1032,9 +1074,21 @@ class OrderController {
         return $result ? $result[$column] : '';
     }
 
-    public function cekOrderItem($order_id, $judul, $finishing, $size){
-        $stmt = $this->koneksi->prepare("SELECT order_item_id, quantity, unit, amount FROM order_items WHERE order_id = ? AND judul = ? AND finishing = ? AND size = ?");
-        $stmt->bind_param("isss", $order_id, $judul, $finishing, $size);
+    public function cekOrderItem($order_id, $judul, $finishing, $size, $package_id = null, $product_id = 0, $unit = 0){
+        $query = "SELECT order_item_id, quantity, unit, amount FROM order_items WHERE order_id = ? AND judul = ? AND finishing = ? AND size = ?";
+        if ($package_id) {
+            // Harga paket yang sudah tersimpan tidak ditimpa saat daftar harga berubah.
+            $query .= " AND product_finishing_price_id = ? AND product_id = ? AND unit = ?";
+        } elseif ($this->packagePrices->isAvailable()) {
+            $query .= " AND product_finishing_price_id IS NULL";
+        }
+        $stmt = $this->koneksi->prepare($query);
+        if ($package_id) {
+            $unit = round($unit, 2);
+            $stmt->bind_param("isssiid", $order_id, $judul, $finishing, $size, $package_id, $product_id, $unit);
+        } else {
+            $stmt->bind_param("isss", $order_id, $judul, $finishing, $size);
+        }
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -1042,8 +1096,13 @@ class OrderController {
     }
 
     public function createOrderItem($data){
-        $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("iisssiiis", $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str);
+        if (!empty($data->product_finishing_price_id)) {
+            $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing, product_finishing_price_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("iiissiddsi", $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str, $data->product_finishing_price_id);
+        } else {
+            $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("iisssiiis", $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str);
+        }
         $success = $stmt->execute();
         $stmt->close();
         return $success;

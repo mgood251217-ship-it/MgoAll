@@ -51,6 +51,10 @@ switch ($route) {
         require 'pages/products.php';
         break;
 
+    case 'package-prices':
+        require 'pages/package_prices.php';
+        break;
+
     case 'transactions':
         require 'pages/transactions.php';
         break;

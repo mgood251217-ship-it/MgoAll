@@ -1,11 +1,14 @@
 <?php
+require_once __DIR__ . '/ProductFinishingPrice.php';
 
 use LDAP\Result;
 class Order {
     private $koneksi;
+    private $packagePrices;
 
     public function __construct($koneksi) {
         $this->koneksi = $koneksi;
+        $this->packagePrices = new ProductFinishingPrice($koneksi);
     }
  
     public function createOrder($data) {
@@ -194,9 +197,21 @@ class Order {
         return $result;
     }
 
-    public function cekOrderItem($order_id, $judul, $finishing, $size){
-        $stmt = $this->koneksi->prepare("SELECT order_item_id, quantity, unit, amount FROM order_items WHERE order_id = ? AND judul = ? AND finishing = ? AND size = ?");
-        $stmt->bind_param("isss", $order_id, $judul, $finishing, $size);
+    public function cekOrderItem($order_id, $judul, $finishing, $size, $package_id = null, $product_id = 0, $unit = 0){
+        $query = "SELECT order_item_id, quantity, unit, amount FROM order_items WHERE order_id = ? AND judul = ? AND finishing = ? AND size = ?";
+        if ($package_id) {
+            // Harga paket yang sudah tersimpan tidak ditimpa saat daftar harga berubah.
+            $query .= " AND product_finishing_price_id = ? AND product_id = ? AND unit = ?";
+        } elseif ($this->packagePrices->isAvailable()) {
+            $query .= " AND product_finishing_price_id IS NULL";
+        }
+        $stmt = $this->koneksi->prepare($query);
+        if ($package_id) {
+            $unit = round($unit, 2);
+            $stmt->bind_param("isssiid", $order_id, $judul, $finishing, $size, $package_id, $product_id, $unit);
+        } else {
+            $stmt->bind_param("isss", $order_id, $judul, $finishing, $size);
+        }
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -204,8 +219,13 @@ class Order {
     }
 
     public function createOrderItem($data){
-        $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("iisssiiis", $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str);
+        if (!empty($data->product_finishing_price_id)) {
+            $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing, product_finishing_price_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("iiissiddsi", $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str, $data->product_finishing_price_id);
+        } else {
+            $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("iisssiiis", $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str);
+        }
         $success = $stmt->execute();
         $stmt->close();
         return $success;

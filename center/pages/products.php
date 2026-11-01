@@ -30,6 +30,7 @@ foreach ($returnFilters as $key => $value) {
 }
 
 $_SESSION['product_migration_csrf'] = $_SESSION['product_migration_csrf'] ?? bin2hex(random_bytes(32));
+$_SESSION['product_cache_csrf'] = $_SESSION['product_cache_csrf'] ?? bin2hex(random_bytes(32));
 ?>
 
 
@@ -38,6 +39,13 @@ $_SESSION['product_migration_csrf'] = $_SESSION['product_migration_csrf'] ?? bin
     <h2>Data Produk & Finishing</h2>
     <div class="migrated-style-88">
         <?php if ($data['current_store_id']): ?>
+            <form method="post" action="/action?action=refresh_product_cache" style="display:inline-flex" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = 'Memperbarui...';">
+                <input type="hidden" name="store_id" value="<?= (int)$data['current_store_id'] ?>">
+                <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['product_cache_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+                <?= $returnInputs ?>
+                <button type="submit" class="btn-secondary-custom" title="Perbarui cache toko yang dipilih setelah perubahan melalui SQL"><i class="fas fa-sync-alt"></i> Update Cache</button>
+            </form>
+            <a class="btn-primary-custom" href="/package-prices?store_id=<?= (int)$data['current_store_id'] ?>">Harga Paket</a>
             <button class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalTambahKategori">
                 <i class="fas fa-tags"></i> Tambah Kategori
             </button>

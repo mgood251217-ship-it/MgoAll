@@ -46,6 +46,7 @@ $router->add('pagination_products', ProductController::class, 'getProductByPagin
 // Finishing 
 $router->add('finishings', ProductController::class, 'getFinishing', ['auth']);
 $router->add('finishing_by_category', ProductController::class, 'getFinishingByCategory', ['auth']);
+$router->add('product_finishing_prices', ProductController::class, 'getProductFinishingPrices', ['auth']);
 $router->add('create_finishing', ProductController::class, 'createFinishing', ['auth']);
 $router->add('update_finishing', ProductController::class, 'updateFinishing', ['auth']);
 $router->add('delete_finishing', ProductController::class, 'deleteFinishing', ['auth']);

@@ -77,6 +77,7 @@ switch ($action) {
     case 'delete_finishing':
     case 'get_product':
     case 'migrate_product':
+    case 'refresh_product_cache':
     case 'get_finishing':
         require_once __DIR__ . '/../controllers/ProductController.php';
         $productController = new ProductController($koneksi);
@@ -89,7 +90,16 @@ switch ($action) {
         if ($action === 'delete_finishing') $productController->deleteFinishing();
         if ($action === 'get_product') $productController->getProductByCategoryId();
         if ($action === 'migrate_product') $productController->migrateProduct();
+        if ($action === 'refresh_product_cache') $productController->refreshCache();
         if ($action === 'get_finishing') $productController->getFinishingByCategoryId();
+        break;
+
+    case 'save_package_price':
+    case 'get_product_finishing_prices':
+        require_once __DIR__ . '/../controllers/PackagePriceController.php';
+        $packagePriceController = new PackagePriceController($koneksi);
+        if ($action === 'save_package_price') $packagePriceController->save();
+        if ($action === 'get_product_finishing_prices') $packagePriceController->getRules();
         break;
 
     case 'delete_order':

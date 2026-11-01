@@ -120,6 +120,9 @@ switch ($action) {
     case 'get_finishing':
         $productController->getFinishingByCategory();
         break;
+    case 'product_finishing_prices':
+        $productController->getProductFinishingPrices();
+        break;
     case 'get_note':
         $order_id = $_GET['order_id'] ?? 0;
         $data = (object)['order_id' => $_GET['order_id'] ?? 0, 'note_for' => 'CTM'];

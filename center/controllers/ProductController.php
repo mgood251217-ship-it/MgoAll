@@ -154,6 +154,42 @@ class ProductController {
         ]);
     }
 
+    public function refreshCache() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $storeId = max(0, (int)($_POST['store_id'] ?? 0));
+        try {
+            if (empty($_SESSION['admin_logged_in']) || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST'
+                || !is_string($_POST['csrf'] ?? null) || empty($_SESSION['product_cache_csrf'])
+                || !hash_equals($_SESSION['product_cache_csrf'], $_POST['csrf'])) {
+                throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
+            }
+            $access = startEnk('dek', $_SESSION['admin_logged_in']['access'] ?? '');
+            $stmt = $this->koneksi->prepare('SELECT name, administrator FROM stores WHERE store_id = ?');
+            $stmt->bind_param('i', $storeId);
+            $stmt->execute();
+            $store = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$storeId || !$store || ($access !== 'ALL' && ((string)$access === '' || (string)$access !== (string)$store['administrator']))) {
+                throw new InvalidArgumentException('Anda tidak memiliki akses ke toko ini.');
+            }
+            require_once __DIR__ . '/../functions/cacheHelper.php';
+            set_error_handler(function ($severity, $message) { throw new RuntimeException($message); });
+            try {
+                foreach (['store_data', 'store_names', 'categories', 'products', 'finishings', 'product_finishing_prices', 'orders'] as $module) {
+                    updateStoreCache($storeId, $module);
+                }
+            } finally {
+                restore_error_handler();
+            }
+            $_SESSION['swal_success'] = 'Cache toko ' . $store['name'] . ' diperbarui: informasi toko, kategori, produk, finishing, harga paket, dan order. Buka ulang halaman terkait di MgoApp untuk mengambil data terbaru.';
+        } catch (Throwable $e) {
+            error_log('Store cache refresh: ' . $e->getMessage());
+            $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : 'Gagal memperbarui cache. Periksa izin folder temp/dataset.';
+        }
+        header('Location: ' . $this->productReturnUrl());
+        exit;
+    }
+
     public function migrateProduct() {
         if (session_status() === PHP_SESSION_NONE) session_start();
         $storeId = (int)($_POST['store_id'] ?? 0);
