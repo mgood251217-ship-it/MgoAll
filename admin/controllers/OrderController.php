@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../models/ProductFinishingPrice.php';
+require_once __DIR__ . '/../models/ProductLaserConversion.php';
 require_once __DIR__ . '/../models/Order.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/Project.php';
@@ -478,17 +479,25 @@ class OrderController {
         }
 
         $finishing = trim($data['finishing'] ?? '-');
+        $laserVariant = null;
+        $isAnekaCetak = strtoupper(trim($product['category'])) === 'ANEKA CETAK';
+        if ($isAnekaCetak) {
+            $panjang = $lebar = 0;
+            $size = ProductLaserConversion::normalizeSize($data['size'] ?? '') ?: '-';
+        }
         try {
-            $package = $product['category'] === 'PAKET INDOOR OUTDOOR' ? null
+            if ($isAnekaCetak) $laserVariant = (new ProductLaserConversion($this->koneksi))->resolve($store_id, $product_id, $size, $finishing);
+            $package = $isAnekaCetak || $product['category'] === 'PAKET INDOOR OUTDOOR' ? null
                 : $this->packagePrices->resolve($store_id, $product_id, $finishing, $panjang, $lebar);
         } catch (InvalidArgumentException $e) {
             return ['error' => $e->getMessage(), 'status' => 400];
         }
         $diskonInput = (int)($data['diskon'] ?? 0);
         // Diskon paket dihitung per set; tidak mengubah diskon bahan per meter.
-        $diskon = $package ? max(0, $diskonInput) : $this->discount($order_id, $product_id, $diskonInput);
+        $diskon = $package || ($laserVariant && $laserVariant['price'] !== null) ? max(0, $diskonInput) : $this->discount($order_id, $product_id, $diskonInput);
         $waktu = (float)($data['waktu'] ?? 0);
         $kiloan = (float)($data['kiloan'] ?? 0);
+        if ($isAnekaCetak) $kiloan = $waktu = 0;
         if ($package && empty($package['requires_size'])) {
             $panjang = $lebar = $kiloan = $waktu = 0;
             $size = '-';
@@ -529,6 +538,10 @@ class OrderController {
         $base_unit_price = $product['price'] - $diskon;
         $pricing = $package ? ProductFinishingPrice::calculate($package, $quantity, $diskon)
             : $this->calculatePricingDetails($product, $base_unit_price, $finishing_price, $quantity, $panjang, $lebar, $waktu, $kiloan, $size);
+        if ($laserVariant && $laserVariant['price'] !== null) {
+            $unitPrice = max(0, (float)$laserVariant['price'] - $diskon);
+            $pricing = (object)['unit' => $unitPrice, 'amount' => $unitPrice * $quantity, 'size' => $laserVariant['size'] ?: '-'];
+        }
 
         $unit = is_array($pricing) ? ($pricing['unit'] ?? 0) : ($pricing->unit ?? 0);
         $amount = is_array($pricing) ? ($pricing['amount'] ?? 0) : ($pricing->amount ?? 0);
@@ -546,6 +559,7 @@ class OrderController {
             'finishing_str' => $finishing_str,
             'finishing_to_reduce' => $finishing_to_reduce,
             'product_finishing_price_id' => $package ? (int)$package['id'] : null,
+            'is_laser_variant' => $isAnekaCetak,
             'unit' => $unit,
             'amount' => $amount
         ];
@@ -752,6 +766,7 @@ class OrderController {
                 'amount' => round($itemData['amount'], 2),
                 'finishing_str' => $itemData['finishing_str'],
                 'product_finishing_price_id' => $itemData['product_finishing_price_id'],
+                'is_laser_variant' => $itemData['is_laser_variant'],
             ];
 
             if ($data_item->order_id <= 0 || $data_item->product_id <= 0 || empty($data_item->judul)) {
@@ -760,7 +775,7 @@ class OrderController {
                 exit;
             }
 
-            $rowExist = $this->orderModel->cekOrderItem($itemData['order_id'], $itemData['judul'], $itemData['finishing_str'], $itemData['size'], $itemData['product_finishing_price_id'], $itemData['product_id'], $itemData['unit']);
+            $rowExist = $this->orderModel->cekOrderItem($itemData['order_id'], $itemData['judul'], $itemData['finishing_str'], $itemData['size'], $itemData['product_finishing_price_id'], $itemData['product_id'], $itemData['unit'], $itemData['is_laser_variant']);
             
             if ($rowExist) {
                 $data_item->quantity = $rowExist['quantity'] + $itemData['quantity'];
@@ -843,16 +858,18 @@ class OrderController {
         $unit_type = $product['unit_type'] ?? '';
         $type = $product['category'] ?? '';
 
+        $isAnekaCetak = strtoupper(trim($type)) === 'ANEKA CETAK';
+
         $stok_kembali = $quantity;
         $panjang = 0;
         $lebar = 0;
 
-        if (preg_match('/([\d.]+)x([\d.]+)/', $size, $matches)) {
+        if (!$isAnekaCetak && preg_match('/([\d.]+)x([\d.]+)/', $size, $matches)) {
             $panjang = (float)$matches[1];
             $lebar = (float)$matches[2];
         }
 
-        if (!empty($item['product_finishing_price_id'])) {
+        if ($isAnekaCetak || !empty($item['product_finishing_price_id'])) {
             $stok_kembali = $panjang > 0 && $lebar > 0 ? $panjang * $lebar * $quantity : $quantity;
         } elseif ($unit_type === 'M2' || $unit_type === 'CM2') {
             $stok_kembali = round(($panjang / 100) * ($lebar / 100) * $quantity, 4);
@@ -861,7 +878,7 @@ class OrderController {
             $stok_kembali = round((($panjang + 5) * ($lebar + 5)) / 10000 * $quantity, 4);
         }
 
-        if (!empty($item['product_finishing_price_id'])) {
+        if ($isAnekaCetak || !empty($item['product_finishing_price_id'])) {
             if ($unit_type !== '~') $this->productModel->addStock($stok_kembali, $product_id);
         } else {
             $this->productModel->addStock($product_id, $stok_kembali);
@@ -872,7 +889,7 @@ class OrderController {
             foreach ($finishing_array as $fid) {
                 $fid = (int)$fid;
                 if ($fid === 0) continue;
-                if (!empty($item['product_finishing_price_id'])) {
+                if ($isAnekaCetak || !empty($item['product_finishing_price_id'])) {
                     $stmt = $this->koneksi->prepare("SELECT unit_type FROM finishings WHERE finishing_id = ? AND store_id = ?");
                     $stmt->bind_param("ii", $fid, $store_id);
                     $stmt->execute();

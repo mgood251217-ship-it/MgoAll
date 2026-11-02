@@ -197,7 +197,7 @@ class Order {
         return $result;
     }
 
-    public function cekOrderItem($order_id, $judul, $finishing, $size, $package_id = null, $product_id = 0, $unit = 0){
+    public function cekOrderItem($order_id, $judul, $finishing, $size, $package_id = null, $product_id = 0, $unit = 0, $match_price = false){
         $query = "SELECT order_item_id, quantity, unit, amount FROM order_items WHERE order_id = ? AND judul = ? AND finishing = ? AND size = ?";
         if ($package_id) {
             // Harga paket yang sudah tersimpan tidak ditimpa saat daftar harga berubah.
@@ -205,10 +205,14 @@ class Order {
         } elseif ($this->packagePrices->isAvailable()) {
             $query .= " AND product_finishing_price_id IS NULL";
         }
+        if (!$package_id && $match_price) $query .= ' AND product_id = ? AND unit = ?';
         $stmt = $this->koneksi->prepare($query);
         if ($package_id) {
             $unit = round($unit, 2);
             $stmt->bind_param("isssiid", $order_id, $judul, $finishing, $size, $package_id, $product_id, $unit);
+        } elseif ($match_price) {
+            $unit = round($unit, 2);
+            $stmt->bind_param('isssid', $order_id, $judul, $finishing, $size, $product_id, $unit);
         } else {
             $stmt->bind_param("isss", $order_id, $judul, $finishing, $size);
         }
@@ -224,7 +228,8 @@ class Order {
             $stmt->bind_param("iiissiddsi", $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str, $data->product_finishing_price_id);
         } else {
             $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("iisssiiis", $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str);
+            $types = !empty($data->is_laser_variant) ? 'iiissidds' : 'iisssiiis';
+            $stmt->bind_param($types, $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str);
         }
         $success = $stmt->execute();
         $stmt->close();
