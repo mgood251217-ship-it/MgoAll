@@ -5,6 +5,7 @@ require_once __DIR__ . '/../models/Project.php';
 require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/../models/Activity.php';
 require_once __DIR__ . '/../models/Payment.php';
+require_once __DIR__ . '/../models/ProductLaserConversion.php';
 require_once __DIR__ . '/../functions/helpers.php';
 
 class MeterController {
@@ -400,18 +401,23 @@ class MeterController {
 
         $product_data_laser_a3 = [];
         $total_all_qty_laser = 0;
+        $conversionModel = new ProductLaserConversion($this->koneksi);
+        $conversions = [];
+        foreach ($conversionModel->getByStore($store_id, true) as $rule) {
+            $conversions[(int)$rule['product_id']][] = $rule;
+        }
 
         $query1 = "
             SELECT p.name, COALESCE(SUM(oi_filtered.quantity), 0) AS total_qty
             FROM products p
-            JOIN categories c ON p.category_id = c.category_id
+            JOIN categories c ON p.category_id = c.category_id AND c.store_id = p.store_id
             LEFT JOIN (
                 SELECT oi.product_id, oi.quantity
                 FROM order_items oi
                 JOIN orders o ON oi.order_id = o.order_id
                 WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
             ) oi_filtered ON p.product_id = oi_filtered.product_id
-            WHERE c.name = 'LASER A3' AND p.store_id = ?
+            WHERE UPPER(TRIM(c.name)) = 'LASER A3' AND p.store_id = ?
             GROUP BY p.product_id, p.name
         ";
 
@@ -425,29 +431,33 @@ class MeterController {
         $stmt1->close();
 
         foreach ($rows1 as $row) {
-            $product_data_laser_a3[$row['name']] = (int)$row['total_qty'];
+            $product_data_laser_a3[$row['name']] = ($product_data_laser_a3[$row['name']] ?? 0) + (int)$row['total_qty'];
         }
 
+        $conversionIds = array_keys($conversions);
+        $conversionCondition = $conversionIds ? ' OR p.product_id IN (' . implode(',', array_fill(0, count($conversionIds), '?')) . ')' : '';
         $query2 = "
-            SELECT p.name, c.name AS category_name, SUM(oi.quantity) AS total_qty
+            SELECT p.product_id, p.name, c.name AS category_name, oi.quantity AS total_qty, oi.size, oi.finishing
             FROM order_items oi
             JOIN orders o ON oi.order_id = o.order_id
             JOIN products p ON oi.product_id = p.product_id
-            JOIN categories c ON p.category_id = c.category_id
+            JOIN categories c ON p.category_id = c.category_id AND c.store_id = p.store_id
             WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
               AND p.store_id = ?
               AND (
                   (c.name = 'KARTU NAMA' AND p.name LIKE '%KN%') OR 
                   (c.name = 'MERCENDISE' AND p.name LIKE '%JAM%') OR
                   (c.name = 'STAMP')
+                  $conversionCondition
               )
-            GROUP BY p.product_id, p.name, c.name
         ";
 
         $stmt2 = $this->koneksi->prepare($query2);
         if (!$stmt2) die("Query error: " . $this->koneksi->error);
 
-        $stmt2->bind_param("issi", $store_id, $start_date_full, $end_date_full, $store_id);
+        $params = array_merge([$store_id, $start_date_full, $end_date_full, $store_id], $conversionIds);
+        $types = 'issi' . str_repeat('i', count($conversionIds));
+        $stmt2->bind_param($types, ...$params);
         $stmt2->execute();
         $res2 = $stmt2->get_result();
         $rows2 = $res2->fetch_all(MYSQLI_ASSOC);
@@ -459,6 +469,15 @@ class MeterController {
         $qty_stamp = 0;
 
         foreach ($rows2 as $row) {
+            if (isset($conversions[(int)$row['product_id']])) {
+                $rule = ProductLaserConversion::matchRule($conversions[(int)$row['product_id']], $row['size'], $row['finishing']);
+                if ($rule) {
+                    $name = $rule['laser_name'];
+                    $product_data_laser_a3[$name] = ($product_data_laser_a3[$name] ?? 0)
+                        + ProductLaserConversion::printQuantity($row['total_qty'], $rule);
+                }
+                continue;
+            }
             $name_upper = strtoupper($row['name']);
             $cat_upper  = strtoupper($row['category_name']);
             $qty        = (int)$row['total_qty'];
