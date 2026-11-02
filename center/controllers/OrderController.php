@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../admin/models/ProductFinishingPrice.php';
 require_once __DIR__ . '/../../admin/models/ProductLaserConversion.php';
+require_once __DIR__ . '/../../admin/models/OrderDiscount.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../functions/cacheHelper.php';
 require_once 'ProductController.php';
@@ -349,6 +350,42 @@ class OrderController {
         $stmt->close();
     }
 
+    public function deleteDiscount() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $order_id = (int)($_POST['order_id'] ?? 0);
+        $store_id = 0;
+        try {
+            if (empty($_SESSION['admin_logged_in']) || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST'
+                || empty($_SESSION['order_discount_csrf']) || !is_string($_POST['csrf'] ?? null)
+                || !hash_equals($_SESSION['order_discount_csrf'], $_POST['csrf'])) {
+                throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
+            }
+            $access = startEnk('dek', $_SESSION['admin_logged_in']['access'] ?? '');
+            $stmt = $this->koneksi->prepare('SELECT o.store_id, s.administrator FROM orders o JOIN stores s ON s.store_id = o.store_id WHERE o.order_id = ?');
+            $stmt->bind_param('i', $order_id);
+            $stmt->execute();
+            $order = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$order || ($access !== 'ALL' && ((string)$access === '' || (string)$access !== (string)$order['administrator']))) {
+                throw new InvalidArgumentException('Anda tidak memiliki akses ke order ini.');
+            }
+            $store_id = (int)$order['store_id'];
+            (new OrderDiscount($this->koneksi))->delete($order_id, (int)($_POST['product_id'] ?? 0), $store_id);
+        } catch (InvalidArgumentException $e) {
+            http_response_code(409);
+            send_json_response(false, $e->getMessage());
+        } catch (Throwable $e) {
+            error_log('Delete order discount: ' . $e->getMessage());
+            http_response_code(500);
+            send_json_response(false, 'Gagal menghapus diskon.');
+        }
+        try {
+            updateStoreCache($store_id, 'orders');
+            updateOrderTrigger($store_id, $order_id);
+        } catch (Throwable $e) { error_log('Order discount cache: ' . $e->getMessage()); }
+        send_json_response(true, 'Diskon produk berhasil dihapus.');
+    }
+
     public function orderDetail(){
         $order_id = (int)($_GET['order_id'] ?? 0);
 
@@ -416,6 +453,7 @@ class OrderController {
             'total' => $order['total'] ?? 0,
             'items' => $items,
             'diskon_per_produk' => $diskon_per_produk,
+            'discounts' => (new OrderDiscount($this->koneksi))->getByOrder($order_id, (int)($order['store_id'] ?? 0)),
             'note' => $note['note'] ?? ''
         ]);
     }

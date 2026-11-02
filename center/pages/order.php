@@ -38,6 +38,7 @@ if (!$order) {
 }
 
 $store_id = $order['store_id'];
+$_SESSION['order_discount_csrf'] = $_SESSION['order_discount_csrf'] ?? bin2hex(random_bytes(32));
 $categories = $productController->getCategoryByStoreId($store_id);
 
 if (isset($_GET['ajax_payment'])) {
@@ -433,15 +434,48 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
                 }
 
-                for (const judulKey in diskonPerProduk) {
-                    const nilaiDiskon = Number(diskonPerProduk[judulKey]);
-                    tbody.insertAdjacentHTML('beforeend', `
-                        <tr class="migrated-style-53">
-                            <td class="migrated-style-54" colspan="5"><strong>Diskon ${judulKey}</strong></td>
-                            <td class="migrated-style-55" colspan="2"><strong>- Rp ${nilaiDiskon.toLocaleString('id-ID')}</strong></td>
-                        </tr>
-                    `);
-                }
+                const discounts = Array.isArray(res.data.discounts) ? res.data.discounts
+                    : Object.entries(diskonPerProduk).map(([name, value]) => ({ product_name: name, discount: value, can_delete: 0 }));
+                discounts.forEach(discount => {
+                    const row = document.createElement('tr');
+                    row.className = 'migrated-style-53';
+                    const label = document.createElement('td');
+                    label.colSpan = 4;
+                    label.className = 'migrated-style-54';
+                    label.textContent = `Diskon ${discount.product_name}`;
+                    const amount = document.createElement('td');
+                    amount.colSpan = 2;
+                    amount.className = 'migrated-style-55';
+                    amount.textContent = `- Rp ${Number(discount.discount).toLocaleString('id-ID')}`;
+                    const action = document.createElement('td');
+                    if (discount.product_id) {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'btn btn-sm btn-danger';
+                        button.textContent = 'Hapus Diskon';
+                        button.disabled = Number(discount.can_delete) !== 1;
+                        button.title = button.disabled ? 'Hapus semua item produk ini dari order terlebih dahulu.' : 'Hapus diskon produk';
+                        button.addEventListener('click', async () => {
+                            button.disabled = true;
+                            try {
+                                const payload = new FormData();
+                                payload.append('order_id', <?= (int)$order_id ?>);
+                                payload.append('product_id', discount.product_id);
+                                payload.append('csrf', <?= json_encode($_SESSION['order_discount_csrf']) ?>);
+                                const response = await fetch('/action?action=delete_order_discount', { method: 'POST', body: payload });
+                                const result = await response.json();
+                                if (!result.success) throw new Error(result.message || 'Gagal menghapus diskon.');
+                                loadOrderItems();
+                            } catch (error) {
+                                Swal.fire('Gagal', error.message || 'Gagal menghapus diskon.', 'error');
+                                loadOrderItems();
+                            }
+                        });
+                        action.appendChild(button);
+                    }
+                    row.append(label, amount, action);
+                    tbody.appendChild(row);
+                });
 
                 tbody.insertAdjacentHTML('beforeend', `
                     <tr class="migrated-style-56">

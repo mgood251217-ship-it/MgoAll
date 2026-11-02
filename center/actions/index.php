@@ -72,6 +72,7 @@ switch ($action) {
     case 'add_category':
     case 'edit_product':
     case 'bulk_update_product_category':
+    case 'bulk_delete_products':
     case 'delete_product':
     case 'add_finishing':
     case 'edit_finishing':
@@ -86,6 +87,7 @@ switch ($action) {
         if ($action === 'add_category') $productController->addCategory();
         if ($action === 'edit_product') $productController->editProduct();
         if ($action === 'bulk_update_product_category') $productController->bulkUpdateCategory();
+        if ($action === 'bulk_delete_products') $productController->bulkDeleteProducts();
         if ($action === 'delete_product') $productController->deleteProduct();
         if ($action === 'add_finishing') $productController->addFinishing();
         if ($action === 'edit_finishing') $productController->editFinishing();
@@ -119,6 +121,7 @@ switch ($action) {
     case 'price':
     case 'create_item':
     case 'delete_item':
+    case 'delete_order_discount':
     case 'get_note':
     case 'save_note':
         require_once __DIR__ . '/../controllers/OrderController.php';
@@ -129,6 +132,7 @@ switch ($action) {
         if ($action === 'price') $orderController->fullPrice();
         if ($action === 'create_item') $orderController->createItem();
         if ($action === 'delete_item') $orderController->deleteItem();
+        if ($action === 'delete_order_discount') $orderController->deleteDiscount();
         if ($action === 'get_note') $orderController->getNoteOrder();
         if ($action === 'save_note') $orderController->createNote();
         break;
