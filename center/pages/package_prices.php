@@ -11,6 +11,10 @@ $data = $controller->getData();
 $_SESSION['package_price_csrf'] = $_SESSION['package_price_csrf'] ?? bin2hex(random_bytes(32));
 $escape = function ($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); };
 $rupiah = function ($value) { return 'Rp' . number_format((float)$value, 0, ',', '.'); };
+$finishingsByCategory = [];
+foreach ($data['finishings'] as $finishing) {
+    $finishingsByCategory[(int)$finishing['category_id']][] = $finishing;
+}
 ?>
 
 <div class="page-header">
@@ -100,7 +104,18 @@ $rupiah = function ($value) { return 'Rp' . number_format((float)$value, 0, ',',
                     <td><?= $escape($rule['category']) ?> / #<?= (int)$rule['product_id'] ?> <?= $escape($rule['product_name']) ?>
                         <?php if (!$rule['valid']): ?><br><small class="text-danger">Bahan / finishing perlu diperiksa.</small><?php endif; ?>
                     </td>
-                    <td><?= $escape($rule['finishing_name']) ?></td>
+                    <td>
+                        <?php
+                        $options = $finishingsByCategory[(int)$rule['category_id']] ?? [];
+                        $hasFinishing = in_array((int)$rule['finishing_id'], array_column($options, 'finishing_id'));
+                        ?>
+                        <select class="form-control" form="package_price_<?= (int)$rule['id'] ?>" name="finishing_id" aria-label="Finishing paket <?= $escape($rule['product_name']) ?>" required style="min-width:180px">
+                            <option value="" <?= !$hasFinishing ? 'selected' : '' ?>><?= $hasFinishing ? 'Pilih finishing' : 'Finishing tidak tersedia (#' . (int)$rule['finishing_id'] . ')' ?></option>
+                            <?php foreach ($options as $finishing): ?>
+                                <option value="<?= (int)$finishing['finishing_id'] ?>" <?= (int)$finishing['finishing_id'] === (int)$rule['finishing_id'] ? 'selected' : '' ?>><?= $escape($finishing['name']) ?> (#<?= (int)$finishing['finishing_id'] ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </td>
                     <td><?= $rule['requires_size'] ? (float)$rule['panjang'] . ' × ' . (float)$rule['lebar'] : 'Tanpa ukuran' ?></td>
                     <td><input class="form-control" form="package_price_<?= (int)$rule['id'] ?>" name="price" type="number" min="0.01" max="9999999999999.99" step="0.01" value="<?= $escape($rule['price']) ?>" aria-label="Harga paket <?= $escape($rule['product_name']) ?>" required style="min-width:140px"></td>
                     <td><?= (int)$rule['order_item_count'] ?></td>
@@ -109,7 +124,8 @@ $rupiah = function ($value) { return 'Rp' . number_format((float)$value, 0, ',',
                             <input type="hidden" name="csrf_token" value="<?= $escape($_SESSION['package_price_csrf']) ?>">
                             <input type="hidden" name="store_id" value="<?= $data['store_id'] ?>">
                             <input type="hidden" name="id" value="<?= (int)$rule['id'] ?>">
-                            <button type="submit" name="command" value="update_price" class="btn-primary-custom">Simpan Harga</button>
+                            <button type="submit" name="command" value="update" class="btn-primary-custom">Simpan</button>
+                            <button type="submit" name="command" value="delete" formnovalidate class="btn btn-danger" onclick="return confirm('Hapus paket dari daftar harga? Item dan harga pada nota lama tetap tersimpan.')">Hapus</button>
                         </form>
                     </td>
                 </tr>

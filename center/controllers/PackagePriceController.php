@@ -193,20 +193,49 @@ class PackagePriceController {
                 $stmt->execute();
                 $stmt->close();
                 $message = 'Paket tersimpan dan langsung dapat digunakan.';
-            } elseif ($command === 'update_price') {
+            } elseif (in_array($command, ['update', 'update_price', 'delete'], true)) {
                 $id = (int)($_POST['id'] ?? 0);
-                $stmt = $this->koneksi->prepare('SELECT id FROM product_package WHERE id = ? AND store_id = ? FOR UPDATE');
+                $stmt = $this->koneksi->prepare('SELECT * FROM product_package WHERE id = ? AND store_id = ? FOR UPDATE');
                 $stmt->bind_param('ii', $id, $store_id);
                 $stmt->execute();
                 $rule = $stmt->get_result()->fetch_assoc();
                 $stmt->close();
                 if (!$rule) throw new InvalidArgumentException('Pemetaan tidak ditemukan.');
-                $price = $this->decimalInput('price', 'Harga paket');
-                $message = 'Harga paket diperbarui. Harga item pada nota lama tetap tersimpan.';
-                $stmt = $this->koneksi->prepare('UPDATE product_package SET price = ?, updated_at = NOW() WHERE id = ? AND store_id = ?');
-                $stmt->bind_param('dii', $price, $id, $store_id);
-                $stmt->execute();
-                $stmt->close();
+                if ($command === 'delete') {
+                    // Penanda paket di nota lama tetap diperlukan untuk perhitungan stok.
+                    $stmt = $this->koneksi->prepare('DELETE FROM product_package WHERE id = ? AND store_id = ?');
+                    $stmt->bind_param('ii', $id, $store_id);
+                    $stmt->execute();
+                    $stmt->close();
+                    $message = 'Paket dihapus dari daftar harga. Item dan harga pada nota lama tetap tersimpan.';
+                } else {
+                    $price = $this->decimalInput('price', 'Harga paket');
+                    $finishing_id = (int)$rule['finishing_id'];
+                    if ($command === 'update') {
+                        $finishing_id = (int)($_POST['finishing_id'] ?? 0);
+                        $product_id = (int)$rule['product_id'];
+                        $stmt = $this->koneksi->prepare('SELECT f.finishing_id FROM finishings f
+                            JOIN products p ON p.product_id = ? AND p.store_id = f.store_id AND p.category_id = f.category_id
+                            WHERE f.finishing_id = ? AND f.store_id = ? FOR UPDATE');
+                        $stmt->bind_param('iii', $product_id, $finishing_id, $store_id);
+                        $stmt->execute();
+                        $finishing = $stmt->get_result()->fetch_assoc();
+                        $stmt->close();
+                        if (!$finishing) throw new InvalidArgumentException('Pilih finishing dari kategori bahan dan toko yang sama.');
+                        $stmt = $this->koneksi->prepare('SELECT id FROM product_package
+                            WHERE store_id = ? AND product_id = ? AND finishing_id = ? AND panjang = ? AND lebar = ? AND id <> ?');
+                        $stmt->bind_param('iiiddi', $store_id, $product_id, $finishing_id, $rule['panjang'], $rule['lebar'], $id);
+                        $stmt->execute();
+                        $duplicate = $stmt->get_result()->fetch_assoc();
+                        $stmt->close();
+                        if ($duplicate) throw new InvalidArgumentException('Kombinasi bahan, finishing, dan ukuran sudah ada pada paket lain.');
+                    }
+                    $stmt = $this->koneksi->prepare('UPDATE product_package SET finishing_id = ?, price = ?, updated_at = NOW() WHERE id = ? AND store_id = ?');
+                    $stmt->bind_param('idii', $finishing_id, $price, $id, $store_id);
+                    $stmt->execute();
+                    $stmt->close();
+                    $message = 'Paket diperbarui. Finishing dan harga item pada nota lama tetap tersimpan.';
+                }
             } else {
                 throw new InvalidArgumentException('Aksi tidak valid.');
             }
@@ -228,7 +257,7 @@ class PackagePriceController {
                 updateStoreCache($store_id, 'finishings');
             } catch (Throwable $e) {
                 error_log('PackagePrice cache: ' . $e->getMessage());
-                $_SESSION['swal_error'] = 'Pemetaan tersimpan, tetapi cache gagal diperbarui. Periksa izin folder temp/dataset lalu simpan kembali.';
+                $_SESSION['swal_error'] = 'Perubahan paket sudah tersimpan, tetapi cache gagal diperbarui. Gunakan tombol Update Cache di halaman Produk.';
                 unset($_SESSION['swal_success']);
             } finally {
                 restore_error_handler();
