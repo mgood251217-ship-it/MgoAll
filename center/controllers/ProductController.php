@@ -190,10 +190,23 @@ class ProductController {
         exit;
     }
 
+    private function selectedProductIds($ids) {
+        if (!is_array($ids) || !$ids || count($ids) > 1000) {
+            throw new InvalidArgumentException('Pilih 1 sampai 1.000 produk.');
+        }
+        foreach ($ids as $id) {
+            if (!is_scalar($id) || filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]) === false) {
+                throw new InvalidArgumentException('Pilihan produk tidak valid. Muat ulang halaman.');
+            }
+        }
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        sort($ids);
+        return $ids;
+    }
+
     public function migrateProduct() {
         if (session_status() === PHP_SESSION_NONE) session_start();
         $storeId = (int)($_POST['store_id'] ?? 0);
-        $sourceId = (int)($_POST['source_product_id'] ?? 0);
         $targetId = (int)($_POST['target_product_id'] ?? 0);
         $transaction = false;
         $migrated = false;
@@ -207,8 +220,9 @@ class ProductController {
             if (!is_string($_POST['csrf'] ?? null) || empty($_SESSION['product_migration_csrf']) || !hash_equals($_SESSION['product_migration_csrf'], $_POST['csrf'])) {
                 throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
             }
-            if ($sourceId <= 0 || $targetId <= 0 || $sourceId === $targetId || $storeId <= 0) {
-                throw new InvalidArgumentException('Pilih produk pengganti yang berbeda dari produk sumber.');
+            $sourceIds = $this->selectedProductIds($_POST['source_product_ids'] ?? [$_POST['source_product_id'] ?? 0]);
+            if ($targetId <= 0 || in_array($targetId, $sourceIds, true) || $storeId <= 0) {
+                throw new InvalidArgumentException('Produk pengganti harus berbeda dari semua produk yang dipilih.');
             }
             $adminId = (int)startEnk('dek', $_SESSION['admin_logged_in']['administrator_id'] ?? '');
             $stmt = $this->koneksi->prepare('SELECT access FROM administrator WHERE administrator_id = ?');
@@ -228,30 +242,41 @@ class ProductController {
             if (!$store || ($admin['access'] !== 'ALL' && ((string)$admin['access'] === '' || (string)$store['administrator'] !== (string)$admin['access']))) {
                 throw new InvalidArgumentException('Anda tidak memiliki akses ke toko ini.');
             }
-            $stmt = $this->koneksi->prepare('SELECT product_id, category_id FROM products WHERE store_id = ? AND product_id IN (?, ?) ORDER BY product_id FOR UPDATE');
-            $stmt->bind_param('iii', $storeId, $sourceId, $targetId);
+            $allIds = array_merge($sourceIds, [$targetId]);
+            sort($allIds);
+            $placeholders = implode(',', array_fill(0, count($allIds), '?'));
+            $params = array_merge([$storeId], $allIds);
+            $types = str_repeat('i', count($params));
+            $stmt = $this->koneksi->prepare("SELECT product_id, category_id FROM products WHERE store_id = ? AND product_id IN ($placeholders) ORDER BY product_id FOR UPDATE");
+            $stmt->bind_param($types, ...$params);
             $stmt->execute();
             $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             $stmt->close();
-            if (count($products) !== 2 || $products[0]['category_id'] !== $products[1]['category_id']) {
+            if (count($products) !== count($allIds) || count(array_unique(array_column($products, 'category_id'))) !== 1) {
                 throw new InvalidArgumentException('Produk sumber dan tujuan harus berada di toko dan kategori yang sama.');
             }
 
             // Hanya ganti referensi produk, tanpa mengubah quantity, harga, atau total nota.
-            $stmt = $this->koneksi->prepare('SELECT DISTINCT order_id FROM order_items WHERE store_id = ? AND product_id = ? FOR UPDATE');
-            $stmt->bind_param('ii', $storeId, $sourceId);
+            $placeholders = implode(',', array_fill(0, count($sourceIds), '?'));
+            $params = array_merge([$storeId], $sourceIds);
+            $types = str_repeat('i', count($params));
+            $stmt = $this->koneksi->prepare("SELECT DISTINCT order_id FROM order_items WHERE store_id = ? AND product_id IN ($placeholders) FOR UPDATE");
+            $stmt->bind_param($types, ...$params);
             $stmt->execute();
             $orders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             $stmt->close();
-            $stmt = $this->koneksi->prepare('UPDATE order_items SET product_id = ? WHERE store_id = ? AND product_id = ?');
-            $stmt->bind_param('iii', $targetId, $storeId, $sourceId);
+            $params = array_merge([$targetId, $storeId], $sourceIds);
+            $types = str_repeat('i', count($params));
+            $stmt = $this->koneksi->prepare("UPDATE order_items SET product_id = ? WHERE store_id = ? AND product_id IN ($placeholders)");
+            $stmt->bind_param($types, ...$params);
             $stmt->execute();
             $count = $stmt->affected_rows;
             $stmt->close();
             $this->koneksi->commit();
             $transaction = false;
             $migrated = true;
-            $_SESSION['swal_success'] = "$count item order berhasil dimigrasikan dari produk #$sourceId ke #$targetId. Produk lama tetap tersedia.";
+            $sourceCount = count($sourceIds);
+            $_SESSION['swal_success'] = "$count item order dari $sourceCount produk berhasil dimigrasikan ke produk #$targetId. Produk lama tetap tersedia.";
         } catch (Throwable $e) {
             if ($transaction) $this->koneksi->rollback();
             $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : 'Migrasi gagal. Perubahan dibatalkan.';
@@ -267,6 +292,84 @@ class ProductController {
             } catch (Throwable $e) {
                 error_log('Product migration cache refresh failed: ' . $e->getMessage());
             }
+        }
+        header('Location: ' . $this->productReturnUrl());
+        exit;
+    }
+
+    public function bulkDeleteProducts() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $storeId = (int)($_POST['store_id'] ?? 0);
+        $transaction = false;
+        $deleted = false;
+        $driver = new mysqli_driver();
+        $previousMode = $driver->report_mode;
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+        try {
+            if (empty($_SESSION['admin_logged_in']) || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+                throw new InvalidArgumentException('Silakan login kembali.');
+            }
+            if (!is_string($_POST['csrf'] ?? null) || empty($_SESSION['product_category_csrf'])
+                || !hash_equals($_SESSION['product_category_csrf'], $_POST['csrf'])) {
+                throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
+            }
+            $ids = $this->selectedProductIds($_POST['product_ids'] ?? []);
+            $access = startEnk('dek', $_SESSION['admin_logged_in']['access'] ?? '');
+            $this->koneksi->begin_transaction();
+            $transaction = true;
+            $stmt = $this->koneksi->prepare('SELECT administrator FROM stores WHERE store_id = ? FOR UPDATE');
+            $stmt->bind_param('i', $storeId);
+            $stmt->execute();
+            $store = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$store || ($access !== 'ALL' && ((string)$access === '' || (string)$store['administrator'] !== (string)$access))) {
+                throw new InvalidArgumentException('Anda tidak memiliki akses ke toko ini.');
+            }
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $params = array_merge([$storeId], $ids);
+            $types = str_repeat('i', count($params));
+            $stmt = $this->koneksi->prepare("SELECT product_id FROM products WHERE store_id = ? AND product_id IN ($placeholders) ORDER BY product_id FOR UPDATE");
+            $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $count = $stmt->get_result()->num_rows;
+            $stmt->close();
+            if ($count !== count($ids)) throw new InvalidArgumentException('Ada produk yang tidak tersedia atau bukan milik toko ini. Penghapusan dibatalkan.');
+            $types = str_repeat('i', count($ids));
+            $stmt = $this->koneksi->prepare("SELECT DISTINCT product_id FROM order_items WHERE product_id IN ($placeholders) FOR UPDATE");
+            $stmt->bind_param($types, ...$ids);
+            $stmt->execute();
+            $used = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'product_id');
+            $stmt->close();
+            if ($used) throw new InvalidArgumentException('Produk #' . implode(', #', $used) . ' masih dipakai pada nota. Migrasikan item order-nya terlebih dahulu.');
+            $types = str_repeat('i', count($params));
+            $stmt = $this->koneksi->prepare("DELETE p FROM products p WHERE p.store_id = ? AND p.product_id IN ($placeholders)
+                AND NOT EXISTS(SELECT 1 FROM order_items oi WHERE oi.product_id = p.product_id)");
+            $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $count = $stmt->affected_rows;
+            $stmt->close();
+            if ($count !== count($ids)) throw new InvalidArgumentException('Data produk berubah saat diproses. Penghapusan dibatalkan; muat ulang halaman.');
+            $this->koneksi->commit();
+            $transaction = false;
+            $deleted = true;
+            $_SESSION['swal_success'] = "$count produk berhasil dihapus.";
+        } catch (Throwable $e) {
+            if ($transaction) $this->koneksi->rollback();
+            $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : 'Gagal menghapus produk. Perubahan dibatalkan.';
+            error_log('Bulk product delete: ' . $e->getMessage());
+        } finally {
+            mysqli_report($previousMode);
+        }
+        if ($deleted) {
+            set_error_handler(function ($severity, $message) { throw new RuntimeException($message); });
+            try {
+                require_once __DIR__ . '/../functions/cacheHelper.php';
+                foreach (['products', 'categories', 'product_finishing_prices', 'product_laser_conversion', 'orders'] as $module) updateStoreCache($storeId, $module);
+            } catch (Throwable $e) {
+                error_log('Bulk product delete cache: ' . $e->getMessage());
+                unset($_SESSION['swal_success']);
+                $_SESSION['swal_error'] = 'Produk sudah dihapus, tetapi cache gagal diperbarui. Gunakan tombol Update Cache.';
+            } finally { restore_error_handler(); }
         }
         header('Location: ' . $this->productReturnUrl());
         exit;

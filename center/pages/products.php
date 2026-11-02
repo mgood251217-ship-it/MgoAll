@@ -127,7 +127,9 @@ $_SESSION['product_category_csrf'] = $_SESSION['product_category_csrf'] ?? bin2h
                     <?php endforeach; ?>
                 </select>
             </div>
-            <button type="submit" class="btn-primary-custom" disabled>Ganti Kategori</button>
+            <button id="bulkUpdateCategory" type="submit" class="btn-primary-custom" disabled>Ganti Kategori</button>
+            <button id="bulkMigrateProducts" type="button" class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#migrateProductModal" disabled>Migrasi Terpilih</button>
+            <button id="bulkDeleteProducts" type="submit" class="btn btn-danger" formaction="/action?action=bulk_delete_products" formnovalidate disabled>Hapus Terpilih</button>
             <small id="bulkProductSelectionCount" aria-live="polite">0 produk dipilih pada halaman ini.</small>
         </form>
     <?php endif; ?>
@@ -135,7 +137,7 @@ $_SESSION['product_category_csrf'] = $_SESSION['product_category_csrf'] ?? bin2h
         <table class="table-modern">
             <thead>
                 <tr>
-                    <th><input id="selectAllProducts" type="checkbox" class="form-check-input" aria-label="Pilih semua produk pada halaman ini" title="Pilih semua produk pada halaman ini" <?= empty($data['products']) ? 'disabled' : '' ?>></th>
+                    <th class="product-selection-cell"><label class="product-selection-hit" title="Pilih semua produk pada halaman ini"><input id="selectAllProducts" type="checkbox" class="form-check-input" aria-label="Pilih semua produk pada halaman ini" <?= empty($data['products']) ? 'disabled' : '' ?>></label></th>
                     <th class="migrated-style-78">No</th>
                     <th>Product ID</th>
                     <th>Kategori</th>
@@ -157,7 +159,7 @@ $_SESSION['product_category_csrf'] = $_SESSION['product_category_csrf'] ?? bin2h
                     foreach ($data['products'] as $row): 
                     ?>
                         <tr>
-                            <td><input type="checkbox" class="form-check-input product-category-checkbox" name="product_ids[]" value="<?= (int)$row['product_id'] ?>" form="bulkProductCategoryForm" aria-label="Pilih produk <?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>"></td>
+                            <td class="product-selection-cell"><label class="product-selection-hit"><input type="checkbox" class="form-check-input product-category-checkbox" name="product_ids[]" value="<?= (int)$row['product_id'] ?>" form="bulkProductCategoryForm" data-category="<?= htmlspecialchars((string)($row['category_id'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" data-name="<?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>" data-count="<?= (int)$row['order_item_count'] ?>" aria-label="Pilih produk <?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>"></label></td>
                             <td><?= $no++ ?></td>
                             <td><?= (int)$row['product_id'] ?></td>
                             <td><span class="badge-category"><?= htmlspecialchars($row['category'] ?? 'Tanpa Kategori') ?></span></td>
@@ -619,6 +621,7 @@ $_SESSION['product_category_csrf'] = $_SESSION['product_category_csrf'] ?? bin2h
             <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['product_migration_csrf'], ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="store_id" value="<?= (int)$data['current_store_id'] ?>">
             <input type="hidden" name="source_product_id">
+            <div id="migrationSources"></div>
             <div class="modal-header modal-header-custom">
                 <h5 class="modal-title-custom">Migrasi Item Order</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -637,7 +640,7 @@ $_SESSION['product_category_csrf'] = $_SESSION['product_category_csrf'] ?? bin2h
                     </select>
                     <small id="migrationEmpty" hidden>Tidak ada produk pengganti pada kategori ini.</small>
                 </div>
-                <p class="mb-0">Semua item order produk lama di toko ini akan memakai produk pengganti. Quantity, harga, dan total nota tetap. Produk lama tidak dihapus.</p>
+                <p class="mb-0">Semua item order dari produk yang dipilih di toko ini akan memakai produk pengganti. Quantity, harga, dan total nota tetap. Produk lama tidak dihapus.</p>
             </div>
             <div class="modal-footer modal-footer-custom">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -682,13 +685,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const selectAll = document.getElementById('selectAllProducts');
         const checkboxes = Array.from(document.querySelectorAll('.product-category-checkbox'));
         const category = document.getElementById('bulkProductCategory');
-        const submit = bulkCategoryForm.querySelector('button[type="submit"]');
+        const submit = document.getElementById('bulkUpdateCategory');
+        const migrate = document.getElementById('bulkMigrateProducts');
+        const remove = document.getElementById('bulkDeleteProducts');
         const updateSelection = () => {
-            const count = checkboxes.filter(checkbox => checkbox.checked).length;
-            document.getElementById('bulkProductSelectionCount').textContent = `${count} produk dipilih pada halaman ini.`;
+            const selected = checkboxes.filter(checkbox => checkbox.checked);
+            const count = selected.length;
+            const sameCategory = new Set(selected.map(checkbox => checkbox.dataset.category)).size === 1;
+            document.getElementById('bulkProductSelectionCount').textContent = `${count} produk dipilih pada halaman ini.${count > 0 && !sameCategory ? ' Pilih kategori yang sama untuk migrasi.' : ''}`;
             selectAll.checked = count === checkboxes.length;
             selectAll.indeterminate = count > 0 && count < checkboxes.length;
             submit.disabled = count === 0 || !category.value;
+            migrate.disabled = count === 0 || !sameCategory;
+            remove.disabled = count === 0;
         };
         selectAll.addEventListener('change', () => {
             checkboxes.forEach(checkbox => { checkbox.checked = selectAll.checked; });
@@ -697,12 +706,14 @@ document.addEventListener('DOMContentLoaded', function() {
         checkboxes.forEach(checkbox => checkbox.addEventListener('change', updateSelection));
         category.addEventListener('change', updateSelection);
         bulkCategoryForm.addEventListener('submit', event => {
-            if (!checkboxes.some(checkbox => checkbox.checked)) {
+            if (bulkCategoryForm.dataset.busy || !checkboxes.some(checkbox => checkbox.checked)) {
                 event.preventDefault();
                 return;
             }
-            submit.disabled = true;
-            submit.textContent = 'Menyimpan...';
+            bulkCategoryForm.dataset.busy = '1';
+            const button = event.submitter || submit;
+            submit.disabled = migrate.disabled = remove.disabled = true;
+            button.textContent = button === remove ? 'Menghapus...' : 'Menyimpan...';
         });
         updateSelection();
     }
@@ -720,12 +731,29 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!button) return;
         migrationForm.reset();
         delete migrationForm.dataset.busy;
-        migrationForm.elements.source_product_id.value = button.dataset.id;
-        document.getElementById('migrationSummary').textContent = `Produk #${button.dataset.id} - ${button.dataset.name}: ${button.dataset.count} item order.`;
+        const sources = button.id === 'bulkMigrateProducts'
+            ? Array.from(document.querySelectorAll('.product-category-checkbox:checked')).map(checkbox => ({ id: checkbox.value, category: checkbox.dataset.category, name: checkbox.dataset.name, count: Number(checkbox.dataset.count) || 0 }))
+            : [{ id: button.dataset.id, category: button.dataset.category, name: button.dataset.name, count: Number(button.dataset.count) || 0 }];
+        const sourceIds = sources.map(source => String(source.id));
+        const sameCategory = sources.length > 0 && new Set(sources.map(source => source.category)).size === 1;
+        migrationForm.elements.source_product_id.value = sourceIds[0] || '';
+        const sourceInputs = document.getElementById('migrationSources');
+        sourceInputs.replaceChildren();
+        sources.forEach(source => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'source_product_ids[]';
+            input.value = source.id;
+            sourceInputs.appendChild(input);
+        });
+        const count = sources.reduce((sum, source) => sum + source.count, 0);
+        document.getElementById('migrationSummary').textContent = sources.length === 1
+            ? `Produk #${sources[0].id} - ${sources[0].name}: ${count} item order.`
+            : `${sources.length} produk dipilih (${sourceIds.map(id => '#' + id).join(', ')}): ${count} item order.`;
         let available = 0;
         Array.from(migrationTarget.options).forEach(option => {
             if (!option.value) return;
-            const allowed = option.value !== button.dataset.id && option.dataset.category === button.dataset.category;
+            const allowed = sameCategory && !sourceIds.includes(option.value) && option.dataset.category === sources[0].category;
             option.hidden = !allowed;
             option.disabled = !allowed;
             if (allowed) available++;
