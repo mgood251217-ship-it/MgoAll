@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../models/ProductFinishingPrice.php';
 require_once __DIR__ . '/../models/ProductLaserConversion.php';
+require_once __DIR__ . '/../models/OrderDiscount.php';
 require_once __DIR__ . '/../models/Order.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/Project.php';
@@ -929,7 +930,35 @@ class OrderController {
         }
     }
 
+    public function deleteDiscount() {
+        global $store_id;
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            http_response_code(405);
+            send_json_response(false, 'Gunakan POST untuk menghapus diskon.');
+        }
+        $input = json_decode(file_get_contents('php://input'), true);
+        $data = is_array($input) ? $input : $_POST;
+        $order_id = (int)($data['order_id'] ?? 0);
+        $product_id = (int)($data['product_id'] ?? 0);
+        try {
+            (new OrderDiscount($this->koneksi))->delete($order_id, $product_id, (int)$store_id);
+        } catch (InvalidArgumentException $e) {
+            http_response_code(409);
+            send_json_response(false, $e->getMessage());
+        } catch (Throwable $e) {
+            error_log('Delete order discount: ' . $e->getMessage());
+            http_response_code(500);
+            send_json_response(false, 'Gagal menghapus diskon.');
+        }
+        try {
+            updateStoreCache($store_id, 'orders');
+            updateOrderTrigger($store_id, $order_id);
+        } catch (Throwable $e) { error_log('Order discount cache: ' . $e->getMessage()); }
+        send_json_response(true, 'Diskon produk berhasil dihapus.');
+    }
+
     public function orderDetail(){
+        global $store_id;
         $order_id = (int)($_GET['order_id'] ?? 0);
         $total = $this->orderModel->getOneValue($order_id, 'total');
         $items_raw = $this->orderModel->getOrderItemsWithDetails($order_id);
@@ -954,6 +983,7 @@ class OrderController {
             'total' => $total,
             'items' => $items,
             'diskon_per_produk' => $diskon_per_produk,
+            'discounts' => (new OrderDiscount($this->koneksi))->getByOrder($order_id, (int)$store_id),
             'note' => $note['note'] ?? ''
         ]);
     }

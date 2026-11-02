@@ -126,6 +126,9 @@ switch ($action) {
     case 'product_laser_conversions':
         $productController->getProductLaserConversions();
         break;
+    case 'delete_order_discount':
+        $orderController->deleteDiscount();
+        break;
     case 'get_note':
         $order_id = $_GET['order_id'] ?? 0;
         $data = (object)['order_id' => $_GET['order_id'] ?? 0, 'note_for' => 'CTM'];
