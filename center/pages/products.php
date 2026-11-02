@@ -31,6 +31,7 @@ foreach ($returnFilters as $key => $value) {
 
 $_SESSION['product_migration_csrf'] = $_SESSION['product_migration_csrf'] ?? bin2hex(random_bytes(32));
 $_SESSION['product_cache_csrf'] = $_SESSION['product_cache_csrf'] ?? bin2hex(random_bytes(32));
+$_SESSION['product_category_csrf'] = $_SESSION['product_category_csrf'] ?? bin2hex(random_bytes(32));
 ?>
 
 
@@ -46,6 +47,7 @@ $_SESSION['product_cache_csrf'] = $_SESSION['product_cache_csrf'] ?? bin2hex(ran
                 <button type="submit" class="btn-secondary-custom" title="Perbarui cache toko yang dipilih setelah perubahan melalui SQL"><i class="fas fa-sync-alt"></i> Update Cache</button>
             </form>
             <a class="btn-primary-custom" href="/package-prices?store_id=<?= (int)$data['current_store_id'] ?>">Harga Paket</a>
+            <a class="btn-primary-custom" href="/laser-conversions?store_id=<?= (int)$data['current_store_id'] ?>">Konversi Print Laser</a>
             <button class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalTambahKategori">
                 <i class="fas fa-tags"></i> Tambah Kategori
             </button>
@@ -111,10 +113,29 @@ $_SESSION['product_cache_csrf'] = $_SESSION['product_cache_csrf'] ?? bin2hex(ran
 
 <div class="table-container" id="daftar-produk">
     <h3 class="table-header-title"><i class="fas fa-box migrated-style-27"></i> Daftar Produk</h3>
+    <?php if (!empty($data['products'])): ?>
+        <form id="bulkProductCategoryForm" method="post" action="/action?action=bulk_update_product_category" class="filter-form" style="padding:16px; gap:12px">
+            <?= $returnInputs ?>
+            <input type="hidden" name="store_id" value="<?= (int)$data['current_store_id'] ?>">
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['product_category_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+            <div class="form-group">
+                <label for="bulkProductCategory">Kategori tujuan</label>
+                <select id="bulkProductCategory" name="category_id" class="form-control" required>
+                    <option value="">Pilih kategori</option>
+                    <?php foreach ($data['categories'] as $category): ?>
+                        <option value="<?= (int)$category['category_id'] ?>"><?= htmlspecialchars($category['name'], ENT_QUOTES, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <button type="submit" class="btn-primary-custom" disabled>Ganti Kategori</button>
+            <small id="bulkProductSelectionCount" aria-live="polite">0 produk dipilih pada halaman ini.</small>
+        </form>
+    <?php endif; ?>
     <div class="table-scroll">
         <table class="table-modern">
             <thead>
                 <tr>
+                    <th><input id="selectAllProducts" type="checkbox" class="form-check-input" aria-label="Pilih semua produk pada halaman ini" title="Pilih semua produk pada halaman ini" <?= empty($data['products']) ? 'disabled' : '' ?>></th>
                     <th class="migrated-style-78">No</th>
                     <th>Product ID</th>
                     <th>Kategori</th>
@@ -128,7 +149,7 @@ $_SESSION['product_cache_csrf'] = $_SESSION['product_cache_csrf'] ?? bin2hex(ran
             <tbody>
                 <?php if (empty($data['products'])): ?>
                     <tr>
-                        <td class="migrated-style-80" colspan="8">Tidak ada produk ditemukan</td>
+                        <td class="migrated-style-80" colspan="9">Tidak ada produk ditemukan</td>
                     </tr>
                 <?php else: ?>
                     <?php 
@@ -136,6 +157,7 @@ $_SESSION['product_cache_csrf'] = $_SESSION['product_cache_csrf'] ?? bin2hex(ran
                     foreach ($data['products'] as $row): 
                     ?>
                         <tr>
+                            <td><input type="checkbox" class="form-check-input product-category-checkbox" name="product_ids[]" value="<?= (int)$row['product_id'] ?>" form="bulkProductCategoryForm" aria-label="Pilih produk <?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>"></td>
                             <td><?= $no++ ?></td>
                             <td><?= (int)$row['product_id'] ?></td>
                             <td><span class="badge-category"><?= htmlspecialchars($row['category'] ?? 'Tanpa Kategori') ?></span></td>
@@ -597,7 +619,6 @@ $_SESSION['product_cache_csrf'] = $_SESSION['product_cache_csrf'] ?? bin2hex(ran
             <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['product_migration_csrf'], ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="store_id" value="<?= (int)$data['current_store_id'] ?>">
             <input type="hidden" name="source_product_id">
-            <input type="hidden" name="confirmed" value="0">
             <div class="modal-header modal-header-custom">
                 <h5 class="modal-title-custom">Migrasi Item Order</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -615,10 +636,6 @@ $_SESSION['product_cache_csrf'] = $_SESSION['product_cache_csrf'] ?? bin2hex(ran
                         <?php endforeach; ?>
                     </select>
                     <small id="migrationEmpty" hidden>Tidak ada produk pengganti pada kategori ini.</small>
-                </div>
-                <div class="mb-3">
-                    <label for="migrationPassword" class="form-label-custom">Sandi akun Anda</label>
-                    <input id="migrationPassword" name="password" type="password" class="form-control-custom" autocomplete="current-password" required>
                 </div>
                 <p class="mb-0">Semua item order produk lama di toko ini akan memakai produk pengganti. Quantity, harga, dan total nota tetap. Produk lama tidak dihapus.</p>
             </div>
@@ -660,6 +677,35 @@ $_SESSION['product_cache_csrf'] = $_SESSION['product_cache_csrf'] ?? bin2hex(ran
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const bulkCategoryForm = document.getElementById('bulkProductCategoryForm');
+    if (bulkCategoryForm) {
+        const selectAll = document.getElementById('selectAllProducts');
+        const checkboxes = Array.from(document.querySelectorAll('.product-category-checkbox'));
+        const category = document.getElementById('bulkProductCategory');
+        const submit = bulkCategoryForm.querySelector('button[type="submit"]');
+        const updateSelection = () => {
+            const count = checkboxes.filter(checkbox => checkbox.checked).length;
+            document.getElementById('bulkProductSelectionCount').textContent = `${count} produk dipilih pada halaman ini.`;
+            selectAll.checked = count === checkboxes.length;
+            selectAll.indeterminate = count > 0 && count < checkboxes.length;
+            submit.disabled = count === 0 || !category.value;
+        };
+        selectAll.addEventListener('change', () => {
+            checkboxes.forEach(checkbox => { checkbox.checked = selectAll.checked; });
+            updateSelection();
+        });
+        checkboxes.forEach(checkbox => checkbox.addEventListener('change', updateSelection));
+        category.addEventListener('change', updateSelection);
+        bulkCategoryForm.addEventListener('submit', event => {
+            if (!checkboxes.some(checkbox => checkbox.checked)) {
+                event.preventDefault();
+                return;
+            }
+            submit.disabled = true;
+            submit.textContent = 'Menyimpan...';
+        });
+        updateSelection();
+    }
     document.getElementById('addCategoryForm').addEventListener('submit', function() {
         const button = this.querySelector('button[type="submit"]');
         button.disabled = true;
@@ -688,32 +734,14 @@ document.addEventListener('DOMContentLoaded', function() {
         migrationSubmit.disabled = available === 0;
         migrationSubmit.textContent = 'Migrasi';
     });
-    migrationModal.addEventListener('hidden.bs.modal', function() {
-        migrationForm.elements.password.value = '';
-    });
-    migrationForm.addEventListener('submit', async function(event) {
-        event.preventDefault();
-        if (migrationForm.dataset.busy || !migrationForm.reportValidity()) return;
+    migrationForm.addEventListener('submit', function(event) {
+        if (migrationForm.dataset.busy || !migrationForm.reportValidity()) {
+            event.preventDefault();
+            return;
+        }
         migrationForm.dataset.busy = '1';
         migrationSubmit.disabled = true;
-        try {
-            const result = await Swal.fire({
-                icon: 'warning', title: 'Konfirmasi Migrasi',
-                text: `${document.getElementById('migrationSummary').textContent} Pindahkan semua item order tersebut ke ${migrationTarget.selectedOptions[0].textContent.trim()}?`,
-                showCancelButton: true, confirmButtonText: 'Ya, Migrasikan', cancelButtonText: 'Batal', focusCancel: true
-            });
-            if (result.isConfirmed) {
-                migrationForm.elements.confirmed.value = '1';
-                migrationSubmit.textContent = 'Memigrasikan...';
-                migrationForm.submit();
-                return;
-            }
-        } finally {
-            if (migrationForm.elements.confirmed.value !== '1') {
-                delete migrationForm.dataset.busy;
-                migrationSubmit.disabled = false;
-            }
-        }
+        migrationSubmit.textContent = 'Memigrasikan...';
     });
     const editProdukModal = document.getElementById('modalEditProduk');
     if (editProdukModal) {

@@ -175,7 +175,7 @@ class ProductController {
             require_once __DIR__ . '/../functions/cacheHelper.php';
             set_error_handler(function ($severity, $message) { throw new RuntimeException($message); });
             try {
-                foreach (['store_data', 'store_names', 'categories', 'products', 'finishings', 'product_finishing_prices', 'orders'] as $module) {
+                foreach (['store_data', 'store_names', 'categories', 'products', 'finishings', 'product_finishing_prices', 'product_laser_conversion', 'orders'] as $module) {
                     updateStoreCache($storeId, $module);
                 }
             } finally {
@@ -207,19 +207,16 @@ class ProductController {
             if (!is_string($_POST['csrf'] ?? null) || empty($_SESSION['product_migration_csrf']) || !hash_equals($_SESSION['product_migration_csrf'], $_POST['csrf'])) {
                 throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
             }
-            if (($_POST['confirmed'] ?? '') !== '1' || $sourceId <= 0 || $targetId <= 0 || $sourceId === $targetId || $storeId <= 0) {
-                throw new InvalidArgumentException('Pilih produk pengganti dan konfirmasi migrasi.');
+            if ($sourceId <= 0 || $targetId <= 0 || $sourceId === $targetId || $storeId <= 0) {
+                throw new InvalidArgumentException('Pilih produk pengganti yang berbeda dari produk sumber.');
             }
             $adminId = (int)startEnk('dek', $_SESSION['admin_logged_in']['administrator_id'] ?? '');
-            $stmt = $this->koneksi->prepare('SELECT password, access FROM administrator WHERE administrator_id = ?');
+            $stmt = $this->koneksi->prepare('SELECT access FROM administrator WHERE administrator_id = ?');
             $stmt->bind_param('i', $adminId);
             $stmt->execute();
             $admin = $stmt->get_result()->fetch_assoc();
             $stmt->close();
-            $password = $_POST['password'] ?? '';
-            if (!$admin || !is_string($password) || !password_verify($password, $admin['password'])) {
-                throw new InvalidArgumentException('Sandi salah. Migrasi dibatalkan.');
-            }
+            if (!$admin) throw new InvalidArgumentException('Akun tidak ditemukan. Silakan login kembali.');
 
             $this->koneksi->begin_transaction();
             $transaction = true;
@@ -269,6 +266,95 @@ class ProductController {
                 foreach ($orders as $order) updateOrderTrigger($storeId, $order['order_id']);
             } catch (Throwable $e) {
                 error_log('Product migration cache refresh failed: ' . $e->getMessage());
+            }
+        }
+        header('Location: ' . $this->productReturnUrl());
+        exit;
+    }
+
+    public function bulkUpdateCategory() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $storeId = (int)($_POST['store_id'] ?? 0);
+        $categoryId = (int)($_POST['category_id'] ?? 0);
+        $transaction = false;
+        $saved = false;
+        $driver = new mysqli_driver();
+        $previousMode = $driver->report_mode;
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+        try {
+            if (empty($_SESSION['admin_logged_in']) || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+                throw new InvalidArgumentException('Silakan login kembali.');
+            }
+            if (!is_string($_POST['csrf'] ?? null) || empty($_SESSION['product_category_csrf'])
+                || !hash_equals($_SESSION['product_category_csrf'], $_POST['csrf'])) {
+                throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
+            }
+            $ids = $_POST['product_ids'] ?? [];
+            if (!is_array($ids) || !$ids || count($ids) > 1000) {
+                throw new InvalidArgumentException('Pilih 1 sampai 1.000 produk untuk diganti kategorinya.');
+            }
+            foreach ($ids as $id) {
+                if (!is_scalar($id) || filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]) === false) {
+                    throw new InvalidArgumentException('Pilihan produk tidak valid. Muat ulang halaman.');
+                }
+            }
+            $ids = array_values(array_unique(array_map('intval', $ids)));
+            sort($ids);
+            $access = startEnk('dek', $_SESSION['admin_logged_in']['access'] ?? '');
+            $this->koneksi->begin_transaction();
+            $transaction = true;
+            $stmt = $this->koneksi->prepare('SELECT administrator FROM stores WHERE store_id = ? FOR UPDATE');
+            $stmt->bind_param('i', $storeId);
+            $stmt->execute();
+            $store = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$store || ($access !== 'ALL' && ((string)$access === '' || (string)$store['administrator'] !== (string)$access))) {
+                throw new InvalidArgumentException('Anda tidak memiliki akses ke toko ini.');
+            }
+            $stmt = $this->koneksi->prepare('SELECT category_id FROM categories WHERE category_id = ? AND store_id = ? FOR UPDATE');
+            $stmt->bind_param('ii', $categoryId, $storeId);
+            $stmt->execute();
+            $category = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$category) throw new InvalidArgumentException('Pilih kategori tujuan dari toko yang sama.');
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $params = array_merge([$storeId], $ids);
+            $types = str_repeat('i', count($params));
+            $stmt = $this->koneksi->prepare("SELECT product_id FROM products WHERE store_id = ? AND product_id IN ($placeholders) ORDER BY product_id FOR UPDATE");
+            $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $count = $stmt->get_result()->num_rows;
+            $stmt->close();
+            if ($count !== count($ids)) throw new InvalidArgumentException('Ada produk yang sudah tidak tersedia atau bukan milik toko ini. Perubahan dibatalkan.');
+            $params = array_merge([$categoryId, $storeId], $ids);
+            $types = str_repeat('i', count($params));
+            $stmt = $this->koneksi->prepare("UPDATE products SET category_id = ? WHERE store_id = ? AND product_id IN ($placeholders)");
+            $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $changed = $stmt->affected_rows;
+            $stmt->close();
+            $this->koneksi->commit();
+            $transaction = false;
+            $saved = $changed > 0;
+            $_SESSION['swal_success'] = $changed > 0 ? "$changed produk berhasil diganti kategorinya." : 'Semua produk yang dipilih sudah berada di kategori tujuan.';
+        } catch (Throwable $e) {
+            if ($transaction) $this->koneksi->rollback();
+            $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : 'Gagal mengganti kategori. Perubahan dibatalkan.';
+            error_log('Bulk product category: ' . $e->getMessage());
+        } finally {
+            mysqli_report($previousMode);
+        }
+        if ($saved) {
+            set_error_handler(function ($severity, $message) { throw new RuntimeException($message); });
+            try {
+                require_once __DIR__ . '/../functions/cacheHelper.php';
+                foreach (['products', 'categories', 'product_finishing_prices', 'product_laser_conversion', 'orders'] as $module) updateStoreCache($storeId, $module);
+            } catch (Throwable $e) {
+                error_log('Bulk product category cache: ' . $e->getMessage());
+                unset($_SESSION['swal_success']);
+                $_SESSION['swal_error'] = 'Kategori produk sudah diganti, tetapi cache gagal diperbarui. Gunakan tombol Update Cache.';
+            } finally {
+                restore_error_handler();
             }
         }
         header('Location: ' . $this->productReturnUrl());
