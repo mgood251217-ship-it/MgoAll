@@ -55,6 +55,10 @@ switch ($route) {
         require 'pages/package_prices.php';
         break;
 
+    case 'laser-conversions':
+        require 'pages/laser_conversions.php';
+        break;
+
     case 'transactions':
         require 'pages/transactions.php';
         break;

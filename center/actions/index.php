@@ -71,6 +71,7 @@ switch ($action) {
     case 'add_product':
     case 'add_category':
     case 'edit_product':
+    case 'bulk_update_product_category':
     case 'delete_product':
     case 'add_finishing':
     case 'edit_finishing':
@@ -84,6 +85,7 @@ switch ($action) {
         if ($action === 'add_product') $productController->addProduct();
         if ($action === 'add_category') $productController->addCategory();
         if ($action === 'edit_product') $productController->editProduct();
+        if ($action === 'bulk_update_product_category') $productController->bulkUpdateCategory();
         if ($action === 'delete_product') $productController->deleteProduct();
         if ($action === 'add_finishing') $productController->addFinishing();
         if ($action === 'edit_finishing') $productController->editFinishing();
@@ -92,6 +94,14 @@ switch ($action) {
         if ($action === 'migrate_product') $productController->migrateProduct();
         if ($action === 'refresh_product_cache') $productController->refreshCache();
         if ($action === 'get_finishing') $productController->getFinishingByCategoryId();
+        break;
+
+    case 'save_laser_conversion':
+    case 'get_product_laser_conversions':
+        require_once __DIR__ . '/../controllers/LaserConversionController.php';
+        $laserConversionController = new LaserConversionController($koneksi);
+        if ($action === 'save_laser_conversion') $laserConversionController->save();
+        if ($action === 'get_product_laser_conversions') $laserConversionController->getRules();
         break;
 
     case 'save_package_price':
