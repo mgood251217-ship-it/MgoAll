@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/../models/ProductFinishingPrice.php';
+require_once __DIR__ . '/../models/ProductLaserConversion.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../functions/cacheHelpers.php';
@@ -9,10 +10,12 @@ class ProductController {
     private $productModel;
     private $authMiddleware;
     private $packagePrices;
+    private $laserConversions;
 
     public function __construct($koneksi) {
         $this->productModel = new Product($koneksi);
         $this->packagePrices = new ProductFinishingPrice($koneksi);
+        $this->laserConversions = new ProductLaserConversion($koneksi);
         $this->authMiddleware = new AuthMiddleware($koneksi);
     }
 
@@ -64,6 +67,14 @@ class ProductController {
         foreach ($rows as &$row) $row['active'] = 1;
         unset($row);
         send_json_response(true, 'Harga paket', $rows);
+    }
+
+    public function getProductLaserConversions() {
+        global $store_id;
+        $rows = $this->laserConversions->getByStore($store_id);
+        $category_id = (int)($_GET['category_id'] ?? 0);
+        if ($category_id) $rows = array_values(array_filter($rows, function ($row) use ($category_id) { return (int)$row['category_id'] === $category_id; }));
+        send_json_response(true, 'Varian print laser', $rows);
     }
 
     public function getCategory() {
