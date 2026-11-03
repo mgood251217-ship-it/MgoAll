@@ -40,6 +40,7 @@ class LaserConversionController {
         if ($store_id) $this->checkStore($store_id);
         $products = $laserProducts = $rules = $finishings = [];
         $ready = $this->conversions->hasVariants();
+        $materialsReady = $this->conversions->hasOrderMaterials();
         if ($store_id) {
             $stmt = $this->koneksi->prepare("SELECT p.product_id, p.name, p.price, c.name AS category
                 FROM products p JOIN categories c ON c.category_id = p.category_id AND c.store_id = p.store_id
@@ -61,7 +62,7 @@ class LaserConversionController {
             $stmt->close();
             $rules = $this->conversions->getByStore($store_id);
         }
-        return compact('stores', 'store_id', 'products', 'laserProducts', 'rules', 'finishings', 'ready');
+        return compact('stores', 'store_id', 'products', 'laserProducts', 'rules', 'finishings', 'ready', 'materialsReady');
     }
 
     public function getRules() {
@@ -169,12 +170,16 @@ class LaserConversionController {
                     $stmt->close();
                     if ($found !== count($ids)) throw new InvalidArgumentException('Pilih finishing dari kategori dan toko produk yang sama.');
                 }
-                $stmt = $this->koneksi->prepare('SELECT id FROM product_laser_conversion WHERE store_id = ? AND product_id = ? AND size = ? AND finishing_ids = ? AND id <> ?');
-                $stmt->bind_param('iissi', $store_id, $product_id, $size, $finishing_ids, $id);
+                $materialFilter = $this->conversions->hasOrderMaterials() ? ' AND laser_product_id = ?' : '';
+                $stmt = $this->koneksi->prepare('SELECT id FROM product_laser_conversion WHERE store_id = ? AND product_id = ? AND size = ? AND finishing_ids = ? AND id <> ?' . $materialFilter);
+                if ($materialFilter) $stmt->bind_param('iissii', $store_id, $product_id, $size, $finishing_ids, $id, $laser_product_id);
+                else $stmt->bind_param('iissi', $store_id, $product_id, $size, $finishing_ids, $id);
                 $stmt->execute();
                 $duplicate = $stmt->get_result()->fetch_assoc();
                 $stmt->close();
-                if ($duplicate) throw new InvalidArgumentException('Kombinasi produk, ukuran, dan finishing sudah ada. Edit baris tersebut.');
+                if ($duplicate) throw new InvalidArgumentException($materialFilter
+                    ? 'Kombinasi produk, bahan, ukuran, dan finishing sudah ada. Edit baris tersebut.'
+                    : 'Jalankan SQL product_laser_materials.sql untuk menambahkan bahan berbeda pada ukuran dan finishing yang sama.');
                 if ($id) {
                     $stmt = $this->koneksi->prepare('UPDATE product_laser_conversion SET product_id = ?, laser_product_id = ?, product_quantity = ?, print_quantity = ?, size = ?, finishing_ids = ?, price = ? WHERE id = ? AND store_id = ?');
                     $stmt->bind_param('iiiissdii', $product_id, $laser_product_id, $product_quantity, $print_quantity, $size, $finishing_ids, $price, $id, $store_id);

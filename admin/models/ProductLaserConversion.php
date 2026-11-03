@@ -4,6 +4,7 @@ class ProductLaserConversion {
     private $koneksi;
     private $available;
     private $variants;
+    private $orderMaterials;
 
     public function __construct($koneksi) {
         $this->koneksi = $koneksi;
@@ -82,20 +83,35 @@ class ProductLaserConversion {
         return $size === '-' ? '' : $size;
     }
 
-    public static function matchRule($rules, $size, $finishing, $allowLegacyFallback = true) {
-        $size = self::normalizeSize($size);
-        $ids = self::finishingIds($finishing);
-        $legacy = null;
-        foreach ($rules as $rule) {
-            if (empty($rule['valid'])) continue;
-            if (strcasecmp(self::normalizeSize($rule['size']), $size) === 0 && self::finishingIds($rule['finishing_ids']) === $ids) return $rule;
-            // Konversi lama belum mengatur ukuran, finishing, atau harga.
-            if ($allowLegacyFallback && $rule['price'] === null && $rule['size'] === '' && $rule['finishing_ids'] === '') $legacy = $rule;
+    public function hasOrderMaterials() {
+        if ($this->orderMaterials === null) {
+            $result = $this->koneksi->query("SELECT COUNT(*) AS total FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'order_items'
+                  AND COLUMN_NAME IN ('laser_product_id', 'laser_material_name')");
+            $this->orderMaterials = (int)$result->fetch_assoc()['total'] === 2;
         }
-        return $legacy;
+        return $this->orderMaterials;
     }
 
-    public function resolve($store_id, $product_id, $size, $finishing) {
+    public static function matchRule($rules, $size, $finishing, $allowLegacyFallback = true, $laser_product_id = 0) {
+        $size = self::normalizeSize($size);
+        $ids = self::finishingIds($finishing);
+        $matches = $legacy = [];
+        foreach ($rules as $rule) {
+            if (empty($rule['valid'])) continue;
+            if ($laser_product_id && (int)$rule['laser_product_id'] !== (int)$laser_product_id) continue;
+            if (strcasecmp(self::normalizeSize($rule['size']), $size) === 0 && self::finishingIds($rule['finishing_ids']) === $ids) $matches[] = $rule;
+            // Konversi lama belum mengatur ukuran, finishing, atau harga.
+            if ($allowLegacyFallback && $rule['price'] === null && $rule['size'] === '' && $rule['finishing_ids'] === '') $legacy[] = $rule;
+        }
+        if ($matches) return count($matches) === 1 ? $matches[0] : null;
+        return count($legacy) === 1 ? $legacy[0] : null;
+    }
+
+    public function resolve($store_id, $product_id, $size, $finishing, $laser_product_id = 0) {
+        if (!is_scalar($laser_product_id) || !preg_match('/^\d+$/D', (string)$laser_product_id)
+            || (float)$laser_product_id > 2147483647) throw new InvalidArgumentException('Pilihan bahan tidak valid.');
+        $laser_product_id = (int)$laser_product_id;
         if (!preg_match('/^(?:-|\d+(?:,\d+)*)?$/D', trim((string)$finishing))) throw new InvalidArgumentException('Pilihan finishing tidak valid.');
         $ids = self::finishingIds($finishing);
         if ($ids) {
@@ -114,9 +130,9 @@ class ProductLaserConversion {
         $rules = array_values(array_filter($this->getByStore($store_id), function ($rule) use ($product_id) {
             return (int)$rule['product_id'] === (int)$product_id;
         }));
-        if (!$rules) return null;
-        $rule = self::matchRule($rules, $size, $finishing, !$this->hasVariants());
-        if (!$rule) throw new InvalidArgumentException('Kombinasi ukuran dan finishing belum tersedia. Pilih varian ANEKA CETAK yang sudah diatur di Center.');
+        if (!$rules && !$laser_product_id) return null;
+        $rule = self::matchRule($rules, $size, $finishing, !$this->hasVariants(), $laser_product_id);
+        if (!$rule) throw new InvalidArgumentException('Pilih kombinasi bahan, ukuran, dan finishing yang tersedia. Jika pilihan bahan belum muncul, perbarui aplikasi.');
         return $rule;
     }
 

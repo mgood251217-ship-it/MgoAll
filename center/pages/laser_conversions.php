@@ -63,12 +63,14 @@ $finishingCheckboxes = function ($selected = '', $formId = '') use ($data, $esca
 <?php if (!$data['ready']): ?>
     <div class="alert alert-warning">Jalankan SQL <code>product_laser_variants.sql</code> terlebih dahulu.</div>
 <?php elseif ($data['store_id']): ?>
+    <?php if (!$data['materialsReady']): ?><div class="alert alert-warning">Jalankan SQL <code>center/utils/product_laser_materials.sql</code> sebelum menambahkan varian dengan beberapa bahan.</div><?php endif; ?>
     <div class="filter-card">
         <h3>Tambah Varian Konversi</h3>
         <p>Produk diambil dari kategori ANEKA CETAK, sedangkan bahan print dari LASER A3. Contoh: 40 GANCI = 1 pcs print, atau 1 ID CARD = 1 pcs print.</p>
         <p>Hasil dibulatkan ke atas per item order: 41 ganci = 2 pcs print. Pengaturan berlaku juga untuk laporan nota lama; jumlah, harga, dan stok pada nota tetap sama.</p>
         <p>Print dihitung per kelompok produk. Jika 25 produk = 2 print, maka 12 produk = 2 print dan 26 produk = 4 print.</p>
         <p>Ukuran boleh kosong atau berupa label, misalnya 44 mm atau A4. Harga final per pcs sudah mencakup semua finishing yang dicentang.</p>
+        <p>Satu produk boleh memakai beberapa bahan, misalnya KARTU NAMA dengan AP260, LINEN, atau CONCORD. Tambahkan baris untuk setiap kombinasi bahan, ukuran, dan finishing.</p>
         <?php if (!$data['laserProducts']): ?><div class="alert alert-warning">Belum ada bahan print satuan di kategori LASER A3 pada toko ini.</div><?php endif; ?>
         <?php if (!$data['products']): ?><div class="alert alert-warning">Belum ada produk satuan di ANEKA CETAK. Tambahkan kategori ANEKA CETAK di halaman Produk, lalu masukkan atau pindahkan produk yang akan dikonversi ke kategori tersebut.</div><?php endif; ?>
         <form method="post" action="/action?action=save_laser_conversion" class="filter-form">
