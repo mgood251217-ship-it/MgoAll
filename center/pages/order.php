@@ -182,6 +182,11 @@ if (isset($_GET['ajax_payment'])) {
                     <input type="number" id="qty" name="qty" class="form-control" min="1" required>
                 </div>
 
+                <div class="form-group" id="laserMaterialRow" style="display:none">
+                    <label for="laserMaterial">Bahan</label>
+                    <select id="laserMaterial" class="form-control"></select>
+                </div>
+
                 <div class="form-group" id="laserVariantRow" style="display:none">
                     <label for="laserVariant">Ukuran</label>
                     <select id="laserVariant" class="form-control"></select>
@@ -294,6 +299,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let packageRules = [];
     let laserRules = [];
     let laserSize = '';
+    let laserMaterialId = '';
 
     const elKategori = document.getElementById('kategori');
     const elJudul = document.getElementById('judul');
@@ -314,19 +320,33 @@ document.addEventListener('DOMContentLoaded', function () {
     const size = document.getElementById('ukuranDropdown');
     const packageSize = document.getElementById('packageSize');
     const laserVariant = document.getElementById('laserVariant');
+    const laserMaterial = document.getElementById('laserMaterial');
     const laserSizeKey = value => String(value || '').trim() === '-' ? '' : String(value || '').trim().replace(/\s+/g, ' ').toUpperCase();
     function updateLaserView(chooseDefault = false) {
         const rules = laserRules.filter(rule => String(rule.product_id) === String(elJudul.value));
         const choices = rules.filter(rule => Number(rule.valid) === 1);
         const visible = getKategoriName() === 'ANEKA CETAK' && rules.length > 0;
         document.getElementById('laserVariantRow').style.display = visible ? '' : 'none';
-        if (!visible) { laserSize = ''; return; }
-        const sizes = [...new Map(choices.map(rule => [laserSizeKey(rule.size), { value: rule.size || '-', label: rule.size || 'Tanpa ukuran' }])).values()];
+        document.getElementById('laserMaterialRow').style.display = visible ? '' : 'none';
+        if (!visible) { laserSize = ''; laserMaterialId = ''; return; }
+        const materials = [...new Map(choices.map(rule => [String(rule.laser_product_id), rule.laser_name])).entries()];
+        if (!laserMaterialId && materials.length === 1) laserMaterialId = materials[0][0];
+        laserMaterial.replaceChildren(new Option('Pilih bahan', ''));
+        materials.forEach(([id, name]) => laserMaterial.add(new Option(name, id)));
+        laserMaterial.value = laserMaterialId;
+        const materialChoices = choices.filter(rule => String(rule.laser_product_id) === laserMaterialId);
+        const sizes = [...new Map(materialChoices.map(rule => [laserSizeKey(rule.size), { value: rule.size || '-', label: rule.size || 'Tanpa ukuran' }])).values()];
         if (chooseDefault && sizes.length === 1) laserSize = sizes[0].value === '-' ? '' : sizes[0].value;
         laserVariant.replaceChildren(new Option('Pilih ukuran', ''));
         sizes.forEach(size => laserVariant.add(new Option(size.label, size.value)));
         laserVariant.value = sizes.find(size => laserSizeKey(size.value) === laserSizeKey(laserSize))?.value || '';
     }
+    laserMaterial.addEventListener('change', () => {
+        laserMaterialId = laserMaterial.value;
+        laserSize = '';
+        updateLaserView(true);
+        updatePricePreview();
+    });
     laserVariant.addEventListener('change', () => {
         laserSize = laserVariant.value === '-' ? '' : laserVariant.value;
         updatePricePreview();
@@ -361,6 +381,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 elPanjang.value = '';
                 elLebar.value = '';
             }
+        }
+        if (!hasPackage && ['LASER', 'LASER A3'].includes(getKategoriName())) {
+            elPanjang.value = '';
+            elLebar.value = '';
         }
         elPanjang.readOnly = hasPackage;
         elLebar.readOnly = hasPackage || ['DTF', 'DTF UV'].includes(getKategoriName());
@@ -411,7 +435,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         tbody.insertAdjacentHTML('beforeend', `
                             <tr class="order-item-row" 
                                 data-order-item-id="${item.order_item_id}"
-                                data-kategori="${item.type || ''}"
+                                data-kategori="${item.category || item.type || ''}"
+                                data-laser-product-id="${Number(item.laser_product_id) || 0}"
                                 data-judul="${item.product_name || item.judul}"
                                 data-qty="${item.quantity}"
                                 data-unit="${item.unit}"
@@ -431,6 +456,12 @@ document.addEventListener('DOMContentLoaded', function () {
                                 </td>
                             </tr> 
                         `);
+                        if (item.laser_material_name) {
+                            const material = document.createElement('small');
+                            material.style.display = 'block';
+                            material.textContent = `Bahan: ${item.laser_material_name}`;
+                            tbody.lastElementChild.cells[0].appendChild(material);
+                        }
                     });
                 }
 
@@ -537,6 +568,8 @@ document.addEventListener('DOMContentLoaded', function () {
         packageRules = [];
         laserRules = [];
         laserSize = '';
+        laserMaterialId = '';
+        document.getElementById('laserMaterialRow').style.display = 'none';
         document.getElementById('laserVariantRow').style.display = 'none';
         document.getElementById('packageSizeRow').style.display = 'none';
         packageSize.required = false;
@@ -702,6 +735,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const formData = new FormData();
         formData.append('order_id', <?= $order_id ?>);
         formData.append('product_id', elJudul.value);
+        formData.append('laser_product_id', laserMaterialId || 0);
         formData.append('judul', judulAsli);
         formData.append('quantity', parseInt(elQty?.value) || 1);
         formData.append('finishing', finishingIds.join(','));
@@ -753,6 +787,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     elJudul.addEventListener('change', () => {
         laserSize = '';
+        laserMaterialId = '';
         const mappedIds = new Set(packageRules.map(rule => String(rule.finishing_id)));
         document.querySelectorAll('.finishing-checkbox').forEach(cb => {
             if (mappedIds.has(cb.value)) cb.checked = false;
@@ -798,6 +833,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const formData = new FormData();
             formData.append('order_id', <?= $order_id ?>);
             formData.append('product_id', elJudul.value);
+            formData.append('laser_product_id', laserMaterialId || 0);
             formData.append('judul', selectedJudulName);
             formData.append('quantity', parseInt(elQty?.value) || 1);
             formData.append('finishing', finishingIds.join(','));
@@ -910,7 +946,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (elQty) elQty.value = qty;
 
-                if (getKategoriName() === 'ANEKA CETAK') laserSize = sizeData === '-' ? '' : (sizeData || '');
+                if (getKategoriName() === 'ANEKA CETAK') {
+                    laserMaterialId = Number(row.dataset.laserProductId) > 0 ? row.dataset.laserProductId : '';
+                    laserSize = sizeData === '-' ? '' : (sizeData || '');
+                }
                 else if (sizeData && sizeData.includes('x')) {
                     const sizeParts = sizeData.split('x').map(s => parseFloat(s.trim()));
                     if (elPanjang) elPanjang.value = sizeParts[0];
