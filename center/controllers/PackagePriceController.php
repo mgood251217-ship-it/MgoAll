@@ -155,8 +155,10 @@ class PackagePriceController {
                 $stmt->close();
                 if (!$product) throw new InvalidArgumentException('Pilih bahan INDOOR, OUTDOOR, atau LASER dari toko yang sama.');
                 $requiresSize = ProductFinishingPrice::requiresDimensions($product);
-                $panjang = $requiresSize ? $this->decimalInput('panjang', 'Panjang', 4, 999999.9999) : 0;
-                $lebar = $requiresSize ? $this->decimalInput('lebar', 'Lebar', 4, 999999.9999) : 0;
+                $hasSizeInput = ($_POST['panjang'] ?? '') !== '' || ($_POST['lebar'] ?? '') !== '';
+                $useSize = $requiresSize || (ProductFinishingPrice::supportsDimensions($product) && $hasSizeInput);
+                $panjang = $useSize ? $this->decimalInput('panjang', 'Panjang', 4, 999999.9999) : 0;
+                $lebar = $useSize ? $this->decimalInput('lebar', 'Lebar', 4, 999999.9999) : 0;
                 $category_id = (int)$product['category_id'];
                 $stmt = $this->koneksi->prepare('SELECT finishing_id, name FROM finishings
                     WHERE store_id = ? AND category_id = ? FOR UPDATE');

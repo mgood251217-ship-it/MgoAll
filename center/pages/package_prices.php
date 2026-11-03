@@ -45,7 +45,7 @@ foreach ($data['finishings'] as $finishing) {
 <?php elseif ($data['store_id']): ?>
     <div class="filter-card">
         <h3>Tambah Paket</h3>
-        <p>Pilih bahan, isi nama finishing dan harga paket. Untuk INDOOR/OUTDOOR, isi panjang dan lebar. Paket LASER tidak memakai ukuran.</p>
+        <p>Pilih bahan, isi nama finishing dan harga paket. Ukuran wajib untuk INDOOR/OUTDOOR dan opsional untuk LASER A3. Meteran dan stok paket LASER A3 tetap dihitung per pcs.</p>
         <form method="post" action="/action?action=save_package_price" class="filter-form">
             <input type="hidden" name="csrf_token" value="<?= $escape($_SESSION['package_price_csrf']) ?>">
             <input type="hidden" name="store_id" value="<?= $data['store_id'] ?>">
@@ -55,7 +55,7 @@ foreach ($data['finishings'] as $finishing) {
                 <select id="target_product" name="product_id" class="form-control select2" required>
                     <option value="">Pilih bahan INDOOR / OUTDOOR / LASER</option>
                     <?php foreach ($data['products'] as $product): ?>
-                        <option value="<?= (int)$product['product_id'] ?>" data-requires-size="<?= ProductFinishingPrice::requiresDimensions($product) ? '1' : '0' ?>"><?= $escape($product['category']) ?> — #<?= (int)$product['product_id'] ?> <?= $escape($product['name']) ?> — <?= $rupiah($product['price']) ?>/<?= ProductFinishingPrice::requiresDimensions($product) ? 'm²' : ($product['unit_type'] === 'PCS' ? 'pcs' : 'item') ?></option>
+                        <option value="<?= (int)$product['product_id'] ?>" data-supports-size="<?= ProductFinishingPrice::supportsDimensions($product) ? '1' : '0' ?>" data-requires-size="<?= ProductFinishingPrice::requiresDimensions($product) ? '1' : '0' ?>"><?= $escape($product['category']) ?> — #<?= (int)$product['product_id'] ?> <?= $escape($product['name']) ?> — <?= $rupiah($product['price']) ?>/<?= ProductFinishingPrice::requiresDimensions($product) ? 'm²' : ($product['unit_type'] === 'PCS' ? 'pcs' : 'item') ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -137,14 +137,14 @@ foreach ($data['finishings'] as $finishing) {
     const updatePackageDimensions = () => {
         const selected = document.getElementById('target_product').selectedOptions[0];
         const requiresSize = selected?.dataset.requiresSize === '1';
-        document.querySelectorAll('[data-package-dimension]').forEach(field => { field.hidden = !requiresSize; });
+        const supportsSize = selected?.dataset.supportsSize === '1';
+        document.querySelectorAll('[data-package-dimension]').forEach(field => { field.hidden = !supportsSize; });
         ['package_panjang', 'package_lebar'].forEach(id => {
             const field = document.getElementById(id);
-            field.disabled = !requiresSize;
+            field.disabled = !supportsSize;
             field.required = requiresSize;
-            if (!requiresSize) field.value = '';
+            if (!supportsSize) field.value = '';
         });
-        document.getElementById('packageDimensionHint').hidden = !selected?.value || requiresSize;
     };
     document.getElementById('target_product').addEventListener('change', updatePackageDimensions);
     updatePackageDimensions();
