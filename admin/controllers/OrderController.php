@@ -487,7 +487,7 @@ class OrderController {
             $size = ProductLaserConversion::normalizeSize($data['size'] ?? '') ?: '-';
         }
         try {
-            if ($isAnekaCetak) $laserVariant = (new ProductLaserConversion($this->koneksi))->resolve($store_id, $product_id, $size, $finishing);
+            if ($isAnekaCetak) $laserVariant = (new ProductLaserConversion($this->koneksi))->resolve($store_id, $product_id, $size, $finishing, $data['laser_product_id'] ?? 0);
             $package = $isAnekaCetak || $product['category'] === 'PAKET INDOOR OUTDOOR' ? null
                 : $this->packagePrices->resolve($store_id, $product_id, $finishing, $panjang, $lebar);
         } catch (InvalidArgumentException $e) {
@@ -499,13 +499,19 @@ class OrderController {
         $waktu = (float)($data['waktu'] ?? 0);
         $kiloan = (float)($data['kiloan'] ?? 0);
         if ($isAnekaCetak) $kiloan = $waktu = 0;
-        if ($package && empty($package['requires_size'])) {
-            $panjang = $lebar = $kiloan = $waktu = 0;
-            $size = '-';
+        if ($package) {
+            $kiloan = $waktu = 0;
+            if (empty($package['requires_size'])) {
+                $panjang = $lebar = 0;
+                $size = '-';
+            }
         }
 
         $stok_butuh = 0;
-        if ($product['category'] === 'DTF' && $panjang > 0) {
+        if ($package && !ProductFinishingPrice::requiresDimensions($product)) {
+            // Ukuran paket LASER A3 memilih harga; pemakaian bahan tetap per pcs.
+            $stok_butuh = $quantity;
+        } elseif ($product['category'] === 'DTF' && $panjang > 0) {
             $stok_butuh = $panjang * $quantity;
         } elseif ($panjang > 0 && $lebar > 0) {
             $stok_butuh = $panjang * $lebar * $quantity;
@@ -561,6 +567,8 @@ class OrderController {
             'finishing_to_reduce' => $finishing_to_reduce,
             'product_finishing_price_id' => $package ? (int)$package['id'] : null,
             'is_laser_variant' => $isAnekaCetak,
+            'laser_product_id' => $laserVariant ? (int)$laserVariant['laser_product_id'] : null,
+            'laser_material_name' => $laserVariant['laser_name'] ?? null,
             'unit' => $unit,
             'amount' => $amount
         ];
@@ -768,6 +776,8 @@ class OrderController {
                 'finishing_str' => $itemData['finishing_str'],
                 'product_finishing_price_id' => $itemData['product_finishing_price_id'],
                 'is_laser_variant' => $itemData['is_laser_variant'],
+                'laser_product_id' => $itemData['laser_product_id'],
+                'laser_material_name' => $itemData['laser_material_name'],
             ];
 
             if ($data_item->order_id <= 0 || $data_item->product_id <= 0 || empty($data_item->judul)) {
@@ -776,7 +786,7 @@ class OrderController {
                 exit;
             }
 
-            $rowExist = $this->orderModel->cekOrderItem($itemData['order_id'], $itemData['judul'], $itemData['finishing_str'], $itemData['size'], $itemData['product_finishing_price_id'], $itemData['product_id'], $itemData['unit'], $itemData['is_laser_variant']);
+            $rowExist = $this->orderModel->cekOrderItem($itemData['order_id'], $itemData['judul'], $itemData['finishing_str'], $itemData['size'], $itemData['product_finishing_price_id'], $itemData['product_id'], $itemData['unit'], $itemData['is_laser_variant'], $itemData['laser_product_id']);
             
             if ($rowExist) {
                 $data_item->quantity = $rowExist['quantity'] + $itemData['quantity'];
@@ -871,7 +881,8 @@ class OrderController {
         }
 
         if ($isAnekaCetak || !empty($item['product_finishing_price_id'])) {
-            $stok_kembali = $panjang > 0 && $lebar > 0 ? $panjang * $lebar * $quantity : $quantity;
+            $stok_kembali = ProductFinishingPrice::requiresDimensions($product ?? []) && $panjang > 0 && $lebar > 0
+                ? $panjang * $lebar * $quantity : $quantity;
         } elseif ($unit_type === 'M2' || $unit_type === 'CM2') {
             $stok_kembali = round(($panjang / 100) * ($lebar / 100) * $quantity, 4);
         }
@@ -975,7 +986,9 @@ class OrderController {
 
         $items = array_map(fn($row) => array_merge($row, [
             'category'         => $row['category'] ?? '',
-            'product_name' => $row['product_name'] ?? ''
+            'product_name' => $row['product_name'] ?? '',
+            'laser_product_id' => $row['laser_product_id'] ?? null,
+            'laser_material_name' => $row['laser_material_name'] ?? null
         ]), $items_raw);
 
         send_json_response(true, 'Berhasil mengambil data item', [

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/ProductFinishingPrice.php';
+require_once __DIR__ . '/ProductLaserConversion.php';
 
 use LDAP\Result;
 class Order {
@@ -197,25 +198,31 @@ class Order {
         return $result;
     }
 
-    public function cekOrderItem($order_id, $judul, $finishing, $size, $package_id = null, $product_id = 0, $unit = 0, $match_price = false){
+    public function cekOrderItem($order_id, $judul, $finishing, $size, $package_id = null, $product_id = 0, $unit = 0, $match_price = false, $laser_product_id = null){
         $query = "SELECT order_item_id, quantity, unit, amount FROM order_items WHERE order_id = ? AND judul = ? AND finishing = ? AND size = ?";
+        $types = 'isss';
+        $params = [$order_id, $judul, $finishing, $size];
         if ($package_id) {
             // Harga paket yang sudah tersimpan tidak ditimpa saat daftar harga berubah.
             $query .= " AND product_finishing_price_id = ? AND product_id = ? AND unit = ?";
-        } elseif ($this->packagePrices->isAvailable()) {
-            $query .= " AND product_finishing_price_id IS NULL";
-        }
-        if (!$package_id && $match_price) $query .= ' AND product_id = ? AND unit = ?';
-        $stmt = $this->koneksi->prepare($query);
-        if ($package_id) {
-            $unit = round($unit, 2);
-            $stmt->bind_param("isssiid", $order_id, $judul, $finishing, $size, $package_id, $product_id, $unit);
-        } elseif ($match_price) {
-            $unit = round($unit, 2);
-            $stmt->bind_param('isssid', $order_id, $judul, $finishing, $size, $product_id, $unit);
+            $types .= 'iid';
+            array_push($params, $package_id, $product_id, round($unit, 2));
         } else {
-            $stmt->bind_param("isss", $order_id, $judul, $finishing, $size);
+            if ($this->packagePrices->isAvailable()) $query .= " AND product_finishing_price_id IS NULL";
+            if ($match_price) {
+                $query .= ' AND product_id = ? AND unit = ?';
+                $types .= 'id';
+                array_push($params, $product_id, round($unit, 2));
+            }
         }
+        if ((new ProductLaserConversion($this->koneksi))->hasOrderMaterials()) {
+            // Bahan berbeda selalu menjadi baris terpisah, termasuk bila harganya sama.
+            $query .= ' AND laser_product_id <=> ?';
+            $types .= 'i';
+            $params[] = $laser_product_id;
+        }
+        $stmt = $this->koneksi->prepare($query);
+        $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -223,7 +230,10 @@ class Order {
     }
 
     public function createOrderItem($data){
-        if (!empty($data->product_finishing_price_id)) {
+        if (!empty($data->laser_product_id) && (new ProductLaserConversion($this->koneksi))->hasOrderMaterials()) {
+            $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing, laser_product_id, laser_material_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param('iiissiddsis', $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str, $data->laser_product_id, $data->laser_material_name);
+        } elseif (!empty($data->product_finishing_price_id)) {
             $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing, product_finishing_price_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->bind_param("iiissiddsi", $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str, $data->product_finishing_price_id);
         } else {

@@ -14,6 +14,12 @@ class ProductFinishingPrice {
             && strtoupper($product['unit_type'] ?? '') === 'M2';
     }
 
+    public static function supportsDimensions($product) {
+        return self::requiresDimensions($product)
+            || (strtoupper(trim($product['category'] ?? '')) === 'LASER A3'
+                && in_array(strtoupper($product['unit_type'] ?? ''), ['PCS', '~'], true));
+    }
+
     public function isAvailable() {
         if ($this->available === null) {
             $result = $this->koneksi->query("SELECT
@@ -43,11 +49,15 @@ class ProductFinishingPrice {
         $stmt = $this->koneksi->prepare("SELECT r.*, p.name AS product_name,
                 p.category_id, c.name AS category, f.name AS finishing_name,
                 f.unit_type AS finishing_unit_type,
-                (c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type = 'M2') AS requires_size,
+                (c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type = 'M2') AS uses_area,
+                ((c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type = 'M2')
+                    OR (c.name = 'LASER A3' AND r.panjang > 0 AND r.lebar > 0)) AS requires_size,
                 (p.product_id IS NOT NULL AND c.category_id IS NOT NULL AND f.finishing_id IS NOT NULL
                     AND f.category_id = p.category_id AND (
                         (c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type = 'M2' AND r.panjang > 0 AND r.lebar > 0)
-                        OR (c.name IN ('LASER', 'LASER A3') AND p.unit_type IN ('PCS', '~') AND r.panjang = 0 AND r.lebar = 0)
+                        OR (c.name = 'LASER' AND p.unit_type IN ('PCS', '~') AND r.panjang = 0 AND r.lebar = 0)
+                        OR (c.name = 'LASER A3' AND p.unit_type IN ('PCS', '~')
+                            AND ((r.panjang = 0 AND r.lebar = 0) OR (r.panjang > 0 AND r.lebar > 0)))
                     )) AS valid
             FROM {$this->tableName} r
             LEFT JOIN products p ON p.product_id = r.product_id AND p.store_id = r.store_id
@@ -102,7 +112,7 @@ class ProductFinishingPrice {
         }
         foreach ($rules as $rule) {
             if ((int)$rule['product_id'] === (int)$product_id && (int)$rule['valid'] === 1
-                && (!(int)$rule['requires_size'] || (abs((float)$rule['panjang'] - $panjang) < 0.00001
+                && ((!$rule['requires_size'] && strtoupper(trim($rule['category'])) !== 'LASER A3') || (abs((float)$rule['panjang'] - $panjang) < 0.00001
                     && abs((float)$rule['lebar'] - $lebar) < 0.00001))) {
                 return $rule;
             }
