@@ -17,6 +17,9 @@ $site_key = $_ENV['RECAPTCHA_SITE_KEY'] ?? getenv('RECAPTCHA_SITE_KEY') ?: '';
 $csrf_token = bin2hex(random_bytes(32));
 $_SESSION['login_csrf_token'] = $csrf_token;
 
+$centerScriptDirectory = trim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
+$centerBaseUrl = $centerScriptDirectory !== '' ? '/' . $centerScriptDirectory : '';
+
 $pesan_error = '';
 if (isset($_SESSION['login_error'])) {
     $pesan_error = $_SESSION['login_error'];
@@ -30,15 +33,17 @@ if (isset($_SESSION['login_error'])) {
   <meta charset="UTF-8">
   <title>Login - App Center</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="<?= htmlspecialchars($centerBaseUrl . '/assets/js/theme.js?v=' . filemtime(__DIR__ . '/../assets/js/theme.js'), ENT_QUOTES, 'UTF-8') ?>"></script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="<?= htmlspecialchars($centerBaseUrl . '/assets/css/theme.css?v=' . filemtime(__DIR__ . '/../assets/css/theme.css'), ENT_QUOTES, 'UTF-8') ?>">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     :root {
       --login-primary: #2563eb;
-      --login-text: #0f172a;
-      --login-muted: #64748b;
-      --login-border: #dbe3ef;
+      --login-text: var(--color-text);
+      --login-muted: var(--color-text-muted);
+      --login-border: var(--color-border-strong);
     }
 
     body {
@@ -50,7 +55,7 @@ if (isset($_SESSION['login_error'])) {
       padding: 24px;
       color: var(--login-text);
       font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 52%, #e0f2fe 100%);
+      background: linear-gradient(135deg, var(--color-cover-start) 0%, var(--color-page) 52%, var(--color-surface-hover) 100%);
     }
 
     .login-container {
@@ -59,7 +64,7 @@ if (isset($_SESSION['login_error'])) {
 
     .login-container .card {
       overflow: hidden;
-      border: 1px solid rgba(219, 227, 239, 0.9);
+      border: 1px solid var(--color-border);
       border-radius: 16px;
       box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
     }
@@ -126,6 +131,13 @@ if (isset($_SESSION['login_error'])) {
 </head>
 <body>
   <div class="login-container">
+    <div class="login-toolbar">
+        <button type="button" class="theme-toggle" data-theme-toggle aria-label="Gunakan mode gelap">
+            <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"/></svg>
+            <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
+            <span data-theme-label>Mode gelap</span>
+        </button>
+    </div>
     <div class="card">
       <div class="card-header">
         <h4>App Center</h4>
