@@ -434,10 +434,11 @@ class MeterController {
             $product_data_laser_a3[$row['name']] = ($product_data_laser_a3[$row['name']] ?? 0) + (int)$row['total_qty'];
         }
 
+        $materialFields = $conversionModel->hasOrderMaterials() ? 'oi.laser_product_id, oi.laser_material_name' : 'NULL AS laser_product_id, NULL AS laser_material_name';
         $conversionIds = array_keys($conversions);
         $conversionCondition = $conversionIds ? ' OR p.product_id IN (' . implode(',', array_fill(0, count($conversionIds), '?')) . ')' : '';
         $query2 = "
-            SELECT p.product_id, p.name, c.name AS category_name, oi.quantity AS total_qty, oi.size, oi.finishing
+            SELECT p.product_id, p.name, c.name AS category_name, oi.quantity AS total_qty, oi.size, oi.finishing, $materialFields
             FROM order_items oi
             JOIN orders o ON oi.order_id = o.order_id
             JOIN products p ON oi.product_id = p.product_id
@@ -470,9 +471,9 @@ class MeterController {
 
         foreach ($rows2 as $row) {
             if (isset($conversions[(int)$row['product_id']])) {
-                $rule = ProductLaserConversion::matchRule($conversions[(int)$row['product_id']], $row['size'], $row['finishing']);
+                $rule = ProductLaserConversion::matchRule($conversions[(int)$row['product_id']], $row['size'], $row['finishing'], true, $row['laser_product_id'] ?? 0);
                 if ($rule) {
-                    $name = $rule['laser_name'];
+                    $name = $row['laser_material_name'] ?: $rule['laser_name'];
                     $product_data_laser_a3[$name] = ($product_data_laser_a3[$name] ?? 0)
                         + ProductLaserConversion::printQuantity($row['total_qty'], $rule);
                 }
