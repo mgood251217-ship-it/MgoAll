@@ -350,6 +350,14 @@ $_SESSION['product_category_csrf'] = $_SESSION['product_category_csrf'] ?? bin2h
                             <td><?= number_format($category['finishing_count'] ?? 0, 0, ',', '.') ?></td>
                             <td class="migrated-style-9">
                                 <a class="btn btn-sm btn-primary" href="<?= htmlspecialchars($categoryUrl, ENT_QUOTES, 'UTF-8') ?>">Lihat Produk</a>
+                                <?php $canDeleteCategory = (int)($category['product_count'] ?? 0) === 0 && (int)($category['finishing_count'] ?? 0) === 0; ?>
+                                <form method="post" action="/action?action=delete_category" style="display:inline-flex" onsubmit="const button = this.querySelector('button'); button.disabled = true; button.textContent = 'Menghapus...';">
+                                    <?= $returnInputs ?>
+                                    <input type="hidden" name="store_id" value="<?= (int)$data['current_store_id'] ?>">
+                                    <input type="hidden" name="category_id" value="<?= (int)$category['category_id'] ?>">
+                                    <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['category_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+                                    <button type="submit" class="btn btn-sm btn-danger" <?= !$canDeleteCategory ? 'disabled' : '' ?> title="<?= $canDeleteCategory ? 'Hapus kategori kosong' : 'Jumlah produk dan finishing harus sama-sama 0' ?>">Hapus</button>
+                                </form>
                             </td>
                         </tr>
                     <?php endforeach; ?>

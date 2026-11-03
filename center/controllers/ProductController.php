@@ -526,6 +526,78 @@ class ProductController {
         exit;
     }
 
+    public function deleteCategory() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $storeId = (int)($_POST['store_id'] ?? 0);
+        $categoryId = (int)($_POST['category_id'] ?? 0);
+        $transaction = false;
+        $deleted = false;
+        $driver = new mysqli_driver();
+        $previousMode = $driver->report_mode;
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+        try {
+            if (empty($_SESSION['admin_logged_in']) || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+                throw new InvalidArgumentException('Silakan login kembali.');
+            }
+            if (!is_string($_POST['csrf'] ?? null) || empty($_SESSION['category_csrf']) || !hash_equals($_SESSION['category_csrf'], $_POST['csrf'])) {
+                throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
+            }
+            if ($storeId <= 0 || $categoryId <= 0) throw new InvalidArgumentException('Toko dan kategori tidak valid.');
+            $access = startEnk('dek', $_SESSION['admin_logged_in']['access'] ?? '');
+            $this->koneksi->begin_transaction();
+            $transaction = true;
+            $stmt = $this->koneksi->prepare('SELECT administrator FROM stores WHERE store_id = ? FOR UPDATE');
+            $stmt->bind_param('i', $storeId);
+            $stmt->execute();
+            $store = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$store || ($access !== 'ALL' && ((string)$access === '' || (string)$store['administrator'] !== (string)$access))) {
+                throw new InvalidArgumentException('Anda tidak memiliki akses ke toko ini.');
+            }
+            $stmt = $this->koneksi->prepare('SELECT category_id FROM categories WHERE category_id = ? AND store_id = ? FOR UPDATE');
+            $stmt->bind_param('ii', $categoryId, $storeId);
+            $stmt->execute();
+            $category = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$category) throw new InvalidArgumentException('Kategori tidak ditemukan pada toko ini.');
+            $stmt = $this->koneksi->prepare('DELETE c FROM categories c WHERE c.category_id = ? AND c.store_id = ?
+                AND NOT EXISTS(SELECT 1 FROM products p WHERE p.category_id = c.category_id)
+                AND NOT EXISTS(SELECT 1 FROM finishings f WHERE f.category_id = c.category_id)');
+            $stmt->bind_param('ii', $categoryId, $storeId);
+            $stmt->execute();
+            $count = $stmt->affected_rows;
+            $stmt->close();
+            if (!$count) throw new InvalidArgumentException('Kategori masih memiliki produk atau finishing. Kosongkan keduanya terlebih dahulu.');
+            $this->koneksi->commit();
+            $transaction = false;
+            $deleted = true;
+            $_SESSION['swal_success'] = 'Kategori berhasil dihapus.';
+            if ((int)($_POST['return_filters']['category_id'] ?? 0) === $categoryId) {
+                $_POST['return_filters']['category_id'] = 0;
+                $_POST['return_filters']['page'] = 1;
+            }
+        } catch (Throwable $e) {
+            if ($transaction) $this->koneksi->rollback();
+            $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : 'Gagal menghapus kategori. Perubahan dibatalkan.';
+            error_log('Delete category: ' . $e->getMessage());
+        } finally {
+            mysqli_report($previousMode);
+        }
+        if ($deleted) {
+            set_error_handler(function ($severity, $message) { throw new RuntimeException($message); });
+            try {
+                require_once __DIR__ . '/../functions/cacheHelper.php';
+                updateStoreCache($storeId, 'categories');
+            } catch (Throwable $e) {
+                error_log('Delete category cache: ' . $e->getMessage());
+                unset($_SESSION['swal_success']);
+                $_SESSION['swal_error'] = 'Kategori sudah dihapus, tetapi cache gagal diperbarui. Gunakan tombol Update Cache.';
+            } finally { restore_error_handler(); }
+        }
+        header('Location: ' . $this->productReturnUrl());
+        exit;
+    }
+
     public function addProduct() {
         if (session_status() === PHP_SESSION_NONE) session_start();
         $this->saveData('products', 'product');

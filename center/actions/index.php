@@ -70,6 +70,7 @@ switch ($action) {
 
     case 'add_product':
     case 'add_category':
+    case 'delete_category':
     case 'edit_product':
     case 'bulk_update_product_category':
     case 'bulk_delete_products':
@@ -85,6 +86,7 @@ switch ($action) {
         $productController = new ProductController($koneksi);
         if ($action === 'add_product') $productController->addProduct();
         if ($action === 'add_category') $productController->addCategory();
+        if ($action === 'delete_category') $productController->deleteCategory();
         if ($action === 'edit_product') $productController->editProduct();
         if ($action === 'bulk_update_product_category') $productController->bulkUpdateCategory();
         if ($action === 'bulk_delete_products') $productController->bulkDeleteProducts();
