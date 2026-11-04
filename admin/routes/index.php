@@ -33,6 +33,9 @@ if ($action != 'login'){
 }
 
 switch ($action) {
+    case 'product_variants':
+        $productController->getProductVariants();
+        break;
     case 'login':
         $auth = new AuthController($koneksi);
         $auth->login();

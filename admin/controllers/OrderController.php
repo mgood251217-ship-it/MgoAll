@@ -386,13 +386,14 @@ class OrderController {
             $is_outdoor = (($type === 'OUTDOOR' || ($type === 'SUBLIM' && $unit_type == 'M2')) && $product_name != 'ONEWAY');
 
             if ($is_outdoor && empty($row['product_finishing_price_id']) && !ProductPriceTier::hasPromotion($row)) {
-                $pid = $row['product_id'];
+                $variant = ProductVariant::snapshot($row);
+                $pid = $row['product_id'] . ':' . ($variant['id'] ?? 0);
                 
                 if (!isset($outdoorGroups[$pid])) {
                     $outdoorGroups[$pid] = [
                         'total_size' => 0,
                         'total_amount' => 0,
-                        'harga_per_meter_dasar' => max((float)$row['price'] - (float)($row['diskon'] ?? 0), 0)
+                        'harga_per_meter_dasar' => max((float)($variant['price'] ?? $row['price']) - (float)($row['diskon'] ?? 0), 0)
                     ];
                 }
 
@@ -480,6 +481,9 @@ class OrderController {
             }
         }
 
+        try { $variant = (new ProductVariant($this->koneksi))->resolve($store_id, $product, $data); }
+        catch (InvalidArgumentException $e) { return ['error' => $e->getMessage(), 'status' => 400]; }
+        if ($variant) $product['price'] = $variant['price'];
         $finishing = trim($data['finishing'] ?? '-');
         $laserVariant = null;
         $isAnekaCetak = strtoupper(trim($product['category'])) === 'ANEKA CETAK';
@@ -494,6 +498,7 @@ class OrderController {
         } catch (InvalidArgumentException $e) {
             return ['error' => $e->getMessage(), 'status' => 400];
         }
+        if ($variant && ($package || $laserVariant)) return ['error' => 'Harga varian tidak digabung dengan harga paket atau konversi print laser.', 'status' => 400];
         $diskonInput = (int)($data['diskon'] ?? 0);
         // Diskon paket dihitung per set; tidak mengubah diskon bahan per meter.
         $diskon = $package || ($laserVariant && $laserVariant['price'] !== null) ? max(0, $diskonInput) : ($previewOnly ? ($diskonInput > 0 ? $diskonInput : $this->orderModel->getDiscount($order_id, $product_id)) : $this->discount($order_id, $product_id, $diskonInput));
@@ -563,6 +568,9 @@ class OrderController {
             'judul' => $judul,
             'size' => $final_size,
             'quantity' => $quantity,
+            'product_variant_id' => $variant['id'] ?? null,
+            'product_variant_data' => $variant ? json_encode($variant, JSON_THROW_ON_ERROR) : null,
+            'variant' => $variant,
             'stok_butuh' => $stok_butuh,
             'finishing_str' => $finishing_str,
             'finishing_to_reduce' => $finishing_to_reduce,
@@ -842,7 +850,8 @@ class OrderController {
             
         } catch (Throwable $e) {
             http_response_code(500);
-            send_json_response(false, 'Debug createItem: ' . $e->getMessage());
+            if ($e instanceof InvalidArgumentException) http_response_code(400);
+            send_json_response(false, $e instanceof InvalidArgumentException ? $e->getMessage() : 'Debug createItem: ' . $e->getMessage());
             exit;
         }
     }

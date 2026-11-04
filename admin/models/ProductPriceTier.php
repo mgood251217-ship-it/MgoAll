@@ -2,6 +2,7 @@
 require_once __DIR__ . '/ProductFinishingPrice.php';
 require_once __DIR__ . '/ProductLaserConversion.php';
 require_once __DIR__ . '/ProductPromotion.php';
+require_once __DIR__ . '/ProductVariant.php';
 
 class ProductPriceTier {
     private $db;
@@ -69,7 +70,7 @@ class ProductPriceTier {
     private static function snapshot($row) {
         if (empty($row['tier_price_data'])) return null;
         $data = json_decode($row['tier_price_data'], true, 512, JSON_THROW_ON_ERROR);
-        if (!is_array($data) || (empty($data['rules']) && empty($data['promotion'])) || !isset($data['factor'], $data['normal'], $data['base'], $data['stock'])) {
+        if (!is_array($data) || (empty($data['rules']) && empty($data['promotion']) && empty($data['variant'])) || !isset($data['factor'], $data['normal'], $data['base'], $data['stock'])) {
             throw new RuntimeException('Data aturan harga pada item tidak lengkap.');
         }
         return $data;
@@ -115,12 +116,15 @@ class ProductPriceTier {
     public function preview(&$item, $product, $store, $input, $discount, $special = false) {
         $measure = self::measure($product);
         if (!$this->isAvailable()) return;
-        if (($product['unit_type'] ?? '') === 'PCS' && str_contains($product['name'] ?? '', 'BAHAN') && (float)($input['kiloan'] ?? 0) > 0) return;
+        $weightBased = ($product['unit_type'] ?? '') === 'PCS' && str_contains($product['name'] ?? '', 'BAHAN') && (float)($input['kiloan'] ?? 0) > 0;
         $rows = $this->items($store, $item['order_id'], $item['product_id']);
+        $rows = array_values(array_filter($rows, function ($row) use ($item) {
+            return (int)($row['product_variant_id'] ?? 0) === (int)($item['product_variant_id'] ?? 0);
+        }));
         $first = $rows ? self::snapshot($rows[0]) : null;
         // Aturan pertama produk dalam nota dipertahankan, termasuk saat promo dihapus.
         $promotion = $first ? ($first['promotion'] ?? null) : (new ProductPromotion($this->db))->rule($store, $item['product_id']);
-        if ($promotion && ProductPromotion::eligible($product)) {
+        if ($promotion && ProductPromotion::eligible($product) && !$weightBased) {
             $data = ['rules' => [], 'promotion' => $promotion, 'measure' => 'pcs', 'factor' => 1,
                 'normal' => round($item['unit'], 2), 'base' => (float)$product['price'],
                 'discount' => (float)$discount, 'stock' => self::stock($item)];
@@ -128,6 +132,7 @@ class ProductPriceTier {
             foreach ($rows as $row) if ((int)$row['order_item_id'] === (int)($input['order_item_id'] ?? 0)
                 && $row['size'] === $item['size'] && self::finishingKey($row['finishing']) === self::finishingKey($item['finishing_str'])
                 && ($row['laser_product_id'] ?? null) == ($item['laser_product_id'] ?? null)
+                && (int)($row['product_variant_id'] ?? 0) === (int)($item['product_variant_id'] ?? 0)
                 && ($row['product_finishing_price_id'] ?? null) == ($item['product_finishing_price_id'] ?? null)) {
                 $saved = self::snapshot($row);
                 $data['base'] = $saved['base'];
@@ -139,7 +144,15 @@ class ProductPriceTier {
             $item['promotion'] = ProductPromotion::calculate($promotion, $item['quantity']);
             return;
         }
-        if (!$measure || $special || ($first && !empty($first['promotion']))) return;
+        if (!empty($item['variant'])) {
+            $data = ['rules' => [], 'variant' => (int)$item['variant']['id'], 'measure' => $measure, 'factor' => 1,
+                'normal' => round($item['unit'], 2), 'base' => (float)$product['price'],
+                'discount' => (float)$discount, 'stock' => self::stock($item)];
+            if ($minimum = self::minimumAmount($product)) $data['minimum_amount'] = $minimum;
+            $item['tier_price_data'] = json_encode($data, JSON_THROW_ON_ERROR);
+            return;
+        }
+        if (!$measure || $special || $weightBased || ($first && !empty($first['promotion']))) return;
         $factor = in_array($measure, ['m2', 'cm2'], true) ? round((float)($input['panjang'] ?? 0) * (float)($input['lebar'] ?? 0), 8) : 1;
         if ($factor <= 0) return;
         $rules = $first ? $first['rules'] : $this->rules($store, $item['product_id']);
@@ -172,7 +185,8 @@ class ProductPriceTier {
         $product = (int)($input['product_id'] ?? 0);
         $order = (int)($input['order_id'] ?? 0);
         return (bool)$this->rules($store, $product) || (bool)$this->items($store, $order, $product)
-            || (bool)(new ProductPromotion($this->db))->rule($store, $product);
+            || (bool)(new ProductPromotion($this->db))->rule($store, $product)
+            || !empty($input['product_variant_id']) || (bool)(new ProductVariant($this->db))->getByProduct($store, $product);
     }
 
     private function lockOrder($store, $order) {
@@ -237,7 +251,7 @@ class ProductPriceTier {
         $groups = [];
         foreach ($this->items($store, $order) as $row) {
             $data = self::snapshot($row);
-            if (!empty($data['promotion'])) {
+            if (!empty($data['promotion']) || !empty($data['variant'])) {
                 $amount = self::amount($data, $row['unit'], (int)$row['quantity']);
                 $stmt = $this->query('UPDATE order_items SET amount = ? WHERE order_item_id = ? AND store_id = ?', 'dii', [$amount, $row['order_item_id'], $store]); $stmt->close();
             } else $groups[(int)$row['product_id']][] = $row;
@@ -279,6 +293,7 @@ class ProductPriceTier {
                 $data = self::snapshot($item);
                 foreach ($this->items($store, $order, $item['product_id']) as $row) {
                     if ($row['judul'] === $item['judul'] && $row['size'] === $item['size']
+                        && ($row['product_variant_data'] ?? null) === ($item['product_variant_data'] ?? null)
                         && self::finishingKey($row['finishing']) === self::finishingKey($item['finishing_str'])
                         && self::snapshot($row) == $data) {
                         $old = $row; $id = (int)$row['order_item_id'];
@@ -296,6 +311,10 @@ class ProductPriceTier {
             $fields = ['product_id', 'judul', 'size', 'quantity', 'unit', 'amount', 'finishing', 'tier_price_data'];
             $values = [$item['product_id'], $item['judul'], $item['size'], $item['quantity'], round($item['unit'], 2), round($item['amount'], 2), $item['finishing_str'], $item['tier_price_data'] ?? null];
             $types = 'issiddss';
+            if ((new ProductVariant($this->db))->isAvailable()) {
+                array_push($fields, 'product_variant_id', 'product_variant_data');
+                array_push($values, $item['product_variant_id'] ?? null, $item['product_variant_data'] ?? null); $types .= 'is';
+            }
             if ((new ProductFinishingPrice($this->db))->isAvailable()) {
                 $fields[] = 'product_finishing_price_id'; $values[] = $item['product_finishing_price_id']; $types .= 'i';
             }
@@ -338,14 +357,14 @@ class ProductPriceTier {
 
     public static function describe($items) {
         $totals = [];
-        foreach ($items as $row) if ($s = self::snapshot($row)) $totals[$row['product_id']] = ($totals[$row['product_id']] ?? 0) + $s['factor'] * (int)$row['quantity'];
+        foreach ($items as $row) if (($s = self::snapshot($row)) && !empty($s['rules'])) $totals[$row['product_id']] = ($totals[$row['product_id']] ?? 0) + $s['factor'] * (int)$row['quantity'];
         foreach ($items as &$row) {
             $row['tier_pricing'] = null;
             $row['promotion'] = null;
             if ($s = self::snapshot($row)) {
                 $row['diskon'] = $s['discount'] ?? 0;
                 if (!empty($s['promotion'])) $row['promotion'] = ProductPromotion::calculate($s['promotion'], (int)$row['quantity']);
-                else {
+                elseif (!empty($s['rules'])) {
                     $qty = round($totals[$row['product_id']], 8); $rule = self::choose($s['rules'], $qty);
                     $row['tier_pricing'] = ['quantity' => $qty, 'measure' => $s['measure'], 'unit_label' => self::unitLabel($s['measure']), 'quantity_above' => $rule['quantity_above'] ?? null, 'price' => $rule['price'] ?? null];
                 }
@@ -353,6 +372,6 @@ class ProductPriceTier {
             unset($row['tier_price_data']);
         }
         unset($row);
-        return $items;
+        return ProductVariant::describe($items);
     }
 }

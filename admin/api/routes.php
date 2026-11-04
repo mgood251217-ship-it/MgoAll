@@ -48,6 +48,7 @@ $router->add('finishings', ProductController::class, 'getFinishing', ['auth']);
 $router->add('finishing_by_category', ProductController::class, 'getFinishingByCategory', ['auth']);
 $router->add('product_finishing_prices', ProductController::class, 'getProductFinishingPrices', ['auth']);
 $router->add('product_laser_conversions', ProductController::class, 'getProductLaserConversions', ['auth']);
+$router->add('product_variants', ProductController::class, 'getProductVariants', ['auth']);
 $router->add('create_finishing', ProductController::class, 'createFinishing', ['auth']);
 $router->add('update_finishing', ProductController::class, 'updateFinishing', ['auth']);
 $router->add('delete_finishing', ProductController::class, 'deleteFinishing', ['auth']);
@@ -143,6 +144,7 @@ $router->add('import_csv_global_stock', GlobalStockController::class, 'importCsv
 $router->add('meter_outdoor', MeterController::class, 'getOutdoor', ['auth']);
 $router->add('meter_indoor', MeterController::class, 'getIndoor', ['auth']);
 $router->add('meter_jersey', MeterController::class, 'getJersey', ['auth']);
+$router->add('meter_components', MeterController::class, 'getComponents', ['auth']);
 $router->add('meter_akrilik', MeterController::class, 'getAkrilik', ['auth']);
 $router->add('meter_laser', MeterController::class, 'getLaser', ['auth']);
 $router->add('meter_merchandise', MeterController::class, 'getMerchandise', ['auth']);

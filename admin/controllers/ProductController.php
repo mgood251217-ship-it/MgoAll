@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/../models/ProductFinishingPrice.php';
 require_once __DIR__ . '/../models/ProductLaserConversion.php';
+require_once __DIR__ . '/../models/ProductVariant.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../functions/cacheHelpers.php';
@@ -11,11 +12,13 @@ class ProductController {
     private $authMiddleware;
     private $packagePrices;
     private $laserConversions;
+    private $variants;
 
     public function __construct($koneksi) {
         $this->productModel = new Product($koneksi);
         $this->packagePrices = new ProductFinishingPrice($koneksi);
         $this->laserConversions = new ProductLaserConversion($koneksi);
+        $this->variants = new ProductVariant($koneksi);
         $this->authMiddleware = new AuthMiddleware($koneksi);
     }
 
@@ -81,6 +84,11 @@ class ProductController {
         global $store_id;
         $categories = $this->productModel->getCategoryByStoreId($store_id);
         send_json_response(true, 'Categories retrieved successfully.', $categories);
+    }
+
+    public function getProductVariants() {
+        global $store_id;
+        send_json_response(true, 'Varian produk', $this->variants->getByProduct($store_id, (int)($_GET['product_id'] ?? 0)));
     }
 
     public function getProductByPagination(){

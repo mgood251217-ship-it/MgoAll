@@ -173,6 +173,7 @@ class Order {
             SELECT 
                 oi.*, 
                 p.name AS product_name, 
+                p.category_id,
                 c.name AS category, 
                 p.unit_type, 
                 p.price, 
