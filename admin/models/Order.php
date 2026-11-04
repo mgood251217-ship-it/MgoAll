@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/ProductFinishingPrice.php';
+require_once __DIR__ . '/ProductPriceTier.php';
 require_once __DIR__ . '/ProductLaserConversion.php';
 
 use LDAP\Result;
@@ -200,6 +201,7 @@ class Order {
 
     public function cekOrderItem($order_id, $judul, $finishing, $size, $package_id = null, $product_id = 0, $unit = 0, $match_price = false, $laser_product_id = null){
         $query = "SELECT order_item_id, quantity, unit, amount FROM order_items WHERE order_id = ? AND judul = ? AND finishing = ? AND size = ?";
+        if ((new ProductPriceTier($this->koneksi))->isAvailable()) $query .= ' AND tier_price_data IS NULL';
         $types = 'isss';
         $params = [$order_id, $judul, $finishing, $size];
         if ($package_id) {

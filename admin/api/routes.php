@@ -66,6 +66,7 @@ $router->add('trigger_order_update', OrderController::class, 'triggerOrderUpdate
 $router->add('order_detail', OrderController::class, 'orderDetail', ['auth']);
 $router->add('item_price', OrderController::class, 'fullPrice', ['auth']);
 $router->add('create_order_item', OrderController::class, 'createItem', ['auth']);
+$router->add('update_item', OrderController::class, 'updateItem', ['auth']);
 $router->add('delete_order_item', OrderController::class, 'deleteItem', ['auth']);
 $router->add('delete_order_discount', OrderController::class, 'deleteDiscount', ['auth']);
 $router->add('full_price_item', OrderController::class, 'fullPrice', ['auth']);

@@ -103,6 +103,9 @@ switch ($action) {
     case 'create_item':
         $orderController->createItem();
         break;
+    case 'update_item':
+        $orderController->updateItem();
+        break;
     case 'delete_item':
         $orderController->deleteItem();
         break;
