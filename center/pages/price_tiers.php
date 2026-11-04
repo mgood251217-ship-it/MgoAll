@@ -53,6 +53,9 @@ $unitLabel = ProductPriceTier::unitLabel($unit);
 <?php elseif ($data['product']): ?>
     <div class="filter-card">
         <h3><?= $escape($data['product']['name']) ?></h3>
+        <?php if ((new ProductPromotion($koneksi))->rule($data['store'], $data['selected']) && ProductPromotion::eligible($data['product'])): ?>
+            <div class="alert alert-info">Produk ini memiliki <a href="/promotions?store_id=<?= $data['store'] ?>&amp;product_id=<?= $data['selected'] ?>">promo beli gratis</a>. Nota baru memakai promo tersebut; harga bertingkat disimpan untuk digunakan setelah promo dihapus.</div>
+        <?php endif; ?>
         <p>Harga dasar normal: <strong>Rp<?= number_format((float)$data['product']['price'], 0, ',', '.') ?>/<?= $unitLabel ?></strong>.</p>
         <p>Jumlah dikumpulkan per produk dalam satu nota. <?= $unit === 'pcs' ? 'Batas 10 berlaku setelah 10, yaitu mulai 11 pcs.' : 'Luas dihitung dari panjang × lebar × quantity dalam ' . $unitLabel . '. Batas 500 berlaku saat total luas lebih dari 500 ' . $unitLabel . '.' ?> Tingkat dengan batas tertinggi yang terpenuhi berlaku untuk seluruh jumlah.</p>
         <?php if (trim($data['product']['unit_type']) === '~'): ?><p>Satuan ~ dihitung seperti pcs. Stok bahan tidak dibatasi dan tidak dikurangi.</p><?php endif; ?>
