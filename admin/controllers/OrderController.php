@@ -385,7 +385,7 @@ class OrderController {
             
             $is_outdoor = (($type === 'OUTDOOR' || ($type === 'SUBLIM' && $unit_type == 'M2')) && $product_name != 'ONEWAY');
 
-            if ($is_outdoor && empty($row['product_finishing_price_id'])) {
+            if ($is_outdoor && empty($row['product_finishing_price_id']) && !ProductPriceTier::hasPromotion($row)) {
                 $pid = $row['product_id'];
                 
                 if (!isset($outdoorGroups[$pid])) {
@@ -724,7 +724,7 @@ class OrderController {
                 exit;
             }
 
-            send_json_response(true, 'Berhasil menghitung harga total', ['total' => $itemData['amount'], 'tier_pricing' => $itemData['tier_pricing'] ?? null]);
+            send_json_response(true, 'Berhasil menghitung harga total', ['total' => $itemData['amount'], 'tier_pricing' => $itemData['tier_pricing'] ?? null, 'promotion' => $itemData['promotion'] ?? null]);
             exit;
             
         } catch (Throwable $e) {
@@ -856,7 +856,7 @@ class OrderController {
         (new ProductPriceTier($this->koneksi))->saveItem($store_id, $data,
             function () use ($data, $store_id) { return $this->_prepareItemData($data, $store_id); },
             function ($order) { $this->finishTierOrder($order); });
-        send_json_response(true, 'Item tersimpan dan harga bertingkat diperbarui.');
+        send_json_response(true, 'Item tersimpan dan perhitungan harga diperbarui.');
     }
 
     public function updateItem() {
