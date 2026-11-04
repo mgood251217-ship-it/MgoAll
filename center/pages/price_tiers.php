@@ -53,6 +53,9 @@ $unitLabel = ProductPriceTier::unitLabel($unit);
 <?php elseif ($data['product']): ?>
     <div class="filter-card">
         <h3><?= $escape($data['product']['name']) ?></h3>
+        <?php if ((new ProductVariant($koneksi))->getByProduct($data['store'], $data['selected'])): ?>
+            <div class="alert alert-info">Produk ini memiliki <a href="/product-variants?store_id=<?= $data['store'] ?>&amp;product_id=<?= $data['selected'] ?>">varian dengan harga dasar masing-masing</a>. Harga bertingkat di bawah tidak diterapkan pada item varian.</div>
+        <?php endif; ?>
         <?php if ((new ProductPromotion($koneksi))->rule($data['store'], $data['selected']) && ProductPromotion::eligible($data['product'])): ?>
             <div class="alert alert-info">Produk ini memiliki <a href="/promotions?store_id=<?= $data['store'] ?>&amp;product_id=<?= $data['selected'] ?>">promo beli gratis</a>. Nota baru memakai promo tersebut; harga bertingkat disimpan untuk digunakan setelah promo dihapus.</div>
         <?php endif; ?>

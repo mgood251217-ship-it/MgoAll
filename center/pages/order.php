@@ -113,6 +113,7 @@ if (isset($_GET['ajax_payment'])) {
                     </select>
                 </div>
 
+                <div id="productVariantOptions"></div>
                 <div class="form-group migrated-style-34" id="ukuranInputs">
                     <div class="migrated-style-4">
                         <label>Panjang (m)</label>
@@ -322,6 +323,53 @@ document.addEventListener('DOMContentLoaded', function () {
     const laserVariant = document.getElementById('laserVariant');
     const laserMaterial = document.getElementById('laserMaterial');
     const tierUnitLabel = tier => tier?.unit_label || ({ pcs: 'pcs', m2: 'm\u00b2', cm2: 'cm\u00b2' })[tier?.measure] || 'pcs';
+    const variantContainer = document.getElementById('productVariantOptions');
+    let productVariants = [], variantValues = {}, productVariantId = 0, savedProductVariant = null, savedVariantProductId = '';
+    let variantRequest = 0, variantLoading = false;
+    const legacyVariantItem = () => document.getElementById('addItemForm').hasAttribute('data-order-item-id') && String(elJudul.value) === String(savedVariantProductId) && !savedProductVariant;
+    const variantIncomplete = () => productVariants.length && !productVariantId && (!legacyVariantItem() || Object.values(variantValues).some(Boolean));
+
+    function renderProductVariants() {
+        variantContainer.replaceChildren();
+        const groups = Object.keys(productVariants[0]?.options || {});
+        groups.forEach((group, index) => {
+            const wrapper = document.createElement('div'); wrapper.className = 'form-group';
+            const label = document.createElement('label'); label.textContent = group; label.htmlFor = `variant_option_${index}`;
+            const select = document.createElement('select'); select.className = 'form-control'; select.id = label.htmlFor;
+            select.required = !legacyVariantItem(); select.add(new Option(legacyVariantItem() ? 'Sesuai nota lama / pilih varian' : `Pilih ${group}`, ''));
+            const matching = productVariants.filter(v => groups.slice(0, index).every(name => v.options[name] === variantValues[name]));
+            [...new Set(matching.map(v => v.options[group]).filter(Boolean))].forEach(v => select.add(new Option(v, v)));
+            select.value = variantValues[group] || '';
+            select.addEventListener('change', () => {
+                groups.forEach((name, i) => { if (i === index) variantValues[name] = select.value; else if (i > index) variantValues[name] = ''; });
+                productVariantId = productVariants.find(v => groups.every(name => variantValues[name] && v.options[name] === variantValues[name]))?.id || 0;
+                renderProductVariants(); updatePricePreview(); document.getElementById(`variant_option_${index + 1}`)?.focus();
+            });
+            wrapper.append(label, select); variantContainer.appendChild(wrapper);
+        });
+    }
+
+    async function loadProductVariants() {
+        const product = elJudul.value, request = ++variantRequest;
+        productVariants = []; variantValues = {}; productVariantId = 0; variantContainer.replaceChildren();
+        if (!product) { variantLoading = false; return; }
+        if (String(savedVariantProductId) !== String(product)) { savedProductVariant = null; savedVariantProductId = ''; }
+        variantLoading = true;
+        try {
+            const response = await fetch(`/action?action=get_product_variants&store_id=${store_id}&product_id=${encodeURIComponent(product)}`);
+            const result = await response.json();
+            if (request !== variantRequest || elJudul.value !== product) return;
+            productVariants = result.success && Array.isArray(result.data) ? result.data : [];
+            if (savedProductVariant) {
+                productVariants = [savedProductVariant, ...productVariants.filter(v => Number(v.id) !== Number(savedProductVariant.id))];
+                variantValues = { ...savedProductVariant.options }; productVariantId = savedProductVariant.id;
+            }
+            renderProductVariants();
+        } catch (error) {
+            if (request !== variantRequest) return;
+            if (savedProductVariant) { productVariants = [savedProductVariant]; variantValues = { ...savedProductVariant.options }; productVariantId = savedProductVariant.id; renderProductVariants(); }
+        } finally { if (request === variantRequest) { variantLoading = false; updatePricePreview(); } }
+    }
     const laserSizeKey = value => String(value || '').trim() === '-' ? '' : String(value || '').trim().replace(/\s+/g, ' ').toUpperCase();
     function updateLaserView(chooseDefault = false) {
         const rules = laserRules.filter(rule => String(rule.product_id) === String(elJudul.value));
@@ -462,6 +510,12 @@ document.addEventListener('DOMContentLoaded', function () {
                             tier.style.display = 'block';
                             tier.textContent = `Harga dasar bertingkat: Rp${Number(item.tier_pricing.price).toLocaleString('id-ID')}/${tierUnitLabel(item.tier_pricing)}`;
                             tbody.lastElementChild.cells[0].appendChild(tier);
+                        }
+                        tbody.lastElementChild.variantSnapshot = item.variant || null;
+                        tbody.lastElementChild.sourceProductId = item.product_id;
+                        if (item.variant) {
+                            const variant = document.createElement('small'); variant.style.display = 'block'; variant.textContent = `Varian: ${item.variant.label}`;
+                            tbody.lastElementChild.cells[0].appendChild(variant);
                         }
                         if (item.promotion) {
                             const bonus = document.createElement('small');
@@ -703,6 +757,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (elJudul) {
         elJudul.addEventListener('change', function () {
+            loadProductVariants();
             const selectedOption = this.options[this.selectedIndex];
             const name = (selectedOption && selectedOption.dataset && selectedOption.dataset.name) ? selectedOption.dataset.name : '';
             const ukuranList = ukuranMap[name] || [];
@@ -753,6 +808,7 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('order_item_id', document.getElementById('addItemForm').getAttribute('data-order-item-id') || '');
         formData.append('product_id', elJudul.value);
         formData.append('laser_product_id', laserMaterialId || 0);
+        formData.append('product_variant_id', productVariantId || 0);
         formData.append('judul', judulAsli);
         formData.append('quantity', parseInt(elQty?.value) || 1);
         formData.append('finishing', finishingIds.join(','));
@@ -830,6 +886,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (elBtnTambah) {
         elBtnTambah.addEventListener('click', function () {
+            if (variantLoading || variantIncomplete()) { Swal.fire('Pilih varian', 'Lengkapi pilihan varian produk terlebih dahulu.', 'warning'); return; }
             if (!elJudul.value || !elQty.value) {
                 Swal.fire('Peringatan', 'Judul dan Qty wajib diisi', 'warning');
                 return;
@@ -855,6 +912,7 @@ document.addEventListener('DOMContentLoaded', function () {
             formData.append('order_id', <?= $order_id ?>);
             formData.append('product_id', elJudul.value);
             formData.append('laser_product_id', laserMaterialId || 0);
+            formData.append('product_variant_id', productVariantId || 0);
             formData.append('judul', selectedJudulName);
             formData.append('quantity', parseInt(elQty?.value) || 1);
             formData.append('finishing', finishingIds.join(','));
@@ -881,6 +939,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         document.getElementById('addItemForm').reset();
                         document.getElementById('addItemForm').removeAttribute('data-order-item-id');
+                        savedProductVariant = null; savedVariantProductId = ''; productVariantId = 0;
                         document.querySelectorAll('.finishing-checkbox').forEach(cb => cb.checked = false);
                         setValueAndDispatch(elKategori, '');
                         document.getElementById('priceDisplay').textContent = 'Total Harga: Rp 0';
@@ -927,6 +986,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const row = e.target.closest('.order-item-row');
         if (row) {
             const kategoriValue = row.dataset.kategori;
+            savedProductVariant = row.variantSnapshot;
+            savedVariantProductId = String(row.sourceProductId || '');
             const judul = row.dataset.judul;
             const qty = row.dataset.qty;
             const sizeData = row.dataset.size;
@@ -950,7 +1011,7 @@ document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => {
                 if (elJudul) {
                     const options = Array.from(elJudul.options);
-                    const optionMatch = options.find(opt => opt.text.trim().toLowerCase() === judul.trim().toLowerCase());
+                    const optionMatch = options.find(opt => String(opt.value) === String(row.sourceProductId)) || options.find(opt => opt.text.trim().toLowerCase() === judul.trim().toLowerCase());
                     if (optionMatch) {
                         setValueAndDispatch(elJudul, optionMatch.value);
                     }
