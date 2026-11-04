@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../admin/models/ProductFinishingPrice.php';
+require_once __DIR__ . '/../../admin/models/ProductPriceTier.php';
 require_once __DIR__ . '/../../admin/models/ProductLaserConversion.php';
 require_once __DIR__ . '/../../admin/models/OrderDiscount.php';
 require_once __DIR__ . '/../functions/helpers.php';
@@ -450,6 +451,8 @@ class OrderController {
             'laser_material_name' => $row['laser_material_name'] ?? null
         ]), $items_raw);
 
+        $items = ProductPriceTier::describe($items);
+
         send_json_response(true, 'Berhasil mengambil data item', [
             'order' => $order,
             'total' => $order['total'] ?? 0,
@@ -561,7 +564,7 @@ class OrderController {
         return true;
     }
     
-    private function _prepareItemData($data, $store_id) {
+    private function _prepareItemData($data, $store_id, $previewOnly = false) {
         $order_id = (int)($data['order_id'] ?? 0);
         $product_id = (int)($data['product_id'] ?? 0);
         $judul = trim($data['judul'] ?? '');
@@ -612,7 +615,7 @@ class OrderController {
         }
         $diskonInput = (int)($data['diskon'] ?? 0);
         // Diskon paket dihitung per set; tidak mengubah diskon bahan per meter.
-        $diskon = $package || ($laserVariant && $laserVariant['price'] !== null) ? max(0, $diskonInput) : $this->discount($order_id, $product_id, $diskonInput);
+        $diskon = $package || ($laserVariant && $laserVariant['price'] !== null) ? max(0, $diskonInput) : ($previewOnly ? ($diskonInput > 0 ? $diskonInput : $this->getDiscount($order_id, $product_id)) : $this->discount($order_id, $product_id, $diskonInput));
         $waktu = (float)($data['waktu'] ?? 0);
         $kiloan = (float)($data['kiloan'] ?? 0);
         if ($isAnekaCetak) $kiloan = $waktu = 0;
@@ -671,7 +674,7 @@ class OrderController {
         $amount = is_array($pricing) ? ($pricing['amount'] ?? 0) : ($pricing->amount ?? 0);
         $final_size = is_array($pricing) ? ($pricing['size'] ?? $size) : ($pricing->size ?? $size);
 
-        return [
+        $item = [
             'success' => true,
             'order_id' => $order_id,
             'product_id' => $product_id,
@@ -689,6 +692,8 @@ class OrderController {
             'unit' => $unit,
             'amount' => $amount
         ];
+        (new ProductPriceTier($this->koneksi))->preview($item, $product, $store_id, $data, $diskon, $package || ($laserVariant && $laserVariant['price'] !== null));
+        return $item;
     }
     public function finishingData($input_finishing, $panjang, $lebar) {
         try {
@@ -822,6 +827,7 @@ class OrderController {
         }
 
         try {
+            $this->authorizeTierStore($store_id);
             $input = json_decode(file_get_contents('php://input'), true);
             $data = $input ?: $_POST;
 
@@ -830,14 +836,14 @@ class OrderController {
                 exit;
             }
 
-            $itemData = $this->_prepareItemData($data, $store_id);
+            $itemData = $this->_prepareItemData($data, $store_id, true);
 
             if (isset($itemData['error'])) {
                 send_json_response(false, $itemData['error']);
                 exit;
             }
 
-            send_json_response(true, 'Berhasil menghitung harga total', ['total' => $itemData['amount']]);
+            send_json_response(true, 'Berhasil menghitung harga total', ['total' => $itemData['amount'], 'tier_pricing' => $itemData['tier_pricing'] ?? null]);
             exit;
             
         } catch (Throwable $e) {
@@ -856,6 +862,11 @@ class OrderController {
         try {
             $input = json_decode(file_get_contents('php://input'), true);
             $data = $input ?: $_POST;
+
+            if ((new ProductPriceTier($this->koneksi))->handles($store_id, $data)) {
+                $this->saveTierItem($data, $store_id);
+                exit;
+            }
 
             $itemData = $this->_prepareItemData($data, $store_id);
 
@@ -953,6 +964,42 @@ class OrderController {
         }
     }
 
+    private function authorizeTierStore($store) {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        if (empty($_SESSION['admin_logged_in'])) throw new InvalidArgumentException('Silakan login kembali.');
+        $access = startEnk('dek', $_SESSION['admin_logged_in']['access'] ?? '');
+        $stmt = $this->koneksi->prepare('SELECT administrator FROM stores WHERE store_id = ?');
+        $stmt->bind_param('i', $store); $stmt->execute(); $row = $stmt->get_result()->fetch_assoc(); $stmt->close();
+        if (!$row || ($access !== 'ALL' && (!$access || (string)$row['administrator'] !== (string)$access))) throw new InvalidArgumentException('Anda tidak memiliki akses ke toko ini.');
+    }
+
+    private function finishTierOrder($order) {
+        if (!$this->orderTotal($order)) throw new RuntimeException('Gagal memperbarui total nota.');
+        $this->paymentStatus($order);
+    }
+
+    private function saveTierItem($data, $store_id) {
+        $this->authorizeTierStore($store_id);
+        (new ProductPriceTier($this->koneksi))->saveItem($store_id, $data,
+            function () use ($data, $store_id) { return $this->_prepareItemData($data, $store_id); },
+            function ($order) { $this->finishTierOrder($order); });
+        send_json_response(true, 'Item tersimpan dan harga bertingkat diperbarui.');
+    }
+
+    public function updateItem() {
+        $store_id = startEnk('dek', $_POST['store'] ?? '') ?: 0;
+        try {
+            if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') throw new InvalidArgumentException('Gunakan metode POST.');
+            $data = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+            if ((int)($data['order_item_id'] ?? 0) < 1) throw new InvalidArgumentException('Pilih item yang akan diubah.');
+            $this->saveTierItem($data, $store_id);
+        } catch (Throwable $e) {
+            http_response_code($e instanceof InvalidArgumentException ? 400 : 500);
+            send_json_response(false, $e->getMessage());
+        }
+        exit;
+    }
+
     public function deleteItem() {
         header('Content-Type: application/json');
         $store_id = startEnk('dek', $_POST['store']) ?? 0;
@@ -974,6 +1021,19 @@ class OrderController {
         if (!$item) {
             http_response_code(404);
             send_json_response(false, 'Item tidak ditemukan.' . $store_id);
+            exit;
+        }
+
+        if (!empty($item['tier_price_data'])) {
+            try {
+                $this->authorizeTierStore($store_id);
+                (new ProductPriceTier($this->koneksi))->deleteItem($store_id, $item,
+                    function ($order) { $this->finishTierOrder($order); });
+                send_json_response(true, 'Item dihapus, stok dan harga bertingkat diperbarui.');
+            } catch (Throwable $e) {
+                http_response_code($e instanceof InvalidArgumentException ? 400 : 500);
+                send_json_response(false, $e->getMessage());
+            }
             exit;
         }
 
@@ -1144,6 +1204,7 @@ class OrderController {
 
     public function cekOrderItem($order_id, $judul, $finishing, $size, $package_id = null, $product_id = 0, $unit = 0, $match_price = false, $laser_product_id = null){
         $query = "SELECT order_item_id, quantity, unit, amount FROM order_items WHERE order_id = ? AND judul = ? AND finishing = ? AND size = ?";
+        if ((new ProductPriceTier($this->koneksi))->isAvailable()) $query .= ' AND tier_price_data IS NULL';
         $types = 'isss';
         $params = [$order_id, $judul, $finishing, $size];
         if ($package_id) {

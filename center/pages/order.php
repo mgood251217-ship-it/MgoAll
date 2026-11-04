@@ -321,6 +321,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const packageSize = document.getElementById('packageSize');
     const laserVariant = document.getElementById('laserVariant');
     const laserMaterial = document.getElementById('laserMaterial');
+    const tierUnitLabel = tier => tier?.unit_label || ({ pcs: 'pcs', m2: 'm\u00b2', cm2: 'cm\u00b2' })[tier?.measure] || 'pcs';
     const laserSizeKey = value => String(value || '').trim() === '-' ? '' : String(value || '').trim().replace(/\s+/g, ' ').toUpperCase();
     function updateLaserView(chooseDefault = false) {
         const rules = laserRules.filter(rule => String(rule.product_id) === String(elJudul.value));
@@ -456,6 +457,12 @@ document.addEventListener('DOMContentLoaded', function () {
                                 </td>
                             </tr> 
                         `);
+                        if (item.tier_pricing?.price != null) {
+                            const tier = document.createElement('small');
+                            tier.style.display = 'block';
+                            tier.textContent = `Harga dasar bertingkat: Rp${Number(item.tier_pricing.price).toLocaleString('id-ID')}/${tierUnitLabel(item.tier_pricing)}`;
+                            tbody.lastElementChild.cells[0].appendChild(tier);
+                        }
                         if (item.laser_material_name) {
                             const material = document.createElement('small');
                             material.style.display = 'block';
@@ -647,6 +654,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const kategori = getKategoriName();
         const selectedOption = elJudul ? elJudul.options[elJudul.selectedIndex] : null;
         const unit = (selectedOption && selectedOption.dataset.unit) ? selectedOption.dataset.unit : '';
+        const sizeUnit = unit === 'CM2' || kategori === 'AKRILIK' ? 'cm' : 'm';
+        if (elPanjang) elPanjang.placeholder = `Pjg (${sizeUnit})`;
+        if (elLebar) elLebar.placeholder = `Lbr (${sizeUnit})`;
         const judul = (selectedOption && selectedOption.dataset.name) ? selectedOption.dataset.name : '';
 
         const idsToHide = ['ukuranSublimRow', 'ukuranInputs', 'ukuranJerseyRow', 'bahanSublim', 'settingDesain'];
@@ -734,6 +744,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const formData = new FormData();
         formData.append('order_id', <?= $order_id ?>);
+        formData.append('order_item_id', document.getElementById('addItemForm').getAttribute('data-order-item-id') || '');
         formData.append('product_id', elJudul.value);
         formData.append('laser_product_id', laserMaterialId || 0);
         formData.append('judul', judulAsli);
@@ -757,6 +768,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 const priceDisplay = document.getElementById('priceDisplay');
                 if (priceDisplay) {
                     priceDisplay.textContent = response.success ? 'Total Harga: Rp ' + Number(response.data.total || 0).toLocaleString('id-ID') : 'Rp 0';
+                    const tier = response.data?.tier_pricing;
+                    if (response.success && tier?.price != null) priceDisplay.textContent += ` | Harga dasar bertingkat Rp${Number(tier.price).toLocaleString('id-ID')}/${tierUnitLabel(tier)} (total ${Number(tier.quantity).toLocaleString('id-ID', { maximumFractionDigits: 8 })})`;
                 }
             }).catch(() => {});
     }
@@ -848,7 +861,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const orderItemId = document.getElementById('addItemForm').getAttribute('data-order-item-id');
             if (orderItemId) formData.append('order_item_id', orderItemId);
 
-            fetch("/action?action=create_item", {
+            fetch(`/action?action=${orderItemId ? 'update_item' : 'create_item'}`, {
                 method: 'POST',
                 body: formData
             })
