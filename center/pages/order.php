@@ -463,6 +463,12 @@ document.addEventListener('DOMContentLoaded', function () {
                             tier.textContent = `Harga dasar bertingkat: Rp${Number(item.tier_pricing.price).toLocaleString('id-ID')}/${tierUnitLabel(item.tier_pricing)}`;
                             tbody.lastElementChild.cells[0].appendChild(tier);
                         }
+                        if (item.promotion) {
+                            const bonus = document.createElement('small');
+                            bonus.style.display = 'block';
+                            bonus.textContent = `Bayar ${item.promotion.paid_quantity}, gratis ${item.promotion.bonus_quantity}`;
+                            tbody.lastElementChild.cells[3].appendChild(bonus);
+                        }
                         if (item.laser_material_name) {
                             const material = document.createElement('small');
                             material.style.display = 'block';
@@ -770,6 +776,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     priceDisplay.textContent = response.success ? 'Total Harga: Rp ' + Number(response.data.total || 0).toLocaleString('id-ID') : 'Rp 0';
                     const tier = response.data?.tier_pricing;
                     if (response.success && tier?.price != null) priceDisplay.textContent += ` | Harga dasar bertingkat Rp${Number(tier.price).toLocaleString('id-ID')}/${tierUnitLabel(tier)} (total ${Number(tier.quantity).toLocaleString('id-ID', { maximumFractionDigits: 8 })})`;
+                    const promo = response.data?.promotion;
+                    if (response.success && promo) priceDisplay.textContent += ` | Beli ${promo.buy_quantity} gratis ${promo.free_quantity}: bayar ${promo.paid_quantity}, gratis ${promo.bonus_quantity} (total ${promo.quantity} pcs)`;
                 }
             }).catch(() => {});
     }

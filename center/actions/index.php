@@ -113,6 +113,11 @@ switch ($action) {
         (new PriceTierController($koneksi))->save();
         break;
 
+    case 'save_promotion':
+        require_once __DIR__ . '/../controllers/PromotionController.php';
+        (new PromotionController($koneksi))->save();
+        break;
+
     case 'save_package_price':
     case 'get_product_finishing_prices':
         require_once __DIR__ . '/../controllers/PackagePriceController.php';
