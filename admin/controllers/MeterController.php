@@ -6,6 +6,7 @@ require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/../models/Activity.php';
 require_once __DIR__ . '/../models/Payment.php';
 require_once __DIR__ . '/../models/ProductLaserConversion.php';
+require_once __DIR__ . '/../models/ProductVariant.php';
 require_once __DIR__ . '/../functions/helpers.php';
 
 class MeterController {
@@ -353,6 +354,8 @@ class MeterController {
 
         $product_data_jersey = [];
         $total_all_qty_jersey = 0;
+        $variantModel = new ProductVariant($this->koneksi);
+        $legacyOnly = $variantModel->isAvailable() ? ' AND oi.product_variant_data IS NULL' : '';
 
         $queryStr = "
             SELECT p.name, COALESCE(SUM(oi_filtered.quantity), 0) AS total_qty
@@ -362,7 +365,7 @@ class MeterController {
                 SELECT oi.product_id, oi.quantity
                 FROM order_items oi
                 JOIN orders o ON oi.order_id = o.order_id
-                WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
+                WHERE o.store_id = ? AND o.date BETWEEN ? AND ? $legacyOnly
             ) oi_filtered ON p.product_id = oi_filtered.product_id
             WHERE c.name = 'JERSEY' AND p.store_id = ?
             GROUP BY p.product_id, p.name
@@ -387,10 +390,28 @@ class MeterController {
             $total_all_qty_jersey += $qty;
         }
 
+        foreach ($variantModel->productionTotals($store_id, $start_date_full, $end_date_full, 'JERSEY', true) as $name => $qty) {
+            $product_data_jersey[] = ['name' => $name, 'total_qty' => $qty];
+            $total_all_qty_jersey += $qty;
+        }
+        $grouped = [];
+        foreach ($product_data_jersey as $p) $grouped[$p['name']] = ($grouped[$p['name']] ?? 0) + $p['total_qty'];
+        $product_data_jersey = [];
+        foreach ($grouped as $name => $qty) $product_data_jersey[] = ['name' => $name, 'total_qty' => $qty];
         return [
             'product_data' => $product_data_jersey,
             'total_all_qty' => $total_all_qty_jersey
         ];
+    }
+
+    public function getComponents() {
+        global $store_id;
+        $start = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
+        $end = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
+        $totals = (new ProductVariant($this->koneksi))->productionTotals($store_id, $start, $end);
+        $rows = [];
+        foreach ($totals as $name => $qty) $rows[] = ['name' => $name, 'total_qty' => $qty];
+        return ['product_data' => $rows, 'total_all_qty' => array_sum($totals)];
     }
 
     public function getLaser() {
