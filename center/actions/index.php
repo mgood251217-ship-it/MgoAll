@@ -118,6 +118,14 @@ switch ($action) {
         (new PromotionController($koneksi))->save();
         break;
 
+    case 'save_product_variant':
+    case 'get_product_variants':
+        require_once __DIR__ . '/../controllers/VariantController.php';
+        $variantController = new VariantController($koneksi);
+        if ($action === 'save_product_variant') $variantController->save();
+        else $variantController->getRules();
+        break;
+
     case 'save_package_price':
     case 'get_product_finishing_prices':
         require_once __DIR__ . '/../controllers/PackagePriceController.php';
