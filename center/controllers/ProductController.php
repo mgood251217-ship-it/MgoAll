@@ -175,7 +175,7 @@ class ProductController {
             require_once __DIR__ . '/../functions/cacheHelper.php';
             set_error_handler(function ($severity, $message) { throw new RuntimeException($message); });
             try {
-                foreach (['store_data', 'store_names', 'categories', 'products', 'finishings', 'product_finishing_prices', 'product_laser_conversion', 'orders'] as $module) {
+                foreach (['store_data', 'store_names', 'categories', 'products', 'finishings', 'product_finishing_prices', 'product_laser_conversion', 'product_price_tiers', 'orders'] as $module) {
                     updateStoreCache($storeId, $module);
                 }
             } finally {
@@ -364,7 +364,7 @@ class ProductController {
             set_error_handler(function ($severity, $message) { throw new RuntimeException($message); });
             try {
                 require_once __DIR__ . '/../functions/cacheHelper.php';
-                foreach (['products', 'categories', 'product_finishing_prices', 'product_laser_conversion', 'orders'] as $module) updateStoreCache($storeId, $module);
+                foreach (['products', 'categories', 'product_finishing_prices', 'product_laser_conversion', 'product_price_tiers', 'orders'] as $module) updateStoreCache($storeId, $module);
             } catch (Throwable $e) {
                 error_log('Bulk product delete cache: ' . $e->getMessage());
                 unset($_SESSION['swal_success']);
@@ -451,7 +451,7 @@ class ProductController {
             set_error_handler(function ($severity, $message) { throw new RuntimeException($message); });
             try {
                 require_once __DIR__ . '/../functions/cacheHelper.php';
-                foreach (['products', 'categories', 'product_finishing_prices', 'product_laser_conversion', 'orders'] as $module) updateStoreCache($storeId, $module);
+                foreach (['products', 'categories', 'product_finishing_prices', 'product_laser_conversion', 'product_price_tiers', 'orders'] as $module) updateStoreCache($storeId, $module);
             } catch (Throwable $e) {
                 error_log('Bulk product category cache: ' . $e->getMessage());
                 unset($_SESSION['swal_success']);

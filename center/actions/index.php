@@ -108,6 +108,11 @@ switch ($action) {
         if ($action === 'get_product_laser_conversions') $laserConversionController->getRules();
         break;
 
+    case 'save_price_tiers':
+        require_once __DIR__ . '/../controllers/PriceTierController.php';
+        (new PriceTierController($koneksi))->save();
+        break;
+
     case 'save_package_price':
     case 'get_product_finishing_prices':
         require_once __DIR__ . '/../controllers/PackagePriceController.php';
@@ -122,6 +127,7 @@ switch ($action) {
     case 'maklun':
     case 'price':
     case 'create_item':
+    case 'update_item':
     case 'delete_item':
     case 'delete_order_discount':
     case 'get_note':
@@ -133,6 +139,7 @@ switch ($action) {
         if ($action === 'get_order_items') $orderController->orderDetail();
         if ($action === 'price') $orderController->fullPrice();
         if ($action === 'create_item') $orderController->createItem();
+        if ($action === 'update_item') $orderController->updateItem();
         if ($action === 'delete_item') $orderController->deleteItem();
         if ($action === 'delete_order_discount') $orderController->deleteDiscount();
         if ($action === 'get_note') $orderController->getNoteOrder();

@@ -46,6 +46,7 @@ $_SESSION['product_category_csrf'] = $_SESSION['product_category_csrf'] ?? bin2h
                 <?= $returnInputs ?>
                 <button type="submit" class="btn-secondary-custom" title="Perbarui cache toko yang dipilih setelah perubahan melalui SQL"><i class="fas fa-sync-alt"></i> Update Cache</button>
             </form>
+            <a class="btn-primary-custom" href="/price-tiers?store_id=<?= (int)$data['current_store_id'] ?>&amp;category_id=<?= (int)$data['current_category_id'] ?>">Harga Bertingkat</a>
             <a class="btn-primary-custom" href="/package-prices?store_id=<?= (int)$data['current_store_id'] ?>">Harga Paket</a>
             <a class="btn-primary-custom" href="/laser-conversions?store_id=<?= (int)$data['current_store_id'] ?>">Konversi Print Laser</a>
             <button class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalTambahKategori">
