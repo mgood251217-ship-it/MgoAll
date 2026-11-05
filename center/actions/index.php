@@ -126,6 +126,14 @@ switch ($action) {
         else $variantController->getRules();
         break;
 
+    case 'save_production_component':
+    case 'link_production_components':
+        require_once __DIR__ . '/../controllers/VariantController.php';
+        $variantController = new VariantController($koneksi);
+        if ($action === 'save_production_component') $variantController->saveComponent();
+        else $variantController->linkComponents();
+        break;
+
     case 'save_package_price':
     case 'get_product_finishing_prices':
         require_once __DIR__ . '/../controllers/PackagePriceController.php';

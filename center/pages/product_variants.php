@@ -8,7 +8,18 @@ $_SESSION['variant_csrf'] = $_SESSION['variant_csrf'] ?? bin2hex(random_bytes(32
 $escape = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
 $query = http_build_query(['store_id' => $data['store'], 'category_id' => $data['category'], 'product_id' => $data['selected']]);
 $editing = $data['editing'];
-$options = $editing['options'] ?? ($data['variants'] ? array_fill_keys(array_keys($data['variants'][0]['options']), '') : ['Kualitas' => '', 'Pilihan' => '']);
+$options = $editing['options'] ?? ($data['variants'] ? array_fill_keys(array_keys($data['variants'][0]['options']), '') : ['KUALITAS' => '', 'PILIHAN' => '']);
+$upper = function ($v) { return function_exists('mb_strtoupper') ? mb_strtoupper($v, 'UTF-8') : strtoupper($v); };
+$choiceControl = function ($field, $value, $choices, $locked = false) use ($escape, $upper) {
+    $value = $upper($value); $choices = array_values(array_unique(array_merge($choices, $value !== '' ? [$value] : [])));
+    $html = '<div data-choice-field><input type="hidden" name="' . $field . '[]" value="' . $escape($value) . '"><select class="form-control" data-choice' . ($locked ? ' disabled' : ' required') . '><option value="">Pilih ' . ($field === 'option_name' ? 'nama pilihan' : 'nilai varian') . '</option>';
+    foreach ($choices as $v) $html .= '<option value="' . $escape($v) . '"' . ($v === $value ? ' selected' : '') . '>' . $escape($v) . '</option>';
+    if (!$locked) $html .= '<option value="__new__">+ Tambah ' . ($field === 'option_name' ? 'nama pilihan' : 'nilai') . ' lain</option>';
+    return $html . '</select><input class="form-control mt-2" data-custom-choice data-uppercase maxlength="' . ($field === 'option_name' ? 40 : 80) . '" placeholder="KETIK ' . ($field === 'option_name' ? 'NAMA PILIHAN' : 'NILAI VARIAN') . '" hidden disabled></div>';
+};
+$componentControl = function ($component = null) use ($escape, $upper) {
+    return '<input type="hidden" name="component_row_id[]" value="' . (int)($component['recipe_id'] ?? 0) . '"><input class="form-control" name="component_name[]" data-meter-name data-uppercase data-auto-name="' . ($component ? '0' : '1') . '" value="' . $escape($upper($component['name'] ?? '')) . '" maxlength="150" placeholder="NAMA DI METERAN" required>';
+};
 ?>
 <div class="page-header"><h2>Varian Produk</h2><a class="btn-secondary-custom" href="/products?store_id=<?= $data['store'] ?>&amp;category_id=<?= $data['category'] ?>">Kembali ke Produk</a></div>
 <?php foreach (['swal_success' => 'success', 'swal_error' => 'danger'] as $key => $type): ?>
@@ -30,23 +41,23 @@ $options = $editing['options'] ?? ($data['variants'] ? array_fill_keys(array_key
 <?php elseif ($data['product']): ?>
     <div class="filter-card">
         <h3><?= $editing ? 'Ubah' : 'Tambah' ?> varian <?= $escape($data['product']['name']) ?></h3>
-        <p>Contoh pilihan: Kualitas = Premium dan Pilihan = Setelan. Nama pilihan dapat disesuaikan untuk setiap produk.</p>
+        <p>Pilih nama dan nilai varian dari dropdown. Gunakan “Tambah lainnya” jika belum tersedia.</p>
         <form method="post" action="/action?action=save_product_variant" id="variantForm">
             <input type="hidden" name="csrf_token" value="<?= $escape($_SESSION['variant_csrf']) ?>"><input type="hidden" name="store_id" value="<?= $data['store'] ?>"><input type="hidden" name="product_id" value="<?= $data['selected'] ?>"><input type="hidden" name="category_id" value="<?= $data['category'] ?>"><input type="hidden" name="variant_id" value="<?= (int)($editing['id'] ?? 0) ?>"><input type="hidden" name="command" value="save">
             <div class="table-scroll"><table class="table-modern"><thead><tr><th>Nama pilihan</th><th>Nilai varian ini</th><th></th></tr></thead><tbody id="variantOptions">
-                <?php foreach ($options as $name => $v): ?><tr><td><input class="form-control" name="option_name[]" value="<?= $escape($name) ?>" maxlength="40" <?= $data['variants'] ? 'readonly' : '' ?> required></td><td><input class="form-control" name="option_value[]" value="<?= $escape($v) ?>" maxlength="80" placeholder="Misalnya Premium atau Setelan" required></td><td><?php if (!$data['variants']): ?><button type="button" class="btn btn-danger" data-remove-option>Hapus</button><?php endif; ?></td></tr><?php endforeach; ?>
+                <?php foreach ($options as $name => $v): ?><tr><td><?= $choiceControl('option_name', $name, array_keys($data['optionChoices']), (bool)$data['variants']) ?></td><td><?= $choiceControl('option_value', $v, $data['optionChoices'][$upper($name)] ?? []) ?></td><td><?php if (!$data['variants']): ?><button type="button" class="btn btn-danger" data-remove-option>Hapus</button><?php endif; ?></td></tr><?php endforeach; ?>
             </tbody></table></div>
             <?php if (!$data['variants']): ?><button type="button" class="btn-secondary-custom" id="addVariantOption" style="margin-top:12px">Tambah Pilihan</button><?php endif; ?>
             <div class="form-group" style="margin-top:16px"><label for="variant_price">Harga dasar varian (Rp / <?= $escape($data['product']['unit_type']) ?>)</label><input id="variant_price" class="form-control" type="number" name="price" min="0.01" max="9999999999999.99" step="0.01" value="<?= $escape($editing['price'] ?? '') ?>" required></div>
             <p>Harga ini menggantikan harga dasar produk. Tambahan ukuran dan finishing tetap mengikuti perhitungan order. Harga bertingkat produk tidak diterapkan pada varian; promo beli gratis tetap dapat digunakan. Produk dengan harga paket atau konversi print laser dikelola melalui pengaturannya sendiri.</p>
             <h4>Komponen produksi (opsional)</h4>
-            <p>Contoh setelan: <strong>MILANO PREMIUM ATASAN = 1</strong> dan <strong>MILANO PREMIUM CELANA = 1</strong>. Atasan saja cukup mengisi komponen atasan. Gunakan nama komponen yang sama jika ingin jumlahnya digabung di meteran.</p>
+            <p>Nama meteran terisi otomatis dan bisa diedit. Untuk setelan, isi dua baris: <strong>MILANO PREMIUM ATASAN = 1</strong> dan <strong>MILANO PREMIUM CELANA = 1</strong>.</p>
             <div class="table-scroll"><table class="table-modern"><thead><tr><th>Nama di meteran</th><th>Jumlah per 1 satuan jual</th><th></th></tr></thead><tbody id="variantComponents">
-                <?php foreach ($editing['components'] ?? [] as $c): ?><tr><td><input class="form-control" name="component_name[]" value="<?= $escape($c['name']) ?>" maxlength="150" required></td><td><input class="form-control" type="number" name="component_quantity[]" min="0.0001" max="1000000" step="0.0001" value="<?= (float)$c['quantity'] ?>" required></td><td><button type="button" class="btn btn-danger" data-remove-component>Hapus</button></td></tr><?php endforeach; ?>
+                <?php foreach ($editing ? $editing['components'] : [null] as $c): ?><tr><td><?= $componentControl($c) ?></td><td><input class="form-control" type="number" name="component_quantity[]" min="0.0001" max="1000000" step="0.0001" value="<?= (float)($c['quantity'] ?? 1) ?>" required></td><td><button type="button" class="btn btn-danger" data-remove-component>Hapus</button></td></tr><?php endforeach; ?>
             </tbody></table></div>
             <p>Komponen dihitung dari seluruh quantity, termasuk pcs bonus. Quantity nota dan stok produk tetap mengikuti satuan jual. Komponen jersey masuk meteran Jersey; semua komponen juga dapat dilihat di meteran Komponen Produksi.</p>
             <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px"><button type="button" class="btn-secondary-custom" id="addVariantComponent">Tambah Komponen</button><button class="btn-primary-custom" type="submit">Simpan Varian</button><?php if ($editing): ?><a class="btn-secondary-custom" href="/product-variants?<?= $escape($query) ?>">Batal / Tambah Baru</a><?php endif; ?></div>
-            <small class="text-muted">Harga, pilihan, dan komponen disimpan pada item nota. Perubahan atau penghapusan varian tidak mengganti data nota lama.</small>
+            <small class="text-muted">Perubahan nama meteran berlaku juga pada nota yang sudah terhubung. Harga dan jumlah pada nota tetap tersimpan.</small>
         </form>
     </div>
     <div class="table-container"><div class="table-scroll"><table class="table-modern"><thead><tr><th>Varian</th><th>Harga dasar</th><th>Komponen produksi</th><th>Aksi</th></tr></thead><tbody>
@@ -59,18 +70,59 @@ $options = $editing['options'] ?? ($data['variants'] ? array_fill_keys(array_key
     <script>
     (() => {
         const optionRows = document.getElementById('variantOptions'), components = document.getElementById('variantComponents');
+        const choices = <?= json_encode($data['optionChoices'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+        const productName = <?= json_encode($data['product']['name'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+        const upper = value => value.toUpperCase();
+        const meterName = () => [productName, ...Array.from(optionRows.querySelectorAll('[name="option_value[]"]'), input => input.value)].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim().toUpperCase();
+        const updateMeterNames = () => components.querySelectorAll('[data-meter-name][data-auto-name="1"]').forEach(input => input.value = meterName());
+        const setChoices = (field, values) => {
+            const select = field.querySelector('[data-choice]');
+            select.replaceChildren(new Option('Pilih nilai varian', ''), ...values.map(v => new Option(v, v)), new Option('+ Tambah nilai lain', '__new__'));
+            select.value = ''; field.querySelector('input[type="hidden"]').value = '';
+            const custom = field.querySelector('[data-custom-choice]'); custom.hidden = true; custom.disabled = true; custom.required = false; custom.value = '';
+        };
+        optionRows.addEventListener('change', e => {
+            if (!e.target.matches('[data-choice]')) return;
+            const field = e.target.closest('[data-choice-field]'), custom = field.querySelector('[data-custom-choice]'), hidden = field.querySelector('input[type="hidden"]');
+            const isNew = e.target.value === '__new__';
+            custom.hidden = !isNew; custom.disabled = !isNew; custom.required = isNew;
+            hidden.value = isNew ? upper(custom.value.trim()) : e.target.value;
+            if (isNew) custom.focus();
+            if (hidden.name === 'option_name[]') setChoices(field.closest('tr').children[1].querySelector('[data-choice-field]'), choices[hidden.value] || []);
+            updateMeterNames();
+        });
+        optionRows.addEventListener('input', e => {
+            if (!e.target.matches('[data-custom-choice]')) return;
+            const field = e.target.closest('[data-choice-field]'), hidden = field.querySelector('input[type="hidden"]');
+            hidden.value = upper(e.target.value.trim());
+            if (hidden.name === 'option_name[]') setChoices(field.closest('tr').children[1].querySelector('[data-choice-field]'), choices[hidden.value] || []);
+            updateMeterNames();
+        });
         document.getElementById('addVariantOption')?.addEventListener('click', () => {
             if (optionRows.children.length >= 8) return;
-            const row = optionRows.firstElementChild?.cloneNode(true);
-            if (!row) return;
-            row.querySelectorAll('input').forEach(input => input.value = ''); optionRows.appendChild(row); row.querySelector('input').focus();
+            const row = document.createElement('tr');
+            row.innerHTML = <?= json_encode('<td>' . $choiceControl('option_name', '', array_keys($data['optionChoices'])) . '</td><td>' . $choiceControl('option_value', '', []) . '</td><td><button type="button" class="btn btn-danger" data-remove-option>Hapus</button></td>', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+            optionRows.appendChild(row); row.querySelector('select').focus();
         });
-        optionRows.addEventListener('click', e => { if (e.target.closest('[data-remove-option]') && optionRows.children.length > 1) e.target.closest('tr').remove(); });
+        optionRows.addEventListener('click', e => { if (e.target.closest('[data-remove-option]') && optionRows.children.length > 1) { e.target.closest('tr').remove(); updateMeterNames(); } });
         document.getElementById('addVariantComponent').addEventListener('click', () => {
-            components.insertAdjacentHTML('beforeend', '<tr><td><input class="form-control" name="component_name[]" maxlength="150" placeholder="MILANO PREMIUM ATASAN" required></td><td><input class="form-control" type="number" name="component_quantity[]" min="0.0001" max="1000000" step="0.0001" value="1" required></td><td><button type="button" class="btn btn-danger" data-remove-component>Hapus</button></td></tr>');
+            const control = <?= json_encode($componentControl(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+            components.insertAdjacentHTML('beforeend', '<tr><td>' + control + '</td><td><input class="form-control" type="number" name="component_quantity[]" min="0.0001" max="1000000" step="0.0001" value="1" required></td><td><button type="button" class="btn btn-danger" data-remove-component>Hapus</button></td></tr>');
+            updateMeterNames();
         });
+        components.addEventListener('input', e => { if (e.target.matches('[data-meter-name]')) e.target.dataset.autoName = '0'; });
         components.addEventListener('click', e => { if (e.target.closest('[data-remove-component]')) e.target.closest('tr').remove(); });
+        updateMeterNames();
         document.getElementById('variantForm').addEventListener('submit', e => e.target.querySelector('button[type="submit"]').disabled = true);
     })();
     </script>
 <?php endif; ?>
+
+<script>
+document.addEventListener('input', e => {
+    if (!e.target.matches('[data-uppercase]')) return;
+    const start = e.target.selectionStart, end = e.target.selectionEnd;
+    e.target.value = e.target.value.toUpperCase();
+    if (start !== null) e.target.setSelectionRange(start, end);
+});
+</script>

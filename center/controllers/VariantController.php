@@ -6,7 +6,8 @@ require_once __DIR__ . '/../functions/cacheHelper.php';
 class VariantController {
     private $db;
     private $variants;
-    public function __construct($db) { $this->db = $db; $this->variants = new ProductVariant($db); }
+    private $components;
+    public function __construct($db) { $this->db = $db; $this->variants = new ProductVariant($db); $this->components = new ProductionComponent($db); }
 
     private function stores() {
         if (session_status() === PHP_SESSION_NONE) session_start();
@@ -48,8 +49,85 @@ class VariantController {
                 foreach ($variants as $v) if ((int)$v['id'] === (int)($_GET['variant_id'] ?? 0)) $editing = $v;
             }
         }
-        return compact('stores', 'store', 'category', 'selected', 'categories', 'products', 'product', 'variants', 'editing', 'ready');
+        $optionChoices = ['KUALITAS' => ['PREMIUM', 'MEDIUM'], 'PILIHAN' => ['SETELAN', 'ATASAN', 'CELANA'], 'UKURAN' => [], 'BAHAN' => [], 'WARNA' => []];
+        if ($store && $ready) {
+            $stmt = $this->db->prepare('SELECT v.options_json FROM product_variants v JOIN products p ON p.product_id = v.product_id AND p.store_id = v.store_id WHERE v.store_id = ? ORDER BY v.id');
+            $stmt->bind_param('i', $store); $stmt->execute(); $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) foreach (json_decode($row['options_json'], true, 512, JSON_THROW_ON_ERROR) as $name => $value) {
+                $name = $this->upper($name); $value = $this->upper($value);
+                if (!isset($optionChoices[$name])) $optionChoices[$name] = [];
+                if (!in_array($value, $optionChoices[$name], true)) $optionChoices[$name][] = $value;
+            }
+            $stmt->close();
+        }
+        return compact('stores', 'store', 'category', 'selected', 'categories', 'products', 'product', 'variants', 'editing', 'ready', 'optionChoices');
     }
+
+    private function upper($value) { return function_exists('mb_strtoupper') ? mb_strtoupper($value, 'UTF-8') : strtoupper($value); }
+
+    private function componentAction($action) {
+        $store = (int)($_POST['store_id'] ?? 0); $transaction = false; $saved = false;
+        $driver = new mysqli_driver(); $report = $driver->report_mode;
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+        try {
+            $this->checkStore($store);
+            if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || empty($_SESSION['variant_csrf']) || !is_string($_POST['csrf_token'] ?? null)
+                || !hash_equals($_SESSION['variant_csrf'], $_POST['csrf_token'])) throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
+            if (!$this->variants->isAvailable() || !$this->components->isAvailable()) throw new InvalidArgumentException('Jalankan SQL production_components.sql terlebih dahulu.');
+            $this->db->begin_transaction(); $transaction = true;
+            $stmt = $this->db->prepare('SELECT store_id FROM stores WHERE store_id = ? FOR UPDATE'); $stmt->bind_param('i', $store); $stmt->execute(); $stmt->close();
+            $_SESSION['swal_success'] = $action($store);
+            $this->db->commit(); $transaction = false; $saved = true;
+        } catch (Throwable $e) {
+            if ($transaction) $this->db->rollback();
+            unset($_SESSION['swal_success']);
+            $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : ($e instanceof mysqli_sql_exception && $e->getCode() === 1062 ? 'Nama komponen sudah dipakai di toko ini. Pilih komponen yang tersedia.' : 'Gagal menyimpan komponen produksi.');
+            error_log('Production component: ' . $e->getMessage());
+        } finally { mysqli_report($report); }
+        if ($saved) try { updateStoreCache($store, 'production_components'); updateStoreCache($store, 'product_variants'); } catch (Throwable $e) { error_log('Component cache: ' . $e->getMessage()); }
+        $filters = ['store_id' => $store, 'category_id' => (int)($_POST['category_id'] ?? 0), 'product_id' => (int)($_POST['product_id'] ?? 0)];
+        if (!empty($_POST['variant_id'])) $filters['variant_id'] = (int)$_POST['variant_id'];
+        if (!empty($_POST['show_legacy'])) $filters['legacy'] = 1;
+        header('Location: /product-variants?' . http_build_query($filters)); exit;
+    }
+
+    public function saveComponent() {
+        $this->componentAction(function ($store) {
+            $name = ProductionComponent::name($_POST['name'] ?? ''); $id = $_POST['component_id'] ?? '0';
+            if (!is_scalar($id) || !preg_match('/^\d+$/D', (string)$id) || (float)$id > 2147483647) throw new InvalidArgumentException('Komponen tidak valid.');
+            $id = (int)$id;
+            if ($id) {
+                $masters = array_column($this->components->getByStore($store), 'name', 'id');
+                if (!isset($masters[$id])) throw new InvalidArgumentException('Komponen tidak ditemukan pada toko ini.');
+                $stmt = $this->db->prepare('UPDATE production_components SET name = ? WHERE id = ? AND store_id = ?'); $stmt->bind_param('sii', $name, $id, $store);
+            } else {
+                $stmt = $this->db->prepare('INSERT INTO production_components (store_id, name) VALUES (?, ?)'); $stmt->bind_param('is', $store, $name);
+            }
+            $stmt->execute(); $stmt->close();
+            return $id ? 'Nama komponen diperbarui untuk meteran lama dan baru. Harga dan jumlah pada nota tetap.' : 'Komponen ditambahkan. Pilih komponen ini pada varian yang menggunakannya.';
+        });
+    }
+
+    public function linkComponents() {
+        $this->componentAction(function ($store) {
+            $keys = $_POST['legacy_key'] ?? []; $ids = $_POST['legacy_component_id'] ?? [];
+            if (!is_array($keys) || !is_array($ids) || count($keys) !== count($ids) || count($keys) > 1000) throw new InvalidArgumentException('Daftar pemetaan tidak valid.');
+            $groups = $this->components->legacyGroups($store, (int)($_POST['product_id'] ?? 0));
+            $masters = array_column($this->components->getByStore($store), 'name', 'id'); $count = 0;
+            foreach (array_values($keys) as $i => $key) {
+                $id = array_values($ids)[$i];
+                if (!is_string($key) || !isset($groups[$key]) || !is_scalar($id) || !preg_match('/^\d*$/D', (string)$id)) throw new InvalidArgumentException('Pemetaan sudah berubah atau tidak tersedia di toko ini. Muat ulang halaman.');
+                if ($id === '' || (int)$id === 0) continue;
+                $id = (int)$id;
+                if (!isset($masters[$id])) throw new InvalidArgumentException('Pilih komponen dari toko yang sama.');
+                $g = $groups[$key];
+                $this->components->link($store, $g['product_id'], $g['snapshot'], $g['name'], $id); $count++;
+            }
+            if (!$count) throw new InvalidArgumentException('Pilih minimal satu komponen tujuan.');
+            return "$count pemetaan disimpan. Nama di meteran mengikuti master; harga dan jumlah pada nota tidak diubah.";
+        });
+    }
+
     public function save() {
         $store = (int)($_POST['store_id'] ?? 0); $product = (int)($_POST['product_id'] ?? 0); $category = (int)($_POST['category_id'] ?? 0); $id = (int)($_POST['variant_id'] ?? 0);
         $transaction = $saved = false; $driver = new mysqli_driver(); $report = $driver->report_mode;
@@ -77,20 +155,72 @@ class VariantController {
                 foreach ((new ProductFinishingPrice($this->db))->getByStore($store, 0, false) as $r) if ((int)$r['product_id'] === $product) throw new InvalidArgumentException('Produk ini memakai harga paket. Kelola melalui Harga Paket.');
                 foreach ((new ProductLaserConversion($this->db))->getByStore($store) as $r) if ((int)$r['product_id'] === $product) throw new InvalidArgumentException('Produk ini memakai konversi print laser. Kelola melalui Konversi Print Laser.');
                 $options = ProductVariant::options($_POST['option_name'] ?? [], $_POST['option_value'] ?? []);
+                $options = ProductVariant::options(array_map([$this, 'upper'], array_keys($options)), array_map([$this, 'upper'], array_values($options)));
                 $current = $this->variants->getByProduct($store, $product);
-                if ($current && array_keys($options) !== array_keys($current[0]['options'])) throw new InvalidArgumentException('Nama dan urutan pilihan harus sama dengan varian produk yang sudah ada.');
+                if ($current) {
+                    if (array_keys($options) !== array_map([$this, 'upper'], array_keys($current[0]['options']))) throw new InvalidArgumentException('Nama dan urutan pilihan harus sama dengan varian produk yang sudah ada.');
+                    // Pertahankan ejaan yang sudah dipakai agar pilihan dan pemetaan nota lama tetap cocok.
+                    $canonical = [];
+                    foreach (array_keys($current[0]['options']) as $name) {
+                        $value = $options[$this->upper($name)];
+                        foreach ($current as $v) if ($this->upper($v['options'][$name]) === $value) { $value = $v['options'][$name]; break; }
+                        $canonical[$name] = $value;
+                    }
+                    $options = $canonical;
+                }
                 $price = $_POST['price'] ?? '';
                 if (!is_scalar($price) || !preg_match('/^\d+(?:\.\d{1,2})?$/D', (string)$price) || (float)$price <= 0 || (float)$price > 9999999999999.99) throw new InvalidArgumentException('Harga varian harus lebih dari 0, maksimal 2 angka desimal.');
-                $names = $_POST['component_name'] ?? []; $quantities = $_POST['component_quantity'] ?? [];
+                $componentsReady = $this->components->isAvailable();
+                $textNames = array_key_exists('component_name', $_POST) || !$componentsReady;
+                $names = $textNames ? ($_POST['component_name'] ?? []) : ($_POST['component_id'] ?? []); $quantities = $_POST['component_quantity'] ?? [];
                 if (!is_array($names) || !is_array($quantities) || count($names) !== count($quantities) || count($names) > 100) throw new InvalidArgumentException('Daftar komponen tidak valid.');
-                $components = [];
+                $recipeIds = $_POST['component_row_id'] ?? array_fill(0, count($names), 0);
+                if (!is_array($recipeIds) || count($recipeIds) !== count($names)) throw new InvalidArgumentException('Daftar komponen berubah. Muat ulang halaman.');
+                $newNames = $_POST['component_new_name'] ?? array_fill(0, count($names), '');
+                if (!is_array($newNames) || count($newNames) !== count($names)) throw new InvalidArgumentException('Daftar nama meteran tidak valid.');
+                $masters = $componentsReady ? array_column($this->components->getByStore($store), 'name', 'id') : [];
+                $oldVariant = null;
+                foreach ($current as $v) if ((int)$v['id'] === $id) $oldVariant = $v;
+                $oldRecipes = array_column($oldVariant['components'] ?? [], null, 'recipe_id');
+                $components = []; $renames = [];
                 foreach (array_values($names) as $i => $name) {
                     $quantity = array_values($quantities)[$i];
                     if (!is_scalar($name) || !is_scalar($quantity)) throw new InvalidArgumentException('Komponen tidak valid.');
                     $name = preg_replace('/\s+/u', ' ', trim((string)$name));
                     if ($name === '' && (string)$quantity === '') continue;
+                    $componentId = null; $recipe = array_values($recipeIds)[$i];
+                    if (!is_scalar($recipe) || !preg_match('/^\d+$/D', (string)$recipe) || (float)$recipe > 2147483647) throw new InvalidArgumentException('Baris komponen tidak valid. Muat ulang halaman.');
+                    $recipeId = (int)$recipe;
+                    if ($recipeId && !isset($oldRecipes[$recipeId])) throw new InvalidArgumentException('Komponen varian sudah berubah. Muat ulang halaman.');
+                    if ($textNames) {
+                        $name = ProductionComponent::name($name);
+                        if ($componentsReady) {
+                            $componentId = (int)($oldRecipes[$recipeId]['component_id'] ?? 0);
+                            if ($componentId) {
+                                if (isset($renames[$componentId]) && $renames[$componentId] !== $name) throw new InvalidArgumentException('Komponen yang sama tidak boleh memiliki dua nama berbeda.');
+                                if (!isset($masters[$componentId])) throw new InvalidArgumentException('Nama meteran sudah berubah. Muat ulang halaman.');
+                                $renames[$componentId] = $name;
+                                $stmt = $this->db->prepare('UPDATE production_components SET name = ? WHERE id = ? AND store_id = ?');
+                                $stmt->bind_param('sii', $name, $componentId, $store); $stmt->execute(); $stmt->close();
+                            } else {
+                                $master = $this->components->findOrCreate($store, $name);
+                                $componentId = $master['id']; $name = $master['name']; $masters[$componentId] = $name;
+                            }
+                        }
+                    } elseif ($componentsReady) {
+                        if ($name === 'new') {
+                            $master = $this->components->findOrCreate($store, array_values($newNames)[$i]);
+                            $name = (string)$master['id']; $masters[$master['id']] = $master['name'];
+                        }
+                        if (!preg_match('/^[1-9][0-9]*$/D', $name) || (float)$name > 2147483647 || !isset($masters[(int)$name])) throw new InvalidArgumentException('Pilih komponen dari master toko ini.');
+                        $componentId = (int)$name; $name = $masters[$componentId];
+                    }
+                    if ($componentId) {
+                        if (isset($renames[$componentId]) && $renames[$componentId] !== $name) throw new InvalidArgumentException('Komponen yang sama tidak boleh memiliki dua nama berbeda.');
+                        $renames[$componentId] = $name;
+                    }
                     if (!preg_match('/^.{1,150}$/us', $name) || !preg_match('/^\d+(?:\.\d{1,4})?$/D', (string)$quantity) || (float)$quantity <= 0 || (float)$quantity > 1000000) throw new InvalidArgumentException('Isi nama komponen dan jumlah per satuan jual yang lebih dari 0.');
-                    $components[] = ['name' => $name, 'quantity' => (float)$quantity];
+                    $components[] = ['name' => $name, 'quantity' => (float)$quantity, 'component_id' => $componentId, 'recipe_id' => $recipeId];
                 }
                 $json = json_encode($options, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
                 $key = json_encode(array_values($options), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR); $price = (float)$price;
@@ -102,9 +232,18 @@ class VariantController {
                     $stmt->bind_param('iissd', $store, $product, $json, $key, $price);
                 }
                 $stmt->execute(); if (!$id) $id = (int)$this->db->insert_id; $stmt->close();
+                if ($componentsReady && $oldVariant && $oldVariant['options'] === $options) foreach ($components as $c) {
+                    $old = $oldRecipes[$c['recipe_id']] ?? null;
+                    if ($old && empty($old['component_id'])) $this->components->link($store, $product, $oldVariant, $old['name'], $c['component_id'], true);
+                }
                 $stmt = $this->db->prepare('DELETE FROM product_variant_components WHERE variant_id = ?'); $stmt->bind_param('i', $id); $stmt->execute(); $stmt->close();
-                $stmt = $this->db->prepare('INSERT INTO product_variant_components (variant_id, name, quantity) VALUES (?, ?, ?)');
-                foreach ($components as $c) { $stmt->bind_param('isd', $id, $c['name'], $c['quantity']); $stmt->execute(); } $stmt->close();
+                $insert = $componentsReady ? 'INSERT INTO product_variant_components (variant_id, name, quantity, component_id) VALUES (?, ?, ?, ?)' : 'INSERT INTO product_variant_components (variant_id, name, quantity) VALUES (?, ?, ?)';
+                $stmt = $this->db->prepare($insert);
+                foreach ($components as $c) {
+                    if ($componentsReady) $stmt->bind_param('isdi', $id, $c['name'], $c['quantity'], $c['component_id']);
+                    else $stmt->bind_param('isd', $id, $c['name'], $c['quantity']);
+                    $stmt->execute();
+                } $stmt->close();
             }
             $this->db->commit(); $transaction = false; $saved = true;
             $_SESSION['swal_success'] = $command === 'delete' ? 'Varian dihapus. Data varian pada nota lama tetap tersimpan.' : 'Varian tersimpan. Perubahan berlaku untuk item baru.';
@@ -113,7 +252,7 @@ class VariantController {
             $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : ($e instanceof mysqli_sql_exception && $e->getCode() === 1062 ? 'Kombinasi varian atau nama komponen yang sama sudah ada.' : 'Gagal menyimpan varian.');
             error_log('Product variant: ' . $e->getMessage());
         } finally { mysqli_report($report); }
-        if ($saved) try { updateStoreCache($store, 'product_variants'); updateStoreCache($store, 'products'); } catch (Throwable $e) { error_log('Variant cache: ' . $e->getMessage()); }
+        if ($saved) try { updateStoreCache($store, 'product_variants'); updateStoreCache($store, 'products'); updateStoreCache($store, 'production_components'); } catch (Throwable $e) { error_log('Variant cache: ' . $e->getMessage()); }
         header('Location: /product-variants?' . http_build_query(['store_id' => $store, 'category_id' => $category, 'product_id' => $product])); exit;
     }
 }

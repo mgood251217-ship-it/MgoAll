@@ -390,14 +390,10 @@ class MeterController {
             $total_all_qty_jersey += $qty;
         }
 
-        foreach ($variantModel->productionTotals($store_id, $start_date_full, $end_date_full, 'JERSEY', true) as $name => $qty) {
-            $product_data_jersey[] = ['name' => $name, 'total_qty' => $qty];
-            $total_all_qty_jersey += $qty;
+        foreach ($variantModel->productionRows($store_id, $start_date_full, $end_date_full, 'JERSEY', true) as $component) {
+            $product_data_jersey[] = $component;
+            $total_all_qty_jersey += $component['total_qty'];
         }
-        $grouped = [];
-        foreach ($product_data_jersey as $p) $grouped[$p['name']] = ($grouped[$p['name']] ?? 0) + $p['total_qty'];
-        $product_data_jersey = [];
-        foreach ($grouped as $name => $qty) $product_data_jersey[] = ['name' => $name, 'total_qty' => $qty];
         return [
             'product_data' => $product_data_jersey,
             'total_all_qty' => $total_all_qty_jersey
@@ -408,10 +404,8 @@ class MeterController {
         global $store_id;
         $start = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
         $end = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
-        $totals = (new ProductVariant($this->koneksi))->productionTotals($store_id, $start, $end);
-        $rows = [];
-        foreach ($totals as $name => $qty) $rows[] = ['name' => $name, 'total_qty' => $qty];
-        return ['product_data' => $rows, 'total_all_qty' => array_sum($totals)];
+        $rows = (new ProductVariant($this->koneksi))->productionRows($store_id, $start, $end);
+        return ['product_data' => $rows, 'total_all_qty' => array_sum(array_column($rows, 'total_qty'))];
     }
 
     public function getLaser() {

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ProductionComponent.php';
 
 class ProductVariant {
     private $db;
@@ -41,15 +42,30 @@ class ProductVariant {
         $stmt = $this->db->prepare('SELECT v.* FROM product_variants v JOIN products p ON p.product_id = v.product_id AND p.store_id = v.store_id WHERE v.store_id = ? AND v.product_id = ? ORDER BY v.id');
         $stmt->bind_param('ii', $store, $product); $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $stmt->close();
-        $stmt = $this->db->prepare('SELECT c.variant_id, c.name, c.quantity FROM product_variant_components c JOIN product_variants v ON v.id = c.variant_id WHERE v.store_id = ? AND v.product_id = ? ORDER BY c.id');
+        $componentModel = new ProductionComponent($this->db);
+        $masters = $componentModel->isAvailable();
+        $masterNames = $masters ? array_column($componentModel->getByStore($store), 'name', 'id') : [];
+        $links = $masters ? $componentModel->links($store) : [];
+        $fields = $masters ? 'c.id AS recipe_id, c.variant_id, c.component_id, COALESCE(m.name, c.name) AS name, c.quantity' : 'c.id AS recipe_id, c.variant_id, c.name, c.quantity';
+        $join = $masters ? ' LEFT JOIN production_components m ON m.id = c.component_id AND m.store_id = v.store_id' : '';
+        $stmt = $this->db->prepare("SELECT $fields FROM product_variant_components c JOIN product_variants v ON v.id = c.variant_id $join WHERE v.store_id = ? AND v.product_id = ? ORDER BY c.id");
         $stmt->bind_param('ii', $store, $product); $stmt->execute();
         $components = [];
-        foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $c) $components[(int)$c['variant_id']][] = ['name' => $c['name'], 'quantity' => (float)$c['quantity']];
+        foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $c) {
+            $entry = ['name' => $c['name'], 'quantity' => (float)$c['quantity'], 'recipe_id' => (int)$c['recipe_id']];
+            if (!empty($c['component_id'])) $entry['component_id'] = (int)$c['component_id'];
+            $components[(int)$c['variant_id']][] = $entry;
+        }
         $stmt->close();
         foreach ($rows as &$row) {
             $row['options'] = json_decode($row['options_json'], true, 512, JSON_THROW_ON_ERROR);
             $row['label'] = implode(' / ', array_values($row['options']));
             $row['components'] = $components[(int)$row['id']] ?? [];
+            foreach ($row['components'] as &$component) if (empty($component['component_id'])) {
+                $linked = $links[ProductionComponent::legacyKey($row, $component['name'])] ?? 0;
+                if (isset($masterNames[$linked])) { $component['component_id'] = (int)$linked; $component['name'] = $masterNames[$linked]; }
+            }
+            unset($component);
             unset($row['options_json'], $row['combination_key']);
         }
         unset($row);
@@ -78,10 +94,15 @@ class ProductVariant {
             if ($old && !empty($old['product_variant_id']) && !$id) throw new InvalidArgumentException('Item ini memakai varian. Pilih varian sesuai nota atau perbarui aplikasi.');
         }
         $variants = $this->getByProduct($store, (int)$product['product_id']);
-        foreach ($variants as $variant) if ((int)$variant['id'] === $id) return [
+        foreach ($variants as $variant) if ((int)$variant['id'] === $id) {
+            // ID baris resep hanya untuk formulir pengaturan, bukan identitas komponen pada nota.
+            foreach ($variant['components'] as &$component) unset($component['recipe_id']);
+            unset($component);
+            return [
             'id' => $id, 'options' => $variant['options'], 'label' => $variant['label'], 'price' => (float)$variant['price'],
             'components' => $variant['components'], 'product_name' => $product['name'], 'category' => $product['category']
-        ];
+            ];
+        }
         if ($id || $variants) throw new InvalidArgumentException('Pilih kombinasi varian yang tersedia. Jika pilihan varian belum muncul, perbarui aplikasi atau muat ulang data.');
         return null;
     }
@@ -96,20 +117,33 @@ class ProductVariant {
         return $items;
     }
 
-    // Nama komponen adalah nama yang ditampilkan di meteran, bukan produk tambahan di nota.
-    public function productionTotals($store, $start, $end, $category = null, $includeDefault = false) {
+    // Harga dan jumlah dari nota; nama terbaru dari master yang terhubung dengan ID.
+    public function productionRows($store, $start, $end, $category = null, $includeDefault = false) {
         if (!$this->isAvailable()) return [];
+        $masterModel = new ProductionComponent($this->db);
+        $ready = $masterModel->isAvailable();
+        $masters = array_column($masterModel->getByStore($store), 'name', 'id');
+        $links = $masterModel->links($store);
         $stmt = $this->db->prepare('SELECT oi.quantity, oi.product_variant_data FROM order_items oi JOIN orders o ON o.order_id = oi.order_id AND o.store_id = oi.store_id WHERE oi.store_id = ? AND o.date BETWEEN ? AND ? AND oi.product_variant_data IS NOT NULL');
         $stmt->bind_param('iss', $store, $start, $end); $stmt->execute();
-        $totals = [];
-        foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
+        $totals = []; $result = $stmt->get_result();
+        while ($row = $result->fetch_assoc()) {
             $saved = self::snapshot($row);
             if ($category !== null && strtoupper(trim($saved['category'])) !== $category) continue;
             $components = $saved['components'];
-            if (!$components && $includeDefault) $components = [['name' => $saved['product_name'] . ' - ' . $saved['label'], 'quantity' => 1]];
-            foreach ($components as $c) $totals[$c['name']] = round(($totals[$c['name']] ?? 0) + (float)$c['quantity'] * (int)$row['quantity'], 4);
+            $default = !$components && $includeDefault;
+            if ($default) $components = [['name' => $saved['product_name'] . ' - ' . $saved['label'], 'quantity' => 1]];
+            foreach ($components as $c) {
+                $legacy = ProductionComponent::legacyKey($saved, $c['name']);
+                $id = (int)($c['component_id'] ?? $links[$legacy] ?? 0);
+                $key = $id ? 'component:' . $id : ($ready ? 'legacy:' . $legacy : 'name:' . $c['name']);
+                $name = $masters[$id] ?? $c['name'];
+                if ($ready && !$id && !$default) $name .= ' - ' . $saved['product_name'] . ' / ' . $saved['label'] . ' (belum dihubungkan)';
+                if (!isset($totals[$key])) $totals[$key] = ['component_id' => $id ?: null, 'name' => $name, 'total_qty' => 0];
+                $totals[$key]['total_qty'] = round($totals[$key]['total_qty'] + (float)$c['quantity'] * (int)$row['quantity'], 4);
+            }
         }
         $stmt->close();
-        return $totals;
+        return array_values($totals);
     }
 }
