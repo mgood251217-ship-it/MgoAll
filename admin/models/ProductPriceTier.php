@@ -112,23 +112,56 @@ class ProductPriceTier {
         return $stock;
     }
 
+    public function variantMigrationData($row, $target, $variant, $discount) {
+        $saved = self::snapshot($row);
+        $data = $saved ?? ['rules' => [], 'measure' => self::measure($target), 'factor' => 1,
+            'discount' => $discount, 'stock' => $this->legacyStock($row)];
+        if (!$saved && in_array($data['measure'], ['m2', 'cm2'], true) && preg_match('/^([\d.]+)x([\d.]+)$/i', $row['size'], $size)) $data['factor'] = round((float)$size[1] * (float)$size[2], 8);
+        $data['variant'] = (int)$variant['id'];
+        $data['normal'] = (float)$row['unit'];
+        $data['base'] = (float)$variant['price'];
+        $sources = $data['migration_product_ids'] ?? [];
+        $sources[] = (int)$row['product_id'];
+        $data['migration_product_ids'] = array_values(array_unique($sources));
+        $sourceFactor = $data['stock']['products'][$row['product_id']] ?? null;
+        unset($data['stock']['products'][$row['product_id']]);
+        if ($target['unit_type'] !== '~') {
+            $targetRow = array_replace($row, ['product_id' => (int)$target['product_id']]);
+            $data['stock']['products'][(int)$target['product_id']] = $sourceFactor ?? ($this->legacyStock($targetRow)['products'][$target['product_id']] ?? 1);
+        }
+        return $data;
+    }
+
     // Aturan disalin ke nota. Perubahan katalog tidak mengganti aturan nota yang sudah dimulai.
     public function preview(&$item, $product, $store, $input, $discount, $special = false) {
         $measure = self::measure($product);
         if (!$this->isAvailable()) return;
         $weightBased = ($product['unit_type'] ?? '') === 'PCS' && str_contains($product['name'] ?? '', 'BAHAN') && (float)($input['kiloan'] ?? 0) > 0;
         $rows = $this->items($store, $item['order_id'], $item['product_id']);
+        $migrated = null; $migrationSources = [];
+        foreach ($rows as $row) if ((int)$row['order_item_id'] === (int)($input['order_item_id'] ?? 0)) {
+            $saved = self::snapshot($row);
+            if (!empty($saved['migration_product_ids'])) {
+                $migrationSources = $saved['migration_product_ids'];
+                if ((int)($row['product_variant_id'] ?? 0) === (int)($item['product_variant_id'] ?? 0)) {
+                    $migrated = ['row' => $row, 'data' => $saved];
+                    $discount = max(0, (float)($input['diskon'] ?? $saved['discount'] ?? 0));
+                }
+            }
+        }
         $rows = array_values(array_filter($rows, function ($row) use ($item) {
             return (int)($row['product_variant_id'] ?? 0) === (int)($item['product_variant_id'] ?? 0);
         }));
         $first = $rows ? self::snapshot($rows[0]) : null;
         // Aturan pertama produk dalam nota dipertahankan, termasuk saat promo dihapus.
-        $promotion = $first ? ($first['promotion'] ?? null) : (new ProductPromotion($this->db))->rule($store, $item['product_id']);
+        $promotion = $migrated ? ($migrated['data']['promotion'] ?? null)
+            : ($first ? ($first['promotion'] ?? null) : (new ProductPromotion($this->db))->rule($store, $item['product_id']));
         if ($promotion && ProductPromotion::eligible($product) && !$weightBased) {
             $data = ['rules' => [], 'promotion' => $promotion, 'measure' => 'pcs', 'factor' => 1,
                 'normal' => round($item['unit'], 2), 'base' => (float)$product['price'],
                 'discount' => (float)$discount, 'stock' => self::stock($item)];
             if ($minimum = self::minimumAmount($product)) $data['minimum_amount'] = $minimum;
+            if ($migrationSources) $data['migration_product_ids'] = $migrationSources;
             foreach ($rows as $row) if ((int)$row['order_item_id'] === (int)($input['order_item_id'] ?? 0)
                 && $row['size'] === $item['size'] && self::finishingKey($row['finishing']) === self::finishingKey($item['finishing_str'])
                 && ($row['laser_product_id'] ?? null) == ($item['laser_product_id'] ?? null)
@@ -149,6 +182,17 @@ class ProductPriceTier {
                 'normal' => round($item['unit'], 2), 'base' => (float)$product['price'],
                 'discount' => (float)$discount, 'stock' => self::stock($item)];
             if ($minimum = self::minimumAmount($product)) $data['minimum_amount'] = $minimum;
+            if ($migrationSources) $data['migration_product_ids'] = $migrationSources;
+            if ($migrated) {
+                $old = $migrated['row']; $saved = $migrated['data'];
+                if ($old['size'] === $item['size'] && self::finishingKey($old['finishing']) === self::finishingKey($item['finishing_str'])
+                    && ($old['laser_product_id'] ?? null) == ($item['laser_product_id'] ?? null)
+                    && ($old['product_finishing_price_id'] ?? null) == ($item['product_finishing_price_id'] ?? null)) {
+                    $data['normal'] = round(max(0, $saved['normal'] + (float)($saved['factor'] ?? 1) * (($saved['discount'] ?? 0) - $discount)), 2);
+                    $item['unit'] = $data['normal'];
+                    $item['amount'] = self::amount($data, $item['unit'], $item['quantity']);
+                }
+            }
             $item['tier_price_data'] = json_encode($data, JSON_THROW_ON_ERROR);
             return;
         }

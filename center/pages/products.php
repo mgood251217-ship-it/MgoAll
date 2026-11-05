@@ -651,7 +651,13 @@ $_SESSION['product_category_csrf'] = $_SESSION['product_category_csrf'] ?? bin2h
                     </select>
                     <small id="migrationEmpty" hidden>Tidak ada produk pengganti pada kategori ini.</small>
                 </div>
-                <p class="mb-0">Semua item order dari produk yang dipilih di toko ini akan memakai produk pengganti. Quantity, harga, dan total nota tetap. Produk lama tidak dihapus.</p>
+                <div id="migrationVariantWrap" class="mb-3" hidden>
+                    <label for="migrationVariant" class="form-label-custom">Varian tujuan</label>
+                    <select id="migrationVariant" name="target_variant_id" class="form-control-custom form-select" disabled></select>
+                    <small id="migrationVariantInfo" class="d-block"></small>
+                </div>
+                <p id="migrationVariantStatus" class="text-muted" hidden></p>
+                <p class="mb-0">Semua item order terpilih memakai produk dan varian tujuan yang sama. Migrasikan ATASAN, CELANA, dan SETELAN secara terpisah. Quantity, harga, diskon, dan total nota tetap. Produk lama tidak dihapus.</p>
             </div>
             <div class="modal-footer modal-footer-custom">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -737,10 +743,50 @@ document.addEventListener('DOMContentLoaded', function() {
     const migrationForm = document.getElementById('migrateProductForm');
     const migrationTarget = document.getElementById('migrationTarget');
     const migrationSubmit = migrationForm.querySelector('button[type="submit"]');
+    const migrationVariant = document.getElementById('migrationVariant');
+    const migrationVariantWrap = document.getElementById('migrationVariantWrap');
+    const migrationVariantInfo = document.getElementById('migrationVariantInfo');
+    const migrationVariantStatus = document.getElementById('migrationVariantStatus');
+    let migrationRequest = 0, migrationVariants = [], migrationReady = true;
+    const resetMigrationVariant = () => {
+        migrationRequest++; migrationVariants = []; migrationReady = true;
+        migrationVariant.replaceChildren(); migrationVariant.disabled = true; migrationVariant.required = false;
+        migrationVariantWrap.hidden = true; migrationVariantInfo.textContent = '';
+        migrationVariantStatus.hidden = true; migrationVariantStatus.textContent = '';
+    };
+    migrationTarget.addEventListener('change', async () => {
+        resetMigrationVariant();
+        const productId = migrationTarget.value, request = migrationRequest;
+        if (!productId) return;
+        migrationReady = false; migrationSubmit.disabled = true;
+        migrationVariantStatus.hidden = false; migrationVariantStatus.textContent = 'Memuat varian tujuan...';
+        try {
+            const query = new URLSearchParams({ action: 'get_product_variants', store_id: migrationForm.elements.store_id.value, product_id: productId });
+            const response = await fetch('/action?' + query, { headers: { Accept: 'application/json' } });
+            const result = await response.json();
+            if (request !== migrationRequest) return;
+            if (!response.ok || !result.success || !Array.isArray(result.data)) throw new Error('Gagal memuat varian. Pilih ulang produk tujuan.');
+            migrationVariants = result.data;
+            if (migrationVariants.length) {
+                migrationVariant.appendChild(new Option('-- Pilih Varian Tujuan --', ''));
+                migrationVariants.forEach(v => migrationVariant.appendChild(new Option(Object.entries(v.options).map(([name, value]) => name + ': ' + value).join(' / ').toUpperCase(), v.id)));
+                migrationVariant.disabled = false; migrationVariant.required = true; migrationVariantWrap.hidden = false;
+            }
+            migrationReady = true; migrationSubmit.disabled = false; migrationVariantStatus.hidden = true;
+        } catch (error) {
+            if (request !== migrationRequest) return;
+            migrationVariantStatus.textContent = 'Gagal memuat varian. Pilih ulang produk tujuan.';
+        }
+    });
+    migrationVariant.addEventListener('change', () => {
+        const variant = migrationVariants.find(v => String(v.id) === migrationVariant.value);
+        migrationVariantInfo.textContent = variant ? 'Meteran per 1 satuan jual: ' + (variant.components.map(c => c.name + ' = ' + c.quantity).join(', ') || 'mengikuti nama varian') : '';
+    });
     migrationModal.addEventListener('show.bs.modal', function(event) {
         const button = event.relatedTarget;
         if (!button) return;
         migrationForm.reset();
+        resetMigrationVariant();
         delete migrationForm.dataset.busy;
         const sources = button.id === 'bulkMigrateProducts'
             ? Array.from(document.querySelectorAll('.product-category-checkbox:checked')).map(checkbox => ({ id: checkbox.value, category: checkbox.dataset.category, name: checkbox.dataset.name, count: Number(checkbox.dataset.count) || 0 }))
@@ -773,8 +819,9 @@ document.addEventListener('DOMContentLoaded', function() {
         migrationSubmit.disabled = available === 0;
         migrationSubmit.textContent = 'Migrasi';
     });
+    migrationModal.addEventListener('hide.bs.modal', resetMigrationVariant);
     migrationForm.addEventListener('submit', function(event) {
-        if (migrationForm.dataset.busy || !migrationForm.reportValidity()) {
+        if (!migrationReady || migrationForm.dataset.busy || !migrationForm.reportValidity()) {
             event.preventDefault();
             return;
         }

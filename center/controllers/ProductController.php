@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../functions/helpers.php';
+require_once __DIR__ . '/../../admin/models/ProductPriceTier.php';
 class ProductController {
     private $koneksi;
 
@@ -221,6 +222,10 @@ class ProductController {
                 throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
             }
             $sourceIds = $this->selectedProductIds($_POST['source_product_ids'] ?? [$_POST['source_product_id'] ?? 0]);
+            $variantId = $_POST['target_variant_id'] ?? '0';
+            if ($variantId === '') $variantId = '0';
+            if (!is_scalar($variantId) || !preg_match('/^\d+$/D', (string)$variantId) || (float)$variantId > 2147483647) throw new InvalidArgumentException('Pilihan varian tujuan tidak valid.');
+            $variantId = (int)$variantId;
             if ($targetId <= 0 || in_array($targetId, $sourceIds, true) || $storeId <= 0) {
                 throw new InvalidArgumentException('Produk pengganti harus berbeda dari semua produk yang dipilih.');
             }
@@ -247,7 +252,7 @@ class ProductController {
             $placeholders = implode(',', array_fill(0, count($allIds), '?'));
             $params = array_merge([$storeId], $allIds);
             $types = str_repeat('i', count($params));
-            $stmt = $this->koneksi->prepare("SELECT product_id, category_id FROM products WHERE store_id = ? AND product_id IN ($placeholders) ORDER BY product_id FOR UPDATE");
+            $stmt = $this->koneksi->prepare("SELECT p.*, c.name AS category FROM products p JOIN categories c ON c.category_id = p.category_id AND c.store_id = p.store_id WHERE p.store_id = ? AND p.product_id IN ($placeholders) ORDER BY p.product_id FOR UPDATE");
             $stmt->bind_param($types, ...$params);
             $stmt->execute();
             $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -255,28 +260,61 @@ class ProductController {
             if (count($products) !== count($allIds) || count(array_unique(array_column($products, 'category_id'))) !== 1) {
                 throw new InvalidArgumentException('Produk sumber dan tujuan harus berada di toko dan kategori yang sama.');
             }
+            $products = array_column($products, null, 'product_id');
+            $target = $products[$targetId];
+            $variantModel = new ProductVariant($this->koneksi);
+            $variants = $variantModel->getByProduct($storeId, $targetId);
+            $variant = null;
+            foreach ($variants as $v) if ((int)$v['id'] === $variantId) $variant = $v;
+            if (($variants && !$variant) || ($variantId && !$variant)) throw new InvalidArgumentException('Pilih varian yang tersedia pada produk tujuan. Muat ulang jika pilihan sudah berubah.');
+            $pricing = new ProductPriceTier($this->koneksi);
+            if ($variant) {
+                if (!$pricing->isAvailable()) throw new InvalidArgumentException('Pengaturan harga varian belum tersedia.');
+                foreach ($sourceIds as $sourceId) {
+                    $sourceUnit = strtoupper($products[$sourceId]['unit_type']); $targetUnit = strtoupper($target['unit_type']);
+                    if ($sourceUnit !== $targetUnit && !(in_array($sourceUnit, ['PCS', '~'], true) && in_array($targetUnit, ['PCS', '~'], true))) throw new InvalidArgumentException('Satuan produk sumber dan tujuan harus sesuai untuk migrasi varian.');
+                }
+            }
 
-            // Hanya ganti referensi produk, tanpa mengubah quantity, harga, atau total nota.
+            // Kunci nota bersama itemnya; migrasi tidak menjalankan perhitungan ulang harga/stok.
             $placeholders = implode(',', array_fill(0, count($sourceIds), '?'));
             $params = array_merge([$storeId], $sourceIds);
             $types = str_repeat('i', count($params));
-            $stmt = $this->koneksi->prepare("SELECT DISTINCT order_id FROM order_items WHERE store_id = ? AND product_id IN ($placeholders) FOR UPDATE");
+            $stmt = $this->koneksi->prepare("SELECT DISTINCT o.order_id FROM orders o JOIN order_items oi ON oi.order_id = o.order_id AND oi.store_id = o.store_id WHERE oi.store_id = ? AND oi.product_id IN ($placeholders) ORDER BY o.order_id FOR UPDATE");
             $stmt->bind_param($types, ...$params);
             $stmt->execute();
             $orders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             $stmt->close();
-            $params = array_merge([$targetId, $storeId], $sourceIds);
-            $types = str_repeat('i', count($params));
-            $stmt = $this->koneksi->prepare("UPDATE order_items SET product_id = ? WHERE store_id = ? AND product_id IN ($placeholders)");
-            $stmt->bind_param($types, ...$params);
-            $stmt->execute();
-            $count = $stmt->affected_rows;
-            $stmt->close();
+            if ($variant) {
+                $template = $variantModel->resolve($storeId, $target, ['product_variant_id' => $variantId]);
+                $stmt = $this->koneksi->prepare("SELECT oi.*, COALESCE(d.diskon, 0) AS migration_discount FROM order_items oi LEFT JOIN diskon_order_items d ON d.order_id = oi.order_id AND d.product_id = oi.product_id WHERE oi.store_id = ? AND oi.product_id IN ($placeholders) ORDER BY oi.order_id, oi.order_item_id FOR UPDATE");
+                $stmt->bind_param($types, ...$params); $stmt->execute(); $items = $stmt->get_result();
+                $update = $this->koneksi->prepare('UPDATE order_items SET product_id = ?, product_variant_id = ?, product_variant_data = ?, tier_price_data = ? WHERE order_item_id = ? AND store_id = ?');
+                $count = 0;
+                while ($row = $items->fetch_assoc()) {
+                    if (!empty($row['product_finishing_price_id']) || !empty($row['laser_product_id'])) throw new InvalidArgumentException('Item harga paket atau konversi print laser perlu dimigrasikan melalui pengaturannya sendiri.');
+                    $snapshot = $template;
+                    $oldVariant = ProductVariant::snapshot($row);
+                    $oldPricing = !empty($row['tier_price_data']) ? json_decode($row['tier_price_data'], true, 512, JSON_THROW_ON_ERROR) : null;
+                    $snapshot['price'] = (float)($oldVariant['price'] ?? $oldPricing['base'] ?? $products[$row['product_id']]['price']);
+                    $variantJson = json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+                    $pricingJson = json_encode($pricing->variantMigrationData($row, $target, $snapshot, (float)$row['migration_discount']), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+                    $itemId = (int)$row['order_item_id'];
+                    $update->bind_param('iissii', $targetId, $variantId, $variantJson, $pricingJson, $itemId, $storeId); $update->execute(); $count += $update->affected_rows;
+                }
+                $update->close(); $stmt->close();
+            } else {
+                $params = array_merge([$targetId, $storeId], $sourceIds);
+                $types = str_repeat('i', count($params));
+                $stmt = $this->koneksi->prepare("UPDATE order_items SET product_id = ? WHERE store_id = ? AND product_id IN ($placeholders)");
+                $stmt->bind_param($types, ...$params); $stmt->execute(); $count = $stmt->affected_rows; $stmt->close();
+            }
             $this->koneksi->commit();
             $transaction = false;
             $migrated = true;
             $sourceCount = count($sourceIds);
-            $_SESSION['swal_success'] = "$count item order dari $sourceCount produk berhasil dimigrasikan ke produk #$targetId. Produk lama tetap tersedia.";
+            $variantLabel = $variant ? ' / ' . $variant['label'] : '';
+            $_SESSION['swal_success'] = "$count item order dari $sourceCount produk berhasil dimigrasikan ke produk #$targetId$variantLabel. Harga, diskon, dan quantity tetap. Produk lama tetap tersedia.";
         } catch (Throwable $e) {
             if ($transaction) $this->koneksi->rollback();
             $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : 'Migrasi gagal. Perubahan dibatalkan.';
