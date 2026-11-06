@@ -227,6 +227,7 @@ class ProductController {
         $groups = $targetVariants ? array_keys($targetVariants[0]['options']) : array_keys($sourceVariants[0]['options']);
         $upper = function ($value) { return function_exists('mb_strtoupper') ? mb_strtoupper($value, 'UTF-8') : strtoupper($value); };
         $components = new ProductionComponent($this->koneksi); $useMasters = $components->isAvailable();
+        $copyTiers = (new ProductPriceTier($this->koneksi))->hasVariantTiers();
         $added = $skipped = 0;
         foreach ($sourceVariants as $variant) {
             if (array_map($upper, array_keys($variant['options'])) !== array_map($upper, $groups)) throw new InvalidArgumentException('Nama dan urutan pilihan varian berbeda pada produk tujuan #' . $targetProduct . '. Penyalinan dibatalkan.');
@@ -260,6 +261,9 @@ class ProductController {
                 $params = [$newVariantId, $component['name'], $component['quantity']];
                 if ($useMasters) $params[] = $component['id'];
                 $this->copyProductQuery($sql, $params)->close();
+            }
+            if ($copyTiers) {
+                $this->copyProductQuery('INSERT INTO product_variant_price_tiers (store_id, product_id, product_variant_id, quantity_above, price) SELECT ?, ?, ?, quantity_above, price FROM product_variant_price_tiers WHERE store_id = ? AND product_id = ? AND product_variant_id = ?', [$targetStore, $targetProduct, $newVariantId, $variant['store_id'], $variant['product_id'], $variant['id']])->close();
             }
             $targetVariants[] = ['options' => $options]; $added++;
         }
@@ -333,7 +337,7 @@ class ProductController {
         } finally { mysqli_report($report); }
         if ($saved) try {
             require_once __DIR__ . '/../functions/cacheHelper.php';
-            foreach (['categories', 'products', 'product_variants', 'production_components'] as $module) updateStoreCache($targetId, $module);
+            foreach (['categories', 'products', 'product_variants', 'production_components', 'product_price_tiers'] as $module) updateStoreCache($targetId, $module);
         } catch (Throwable $e) {
             error_log('Copy products cache: ' . $e->getMessage());
             unset($_SESSION['swal_success']); $_SESSION['swal_error'] = 'Produk sudah disalin, tetapi cache tujuan gagal diperbarui. Gunakan Update Cache pada cabang tujuan.';

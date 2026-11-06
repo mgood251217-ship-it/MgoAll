@@ -145,6 +145,10 @@ class VariantController {
             $stmt->bind_param('iii', $id, $store, $product); $stmt->execute(); $existing = $stmt->get_result()->fetch_assoc(); $stmt->close();
             if (($id || $command === 'delete') && !$existing) throw new InvalidArgumentException('Varian tidak ditemukan pada produk dan toko ini.');
             if ($command === 'delete') {
+                if ((new ProductPriceTier($this->db))->hasVariantTiers()) {
+                    $stmt = $this->db->prepare('DELETE FROM product_variant_price_tiers WHERE store_id = ? AND product_id = ? AND product_variant_id = ?');
+                    $stmt->bind_param('iii', $store, $product, $id); $stmt->execute(); $stmt->close();
+                }
                 $stmt = $this->db->prepare('DELETE FROM product_variant_components WHERE variant_id = ?'); $stmt->bind_param('i', $id); $stmt->execute(); $stmt->close();
                 $stmt = $this->db->prepare('DELETE FROM product_variants WHERE id = ? AND store_id = ? AND product_id = ?'); $stmt->bind_param('iii', $id, $store, $product); $stmt->execute(); $stmt->close();
             } else {
@@ -266,7 +270,7 @@ class VariantController {
             $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : ($e instanceof mysqli_sql_exception && $e->getCode() === 1062 ? 'Kombinasi varian yang sama sudah ada.' : 'Gagal menyimpan varian.');
             error_log('Product variant: ' . $e->getMessage());
         } finally { mysqli_report($report); }
-        if ($saved) try { updateStoreCache($store, 'product_variants'); updateStoreCache($store, 'products'); updateStoreCache($store, 'production_components'); } catch (Throwable $e) { error_log('Variant cache: ' . $e->getMessage()); }
+        if ($saved) try { updateStoreCache($store, 'product_variants'); updateStoreCache($store, 'products'); updateStoreCache($store, 'production_components'); updateStoreCache($store, 'product_price_tiers'); } catch (Throwable $e) { error_log('Variant cache: ' . $e->getMessage()); }
         header('Location: /product-variants?' . http_build_query(['store_id' => $store, 'category_id' => $category, 'product_id' => $product])); exit;
     }
 }

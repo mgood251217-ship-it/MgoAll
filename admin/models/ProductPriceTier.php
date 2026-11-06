@@ -7,6 +7,7 @@ require_once __DIR__ . '/ProductVariant.php';
 class ProductPriceTier {
     private $db;
     private $ready;
+    private $variantTiers;
 
     public function __construct($db) { $this->db = $db; }
 
@@ -51,9 +52,20 @@ class ProductPriceTier {
             && strtoupper(trim($product['name'] ?? '')) === 'PRINT UV' ? 7500 : 0;
     }
 
-    public function rules($store, $product) {
+    public function hasVariantTiers() {
+        if ($this->variantTiers === null) {
+            $row = $this->db->query("SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'product_variant_price_tiers') AS available")->fetch_assoc();
+            $this->variantTiers = (bool)$row['available'] && (new ProductVariant($this->db))->isAvailable();
+        }
+        return $this->variantTiers;
+    }
+
+    public function rules($store, $product, $variant = 0) {
         if (!$this->isAvailable()) return [];
-        $stmt = $this->query('SELECT quantity_above, price FROM product_price_tiers WHERE store_id = ? AND product_id = ? ORDER BY quantity_above', 'ii', [$store, $product]);
+        if ($variant) {
+            if (!$this->hasVariantTiers()) return [];
+            $stmt = $this->query('SELECT quantity_above, price FROM product_variant_price_tiers WHERE store_id = ? AND product_id = ? AND product_variant_id = ? ORDER BY quantity_above', 'iii', [$store, $product, $variant]);
+        } else $stmt = $this->query('SELECT quantity_above, price FROM product_price_tiers WHERE store_id = ? AND product_id = ? ORDER BY quantity_above', 'ii', [$store, $product]);
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
         return $rows;
@@ -118,6 +130,7 @@ class ProductPriceTier {
             'discount' => $discount, 'stock' => $this->legacyStock($row)];
         if (!$saved && in_array($data['measure'], ['m2', 'cm2'], true) && preg_match('/^([\d.]+)x([\d.]+)$/i', $row['size'], $size)) $data['factor'] = round((float)$size[1] * (float)$size[2], 8);
         $data['variant'] = (int)$variant['id'];
+        unset($data['variant_tiers']);
         $data['normal'] = (float)$row['unit'];
         $data['base'] = (float)$variant['price'];
         $sources = $data['migration_product_ids'] ?? [];
@@ -177,7 +190,9 @@ class ProductPriceTier {
             $item['promotion'] = ProductPromotion::calculate($promotion, $item['quantity']);
             return;
         }
-        if (!empty($item['variant'])) {
+        $variantRules = !empty($item['variant']) ? ($first ? ($first['rules'] ?? []) : $this->rules($store, $item['product_id'], (int)$item['variant']['id'])) : null;
+        $useVariantTiers = $variantRules && (!$first || !empty($first['variant_tiers'])) && $measure && !$special && !$weightBased;
+        if (!empty($item['variant']) && !$useVariantTiers) {
             $data = ['rules' => [], 'variant' => (int)$item['variant']['id'], 'measure' => $measure, 'factor' => 1,
                 'normal' => round($item['unit'], 2), 'base' => (float)$product['price'],
                 'discount' => (float)$discount, 'stock' => self::stock($item)];
@@ -199,11 +214,13 @@ class ProductPriceTier {
         if (!$measure || $special || $weightBased || ($first && !empty($first['promotion']))) return;
         $factor = in_array($measure, ['m2', 'cm2'], true) ? round((float)($input['panjang'] ?? 0) * (float)($input['lebar'] ?? 0), 8) : 1;
         if ($factor <= 0) return;
-        $rules = $first ? $first['rules'] : $this->rules($store, $item['product_id']);
+        $rules = $variantRules ?? ($first ? $first['rules'] : $this->rules($store, $item['product_id']));
         if (!$rules) return;
         $data = ['rules' => $rules, 'measure' => $measure, 'factor' => $factor,
             'normal' => round($item['unit'], 2), 'base' => (float)$product['price'],
             'discount' => (float)$discount, 'stock' => self::stock($item)];
+        if ($useVariantTiers) { $data['variant'] = (int)$item['variant']['id']; $data['variant_tiers'] = true; }
+        if ($migrationSources) $data['migration_product_ids'] = $migrationSources;
         if ($minimum = self::minimumAmount($product)) $data['minimum_amount'] = $minimum;
         $total = $factor * $item['quantity'];
         $editing = (int)($input['order_item_id'] ?? 0);
@@ -295,10 +312,10 @@ class ProductPriceTier {
         $groups = [];
         foreach ($this->items($store, $order) as $row) {
             $data = self::snapshot($row);
-            if (!empty($data['promotion']) || !empty($data['variant'])) {
+            if (!empty($data['promotion']) || (!empty($data['variant']) && empty($data['variant_tiers']))) {
                 $amount = self::amount($data, $row['unit'], (int)$row['quantity']);
                 $stmt = $this->query('UPDATE order_items SET amount = ? WHERE order_item_id = ? AND store_id = ?', 'dii', [$amount, $row['order_item_id'], $store]); $stmt->close();
-            } else $groups[(int)$row['product_id']][] = $row;
+            } else $groups[self::tierGroup($row, $data)][] = $row;
         }
         foreach ($groups as $rows) {
             $total = 0;
@@ -399,17 +416,23 @@ class ProductPriceTier {
         $this->notify($store, $old['order_id']);
     }
 
+    private static function tierGroup($row, $data) {
+        return $row['product_id'] . ':' . (!empty($data['variant_tiers']) ? (int)($row['product_variant_id'] ?? $data['variant']) : 0);
+    }
+
     public static function describe($items) {
         $totals = [];
-        foreach ($items as $row) if (($s = self::snapshot($row)) && !empty($s['rules'])) $totals[$row['product_id']] = ($totals[$row['product_id']] ?? 0) + $s['factor'] * (int)$row['quantity'];
+        foreach ($items as $row) if (($s = self::snapshot($row)) && !empty($s['rules']) && (empty($s['variant']) || !empty($s['variant_tiers']))) {
+            $group = self::tierGroup($row, $s); $totals[$group] = ($totals[$group] ?? 0) + $s['factor'] * (int)$row['quantity'];
+        }
         foreach ($items as &$row) {
             $row['tier_pricing'] = null;
             $row['promotion'] = null;
             if ($s = self::snapshot($row)) {
                 $row['diskon'] = $s['discount'] ?? 0;
                 if (!empty($s['promotion'])) $row['promotion'] = ProductPromotion::calculate($s['promotion'], (int)$row['quantity']);
-                elseif (!empty($s['rules'])) {
-                    $qty = round($totals[$row['product_id']], 8); $rule = self::choose($s['rules'], $qty);
+                elseif (!empty($s['rules']) && (empty($s['variant']) || !empty($s['variant_tiers']))) {
+                    $qty = round($totals[self::tierGroup($row, $s)], 8); $rule = self::choose($s['rules'], $qty);
                     $row['tier_pricing'] = ['quantity' => $qty, 'measure' => $s['measure'], 'unit_label' => self::unitLabel($s['measure']), 'quantity_above' => $rule['quantity_above'] ?? null, 'price' => $rule['price'] ?? null];
                 }
             }
