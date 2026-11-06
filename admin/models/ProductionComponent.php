@@ -33,6 +33,41 @@ class ProductionComponent {
         return ['id' => $id, 'name' => $name];
     }
 
+    public static function resolveId($id, $links) {
+        $id = (int)$id; $seen = [];
+        while ($id && isset($links['component:' . $id]) && !isset($seen[$id])) {
+            $seen[$id] = true; $id = (int)$links['component:' . $id];
+        }
+        return $id;
+    }
+
+    // Nama yang sudah dipakai digabung. ID pada nota lama tetap tersimpan sebagai alias.
+    // Pemanggil memegang transaksi dan kunci toko yang sama dengan penyimpanan varian.
+    public function renameOrMerge($store, $id, $name) {
+        $name = self::name($name); $id = self::resolveId($id, $this->links($store));
+        $stmt = $this->db->prepare('SELECT name FROM production_components WHERE id = ? AND store_id = ?');
+        $stmt->bind_param('ii', $id, $store); $stmt->execute(); $source = $stmt->get_result()->fetch_assoc(); $stmt->close();
+        if (!$source) throw new InvalidArgumentException('Nama meteran sudah berubah. Muat ulang halaman.');
+        $stmt = $this->db->prepare('SELECT id, name FROM production_components WHERE store_id = ? AND name = ?');
+        $stmt->bind_param('is', $store, $name); $stmt->execute(); $target = $stmt->get_result()->fetch_assoc(); $stmt->close();
+        if (!$target || (int)$target['id'] === $id) {
+            $stmt = $this->db->prepare('UPDATE production_components SET name = ? WHERE id = ? AND store_id = ?');
+            $stmt->bind_param('sii', $name, $id, $store); $stmt->execute(); $stmt->close();
+            return ['id' => $id, 'name' => $name];
+        }
+        $targetId = (int)$target['id'];
+        $stmt = $this->db->prepare('UPDATE product_variant_components c JOIN product_variants v ON v.id = c.variant_id SET c.component_id = ? WHERE v.store_id = ? AND c.component_id = ?');
+        $stmt->bind_param('iii', $targetId, $store, $id); $stmt->execute(); $stmt->close();
+        $stmt = $this->db->prepare('UPDATE production_component_links SET component_id = ? WHERE store_id = ? AND component_id = ?');
+        $stmt->bind_param('iii', $targetId, $store, $id); $stmt->execute(); $stmt->close();
+        $key = 'component:' . $id;
+        $stmt = $this->db->prepare('INSERT INTO production_component_links (store_id, product_id, variant_id, legacy_key, legacy_name, component_id) VALUES (?, 0, 0, ?, ?, ?) ON DUPLICATE KEY UPDATE component_id = VALUES(component_id)');
+        $stmt->bind_param('issi', $store, $key, $source['name'], $targetId); $stmt->execute(); $stmt->close();
+        $stmt = $this->db->prepare('DELETE FROM production_components WHERE id = ? AND store_id = ?');
+        $stmt->bind_param('ii', $id, $store); $stmt->execute(); $stmt->close();
+        return ['id' => $targetId, 'name' => $target['name']];
+    }
+
     public function getByStore($store) {
         if (!$this->isAvailable()) return [];
         $stmt = $this->db->prepare('SELECT id, name FROM production_components WHERE store_id = ? ORDER BY name, id');

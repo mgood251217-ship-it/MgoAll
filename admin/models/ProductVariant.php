@@ -61,8 +61,8 @@ class ProductVariant {
             $row['options'] = json_decode($row['options_json'], true, 512, JSON_THROW_ON_ERROR);
             $row['label'] = implode(' / ', array_values($row['options']));
             $row['components'] = $components[(int)$row['id']] ?? [];
-            foreach ($row['components'] as &$component) if (empty($component['component_id'])) {
-                $linked = $links[ProductionComponent::legacyKey($row, $component['name'])] ?? 0;
+            foreach ($row['components'] as &$component) {
+                $linked = ProductionComponent::resolveId($component['component_id'] ?? ($links[ProductionComponent::legacyKey($row, $component['name'])] ?? 0), $links);
                 if (isset($masterNames[$linked])) { $component['component_id'] = (int)$linked; $component['name'] = $masterNames[$linked]; }
             }
             unset($component);
@@ -135,7 +135,7 @@ class ProductVariant {
             if ($default) $components = [['name' => $saved['product_name'] . ' - ' . $saved['label'], 'quantity' => 1]];
             foreach ($components as $c) {
                 $legacy = ProductionComponent::legacyKey($saved, $c['name']);
-                $id = (int)($c['component_id'] ?? $links[$legacy] ?? 0);
+                $id = ProductionComponent::resolveId(!empty($c['component_id']) ? $c['component_id'] : ($links[$legacy] ?? 0), $links);
                 $key = $id ? 'component:' . $id : ($ready ? 'legacy:' . $legacy : 'name:' . $c['name']);
                 $name = $masters[$id] ?? $c['name'];
                 if ($ready && !$id && !$default) $name .= ' - ' . $saved['product_name'] . ' / ' . $saved['label'] . ' (belum dihubungkan)';

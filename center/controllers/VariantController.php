@@ -99,11 +99,11 @@ class VariantController {
             if ($id) {
                 $masters = array_column($this->components->getByStore($store), 'name', 'id');
                 if (!isset($masters[$id])) throw new InvalidArgumentException('Komponen tidak ditemukan pada toko ini.');
-                $stmt = $this->db->prepare('UPDATE production_components SET name = ? WHERE id = ? AND store_id = ?'); $stmt->bind_param('sii', $name, $id, $store);
+                $this->components->renameOrMerge($store, $id, $name);
             } else {
                 $stmt = $this->db->prepare('INSERT INTO production_components (store_id, name) VALUES (?, ?)'); $stmt->bind_param('is', $store, $name);
+                $stmt->execute(); $stmt->close();
             }
-            $stmt->execute(); $stmt->close();
             return $id ? 'Nama komponen diperbarui untuk meteran lama dan baru. Harga dan jumlah pada nota tetap.' : 'Komponen ditambahkan. Pilih komponen ini pada varian yang menggunakannya.';
         });
     }
@@ -200,8 +200,8 @@ class VariantController {
                                 if (isset($renames[$componentId]) && $renames[$componentId] !== $name) throw new InvalidArgumentException('Komponen yang sama tidak boleh memiliki dua nama berbeda.');
                                 if (!isset($masters[$componentId])) throw new InvalidArgumentException('Nama meteran sudah berubah. Muat ulang halaman.');
                                 $renames[$componentId] = $name;
-                                $stmt = $this->db->prepare('UPDATE production_components SET name = ? WHERE id = ? AND store_id = ?');
-                                $stmt->bind_param('sii', $name, $componentId, $store); $stmt->execute(); $stmt->close();
+                                $master = $this->components->renameOrMerge($store, $componentId, $name);
+                                $componentId = $master['id']; $name = $master['name']; $masters[$componentId] = $name;
                             } else {
                                 $master = $this->components->findOrCreate($store, $name);
                                 $componentId = $master['id']; $name = $master['name']; $masters[$componentId] = $name;
@@ -236,6 +236,20 @@ class VariantController {
                     $old = $oldRecipes[$c['recipe_id']] ?? null;
                     if ($old && empty($old['component_id'])) $this->components->link($store, $product, $oldVariant, $old['name'], $c['component_id'], true);
                 }
+                $links = $componentsReady ? $this->components->links($store) : [];
+                $masterNames = $componentsReady ? array_column($this->components->getByStore($store), 'name', 'id') : [];
+                $combined = [];
+                foreach ($components as $c) {
+                    if ($componentsReady) {
+                        $c['component_id'] = ProductionComponent::resolveId($c['component_id'], $links);
+                        $c['name'] = $masterNames[$c['component_id']];
+                    }
+                    $componentKey = $componentsReady ? 'id:' . $c['component_id'] : 'name:' . $c['name'];
+                    if (isset($combined[$componentKey])) $combined[$componentKey]['quantity'] = round($combined[$componentKey]['quantity'] + $c['quantity'], 4);
+                    else $combined[$componentKey] = $c;
+                    if ($combined[$componentKey]['quantity'] > 1000000) throw new InvalidArgumentException('Jumlah komponen setelah digabung maksimal 1.000.000.');
+                }
+                $components = array_values($combined);
                 $stmt = $this->db->prepare('DELETE FROM product_variant_components WHERE variant_id = ?'); $stmt->bind_param('i', $id); $stmt->execute(); $stmt->close();
                 $insert = $componentsReady ? 'INSERT INTO product_variant_components (variant_id, name, quantity, component_id) VALUES (?, ?, ?, ?)' : 'INSERT INTO product_variant_components (variant_id, name, quantity) VALUES (?, ?, ?)';
                 $stmt = $this->db->prepare($insert);
@@ -246,10 +260,10 @@ class VariantController {
                 } $stmt->close();
             }
             $this->db->commit(); $transaction = false; $saved = true;
-            $_SESSION['swal_success'] = $command === 'delete' ? 'Varian dihapus. Data varian pada nota lama tetap tersimpan.' : 'Varian tersimpan. Perubahan berlaku untuk item baru.';
+            $_SESSION['swal_success'] = $command === 'delete' ? 'Varian dihapus. Data varian pada nota lama tetap tersimpan.' : 'Varian tersimpan. Nama meteran yang sama digabung otomatis.';
         } catch (Throwable $e) {
             if ($transaction) $this->db->rollback();
-            $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : ($e instanceof mysqli_sql_exception && $e->getCode() === 1062 ? 'Kombinasi varian atau nama komponen yang sama sudah ada.' : 'Gagal menyimpan varian.');
+            $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : ($e instanceof mysqli_sql_exception && $e->getCode() === 1062 ? 'Kombinasi varian yang sama sudah ada.' : 'Gagal menyimpan varian.');
             error_log('Product variant: ' . $e->getMessage());
         } finally { mysqli_report($report); }
         if ($saved) try { updateStoreCache($store, 'product_variants'); updateStoreCache($store, 'products'); updateStoreCache($store, 'production_components'); } catch (Throwable $e) { error_log('Variant cache: ' . $e->getMessage()); }
