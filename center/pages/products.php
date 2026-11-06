@@ -32,6 +32,7 @@ foreach ($returnFilters as $key => $value) {
 $_SESSION['product_migration_csrf'] = $_SESSION['product_migration_csrf'] ?? bin2hex(random_bytes(32));
 $_SESSION['product_cache_csrf'] = $_SESSION['product_cache_csrf'] ?? bin2hex(random_bytes(32));
 $_SESSION['product_category_csrf'] = $_SESSION['product_category_csrf'] ?? bin2hex(random_bytes(32));
+$_SESSION['product_copy_csrf'] = $_SESSION['product_copy_csrf'] ?? bin2hex(random_bytes(32));
 ?>
 
 
@@ -132,6 +133,7 @@ $_SESSION['product_category_csrf'] = $_SESSION['product_category_csrf'] ?? bin2h
             </div>
             <button id="bulkUpdateCategory" type="submit" class="btn-primary-custom" disabled>Ganti Kategori</button>
             <button id="bulkMigrateProducts" type="button" class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#migrateProductModal" disabled>Migrasi Terpilih</button>
+            <button id="bulkCopyProducts" type="button" class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#copyProductsModal" disabled>Salin ke Cabang</button>
             <button id="bulkDeleteProducts" type="submit" class="btn btn-danger" formaction="/action?action=bulk_delete_products" formnovalidate disabled>Hapus Terpilih</button>
             <small id="bulkProductSelectionCount" aria-live="polite">0 produk dipilih pada halaman ini.</small>
         </form>
@@ -198,6 +200,8 @@ $_SESSION['product_category_csrf'] = $_SESSION['product_category_csrf'] ?? bin2h
                                     <?= empty($row['order_item_count']) ? 'disabled' : '' ?>>
                                     Migrasi
                                 </button>
+                                <button type="button" class="btn-action btn-kelola btn-open" data-bs-toggle="modal" data-bs-target="#copyProductsModal"
+                                    data-id="<?= (int)$row['product_id'] ?>" data-name="<?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>" title="Salin produk beserta varian ke cabang lain">Salin</button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -625,6 +629,41 @@ $_SESSION['product_category_csrf'] = $_SESSION['product_category_csrf'] ?? bin2h
     </div>
 </div>
 
+<div class="modal fade" id="copyProductsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form id="copyProductsForm" class="modal-content modal-content-custom" method="post" action="/action?action=copy_products">
+            <?= $returnInputs ?>
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['product_copy_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="store_id" value="<?= (int)$data['current_store_id'] ?>">
+            <div id="copyProductSources"></div>
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title-custom">Salin Produk ke Cabang</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body modal-body-custom">
+                <p id="copyProductsSummary"></p>
+                <ul id="copyProductsNames" style="max-height:160px;overflow-y:auto"></ul>
+                <div class="mb-3">
+                    <label for="copyProductsTarget" class="form-label-custom">Cabang tujuan</label>
+                    <select id="copyProductsTarget" name="target_store_id" class="form-control-custom form-select" required>
+                        <option value="">-- Pilih Cabang Tujuan --</option>
+                        <?php foreach ($data['stores'] as $store): if ((int)$store['store_id'] === (int)$data['current_store_id']) continue; ?>
+                            <option value="<?= (int)$store['store_id'] ?>"><?= htmlspecialchars($store['name'], ENT_QUOTES, 'UTF-8') ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small id="copyProductsNoTarget" hidden>Tidak ada cabang tujuan yang tersedia.</small>
+                </div>
+                <p>Produk, harga varian, dan komponen meteran ikut disalin. Kategori yang belum tersedia dibuat otomatis. Stok produk baru <strong>0</strong>.</p>
+                <small>Produk yang sudah ada pada kategori yang sama tidak ditimpa. Hanya varian yang belum ada yang ditambahkan; harga dan stok cabang tujuan tetap.</small>
+            </div>
+            <div class="modal-footer modal-footer-custom">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn-primary-custom">Salin Produk</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="modal fade" id="migrateProductModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <form id="migrateProductForm" class="modal-content modal-content-custom" method="post" action="/action?action=migrate_product">
@@ -719,6 +758,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const category = document.getElementById('bulkProductCategory');
         const submit = document.getElementById('bulkUpdateCategory');
         const migrate = document.getElementById('bulkMigrateProducts');
+        const copy = document.getElementById('bulkCopyProducts');
         const remove = document.getElementById('bulkDeleteProducts');
         const updateSelection = () => {
             const selected = checkboxes.filter(checkbox => checkbox.checked);
@@ -729,6 +769,7 @@ document.addEventListener('DOMContentLoaded', function() {
             selectAll.indeterminate = count > 0 && count < checkboxes.length;
             submit.disabled = count === 0 || !category.value;
             migrate.disabled = count === 0 || !sameCategory;
+            copy.disabled = count === 0;
             remove.disabled = count === 0;
         };
         selectAll.addEventListener('change', () => {
@@ -744,7 +785,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             bulkCategoryForm.dataset.busy = '1';
             const button = event.submitter || submit;
-            submit.disabled = migrate.disabled = remove.disabled = true;
+            submit.disabled = migrate.disabled = copy.disabled = remove.disabled = true;
             button.textContent = button === remove ? 'Menghapus...' : 'Menyimpan...';
         });
         updateSelection();
@@ -753,6 +794,32 @@ document.addEventListener('DOMContentLoaded', function() {
         const button = this.querySelector('button[type="submit"]');
         button.disabled = true;
         button.textContent = 'Menyimpan...';
+    });
+    const copyProductsModal = document.getElementById('copyProductsModal');
+    const copyProductsForm = document.getElementById('copyProductsForm');
+    const copyProductsTarget = document.getElementById('copyProductsTarget');
+    copyProductsModal.addEventListener('show.bs.modal', event => {
+        const button = event.relatedTarget;
+        if (!button) return;
+        copyProductsForm.reset(); delete copyProductsForm.dataset.busy;
+        const sources = button.id === 'bulkCopyProducts'
+            ? Array.from(document.querySelectorAll('.product-category-checkbox:checked')).map(checkbox => ({ id: checkbox.value, name: checkbox.dataset.name }))
+            : [{ id: button.dataset.id, name: button.dataset.name }];
+        const hidden = document.getElementById('copyProductSources'), names = document.getElementById('copyProductsNames');
+        hidden.replaceChildren(); names.replaceChildren();
+        sources.forEach(source => {
+            const input = document.createElement('input'); input.type = 'hidden'; input.name = 'product_ids[]'; input.value = source.id; hidden.appendChild(input);
+            const item = document.createElement('li'); item.textContent = '#' + source.id + ' - ' + source.name; names.appendChild(item);
+        });
+        document.getElementById('copyProductsSummary').textContent = sources.length + ' produk beserta seluruh variannya akan disalin.';
+        const hasTarget = copyProductsTarget.options.length > 1;
+        document.getElementById('copyProductsNoTarget').hidden = hasTarget;
+        const submit = copyProductsForm.querySelector('button[type="submit"]'); submit.disabled = !sources.length || !hasTarget; submit.textContent = 'Salin Produk';
+    });
+    copyProductsForm.addEventListener('submit', event => {
+        if (copyProductsForm.dataset.busy || !copyProductsForm.reportValidity() || !document.getElementById('copyProductSources').children.length) { event.preventDefault(); return; }
+        copyProductsForm.dataset.busy = '1';
+        const submit = copyProductsForm.querySelector('button[type="submit"]'); submit.disabled = true; submit.textContent = 'Menyalin...';
     });
     const migrationModal = document.getElementById('migrateProductModal');
     const migrationForm = document.getElementById('migrateProductForm');
