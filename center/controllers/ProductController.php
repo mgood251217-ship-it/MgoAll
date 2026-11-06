@@ -89,9 +89,13 @@ class ProductController {
 
             $totalPages = ceil($total / $limit);
             $offset = ($page - 1) * $limit;
+            $variantCount = (new ProductVariant($this->koneksi))->isAvailable()
+                ? '(SELECT COUNT(*) FROM product_variants v WHERE v.product_id = p.product_id AND v.store_id = p.store_id)'
+                : '0';
 
             $stmt = $this->koneksi->prepare("
                 SELECT p.*, c.name AS category,
+                    $variantCount AS variant_count,
                     (SELECT COUNT(*) FROM order_items oi
                      WHERE oi.product_id = p.product_id AND oi.store_id = p.store_id) AS order_item_count
                 FROM products p

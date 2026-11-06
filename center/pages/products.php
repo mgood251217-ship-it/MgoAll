@@ -149,6 +149,7 @@ $_SESSION['product_copy_csrf'] = $_SESSION['product_copy_csrf'] ?? bin2hex(rando
                     <th>Nama Produk</th>
                     <th>Harga</th>
                     <th>Stok</th>
+                    <th>Jumlah Varian</th>
                     <th title="Jumlah baris order_items pada toko ini, bukan total quantity">Jumlah Item Order</th>
                     <th class="migrated-style-9">Aksi</th>
                 </tr>
@@ -156,7 +157,7 @@ $_SESSION['product_copy_csrf'] = $_SESSION['product_copy_csrf'] ?? bin2hex(rando
             <tbody>
                 <?php if (empty($data['products'])): ?>
                     <tr>
-                        <td class="migrated-style-80" colspan="9">Tidak ada produk ditemukan</td>
+                        <td class="migrated-style-80" colspan="10">Tidak ada produk ditemukan</td>
                     </tr>
                 <?php else: ?>
                     <?php 
@@ -176,6 +177,7 @@ $_SESSION['product_copy_csrf'] = $_SESSION['product_copy_csrf'] ?? bin2hex(rando
                             </td>
                             <td>Rp <?= number_format($row['price'] ?? 0, 0, ',', '.') ?></td>
                             <td><?= number_format($row['stock'] ?? 0, 0, ',', '.') ?></td>
+                            <td><?= number_format($row['variant_count'] ?? 0, 0, ',', '.') ?></td>
                             <td><?= number_format($row['order_item_count'] ?? 0, 0, ',', '.') ?></td>
                             <td class="migrated-style-9">
                                 <button type="button" class="btn-action btn-warning me-1"
