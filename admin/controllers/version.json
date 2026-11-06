@@ -1,20 +1,21 @@
 {
-  "version": "2.0.7",
-  "min_required_version": "2.0.7",
-  "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.7/MgoDesktop_2.0.7_x64-setup.exe",
-  "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.7/MgoDesktop_2.0.7.apk",
+  "version": "2.0.8",
+  "min_required_version": "2.0.8",
+  "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.8/MgoDesktop_2.0.8_x64-setup.exe",
+  "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.8/MgoDesktop_2.0.8.apk",
   "force_update": false,
   "release_notes": [
-    "👕 feat: Harga Kaos per Ukuran: Kini harga kaos dapat diatur berdasarkan ukuran, sehingga penetapan harga menjadi lebih fleksibel.",
-    "📖 feat: Halaman Panduan: Tersedia halaman panduan untuk membantu Anda memahami fitur dan cara menggunakan aplikasi.",
-    "🗂️ feat: Kategori Pengeluaran: Menambahkan kategori pengeluaran agar pencatatan biaya lebih rapi dan mudah ditelusuri.",
-    "📁 feat: Pengaturan Lokasi Folder Bulan & Produk: Kini lokasi folder bulan dan folder produk dapat disesuaikan melalui pengaturan aplikasi.",
-    "📊 feat: Subfolder Analisis: Menambahkan subfolder analisis untuk membantu pengelompokan berkas agar lebih terstruktur.",
-    "🩹 fix: Perbaikan Error saat Booting: Memperbaiki kendala saat aplikasi mulai dimuat yang sebelumnya terlewat dalam penanganan.",
-    "💳 update: Pembaruan Informasi Pembayaran Invoice: Informasi pembayaran pada invoice diperbarui agar lebih jelas dan mudah dipahami.",
-    "🔍 fix: Perbaikan Tampilan saat Zoom Out: Mengatasi munculnya kotak berlebih saat tampilan diperkecil, sehingga halaman tetap rapi.",
-    "📋 update: Upload File Menggunakan Salinan: Proses upload kini menyalin file, bukan memindahkannya, sehingga file asli tetap tersimpan di lokasi semula.",
-    "🎬 update: Cache Lokal untuk Video: Video kini menggunakan cache lokal untuk mengurangi pengunduhan berulang dan meringankan beban server.",
-    "🛡️ update: Penggantian reCAPTCHA dengan Rate Limiter: Verifikasi reCAPTCHA diganti dengan pembatasan jumlah permintaan untuk membantu mencegah penyalahgunaan dan mempermudah akses pengguna."
+    "📂 feat: Custom Folder DTF UV: Sekarang lokasi folder DTF UV bisa diatur sendiri lewat pengaturan aplikasi.",
+    "📖 update: Update Help Center: Menambahkan beberapa jawaban dan panduan baru supaya lebih mudah mencari informasi saat dibutuhkan.",
+    "📦 feat: Paketan Produk Baru: Sekarang sudah mendukung produk paketan seperti Roll Up, X-Banner, Mini Banner, Frame, dan Tripod.",
+    "🏷️ feat: Hapus Diskon Produk: Menambahkan fitur hapus diskon. Diskon yang sudah terpasang di produk juga ikut dihapus supaya tidak masih muncul.",
+    "🎨 update: Varian Produk Dipisah: Pengaturan kualitas, bahan, pilihan, dan varian lainnya sekarang dipisah supaya lebih gampang dikelola.",
+    "🎁 feat: Promo Beli Gratis: Sekarang bisa membuat promo seperti beli 2 gratis 1 atau promo sejenisnya.",
+    "💰 feat: Harga Bertingkat Otomatis: Harga bisa otomatis lebih murah kalau pesanan melewati jumlah tertentu, baik dalam meter maupun pcs.",
+    "🛠️ fix: Perbaikan Error Instalasi: Memperbaiki masalah aplikasi yang gagal diinstal karena error PowerShell. Sekarang proses instalasi menggunakan native Tauri.",
+    "👕 update: Perhitungan Meteran Jersey: Meteran jersey sekarang dihitung terpisah antara atasan dan celana, sehingga setiap bagian masuk ke perhitungan.",
+    "📏 update: Meteran Produk Paketan Otomatis: Perhitungan meteran untuk Roll Up, X-Banner, Mini Banner, Frame, dan Tripod sekarang otomatis menyesuaikan paket dan jumlah pesanan.",
+    "🖨️ feat: Konversi Otomatis Aneka Cetak: Produk seperti gantungan kunci, pin, ID card, kartu nama, stempel, dan lainnya sekarang otomatis masuk ke perhitungan Print Laser. Contohnya, 40 gantungan kunci dihitung 1 lembar AP150 atau 25 ID card dihitung 2 lembar PVC, dengan pembulatan ke atas sesuai kapasitas bahan.",
+    "📝 update: Update Form Order: Form order sudah disesuaikan dengan fitur baru, mulai dari varian produk, produk paketan, promo, harga bertingkat, sampai perhitungan meteran otomatis."
   ]
 }
