@@ -40,6 +40,7 @@ class ProductController {
         $finishingsData = [];
         $categories = [];
         $migrationProducts = [];
+        $migrationFinishings = [];
         $totalPages = 0;
         $total = 0;
 
@@ -49,6 +50,9 @@ class ProductController {
             $migrationStmt->execute();
             $migrationProducts = $migrationStmt->get_result()->fetch_all(MYSQLI_ASSOC);
             $migrationStmt->close();
+            $migrationStmt = $this->koneksi->prepare('SELECT finishing_id, category_id, name FROM finishings WHERE store_id = ? ORDER BY name, finishing_id');
+            $migrationStmt->bind_param('i', $store_id); $migrationStmt->execute();
+            $migrationFinishings = $migrationStmt->get_result()->fetch_all(MYSQLI_ASSOC); $migrationStmt->close();
             $catStmt = $this->koneksi->prepare("
                 SELECT c.category_id, c.name,
                     (SELECT COUNT(*) FROM products p
@@ -133,6 +137,7 @@ class ProductController {
             'current_store_id' => $store_id,
             'categories' => $categories,
             'migration_products' => $migrationProducts,
+            'migration_finishings' => $migrationFinishings,
             'current_category_id' => $category_id,
             'products' => $productsData,
             'finishings' => $finishingsData,
@@ -226,6 +231,11 @@ class ProductController {
             if ($variantId === '') $variantId = '0';
             if (!is_scalar($variantId) || !preg_match('/^\d+$/D', (string)$variantId) || (float)$variantId > 2147483647) throw new InvalidArgumentException('Pilihan varian tujuan tidak valid.');
             $variantId = (int)$variantId;
+            $finishingIds = $_POST['target_finishing_ids'] ?? [];
+            if (!array_key_exists('target_finishing_ids', $_POST) && isset($_POST['target_finishing_id']) && !in_array($_POST['target_finishing_id'], ['', '0', 0], true)) $finishingIds = [$_POST['target_finishing_id']];
+            if (!is_array($finishingIds) || count($finishingIds) > 1000) throw new InvalidArgumentException('Pilihan finishing tambahan tidak valid.');
+            foreach ($finishingIds as $finishingId) if (!is_scalar($finishingId) || filter_var($finishingId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]) === false) throw new InvalidArgumentException('Pilihan finishing tambahan tidak valid.');
+            $finishingIds = array_values(array_unique(array_map('intval', $finishingIds))); sort($finishingIds, SORT_NUMERIC);
             if ($targetId <= 0 || in_array($targetId, $sourceIds, true) || $storeId <= 0) {
                 throw new InvalidArgumentException('Produk pengganti harus berbeda dari semua produk yang dipilih.');
             }
@@ -262,6 +272,15 @@ class ProductController {
             }
             $products = array_column($products, null, 'product_id');
             $target = $products[$targetId];
+            $finishings = [];
+            if ($finishingIds) {
+                $finishingPlaceholders = implode(',', array_fill(0, count($finishingIds), '?'));
+                $finishingParams = array_merge([$storeId, $target['category_id']], $finishingIds);
+                $stmt = $this->koneksi->prepare("SELECT finishing_id, name, unit_type FROM finishings WHERE store_id = ? AND category_id = ? AND finishing_id IN ($finishingPlaceholders) ORDER BY finishing_id FOR UPDATE");
+                $stmt->bind_param(str_repeat('i', count($finishingParams)), ...$finishingParams); $stmt->execute();
+                $finishings = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), null, 'finishing_id'); $stmt->close();
+                if (count($finishings) !== count($finishingIds)) throw new InvalidArgumentException('Pilih finishing yang tersedia pada toko dan kategori produk tujuan.');
+            }
             $variantModel = new ProductVariant($this->koneksi);
             $variants = $variantModel->getByProduct($storeId, $targetId);
             $variant = null;
@@ -285,22 +304,47 @@ class ProductController {
             $stmt->execute();
             $orders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             $stmt->close();
-            if ($variant) {
-                $template = $variantModel->resolve($storeId, $target, ['product_variant_id' => $variantId]);
-                $stmt = $this->koneksi->prepare("SELECT oi.*, COALESCE(d.diskon, 0) AS migration_discount FROM order_items oi LEFT JOIN diskon_order_items d ON d.order_id = oi.order_id AND d.product_id = oi.product_id WHERE oi.store_id = ? AND oi.product_id IN ($placeholders) ORDER BY oi.order_id, oi.order_item_id FOR UPDATE");
+            if ($variant || $finishings) {
+                $hasPricing = $pricing->isAvailable();
+                $template = $variant ? $variantModel->resolve($storeId, $target, ['product_variant_id' => $variantId]) : null;
+                $discountField = $variant ? ', COALESCE(d.diskon, 0) AS migration_discount' : '';
+                $discountJoin = $variant ? ' LEFT JOIN diskon_order_items d ON d.order_id = oi.order_id AND d.product_id = oi.product_id' : '';
+                $stmt = $this->koneksi->prepare("SELECT oi.*$discountField FROM order_items oi$discountJoin WHERE oi.store_id = ? AND oi.product_id IN ($placeholders) ORDER BY oi.order_id, oi.order_item_id FOR UPDATE");
                 $stmt->bind_param($types, ...$params); $stmt->execute(); $items = $stmt->get_result();
-                $update = $this->koneksi->prepare('UPDATE order_items SET product_id = ?, product_variant_id = ?, product_variant_data = ?, tier_price_data = ? WHERE order_item_id = ? AND store_id = ?');
+                $variantFields = $variant ? ', product_variant_id = ?, product_variant_data = ?' : '';
+                $pricingField = $hasPricing ? ', tier_price_data = ?' : '';
+                $update = $this->koneksi->prepare("UPDATE order_items SET product_id = ?, finishing = ?$variantFields$pricingField WHERE order_item_id = ? AND store_id = ?");
                 $count = 0;
                 while ($row = $items->fetch_assoc()) {
                     if (!empty($row['product_finishing_price_id']) || !empty($row['laser_product_id'])) throw new InvalidArgumentException('Item harga paket atau konversi print laser perlu dimigrasikan melalui pengaturannya sendiri.');
-                    $snapshot = $template;
-                    $oldVariant = ProductVariant::snapshot($row);
-                    $oldPricing = !empty($row['tier_price_data']) ? json_decode($row['tier_price_data'], true, 512, JSON_THROW_ON_ERROR) : null;
-                    $snapshot['price'] = (float)($oldVariant['price'] ?? $oldPricing['base'] ?? $products[$row['product_id']]['price']);
-                    $variantJson = json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
-                    $pricingJson = json_encode($pricing->variantMigrationData($row, $target, $snapshot, (float)$row['migration_discount']), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+                    $finalFinishing = $row['finishing']; $addedIds = [];
+                    if ($finishings) {
+                        $previous = trim((string)$row['finishing']);
+                        if ($previous !== '' && $previous !== '-' && !preg_match('/^\d+(?:\s*,\s*\d+)*$/D', $previous)) throw new InvalidArgumentException('Finishing lama pada item #' . $row['order_item_id'] . ' tidak valid. Periksa sebelum migrasi.');
+                        $ids = ProductLaserConversion::finishingIds($previous);
+                        $addedIds = array_values(array_diff($finishingIds, $ids));
+                        $ids = array_merge($ids, $addedIds);
+                        sort($ids, SORT_NUMERIC); $finalFinishing = implode(',', $ids);
+                    }
+                    $pricingData = $hasPricing && !empty($row['tier_price_data']) ? json_decode($row['tier_price_data'], true, 512, JSON_THROW_ON_ERROR) : null;
+                    $values = [$targetId, $finalFinishing]; $updateTypes = 'is';
+                    if ($variant) {
+                        $snapshot = $template;
+                        $oldVariant = ProductVariant::snapshot($row);
+                        $snapshot['price'] = (float)($oldVariant['price'] ?? $pricingData['base'] ?? $products[$row['product_id']]['price']);
+                        $variantJson = json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+                        $pricingData = $pricing->variantMigrationData($row, $target, $snapshot, (float)$row['migration_discount']);
+                        array_push($values, $variantId, $variantJson); $updateTypes .= 'is';
+                    }
+                    if ($addedIds && $pricingData) {
+                        $factor = 1;
+                        if (strtoupper(trim($target['category'])) !== 'ANEKA CETAK' && preg_match('/^([\d.]+)x([\d.]+)$/i', $row['size'], $size)) $factor = max(0, (float)$size[1] * (float)$size[2]) ?: 1;
+                        foreach ($addedIds as $finishingId) if ($finishings[$finishingId]['unit_type'] !== '~') $pricingData['stock']['finishings'][$finishingId] = $factor;
+                    }
+                    if ($hasPricing) { $values[] = $pricingData ? json_encode($pricingData, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) : null; $updateTypes .= 's'; }
                     $itemId = (int)$row['order_item_id'];
-                    $update->bind_param('iissii', $targetId, $variantId, $variantJson, $pricingJson, $itemId, $storeId); $update->execute(); $count += $update->affected_rows;
+                    array_push($values, $itemId, $storeId); $updateTypes .= 'ii';
+                    $update->bind_param($updateTypes, ...$values); $update->execute(); $count += $update->affected_rows;
                 }
                 $update->close(); $stmt->close();
             } else {

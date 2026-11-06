@@ -657,6 +657,21 @@ $_SESSION['product_category_csrf'] = $_SESSION['product_category_csrf'] ?? bin2h
                     <small id="migrationVariantInfo" class="d-block"></small>
                 </div>
                 <p id="migrationVariantStatus" class="text-muted" hidden></p>
+                <div class="mb-3">
+                    <div id="migrationFinishingLabel" class="form-label-custom">Finishing tambahan (opsional)</div>
+                    <div id="migrationFinishings" class="d-flex flex-wrap" style="gap:4px 10px" role="group" aria-labelledby="migrationFinishingLabel">
+                        <?php foreach ($data['migration_finishings'] as $finishing): ?>
+                            <div data-category="<?= (int)$finishing['category_id'] ?>">
+                                <label style="display:flex;align-items:center;gap:5px;padding:2px 0;margin:0;font-size:13px;line-height:20px;cursor:pointer">
+                                    <input type="checkbox" class="form-check-input migration-finishing-checkbox" name="target_finishing_ids[]" value="<?= (int)$finishing['finishing_id'] ?>" style="width:14px;height:14px;margin:0;flex-shrink:0">
+                                    <span><?= htmlspecialchars($finishing['name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                </label>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <small id="migrationFinishingEmpty" hidden>Belum ada finishing pada kategori ini.</small>
+                    <small class="d-block">Bisa pilih beberapa finishing. Tidak perlu dicentang jika tidak ingin menambah. Finishing lama tetap dipertahankan tanpa duplikat. Harga nota tetap.</small>
+                </div>
                 <p class="mb-0">Semua item order terpilih memakai produk dan varian tujuan yang sama. Migrasikan ATASAN, CELANA, dan SETELAN secara terpisah. Quantity, harga, diskon, dan total nota tetap. Produk lama tidak dihapus.</p>
             </div>
             <div class="modal-footer modal-footer-custom">
@@ -742,6 +757,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const migrationModal = document.getElementById('migrateProductModal');
     const migrationForm = document.getElementById('migrateProductForm');
     const migrationTarget = document.getElementById('migrationTarget');
+    const migrationFinishings = document.getElementById('migrationFinishings');
     const migrationSubmit = migrationForm.querySelector('button[type="submit"]');
     const migrationVariant = document.getElementById('migrationVariant');
     const migrationVariantWrap = document.getElementById('migrationVariantWrap');
@@ -815,6 +831,14 @@ document.addEventListener('DOMContentLoaded', function() {
             option.disabled = !allowed;
             if (allowed) available++;
         });
+        let availableFinishings = 0;
+        migrationFinishings.querySelectorAll('[data-category]').forEach(entry => {
+            const checkbox = entry.querySelector('input');
+            const allowed = sameCategory && entry.dataset.category === sources[0].category;
+            entry.hidden = !allowed; checkbox.disabled = !allowed; checkbox.checked = false;
+            if (allowed) availableFinishings++;
+        });
+        document.getElementById('migrationFinishingEmpty').hidden = availableFinishings > 0;
         document.getElementById('migrationEmpty').hidden = available > 0;
         migrationSubmit.disabled = available === 0;
         migrationSubmit.textContent = 'Migrasi';
