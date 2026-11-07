@@ -20,6 +20,10 @@ $choiceControl = function ($field, $value, $choices, $locked = false) use ($esca
 $componentControl = function ($component = null) use ($escape, $upper) {
     return '<input type="hidden" name="component_row_id[]" value="' . (int)($component['recipe_id'] ?? 0) . '"><input class="form-control" name="component_name[]" data-meter-name data-uppercase data-auto-name="' . ($component ? '0' : '1') . '" value="' . $escape($upper($component['name'] ?? '')) . '" maxlength="150" placeholder="NAMA DI METERAN" required>';
 };
+$groupControl = function ($original = '') use ($escape, $choiceControl, $data) {
+    $value = $original !== '' ? '<input type="hidden" name="option_value[]" value=""><small>Nilai tiap varian tetap</small>' : $choiceControl('option_value', '', []);
+    return '<tr><td><input type="hidden" name="group_original[]" value="' . $escape($original) . '">' . $choiceControl('option_name', $original, array_keys($data['optionChoices'])) . '</td><td>' . $value . '</td><td><div style="display:flex;gap:6px"><button type="button" class="btn-secondary-custom" data-group-up aria-label="Naikkan urutan">↑</button><button type="button" class="btn-secondary-custom" data-group-down aria-label="Turunkan urutan">↓</button><button type="button" class="btn btn-danger" data-remove-group>Hapus</button></div></td></tr>';
+};
 ?>
 <div class="page-header"><h2>Varian Produk</h2><a class="btn-secondary-custom" href="/products?store_id=<?= $data['store'] ?>&amp;category_id=<?= $data['category'] ?>">Kembali ke Produk</a></div>
 <?php foreach (['swal_success' => 'success', 'swal_error' => 'danger'] as $key => $type): ?>
@@ -39,6 +43,20 @@ $componentControl = function ($component = null) use ($escape, $upper) {
 <?php if (!$data['ready']): ?>
     <div class="alert alert-warning">Jalankan <code>center/utils/product_variants.sql</code> dan pastikan fitur harga bertingkat sudah terpasang.</div>
 <?php elseif ($data['product']): ?>
+    <?php if ($data['variants']): ?>
+    <details class="filter-card" id="variantGroupSettings">
+        <summary style="cursor:pointer"><strong>Atur Jenis Varian</strong> — tambah, ubah nama, hapus, atau atur urutan</summary>
+        <p class="mt-3">Berlaku untuk semua varian produk ini. Jenis baru membutuhkan nilai awal, misalnya MODEL = REGULER. Nilainya dapat diubah per varian setelah disimpan.</p>
+        <form method="post" action="/action?action=save_product_variant" id="variantGroupsForm">
+            <input type="hidden" name="csrf_token" value="<?= $escape($_SESSION['variant_csrf']) ?>"><input type="hidden" name="store_id" value="<?= $data['store'] ?>"><input type="hidden" name="product_id" value="<?= $data['selected'] ?>"><input type="hidden" name="category_id" value="<?= $data['category'] ?>"><input type="hidden" name="command" value="configure_options"><input type="hidden" name="options_version" value="<?= $escape($data['optionsVersion']) ?>">
+            <div class="table-scroll"><table class="table-modern"><thead><tr><th>Jenis varian</th><th>Nilai awal untuk jenis baru</th><th>Urutan / hapus</th></tr></thead><tbody id="variantGroups">
+                <?php foreach (array_keys($data['variants'][0]['options']) as $name) echo $groupControl($name); ?>
+            </tbody></table></div>
+            <p class="mt-3">Harga dan komponen produksi tetap. Jenis yang membedakan kombinasi tidak bisa dihapus jika hasilnya menjadi duplikat. Data pada nota lama tetap tersimpan.</p>
+            <div style="display:flex;gap:12px;flex-wrap:wrap"><button type="button" class="btn-secondary-custom" id="addVariantGroup">Tambah Jenis Varian</button><button type="submit" class="btn-primary-custom">Simpan Jenis Varian</button></div>
+        </form>
+    </details>
+    <?php endif; ?>
     <div class="filter-card">
         <h3><?= $editing ? 'Ubah' : 'Tambah' ?> varian <?= $escape($data['product']['name']) ?></h3>
         <p>Pilih nama dan nilai varian dari dropdown. Gunakan “Tambah lainnya” jika belum tersedia.</p>
@@ -70,6 +88,7 @@ $componentControl = function ($component = null) use ($escape, $upper) {
     <script>
     (() => {
         const optionRows = document.getElementById('variantOptions'), components = document.getElementById('variantComponents');
+        const groupRows = document.getElementById('variantGroups');
         const choices = <?= json_encode($data['optionChoices'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         const productName = <?= json_encode($data['product']['name'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         const upper = value => value.toUpperCase();
@@ -81,23 +100,40 @@ $componentControl = function ($component = null) use ($escape, $upper) {
             select.value = ''; field.querySelector('input[type="hidden"]').value = '';
             const custom = field.querySelector('[data-custom-choice]'); custom.hidden = true; custom.disabled = true; custom.required = false; custom.value = '';
         };
-        optionRows.addEventListener('change', e => {
-            if (!e.target.matches('[data-choice]')) return;
-            const field = e.target.closest('[data-choice-field]'), custom = field.querySelector('[data-custom-choice]'), hidden = field.querySelector('input[type="hidden"]');
-            const isNew = e.target.value === '__new__';
-            custom.hidden = !isNew; custom.disabled = !isNew; custom.required = isNew;
-            hidden.value = isNew ? upper(custom.value.trim()) : e.target.value;
-            if (isNew) custom.focus();
-            if (hidden.name === 'option_name[]') setChoices(field.closest('tr').children[1].querySelector('[data-choice-field]'), choices[hidden.value] || []);
-            updateMeterNames();
+        [optionRows, groupRows].filter(Boolean).forEach(rows => {
+            rows.addEventListener('change', e => {
+                if (!e.target.matches('[data-choice]')) return;
+                const field = e.target.closest('[data-choice-field]'), custom = field.querySelector('[data-custom-choice]'), hidden = field.querySelector('input[type="hidden"]');
+                const isNew = e.target.value === '__new__';
+                custom.hidden = !isNew; custom.disabled = !isNew; custom.required = isNew;
+                hidden.value = isNew ? upper(custom.value.trim()) : e.target.value;
+                if (isNew) custom.focus();
+                const valueField = field.closest('tr').children[1].querySelector('[data-choice-field]');
+                if (hidden.name === 'option_name[]' && valueField) setChoices(valueField, choices[hidden.value] || []);
+                updateMeterNames();
+            });
+            rows.addEventListener('input', e => {
+                if (!e.target.matches('[data-custom-choice]')) return;
+                const field = e.target.closest('[data-choice-field]'), hidden = field.querySelector('input[type="hidden"]');
+                hidden.value = upper(e.target.value.trim());
+                const valueField = field.closest('tr').children[1].querySelector('[data-choice-field]');
+                if (hidden.name === 'option_name[]' && valueField) setChoices(valueField, choices[hidden.value] || []);
+                updateMeterNames();
+            });
         });
-        optionRows.addEventListener('input', e => {
-            if (!e.target.matches('[data-custom-choice]')) return;
-            const field = e.target.closest('[data-choice-field]'), hidden = field.querySelector('input[type="hidden"]');
-            hidden.value = upper(e.target.value.trim());
-            if (hidden.name === 'option_name[]') setChoices(field.closest('tr').children[1].querySelector('[data-choice-field]'), choices[hidden.value] || []);
-            updateMeterNames();
+        document.getElementById('addVariantGroup')?.addEventListener('click', () => {
+            if (groupRows.children.length >= 8) return;
+            groupRows.insertAdjacentHTML('beforeend', <?= json_encode($groupControl(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
+            groupRows.lastElementChild.querySelector('select').focus();
         });
+        groupRows?.addEventListener('click', e => {
+            const button = e.target.closest('button'); if (!button) return;
+            const row = button.closest('tr');
+            if (button.hasAttribute('data-remove-group') && groupRows.children.length > 1) row.remove();
+            if (button.hasAttribute('data-group-up') && row.previousElementSibling) groupRows.insertBefore(row, row.previousElementSibling);
+            if (button.hasAttribute('data-group-down') && row.nextElementSibling) groupRows.insertBefore(row.nextElementSibling, row);
+        });
+        document.getElementById('variantGroupsForm')?.addEventListener('submit', e => e.target.querySelector('button[type="submit"]').disabled = true);
         document.getElementById('addVariantOption')?.addEventListener('click', () => {
             if (optionRows.children.length >= 8) return;
             const row = document.createElement('tr');

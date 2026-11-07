@@ -60,10 +60,60 @@ class VariantController {
             }
             $stmt->close();
         }
-        return compact('stores', 'store', 'category', 'selected', 'categories', 'products', 'product', 'variants', 'editing', 'ready', 'optionChoices');
+        $optionsVersion = $this->optionsVersion($variants);
+        return compact('stores', 'store', 'category', 'selected', 'categories', 'products', 'product', 'variants', 'editing', 'ready', 'optionChoices', 'optionsVersion');
     }
 
     private function upper($value) { return function_exists('mb_strtoupper') ? mb_strtoupper($value, 'UTF-8') : strtoupper($value); }
+
+    private function optionsVersion($variants) {
+        return hash('sha256', json_encode(array_map(function ($v) { return [$v['id'], $v['options']]; }, $variants), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+    }
+
+    private function configureOptions($store, $product) {
+        $stmt = $this->db->prepare('SELECT category_id FROM products WHERE product_id = ? AND store_id = ? FOR UPDATE');
+        $stmt->bind_param('ii', $product, $store); $stmt->execute(); $p = $stmt->get_result()->fetch_assoc(); $stmt->close();
+        if (!$p) throw new InvalidArgumentException('Produk tidak ditemukan pada toko ini.');
+        $current = $this->variants->getByProduct($store, $product);
+        if (!$current || !is_string($_POST['options_version'] ?? null) || !hash_equals($this->optionsVersion($current), $_POST['options_version'])) throw new InvalidArgumentException('Jenis atau daftar varian sudah berubah. Muat ulang halaman sebelum mengatur jenis varian.');
+        $originals = $_POST['group_original'] ?? []; $names = $_POST['option_name'] ?? []; $defaults = $_POST['option_value'] ?? [];
+        if (!is_array($originals) || !is_array($names) || !is_array($defaults) || count($originals) !== count($names) || count($defaults) !== count($names) || count($names) < 1 || count($names) > 8) throw new InvalidArgumentException('Isi 1 sampai 8 jenis varian.');
+        $originals = array_values($originals); $names = array_values($names); $defaults = array_values($defaults);
+        $oldNames = array_keys($current[0]['options']); $seen = []; $groups = [];
+        foreach ($names as $i => $name) {
+            $original = $originals[$i]; $default = $defaults[$i];
+            if (!is_string($original) || !is_string($name) || !is_string($default)) throw new InvalidArgumentException('Jenis varian tidak valid.');
+            if ($original !== '' && (!in_array($original, $oldNames, true) || isset($seen[$original]))) throw new InvalidArgumentException('Jenis varian asal tidak valid. Muat ulang halaman.');
+            $seen[$original] = true;
+            $name = $this->upper(preg_replace('/\s+/u', ' ', trim($name)));
+            $default = $this->upper(preg_replace('/\s+/u', ' ', trim($default)));
+            if ($original === '' && $default === '') throw new InvalidArgumentException('Isi nilai awal untuk jenis varian baru, misalnya REGULER.');
+            $groups[] = ['original' => $original, 'name' => $name, 'default' => $default];
+        }
+        // Validasi nama unik, termasuk huruf kapital, sebelum menyentuh katalog.
+        ProductVariant::options(array_column($groups, 'name'), array_map(function ($g) { return $g['original'] === '' ? $g['default'] : 'TETAP'; }, $groups));
+        $updates = [];
+        foreach ($current as $v) {
+            $values = [];
+            foreach ($groups as $g) {
+                if ($g['original'] !== '' && !array_key_exists($g['original'], $v['options'])) throw new InvalidArgumentException('Jenis varian yang tersimpan tidak seragam. Periksa varian produk ini.');
+                $values[] = $g['original'] === '' ? $g['default'] : $v['options'][$g['original']];
+            }
+            $options = ProductVariant::options(array_column($groups, 'name'), $values);
+            $updates[] = ['id' => (int)$v['id'], 'json' => json_encode($options, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), 'key' => json_encode(array_values($options), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)];
+        }
+        // Simpan penghubung nama meteran lama sebelum nama/urutan pilihan berubah.
+        if ($this->components->isAvailable()) foreach ($current as $v) foreach ($v['components'] as $c) {
+            if (!empty($c['component_id'])) $this->components->link($store, $product, $v, $c['name'], $c['component_id'], true);
+        }
+        // Kunci kombinasi sementara memungkinkan pertukaran urutan tanpa bentrok antarbaris.
+        $stmt = $this->db->prepare("UPDATE product_variants SET combination_key = SHA2(CONCAT('configure:', UUID(), ':', id), 256) WHERE store_id = ? AND product_id = ?");
+        $stmt->bind_param('ii', $store, $product); $stmt->execute(); $stmt->close();
+        $stmt = $this->db->prepare('UPDATE product_variants SET options_json = ?, combination_key = SHA2(LOWER(?), 256) WHERE id = ? AND store_id = ? AND product_id = ?');
+        foreach ($updates as $v) { $stmt->bind_param('ssiii', $v['json'], $v['key'], $v['id'], $store, $product); $stmt->execute(); }
+        $stmt->close();
+        return (int)$p['category_id'];
+    }
 
     private function componentAction($action) {
         $store = (int)($_POST['store_id'] ?? 0); $transaction = false; $saved = false;
@@ -138,7 +188,7 @@ class VariantController {
                 || !hash_equals($_SESSION['variant_csrf'], $_POST['csrf_token'])) throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
             if (!$this->variants->isAvailable() || !(new ProductPriceTier($this->db))->isAvailable()) throw new InvalidArgumentException('Jalankan SQL varian dan pastikan fitur harga bertingkat sudah terpasang.');
             $command = $_POST['command'] ?? '';
-            if ($product < 1 || !in_array($command, ['save', 'delete'], true)) throw new InvalidArgumentException('Pilih produk dan aksi yang valid.');
+            if ($product < 1 || !in_array($command, ['save', 'delete', 'configure_options'], true)) throw new InvalidArgumentException('Pilih produk dan aksi yang valid.');
             $this->db->begin_transaction(); $transaction = true;
             $stmt = $this->db->prepare('SELECT store_id FROM stores WHERE store_id = ? FOR UPDATE'); $stmt->bind_param('i', $store); $stmt->execute(); $stmt->close();
             $stmt = $this->db->prepare('SELECT id FROM product_variants WHERE id = ? AND store_id = ? AND product_id = ? FOR UPDATE');
@@ -151,6 +201,8 @@ class VariantController {
                 }
                 $stmt = $this->db->prepare('DELETE FROM product_variant_components WHERE variant_id = ?'); $stmt->bind_param('i', $id); $stmt->execute(); $stmt->close();
                 $stmt = $this->db->prepare('DELETE FROM product_variants WHERE id = ? AND store_id = ? AND product_id = ?'); $stmt->bind_param('iii', $id, $store, $product); $stmt->execute(); $stmt->close();
+            } elseif ($command === 'configure_options') {
+                $category = $this->configureOptions($store, $product);
             } else {
                 $stmt = $this->db->prepare('SELECT p.*, c.name AS category FROM products p JOIN categories c ON c.category_id = p.category_id AND c.store_id = p.store_id WHERE p.product_id = ? AND p.store_id = ? FOR UPDATE');
                 $stmt->bind_param('ii', $product, $store); $stmt->execute(); $p = $stmt->get_result()->fetch_assoc(); $stmt->close();
@@ -162,7 +214,7 @@ class VariantController {
                 $options = ProductVariant::options(array_map([$this, 'upper'], array_keys($options)), array_map([$this, 'upper'], array_values($options)));
                 $current = $this->variants->getByProduct($store, $product);
                 if ($current) {
-                    if (array_keys($options) !== array_map([$this, 'upper'], array_keys($current[0]['options']))) throw new InvalidArgumentException('Nama dan urutan pilihan harus sama dengan varian produk yang sudah ada.');
+                    if (array_keys($options) !== array_map([$this, 'upper'], array_keys($current[0]['options']))) throw new InvalidArgumentException('Jenis varian sudah berubah. Muat ulang halaman; gunakan Atur Jenis Varian untuk menambah atau mengubah jenisnya.');
                     // Pertahankan ejaan yang sudah dipakai agar pilihan dan pemetaan nota lama tetap cocok.
                     $canonical = [];
                     foreach (array_keys($current[0]['options']) as $name) {
@@ -265,9 +317,10 @@ class VariantController {
             }
             $this->db->commit(); $transaction = false; $saved = true;
             $_SESSION['swal_success'] = $command === 'delete' ? 'Varian dihapus. Data varian pada nota lama tetap tersimpan.' : 'Varian tersimpan. Nama meteran yang sama digabung otomatis.';
+            if ($command === 'configure_options') $_SESSION['swal_success'] = 'Jenis varian diperbarui untuk produk ini. Harga, nama meteran, dan data pada nota lama tetap.';
         } catch (Throwable $e) {
             if ($transaction) $this->db->rollback();
-            $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : ($e instanceof mysqli_sql_exception && $e->getCode() === 1062 ? 'Kombinasi varian yang sama sudah ada.' : 'Gagal menyimpan varian.');
+            $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : ($e instanceof mysqli_sql_exception && $e->getCode() === 1062 ? (($command ?? '') === 'configure_options' ? 'Perubahan membuat beberapa kombinasi varian menjadi sama. Pertahankan jenis yang membedakannya. Semua perubahan dibatalkan.' : 'Kombinasi varian yang sama sudah ada.') : 'Gagal menyimpan varian.');
             error_log('Product variant: ' . $e->getMessage());
         } finally { mysqli_report($report); }
         if ($saved) try { updateStoreCache($store, 'product_variants'); updateStoreCache($store, 'products'); updateStoreCache($store, 'production_components'); updateStoreCache($store, 'product_price_tiers'); } catch (Throwable $e) { error_log('Variant cache: ' . $e->getMessage()); }
