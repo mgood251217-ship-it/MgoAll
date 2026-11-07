@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../../admin/models/ProductPriceTier.php';
+require_once __DIR__ . '/ProductHistoryController.php';
 class ProductController {
     private $koneksi;
 
@@ -831,7 +832,54 @@ class ProductController {
 
     public function addProduct() {
         if (session_status() === PHP_SESSION_NONE) session_start();
-        $this->saveData('products', 'product');
+        $storeId = filter_var($_POST['store_id'] ?? '', FILTER_VALIDATE_INT) ?: 0;
+        $transaction = $saved = false; $driver = new mysqli_driver(); $report = $driver->report_mode;
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+        try {
+            if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || empty($_SESSION['product_add_csrf']) || !is_string($_POST['csrf'] ?? null) || !hash_equals($_SESSION['product_add_csrf'], $_POST['csrf'])) throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
+            $history = new ProductHistoryController($this->koneksi); $admin = $history->getAdministrator();
+            if (!$admin) throw new InvalidArgumentException('Silakan login kembali.');
+            if (!$history->isAvailable()) throw new InvalidArgumentException('Pencatatan produk belum disiapkan. Hubungi administrator.');
+            $name = is_string($_POST['name'] ?? null) ? trim($_POST['name']) : '';
+            $categoryId = $_POST['category_id'] ?? '';
+            $categoryId = $categoryId === '' ? null : filter_var($categoryId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $unit = $_POST['unit_type'] ?? '~';
+            if ($storeId <= 0 || $name === '' || $categoryId === false || !in_array($unit, ['~', 'PCS', 'M2', 'CM2'], true)) throw new InvalidArgumentException('Periksa toko, nama, kategori, dan satuan produk.');
+            $numbers = [];
+            foreach (['price', 'reasonable_price', 'failed_price', 'stock'] as $field) {
+                $value = filter_var($_POST[$field] ?? 0, FILTER_VALIDATE_INT);
+                if ($value === false) throw new InvalidArgumentException('Harga dan stok harus berupa angka bulat.');
+                $numbers[] = $value;
+            }
+            [$price, $reasonablePrice, $failedPrice, $stock] = $numbers;
+            $this->koneksi->begin_transaction(); $transaction = true;
+            $stmt = $this->koneksi->prepare('SELECT administrator FROM stores WHERE store_id = ? FOR UPDATE');
+            $stmt->bind_param('i', $storeId); $stmt->execute(); $store = $stmt->get_result()->fetch_assoc(); $stmt->close();
+            if (!$store || ($admin['access'] !== 'ALL' && ($admin['access'] === '' || (string)$store['administrator'] !== (string)$admin['access']))) throw new InvalidArgumentException('Anda tidak memiliki akses ke toko ini.');
+            if ($categoryId !== null) {
+                $stmt = $this->koneksi->prepare('SELECT category_id FROM categories WHERE category_id = ? AND store_id = ? FOR UPDATE');
+                $stmt->bind_param('ii', $categoryId, $storeId); $stmt->execute(); $category = $stmt->get_result()->fetch_assoc(); $stmt->close();
+                if (!$category) throw new InvalidArgumentException('Kategori tidak tersedia di toko ini.');
+            }
+            $stmt = $this->koneksi->prepare('INSERT INTO products (store_id, category_id, name, price, reasonable_price, failed_price, stock, unit_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+            $stmt->bind_param('iisiiiis', $storeId, $categoryId, $name, $price, $reasonablePrice, $failedPrice, $stock, $unit);
+            $stmt->execute(); $productId = (int)$this->koneksi->insert_id; $stmt->close();
+            $history->record($productId, (int)$admin['administrator_id']);
+            $this->koneksi->commit(); $transaction = false; $saved = true;
+            $_SESSION['swal_success'] = 'Produk berhasil ditambahkan.';
+        } catch (Throwable $e) {
+            if ($transaction) $this->koneksi->rollback();
+            unset($_SESSION['swal_success']);
+            $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : 'Gagal menambahkan produk. Semua perubahan dibatalkan.';
+            error_log('Add product: ' . $e->getMessage());
+        } finally { mysqli_report($report); }
+        if ($saved) try {
+            require_once __DIR__ . '/../functions/cacheHelper.php'; updateStoreCache($storeId, 'products');
+        } catch (Throwable $e) {
+            error_log('Add product cache: ' . $e->getMessage());
+            unset($_SESSION['swal_success']); $_SESSION['swal_error'] = 'Produk sudah ditambahkan, tetapi cache gagal diperbarui. Gunakan Update Cache.';
+        }
+        header('Location: ' . $this->productReturnUrl()); exit;
     }
 
     public function editProduct() {

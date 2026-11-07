@@ -33,6 +33,7 @@ $_SESSION['product_migration_csrf'] = $_SESSION['product_migration_csrf'] ?? bin
 $_SESSION['product_cache_csrf'] = $_SESSION['product_cache_csrf'] ?? bin2hex(random_bytes(32));
 $_SESSION['product_category_csrf'] = $_SESSION['product_category_csrf'] ?? bin2hex(random_bytes(32));
 $_SESSION['product_copy_csrf'] = $_SESSION['product_copy_csrf'] ?? bin2hex(random_bytes(32));
+$_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_bytes(32));
 ?>
 
 
@@ -408,6 +409,7 @@ $_SESSION['product_copy_csrf'] = $_SESSION['product_copy_csrf'] ?? bin2hex(rando
     <div class="modal-dialog modal-dialog-centered">
         <form class="modal-content modal-content-custom" method="post" action="/action?action=add_product">
             <?= $returnInputs ?>
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['product_add_csrf'], ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="store_id" value="<?= htmlspecialchars($data['current_store_id']) ?>">
             <div class="modal-header modal-header-custom">
                 <h5 class="modal-title-custom">Tambah Produk Baru</h5>

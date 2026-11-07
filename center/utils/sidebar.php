@@ -1,3 +1,10 @@
+<?php
+$showProductHistory = false;
+if (isset($koneksi) && !empty($_SESSION['admin_logged_in'])) {
+    require_once __DIR__ . '/../controllers/ProductHistoryController.php';
+    $showProductHistory = (new ProductHistoryController($koneksi))->canView();
+}
+?>
 <div class="sidebar">
     <div class="sidebar-brand">
         <i class="fas fa-layer-group"></i>
@@ -7,6 +14,7 @@
         <li><a href="<?= $centerBaseUrl ?>/dashboard"><i class="fas fa-home"></i> <span>Dashboard</span></a></li>
         <li><a href="<?= $centerBaseUrl ?>/orders"><i class="fas fa-shopping-cart"></i> <span>Orders</span></a></li>
         <li><a href="<?= $centerBaseUrl ?>/products"><i class="fas fa-box"></i> <span>Products</span></a></li>
+        <?php if ($showProductHistory): ?><li><a href="<?= $centerBaseUrl ?>/product-history"><i class="fas fa-history"></i> <span>Riwayat Tambah Produk</span></a></li><?php endif; ?>
         <li><a href="<?= $centerBaseUrl ?>/transactions"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a></li>
         <li><a href="<?= $centerBaseUrl ?>/stores"><i class="fas fa-store"></i> <span>Stores</span></a></li>
         <li><a href="<?= $centerBaseUrl ?>/finance"><i class="fas fa-wallet"></i> <span>Finance</span></a></li>
