@@ -45,7 +45,7 @@ class ProductController {
         $total = 0;
 
         if ($store_id !== null) {
-            $migrationStmt = $this->koneksi->prepare('SELECT product_id, category_id, name FROM products WHERE store_id = ? ORDER BY name, product_id');
+            $migrationStmt = $this->koneksi->prepare('SELECT product_id, category_id, name, price FROM products WHERE store_id = ? ORDER BY name, product_id');
             $migrationStmt->bind_param('i', $store_id);
             $migrationStmt->execute();
             $migrationProducts = $migrationStmt->get_result()->fetch_all(MYSQLI_ASSOC);

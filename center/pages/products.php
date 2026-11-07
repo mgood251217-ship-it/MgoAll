@@ -165,7 +165,7 @@ $_SESSION['product_copy_csrf'] = $_SESSION['product_copy_csrf'] ?? bin2hex(rando
                     foreach ($data['products'] as $row): 
                     ?>
                         <tr>
-                            <td class="product-selection-cell"><label class="product-selection-hit"><input type="checkbox" class="form-check-input product-category-checkbox" name="product_ids[]" value="<?= (int)$row['product_id'] ?>" form="bulkProductCategoryForm" data-category="<?= htmlspecialchars((string)($row['category_id'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" data-name="<?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>" data-count="<?= (int)$row['order_item_count'] ?>" aria-label="Pilih produk <?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>"></label></td>
+                            <td class="product-selection-cell"><label class="product-selection-hit"><input type="checkbox" class="form-check-input product-category-checkbox" name="product_ids[]" value="<?= (int)$row['product_id'] ?>" form="bulkProductCategoryForm" data-category="<?= htmlspecialchars((string)($row['category_id'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" data-name="<?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>" data-price="<?= htmlspecialchars((string)($row['price'] ?? 0), ENT_QUOTES, 'UTF-8') ?>" data-count="<?= (int)$row['order_item_count'] ?>" aria-label="Pilih produk <?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>"></label></td>
                             <td><?= $no++ ?></td>
                             <td><?= (int)$row['product_id'] ?></td>
                             <td><span class="badge-category"><?= htmlspecialchars($row['category'] ?? 'Tanpa Kategori') ?></span></td>
@@ -199,6 +199,7 @@ $_SESSION['product_copy_csrf'] = $_SESSION['product_copy_csrf'] ?? bin2hex(rando
                                 <button type="button" class="btn-action btn-kelola btn-open" data-bs-toggle="modal" data-bs-target="#migrateProductModal"
                                     data-id="<?= (int)$row['product_id'] ?>" data-category="<?= htmlspecialchars((string)($row['category_id'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
                                     data-name="<?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>" data-count="<?= (int)$row['order_item_count'] ?>"
+                                    data-price="<?= htmlspecialchars((string)($row['price'] ?? 0), ENT_QUOTES, 'UTF-8') ?>"
                                     <?= empty($row['order_item_count']) ? 'disabled' : '' ?>>
                                     Migrasi
                                 </button>
@@ -679,18 +680,19 @@ $_SESSION['product_copy_csrf'] = $_SESSION['product_copy_csrf'] ?? bin2hex(rando
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body modal-body-custom">
-                <p id="migrationSummary"></p>
+                <div id="migrationSummary" class="mb-3"></div>
                 <div class="mb-3">
                     <label for="migrationTarget" class="form-label-custom">Produk pengganti (kategori yang sama)</label>
                     <select id="migrationTarget" name="target_product_id" class="form-control-custom form-select" required>
                         <option value="">-- Pilih Produk Pengganti --</option>
                         <?php foreach ($data['migration_products'] as $product): ?>
                             <option value="<?= (int)$product['product_id'] ?>" data-category="<?= htmlspecialchars((string)($product['category_id'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
-                                #<?= (int)$product['product_id'] ?> - <?= htmlspecialchars($product['name']) ?>
+                                #<?= (int)$product['product_id'] ?> - <?= htmlspecialchars($product['name']) ?> — Rp <?= number_format($product['price'] ?? 0, 0, ',', '.') ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
                     <small id="migrationEmpty" hidden>Tidak ada produk pengganti pada kategori ini.</small>
+                    <small class="d-block">Harga yang ditampilkan adalah harga dasar katalog. Harga pada nota tetap dipertahankan saat migrasi.</small>
                 </div>
                 <div id="migrationVariantWrap" class="mb-3" hidden>
                     <label for="migrationVariant" class="form-label-custom">Varian tujuan</label>
@@ -837,6 +839,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const migrationVariantWrap = document.getElementById('migrationVariantWrap');
     const migrationVariantInfo = document.getElementById('migrationVariantInfo');
     const migrationVariantStatus = document.getElementById('migrationVariantStatus');
+    const migrationPriceFormat = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
     let migrationRequest = 0, migrationVariants = [], migrationReady = true;
     const resetMigrationVariant = () => {
         migrationRequest++; migrationVariants = []; migrationReady = true;
@@ -859,7 +862,7 @@ document.addEventListener('DOMContentLoaded', function() {
             migrationVariants = result.data;
             if (migrationVariants.length) {
                 migrationVariant.appendChild(new Option('-- Pilih Varian Tujuan --', ''));
-                migrationVariants.forEach(v => migrationVariant.appendChild(new Option(Object.entries(v.options).map(([name, value]) => name + ': ' + value).join(' / ').toUpperCase(), v.id)));
+                migrationVariants.forEach(v => migrationVariant.appendChild(new Option(Object.entries(v.options).map(([name, value]) => name + ': ' + value).join(' / ').toUpperCase() + ' — Rp ' + migrationPriceFormat.format(Number(v.price)), v.id)));
                 migrationVariant.disabled = false; migrationVariant.required = true; migrationVariantWrap.hidden = false;
             }
             migrationReady = true; migrationSubmit.disabled = false; migrationVariantStatus.hidden = true;
@@ -879,8 +882,8 @@ document.addEventListener('DOMContentLoaded', function() {
         resetMigrationVariant();
         delete migrationForm.dataset.busy;
         const sources = button.id === 'bulkMigrateProducts'
-            ? Array.from(document.querySelectorAll('.product-category-checkbox:checked')).map(checkbox => ({ id: checkbox.value, category: checkbox.dataset.category, name: checkbox.dataset.name, count: Number(checkbox.dataset.count) || 0 }))
-            : [{ id: button.dataset.id, category: button.dataset.category, name: button.dataset.name, count: Number(button.dataset.count) || 0 }];
+            ? Array.from(document.querySelectorAll('.product-category-checkbox:checked')).map(checkbox => ({ id: checkbox.value, category: checkbox.dataset.category, name: checkbox.dataset.name, price: Number(checkbox.dataset.price) || 0, count: Number(checkbox.dataset.count) || 0 }))
+            : [{ id: button.dataset.id, category: button.dataset.category, name: button.dataset.name, price: Number(button.dataset.price) || 0, count: Number(button.dataset.count) || 0 }];
         const sourceIds = sources.map(source => String(source.id));
         const sameCategory = sources.length > 0 && new Set(sources.map(source => source.category)).size === 1;
         migrationForm.elements.source_product_id.value = sourceIds[0] || '';
@@ -894,9 +897,13 @@ document.addEventListener('DOMContentLoaded', function() {
             sourceInputs.appendChild(input);
         });
         const count = sources.reduce((sum, source) => sum + source.count, 0);
-        document.getElementById('migrationSummary').textContent = sources.length === 1
-            ? `Produk #${sources[0].id} - ${sources[0].name}: ${count} item order.`
-            : `${sources.length} produk dipilih (${sourceIds.map(id => '#' + id).join(', ')}): ${count} item order.`;
+        const summary = document.getElementById('migrationSummary');
+        summary.textContent = `Produk asal (${sources.length} produk, ${count} item order):`;
+        sources.forEach(source => {
+            const line = document.createElement('div');
+            line.textContent = `#${source.id} - ${source.name} — Rp ${migrationPriceFormat.format(source.price)} (${source.count} item order)`;
+            summary.appendChild(line);
+        });
         let available = 0;
         Array.from(migrationTarget.options).forEach(option => {
             if (!option.value) return;
