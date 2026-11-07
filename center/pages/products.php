@@ -713,7 +713,12 @@ $_SESSION['product_copy_csrf'] = $_SESSION['product_copy_csrf'] ?? bin2hex(rando
                     <small id="migrationFinishingEmpty" hidden>Belum ada finishing pada kategori ini.</small>
                     <small class="d-block">Bisa pilih beberapa finishing. Tidak perlu dicentang jika tidak ingin menambah. Finishing lama tetap dipertahankan tanpa duplikat. Harga nota tetap.</small>
                 </div>
-                <p class="mb-0">Semua item order terpilih memakai produk dan varian tujuan yang sama. Migrasikan ATASAN, CELANA, dan SETELAN secara terpisah. Quantity, harga, diskon, dan total nota tetap. Produk lama tidak dihapus.</p>
+                <label class="d-flex align-items-center mb-2" style="gap:8px;cursor:pointer">
+                    <input type="checkbox" class="form-check-input" name="delete_source_products" value="1" style="width:20px;height:20px;margin:0;flex-shrink:0">
+                    <span>Hapus produk asal setelah migrasi</span>
+                </label>
+                <small class="d-block mb-3">Berlaku untuk semua produk asal yang dipilih. Produk dihapus hanya jika migrasi berhasil dan sudah tidak dipakai item order.</small>
+                <p class="mb-0">Semua item order terpilih memakai produk dan varian tujuan yang sama. Migrasikan ATASAN, CELANA, dan SETELAN secara terpisah. Quantity, harga, diskon, dan total nota tetap.</p>
             </div>
             <div class="modal-footer modal-footer-custom">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>

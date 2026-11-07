@@ -362,6 +362,9 @@ class ProductController {
                 throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
             }
             $sourceIds = $this->selectedProductIds($_POST['source_product_ids'] ?? [$_POST['source_product_id'] ?? 0]);
+            $deleteSource = $_POST['delete_source_products'] ?? '0';
+            if (!is_string($deleteSource) || !in_array($deleteSource, ['0', '1'], true)) throw new InvalidArgumentException('Pilihan hapus produk asal tidak valid.');
+            $deleteSource = $deleteSource === '1';
             $variantId = $_POST['target_variant_id'] ?? '0';
             if ($variantId === '') $variantId = '0';
             if (!is_scalar($variantId) || !preg_match('/^\d+$/D', (string)$variantId) || (float)$variantId > 2147483647) throw new InvalidArgumentException('Pilihan varian tujuan tidak valid.');
@@ -488,12 +491,22 @@ class ProductController {
                 $stmt = $this->koneksi->prepare("UPDATE order_items SET product_id = ? WHERE store_id = ? AND product_id IN ($placeholders)");
                 $stmt->bind_param($types, ...$params); $stmt->execute(); $count = $stmt->affected_rows; $stmt->close();
             }
+            if ($deleteSource) {
+                // Hapus hanya setelah semua item berpindah; kegagalan membatalkan seluruh migrasi.
+                $stmt = $this->koneksi->prepare("DELETE p FROM products p WHERE p.store_id = ? AND p.product_id IN ($placeholders)
+                    AND NOT EXISTS(SELECT 1 FROM order_items oi WHERE oi.product_id = p.product_id)");
+                $params = array_merge([$storeId], $sourceIds);
+                $stmt->bind_param(str_repeat('i', count($params)), ...$params);
+                $stmt->execute(); $deletedCount = $stmt->affected_rows; $stmt->close();
+                if ($deletedCount !== count($sourceIds)) throw new InvalidArgumentException('Produk asal masih dipakai atau datanya berubah. Migrasi dan penghapusan dibatalkan; muat ulang halaman.');
+            }
             $this->koneksi->commit();
             $transaction = false;
             $migrated = true;
             $sourceCount = count($sourceIds);
             $variantLabel = $variant ? ' / ' . $variant['label'] : '';
-            $_SESSION['swal_success'] = "$count item order dari $sourceCount produk berhasil dimigrasikan ke produk #$targetId$variantLabel. Harga, diskon, dan quantity tetap. Produk lama tetap tersedia.";
+            $sourceMessage = $deleteSource ? "$sourceCount produk asal berhasil dihapus." : 'Produk asal tetap tersedia.';
+            $_SESSION['swal_success'] = "$count item order dari $sourceCount produk berhasil dimigrasikan ke produk #$targetId$variantLabel. Harga, diskon, dan quantity tetap. $sourceMessage";
         } catch (Throwable $e) {
             if ($transaction) $this->koneksi->rollback();
             $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : 'Migrasi gagal. Perubahan dibatalkan.';
@@ -505,6 +518,7 @@ class ProductController {
             try {
                 require_once __DIR__ . '/../functions/cacheHelper.php';
                 updateStoreCache($storeId, 'orders');
+                if ($deleteSource) foreach (['products', 'categories', 'product_variants', 'product_finishing_prices', 'product_laser_conversion', 'product_price_tiers'] as $module) updateStoreCache($storeId, $module);
                 foreach ($orders as $order) updateOrderTrigger($storeId, $order['order_id']);
             } catch (Throwable $e) {
                 error_log('Product migration cache refresh failed: ' . $e->getMessage());
