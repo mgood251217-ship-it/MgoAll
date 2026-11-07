@@ -144,6 +144,7 @@ $router->add('import_csv_global_stock', GlobalStockController::class, 'importCsv
 $router->add('meter_outdoor', MeterController::class, 'getOutdoor', ['auth']);
 $router->add('meter_indoor', MeterController::class, 'getIndoor', ['auth']);
 $router->add('meter_jersey', MeterController::class, 'getJersey', ['auth']);
+$router->add('meter_pakaian', MeterController::class, 'getPakaian', ['auth']);
 $router->add('meter_components', MeterController::class, 'getComponents', ['auth']);
 $router->add('meter_akrilik', MeterController::class, 'getAkrilik', ['auth']);
 $router->add('meter_laser', MeterController::class, 'getLaser', ['auth']);
@@ -154,6 +155,7 @@ $router->add('meter_dtf', MeterController::class, 'getDtf', ['auth']);
 $router->add('meter_cetakan', MeterController::class, 'getCetakan', ['auth']);
 $router->add('meter_bahan_sublim', MeterController::class, 'getBahanSublim', ['auth']);
 $router->add('meter_finishing_jersey', MeterController::class, 'getFinishingJersey', ['auth']);
+$router->add('meter_finishing_pakaian', MeterController::class, 'getFinishingPakaian', ['auth']);
 
 // Tutorial Controller
 $router->add('tutorials', TutorialController::class, 'tutorials');

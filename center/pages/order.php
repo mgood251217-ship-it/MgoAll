@@ -127,7 +127,7 @@ if (isset($_GET['ajax_payment'])) {
                 </div>
 
                 <div class="form-group migrated-style-36" id="ukuranJerseyRow">
-                    <label for="ukuranJersey">Ukuran Jersey</label>
+                    <label for="ukuranJersey">Ukuran Pakaian</label>
                     <select id="ukuranJersey" name="ukuran_jersey" class="form-control select2">
                         <option value="">-- Pilih Ukuran --</option>
                         <option value="XS">XS</option>
@@ -728,7 +728,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (nameStr.includes('TRANSFERPAPER') || nameStr.includes('PRINT PRES')) {
             const subRow = document.getElementById('ukuranSublimRow');
             if (subRow) subRow.style.display = 'flex';
-        } else if (kategori === 'JERSEY') {
+        } else if (['PAKAIAN', 'JERSEY'].includes(kategori)) {
             const jerRow = document.getElementById('ukuranJerseyRow');
             if (jerRow) jerRow.style.display = 'flex';
         } else if (unit === 'M2' || unit === 'CM2') {

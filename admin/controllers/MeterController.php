@@ -346,14 +346,16 @@ class MeterController {
         ];
     }
 
-    public function getJersey() {
+    public function getJersey() { return $this->getPakaian(); }
+
+    public function getPakaian() {
         global $store_id;
 
         $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
         $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
 
-        $product_data_jersey = [];
-        $total_all_qty_jersey = 0;
+        $product_data_pakaian = [];
+        $total_all_qty_pakaian = 0;
         $variantModel = new ProductVariant($this->koneksi);
         $legacyOnly = $variantModel->isAvailable() ? ' AND oi.product_variant_data IS NULL' : '';
 
@@ -367,7 +369,7 @@ class MeterController {
                 JOIN orders o ON oi.order_id = o.order_id
                 WHERE o.store_id = ? AND o.date BETWEEN ? AND ? $legacyOnly
             ) oi_filtered ON p.product_id = oi_filtered.product_id
-            WHERE c.name = 'JERSEY' AND p.store_id = ?
+            WHERE UPPER(TRIM(c.name)) IN ('PAKAIAN', 'JERSEY') AND p.store_id = ?
             GROUP BY p.product_id, p.name
         ";
 
@@ -383,20 +385,20 @@ class MeterController {
 
         foreach ($rows as $row) {
             $qty = (int)$row['total_qty'];
-            $product_data_jersey[] = [
+            $product_data_pakaian[] = [
                 'name' => $row['name'],
                 'total_qty' => $qty
             ];
-            $total_all_qty_jersey += $qty;
+            $total_all_qty_pakaian += $qty;
         }
 
-        foreach ($variantModel->productionRows($store_id, $start_date_full, $end_date_full, 'JERSEY', true) as $component) {
-            $product_data_jersey[] = $component;
-            $total_all_qty_jersey += $component['total_qty'];
+        foreach ($variantModel->productionRows($store_id, $start_date_full, $end_date_full, ['PAKAIAN', 'JERSEY'], true) as $component) {
+            $product_data_pakaian[] = $component;
+            $total_all_qty_pakaian += $component['total_qty'];
         }
         return [
-            'product_data' => $product_data_jersey,
-            'total_all_qty' => $total_all_qty_jersey
+            'product_data' => $product_data_pakaian,
+            'total_all_qty' => $total_all_qty_pakaian
         ];
     }
 
@@ -936,7 +938,9 @@ class MeterController {
         ];
     }
 
-    public function getFinishingJersey() {
+    public function getFinishingJersey() { return $this->getFinishingPakaian(); }
+
+    public function getFinishingPakaian() {
         global $store_id;
 
         $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
@@ -945,7 +949,7 @@ class MeterController {
         $stmt = $this->koneksi->prepare("
             SELECT finishing_id, name 
             FROM finishings 
-            WHERE category_id IN (SELECT category_id FROM categories WHERE name = 'JERSEY')
+            WHERE category_id IN (SELECT category_id FROM categories WHERE UPPER(TRIM(name)) IN ('PAKAIAN', 'JERSEY'))
             AND store_id = ?
             ORDER BY name
         ");

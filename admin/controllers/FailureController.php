@@ -123,7 +123,7 @@ class FailureController{
                     }
                 } elseif ($unit_type == 'PCS') {
                     $hargaSatuan = $failed_price;
-                    if ($type == 'JERSEY') {
+                    if (in_array($type, ['PAKAIAN', 'JERSEY'], true)) {
                         $harga_jersey = 0;
                         if ($size === '5XL') {
                             $harga_jersey += 40000;

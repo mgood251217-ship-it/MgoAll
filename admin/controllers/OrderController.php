@@ -686,7 +686,7 @@ class OrderController {
                 }
             }
 
-            if ($category === 'JERSEY') {
+            if (in_array($category, ['PAKAIAN', 'JERSEY'], true)) {
                 $extra_charge = ['5XL' => 50000, '4XL' => 40000, '3XL' => 30000, '2XL' => 20000, 'XL' => 10000];
                 $unit += $extra_charge[$size] ?? 0;
             }

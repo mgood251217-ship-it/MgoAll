@@ -127,9 +127,10 @@ class ProductVariant {
         $stmt = $this->db->prepare('SELECT oi.quantity, oi.product_variant_data FROM order_items oi JOIN orders o ON o.order_id = oi.order_id AND o.store_id = oi.store_id WHERE oi.store_id = ? AND o.date BETWEEN ? AND ? AND oi.product_variant_data IS NOT NULL');
         $stmt->bind_param('iss', $store, $start, $end); $stmt->execute();
         $totals = []; $result = $stmt->get_result();
+        $categories = $category === null ? null : array_map(function ($name) { return strtoupper(trim($name)); }, (array)$category);
         while ($row = $result->fetch_assoc()) {
             $saved = self::snapshot($row);
-            if ($category !== null && strtoupper(trim($saved['category'])) !== $category) continue;
+            if ($categories !== null && !in_array(strtoupper(trim($saved['category'])), $categories, true)) continue;
             $components = $saved['components'];
             $default = !$components && $includeDefault;
             if ($default) $components = [['name' => $saved['product_name'] . ' - ' . $saved['label'], 'quantity' => 1]];
