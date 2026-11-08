@@ -1,21 +1,12 @@
 {
-  "version": "2.0.8",
-  "min_required_version": "2.0.8",
-  "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.8/MgoDesktop_2.0.8_x64-setup.exe",
-  "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.8/MgoDesktop_2.0.8.apk",
+  "version": "2.0.9",
+  "min_required_version": "2.0.9",
+  "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.9/MgoDesktop_2.0.9_x64-setup.exe",
+  "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.9/MgoDesktop_2.0.9.apk",
   "force_update": false,
   "release_notes": [
-    "📂 feat: Custom Folder DTF UV: Sekarang lokasi folder DTF UV bisa diatur sendiri lewat pengaturan aplikasi.",
-    "📖 update: Update Help Center: Menambahkan beberapa jawaban dan panduan baru supaya lebih mudah mencari informasi saat dibutuhkan.",
-    "📦 feat: Paketan Produk Baru: Sekarang sudah mendukung produk paketan seperti Roll Up, X-Banner, Mini Banner, Frame, dan Tripod.",
-    "🏷️ feat: Hapus Diskon Produk: Menambahkan fitur hapus diskon. Diskon yang sudah terpasang di produk juga ikut dihapus supaya tidak masih muncul.",
-    "🎨 update: Varian Produk Dipisah: Pengaturan kualitas, bahan, pilihan, dan varian lainnya sekarang dipisah supaya lebih gampang dikelola.",
-    "🎁 feat: Promo Beli Gratis: Sekarang bisa membuat promo seperti beli 2 gratis 1 atau promo sejenisnya.",
-    "💰 feat: Harga Bertingkat Otomatis: Harga bisa otomatis lebih murah kalau pesanan melewati jumlah tertentu, baik dalam meter maupun pcs.",
-    "🛠️ fix: Perbaikan Error Instalasi: Memperbaiki masalah aplikasi yang gagal diinstal karena error PowerShell. Sekarang proses instalasi menggunakan native Tauri.",
-    "👕 update: Perhitungan Meteran Jersey: Meteran jersey sekarang dihitung terpisah antara atasan dan celana, sehingga setiap bagian masuk ke perhitungan.",
-    "📏 update: Meteran Produk Paketan Otomatis: Perhitungan meteran untuk Roll Up, X-Banner, Mini Banner, Frame, dan Tripod sekarang otomatis menyesuaikan paket dan jumlah pesanan.",
-    "🖨️ feat: Konversi Otomatis Aneka Cetak: Produk seperti gantungan kunci, pin, ID card, kartu nama, stempel, dan lainnya sekarang otomatis masuk ke perhitungan Print Laser. Contohnya, 40 gantungan kunci dihitung 1 lembar AP150 atau 25 ID card dihitung 2 lembar PVC, dengan pembulatan ke atas sesuai kapasitas bahan.",
-    "📝 update: Update Form Order: Form order sudah disesuaikan dengan fitur baru, mulai dari varian produk, produk paketan, promo, harga bertingkat, sampai perhitungan meteran otomatis."
+    "👕 feat: Custom Path Folder Pakaian: Sekarang lokasi folder pakaian bisa diatur sendiri supaya penyimpanan file lebih rapi dan gampang dicari.",
+    "🏪 feat: Nama Toko di Path Folder: Menambahkan pengaturan untuk menyertakan nama toko secara otomatis di path folder, supaya file dari setiap toko lebih mudah dipisahkan.",
+    "🛠️ fix: Perbaikan Form Pakaian: Memperbaiki pengaturan dan pemilihan varian pada form pakaian supaya lebih mudah digunakan dan sesuai dengan produk yang dipilih."
   ]
 }
