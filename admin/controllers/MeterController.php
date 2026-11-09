@@ -752,7 +752,7 @@ class MeterController {
         $total_panjang_dtf_uv = 0;
 
         $queryStr = "
-            SELECT p.product_id, p.name, c.name AS category_name, oi_filtered.size, oi_filtered.quantity 
+            SELECT p.product_id, p.name, p.unit_type, c.name AS category_name, oi_filtered.size, oi_filtered.quantity
             FROM products p 
             JOIN categories c ON p.category_id = c.category_id
             LEFT JOIN (
@@ -772,15 +772,16 @@ class MeterController {
 
         foreach ($all_data as $row) {
             $name = $row['name'];
-            $name_upper = strtoupper($name);
-            
             $isUV = strtoupper(trim($row['category_name'])) === 'DTF UV';
-            $isA3 = !$isUV && ($name_upper === 'DTF A3' || str_contains($name_upper, 'KAOS'));
-            $isUV_A3 = $isUV && ($name_upper === 'DTF UV A3');
+            $isPcs = strtoupper(trim($row['unit_type'])) === 'PCS';
+            $isA3 = !$isUV && $isPcs;
+            $isUV_A3 = $isUV && $isPcs;
+            $groupKey = $isPcs ? ($isUV ? 'pcs:uv' : 'pcs:dtf') : 'product:' . $row['product_id'];
+            $groupName = $isPcs ? ($isUV ? 'DTF UV PCS' : 'DTF PCS') : $name;
 
-            if (!isset($data_assoc[$name])) {
-                $data_assoc[$name] = [
-                    'name' => $name,
+            if (!isset($data_assoc[$groupKey])) {
+                $data_assoc[$groupKey] = [
+                    'name' => $groupName,
                     'isA3' => $isA3,
                     'isUV' => $isUV,
                     'isUV_A3' => $isUV_A3,
@@ -808,7 +809,7 @@ class MeterController {
                     }
                 }
 
-                $data_assoc[$name]['rows'][] = [
+                $data_assoc[$groupKey]['rows'][] = [
                     'p' => $p, 
                     'qty' => $qty, 
                     'total' => $total_val
@@ -826,8 +827,8 @@ class MeterController {
         return [
             'product_data' => $product_data_dtf,
             'max_rows' => $max_rows_dtf,
-            'total_panjang_dtf' => $total_panjang_dtf,
-            'total_panjang_dtf_uv' => $total_panjang_dtf_uv
+            'total_panjang_dtf' => round($total_panjang_dtf, 2),
+            'total_panjang_dtf_uv' => round($total_panjang_dtf_uv, 2)
         ];
     }
 
