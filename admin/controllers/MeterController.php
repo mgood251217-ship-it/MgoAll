@@ -385,6 +385,7 @@ class MeterController {
 
         foreach ($rows as $row) {
             $qty = (int)$row['total_qty'];
+            if ($qty === 0) continue;
             $product_data_pakaian[] = [
                 'name' => $row['name'],
                 'total_qty' => $qty
@@ -393,6 +394,7 @@ class MeterController {
         }
 
         foreach ($variantModel->productionRows($store_id, $start_date_full, $end_date_full, ['PAKAIAN', 'JERSEY'], true) as $component) {
+            if ((float)$component['total_qty'] === 0.0) continue;
             $product_data_pakaian[] = $component;
             $total_all_qty_pakaian += $component['total_qty'];
         }
@@ -546,6 +548,7 @@ class MeterController {
             }
         }
 
+        $product_data_laser_a3 = array_filter($product_data_laser_a3, function ($qty) { return (float)$qty !== 0.0; });
         foreach ($product_data_laser_a3 as $qty) {
             $total_all_qty_laser += $qty;
         }
@@ -732,6 +735,7 @@ class MeterController {
         $stmt->close();
 
         foreach ($rows as $row) {
+            if ((int)$row['total_qty'] === 0) continue;
             $product_data_mercendise_akrilik[] = [
                 'name' => $row['name'],
                 'total_qty' => (int)$row['total_qty']
@@ -862,6 +866,7 @@ class MeterController {
 
         $product_data_cetakan = [];
         foreach ($rows as $row) {
+            if ((int)$row['total_qty'] === 0) continue;
             $product_data_cetakan[] = [
                 'name' => $row['name'],
                 'total_qty' => (int)$row['total_qty']
@@ -997,6 +1002,7 @@ class MeterController {
         foreach ($finishings as $fin) {
             $fid = $fin['finishing_id'];
             $qty = $finishing_totals[$fid];
+            if ($qty === 0) continue;
             $result[] = [
                 'name' => $fin['name'],
                 'total_qty' => $qty
