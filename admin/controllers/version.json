@@ -1,12 +1,10 @@
 {
-  "version": "2.0.9",
-  "min_required_version": "2.0.9",
-  "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.9/MgoDesktop_2.0.9_x64-setup.exe",
-  "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.0.9/MgoDesktop_2.0.9.apk",
+  "version": "2.1.0",
+  "min_required_version": "2.1.0",
+  "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.1.0/MgoDesktop_2.1.0_x64-setup.exe",
+  "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.1.0/MgoDesktop_2.1.0.apk",
   "force_update": false,
   "release_notes": [
-    "👕 feat: Custom Path Folder Pakaian: Sekarang lokasi folder pakaian bisa diatur sendiri supaya penyimpanan file lebih rapi dan gampang dicari.",
-    "🏪 feat: Nama Toko di Path Folder: Menambahkan pengaturan untuk menyertakan nama toko secara otomatis di path folder, supaya file dari setiap toko lebih mudah dipisahkan.",
-    "🛠️ fix: Perbaikan Form Pakaian: Memperbaiki pengaturan dan pemilihan varian pada form pakaian supaya lebih mudah digunakan dan sesuai dengan produk yang dipilih."
+    "🧾 fix: Perbaikan Harga Nota: Memperbaiki perhitungan jumlah harga product untuk paketan dan juga variant pada nota supaya jumlah pembayaran tampil dengan benar dan sesuai pesanan."
   ]
 }
