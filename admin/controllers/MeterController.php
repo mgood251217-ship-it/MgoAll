@@ -841,17 +841,20 @@ class MeterController {
         $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
         $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
 
+        $variantModel = new ProductVariant($this->koneksi);
+        $legacyOnly = $variantModel->isAvailable() ? ' AND oi.product_variant_data IS NULL' : '';
+
         $query = "
             SELECT p.name, COALESCE(SUM(oi_filtered.quantity), 0) AS total_qty
             FROM products p
-            JOIN categories c ON p.category_id = c.category_id
+            JOIN categories c ON p.category_id = c.category_id AND c.store_id = p.store_id
             LEFT JOIN (
                 SELECT oi.product_id, oi.quantity
                 FROM order_items oi
-                JOIN orders o ON oi.order_id = o.order_id
-                WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
+                JOIN orders o ON oi.order_id = o.order_id AND oi.store_id = o.store_id
+                WHERE o.store_id = ? AND o.date BETWEEN ? AND ? $legacyOnly
             ) oi_filtered ON p.product_id = oi_filtered.product_id
-            WHERE c.name = 'CETAKAN' AND p.store_id = ?
+            WHERE UPPER(TRIM(c.name)) = 'CETAKAN' AND p.store_id = ?
             GROUP BY p.product_id, p.name
             ORDER BY p.name ASC
         ";
@@ -863,15 +866,23 @@ class MeterController {
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
-        $product_data_cetakan = [];
+        $totals = [];
         foreach ($rows as $row) {
-            if ((int)$row['total_qty'] === 0) continue;
-            $product_data_cetakan[] = [
-                'name' => $row['name'],
-                'total_qty' => (int)$row['total_qty']
-            ];
+            if ((float)$row['total_qty'] === 0.0) continue;
+            $totals[$row['name']] = ($totals[$row['name']] ?? 0) + (float)$row['total_qty'];
         }
-
+        // Nota menyimpan komponen saat dibuat; varian lama tanpa komponen memakai nama + label.
+        foreach ($variantModel->productionRows($store_id, $start_date_full, $end_date_full, ['CETAKAN'], true) as $component) {
+            $name = $component['name'];
+            $totals[$name] = ($totals[$name] ?? 0) + (float)$component['total_qty'];
+        }
+        ksort($totals, SORT_NATURAL | SORT_FLAG_CASE);
+        $product_data_cetakan = [];
+        foreach ($totals as $name => $quantity) {
+            $quantity = round($quantity, 4);
+            if ($quantity == 0) continue;
+            $product_data_cetakan[] = ['name' => $name, 'total_qty' => $quantity];
+        }
         return $product_data_cetakan;
     }
 
