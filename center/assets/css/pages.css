@@ -369,7 +369,10 @@ a {
   border-radius: var(--radius-md);
   cursor: pointer;
   vertical-align: middle;
+  text-decoration: none;
 }
+.btn-action:hover,
+.btn-action:focus-visible { text-decoration: none; }
 .btn-action + .btn-action {
   margin-left: var(--space-1);
 }

@@ -201,6 +201,12 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                                     data-unit-type="<?= htmlspecialchars($row['unit_type'] ?? '~') ?>">
                                     <i class="fas fa-pen"></i>
                                 </button>
+                                <a <?= !$canProductAction('save_product_variant') ? 'hidden data-center-access="denied"' : '' ?>
+                                    class="btn-action btn-kelola btn-open"
+                                    href="/product-variants?store_id=<?= (int)$data['current_store_id'] ?>&amp;category_id=<?= (int)$row['category_id'] ?>&amp;product_id=<?= (int)$row['product_id'] ?>"
+                                    title="Edit varian <?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>">
+                                    <i class="fas fa-layer-group me-1" aria-hidden="true"></i> Edit Varian
+                                </a>
                                 <button <?= !$canProductAction('delete_product') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-danger" onclick="deleteData('product', <?= $row['product_id'] ?>)">
                                     <i class="fas fa-trash"></i>
                                 </button>
