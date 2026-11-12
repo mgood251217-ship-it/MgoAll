@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../admin/models/Activity.php';
 class FinanceController {
     private $koneksi;
 
@@ -343,13 +344,9 @@ class FinanceController {
             $store_id = $res['store_id'];
             $date_finance = $res['exec_date'];
 
-            $title = "HAPUS PENGELUARAN";
-            $message = "HAPUS PENGELUARAN " . $res['information'] . " SEBESAR " . $res['nominal'];
-            
-            $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmtAct->bind_param("issssii", $store_id, $title, $message, $keterangan_hapus, $date_now, $order_id, $administrator_id);
-            $stmtAct->execute();
-            $stmtAct->close();
+            (new Activity($this->koneksi))->record($store_id, 'EXPENDITURE_DELETE', [
+                'expenditure_id' => $expenditure_id, 'information' => $res['information'], 'nominal' => $res['nominal'],
+            ], $keterangan_hapus, $date_now, $order_id, $administrator_id);
 
             $stmtDel = $this->koneksi->prepare("DELETE FROM expenditures WHERE expenditure_id = ?");
             $stmtDel->bind_param("i", $expenditure_id);
@@ -419,23 +416,10 @@ class FinanceController {
             $old_date = $res['old_date'];
             $new_date_only = substr($datetime, 0, 10);
             
-            $messageLog = "";
-            if ($res['nominal'] != $nominal || $res['information'] != $information || $res['date'] != $datetime) {
-                $messageLog = "UBAH PENGELUARAN DARI:\nNOMINAL: " . $res['nominal'] . " => " . $nominal . "\nINFO: " . $res['information'] . " => " . $information . "\nTANGGAL: " . $res['date'] . " => " . $datetime;
-            }
-
-            if ((int)($res['expenditure_category_id'] ?? 0) !== $category_id) {
-                if ($messageLog === "") $messageLog = "UBAH PENGELUARAN DARI:";
-                $messageLog .= "\nID KATEGORI: " . ($res['expenditure_category_id'] ?? 0) . " => " . $category_id;
-            }
-
-            if ($messageLog != "") {
-                $title = "UBAH PENGELUARAN";
-                $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                $stmtAct->bind_param("issssii", $store_id, $title, $messageLog, $keterangan, $date_now, $order_id, $administrator_id);
-                $stmtAct->execute();
-                $stmtAct->close();
-            }
+            $changes = Activity::changes($res, ['nominal' => $nominal, 'information' => $information, 'date' => $datetime, 'expenditure_category_id' => $category_id]);
+            if ($changes) (new Activity($this->koneksi))->record($store_id, 'EXPENDITURE_UPDATE', [
+                'expenditure_id' => $expenditure_id, 'changes' => $changes,
+            ], $keterangan, $date_now, $order_id, $administrator_id);
 
             $stmtUpd = $this->koneksi->prepare("UPDATE expenditures SET nominal = ?, information = ?, date = ?, expenditure_category_id = ? WHERE expenditure_id = ?");
             $stmtUpd->bind_param("dssii", $nominal, $information, $datetime, $category_id, $expenditure_id);
@@ -492,13 +476,9 @@ class FinanceController {
             $store_id = $res['store_id'];
             $date_finance = $res['exec_date'];
 
-            $title = "HAPUS PEMASUKAN";
-            $message = "HAPUS PEMASUKAN " . $res['information'] . " SEBESAR " . $res['nominal'];
-            
-            $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmtAct->bind_param("issssii", $store_id, $title, $message, $keterangan_hapus, $date_now, $order_id, $administrator_id);
-            $stmtAct->execute();
-            $stmtAct->close();
+            (new Activity($this->koneksi))->record($store_id, 'INCOME_DELETE', [
+                'income_id' => $income_id, 'information' => $res['information'], 'nominal' => $res['nominal'],
+            ], $keterangan_hapus, $date_now, $order_id, $administrator_id);
 
             $stmtDel = $this->koneksi->prepare("DELETE FROM income WHERE income_id = ?");
             $stmtDel->bind_param("i", $income_id);
@@ -558,18 +538,10 @@ class FinanceController {
             $old_date = $res['old_date'];
             $new_date_only = substr($datetime, 0, 10);
 
-            $messageLog = "";
-            if ($res['nominal'] != $nominal || $res['information'] != $information || $res['date'] != $datetime) {
-                $messageLog = "UBAH PEMASUKAN DARI:\nNOMINAL: " . $res['nominal'] . " => " . $nominal . "\nINFO: " . $res['information'] . " => " . $information . "\nTANGGAL: " . $res['date'] . " => " . $datetime;
-            }
-
-            if ($messageLog != "") {
-                $title = "UBAH PEMASUKAN";
-                $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                $stmtAct->bind_param("issssii", $store_id, $title, $messageLog, $keterangan, $date_now, $order_id, $administrator_id);
-                $stmtAct->execute();
-                $stmtAct->close();
-            }
+            $changes = Activity::changes($res, ['nominal' => $nominal, 'information' => $information, 'date' => $datetime]);
+            if ($changes) (new Activity($this->koneksi))->record($store_id, 'INCOME_UPDATE', [
+                'income_id' => $income_id, 'changes' => $changes,
+            ], $keterangan, $date_now, $order_id, $administrator_id);
 
             $stmtUpd = $this->koneksi->prepare("UPDATE income SET nominal = ?, information = ?, date = ? WHERE income_id = ?");
             $stmtUpd->bind_param("issi", $nominal, $information, $datetime, $income_id);

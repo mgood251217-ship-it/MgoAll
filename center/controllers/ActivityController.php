@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/ProductHistoryController.php';
+require_once __DIR__ . '/../../admin/models/Activity.php';
 
 class ActivityController {
     private $db;
@@ -80,6 +81,7 @@ class ActivityController {
                         LEFT JOIN administrator a ON a.administrator_id = r.administrator_id
                         LEFT JOIN orders o ON o.order_id = r.order_id AND o.store_id = r.store_id
                         WHERE r.store_id = ? AND r.activity_id IN ($placeholders)", array_merge([$store], $ids));
+                    $activities = (new Activity($this->db))->describe($activities);
                     foreach ($activities as $activity) $records['activity:' . $activity['activity_id']] = $activity;
                     continue;
                 }

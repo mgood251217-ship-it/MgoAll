@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../admin/models/Activity.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../functions/cacheHelper.php';
 require_once 'FinanceController.php';
@@ -241,7 +242,7 @@ class PaymentController {
             $payment = $this->paymentForChange($payment_id, $store_id, $order_id, $administrator_id);
             $store_id = (int)$payment['store_id'];
             $order_id = (int)$payment['order_id'];
-            $stmtOrder = $this->koneksi->prepare("SELECT customer_name, nomorator FROM orders WHERE order_id = ? AND store_id = ? FOR UPDATE");
+            $stmtOrder = $this->koneksi->prepare("SELECT order_id FROM orders WHERE order_id = ? AND store_id = ? FOR UPDATE");
             $stmtOrder->bind_param("ii", $order_id, $store_id);
             $stmtOrder->execute();
             $order = $stmtOrder->get_result()->fetch_assoc();
@@ -249,14 +250,10 @@ class PaymentController {
 
             if (!$order) throw new Exception("Order tidak ditemukan.");
 
-            $title = "HAPUS PEMBAYARAN";
-            $message = "HAPUS PEMBAYARAN UNTUK ORDERAN DENGAN NAMA " . $order['customer_name'] . " NOMORATOR " . $order['nomorator'];
-
-
-            $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmtAct->bind_param("issssii", $store_id, $title, $message, $keterangan, $date, $order_id, $administrator_id);
-            $stmtAct->execute();
-            $stmtAct->close();
+            (new Activity($this->koneksi))->record($store_id, 'PAYMENT_DELETE', [
+                'payment_id' => $payment_id,
+                'nominal' => $payment['nominal'], 'payment_method' => $payment['payment_method'], 'date' => $payment['date'],
+            ], $keterangan, $date, $order_id, $administrator_id);
 
             $stmtDel = $this->koneksi->prepare("DELETE FROM payment WHERE payment_id = ?");
             $stmtDel->bind_param("i", $payment_id);
@@ -312,8 +309,6 @@ class PaymentController {
         $tanggal = str_replace('T', ' ', $tanggal);
         if (strlen($tanggal) == 16) $tanggal .= ':00'; 
 
-        $title = "UBAH PEMBAYARAN";
-        $messageLog = "";
 
 
         $this->koneksi->begin_transaction();
@@ -322,7 +317,7 @@ class PaymentController {
             $payment = $this->paymentForChange($payment_id, $store_id, $order_id, $administrator_id);
             $store_id = (int)$payment['store_id'];
             $order_id = (int)$payment['order_id'];
-            $stmtOrder = $this->koneksi->prepare("SELECT customer_name, nomorator, total FROM orders WHERE order_id = ? AND store_id = ? FOR UPDATE");
+            $stmtOrder = $this->koneksi->prepare("SELECT order_id, total FROM orders WHERE order_id = ? AND store_id = ? FOR UPDATE");
             $stmtOrder->bind_param("ii", $order_id, $store_id);
             $stmtOrder->execute();
             $order = $stmtOrder->get_result()->fetch_assoc();
@@ -332,53 +327,10 @@ class PaymentController {
 
             $parsedDate = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $tanggal);
             if (!$parsedDate || $parsedDate->format('Y-m-d H:i:s') !== $tanggal) throw new Exception('Tanggal pembayaran tidak valid.');
-            $tanggalcek = $tanggal;
-
-            $paymentNominal = $payment['nominal'] ?? '';
-            $paymentPaymentmethod = $payment['payment_method'] ?? '';
-            $paymentDate = $payment['date'];
-
-            if ($method != $paymentPaymentmethod && $paymentNominal != $nominal && $paymentDate != $tanggalcek) {
-                $messageLog = "UBAH METODE PEMBAYARAN, NOMINAL, DAN TANGGAL BAYAR DARI: \n"
-                            . $paymentNominal . " => ". $nominal . "\n"
-                            . $paymentPaymentmethod . " => ". $method . "\n"
-                            . $paymentDate . " => ". $tanggalcek . "\n"
-                            . "NAMA ". $order['customer_name'] . " NOMORATOR " . $order['nomorator'];
-            } elseif ($method != $paymentPaymentmethod && $paymentNominal != $nominal) {
-                $messageLog = "UBAH METODE PEMBAYARAN DAN NOMINAL DARI: \n"
-                            . $paymentNominal . " => ". $nominal . "\n"
-                            . $paymentPaymentmethod . " => ". $method . "\n"
-                            . "NAMA ". $order['customer_name'] . " NOMORATOR " . $order['nomorator'];
-            } elseif ($paymentNominal != $nominal && $paymentDate != $tanggalcek) {
-                $messageLog = "UBAH NOMINAL, DAN TANGGAL BAYAR DARI: \n"
-                            . $paymentNominal . " => ". $nominal . "\n"
-                            . $paymentDate . " => ". $tanggalcek . "\n"
-                            . "NAMA ". $order['customer_name'] . " NOMORATOR " . $order['nomorator'];
-            } elseif ($method != $paymentPaymentmethod && $paymentDate != $tanggalcek) {
-                $messageLog = "UBAH METODE PEMBAYARAN, DAN TANGGAL BAYAR DARI: \n"
-                            . $paymentPaymentmethod . " => ". $method . "\n"
-                            . $paymentDate . " => ". $tanggalcek . "\n"
-                            . "NAMA ". $order['customer_name'] . " NOMORATOR " . $order['nomorator'];
-            } elseif ($method != $paymentPaymentmethod) {
-                $messageLog = "UBAH METODE PEMBAYARAN DARI: \n"
-                            . $paymentPaymentmethod . " => ". $method . "\n"
-                            . "NAMA ". $order['customer_name'] . " NOMORATOR " . $order['nomorator'];
-            } elseif ($paymentNominal != $nominal) {
-                $messageLog = "UBAH NOMINAL DARI: \n"
-                            . $paymentNominal . " => ". $nominal . "\n"
-                            . "NAMA ". $order['customer_name'] . " NOMORATOR " . $order['nomorator'];
-            } elseif ($paymentDate != $tanggalcek) {
-                $messageLog = "UBAH TANGGAL BAYAR DARI: \n"
-                            . $paymentDate . " => ". $tanggalcek . "\n"
-                            . "NAMA ". $order['customer_name'] . " NOMORATOR " . $order['nomorator'];
-            }
-
-            if ($messageLog != "") {
-                $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                $stmtAct->bind_param("issssii", $store_id, $title, $messageLog, $keterangan, $date, $order_id, $administrator_id);
-                $stmtAct->execute();
-                $stmtAct->close();
-            }
+            $changes = Activity::changes($payment, ['nominal' => $nominal, 'payment_method' => $method, 'date' => $tanggal]);
+            if ($changes) (new Activity($this->koneksi))->record($store_id, 'PAYMENT_UPDATE', [
+                'payment_id' => $payment_id, 'changes' => $changes,
+            ], $keterangan, $date, $order_id, $administrator_id);
 
             $stmtUpd = $this->koneksi->prepare("UPDATE payment SET nominal = ?, payment_method = ?, date = ? WHERE payment_id = ?");
             $stmtUpd->bind_param("issi", $nominal, $method, $tanggal, $payment_id);

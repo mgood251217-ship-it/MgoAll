@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../admin/models/Activity.php';
 require_once __DIR__ . '/../../admin/models/ProductFinishingPrice.php';
 require_once __DIR__ . '/../../admin/models/ProductPriceTier.php';
 require_once __DIR__ . '/../../admin/models/ProductLaserConversion.php';
@@ -222,14 +223,7 @@ class OrderController {
             $this->koneksi->query("DELETE FROM note_orders WHERE order_id = $order_id");
             $this->koneksi->query("DELETE FROM diskon_order_items WHERE order_id = $order_id");
 
-            $title = "HAPUS ORDER";
-            $message = "HAPUS ORDERAN DENGAN NAMA " . $order['customer_name'] . " NOMORATOR " . $order['nomorator'];
-
-            
-            $stmt = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("issssii", $order['store_id'], $title, $message, $keterangan, $date, $order_id, $administrator_id);
-            $stmt->execute();
-            $stmt->close();
+            (new Activity($this->koneksi))->record($order['store_id'], 'ORDER_DELETE', [], $keterangan, $date, $order_id, $administrator_id);
 
             $stmt = $this->koneksi->prepare("INSERT INTO deleted_orders (order_id, store_id, nomorator, nomor, customer_name, total, deadline, user_id, system, date, deleted_by, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->bind_param("iisssisissis", $order['order_id'], $order['store_id'], $order['nomorator'], $order['nomor'], $order['customer_name'], $order['total'], $order['deadline'], $order['user_id'], $order['system'], $order['date'], $administrator_id, $date);
