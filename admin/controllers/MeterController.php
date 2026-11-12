@@ -3,7 +3,6 @@ require_once __DIR__ . '/../models/Order.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/Project.php';
 require_once __DIR__ . '/../models/Product.php';
-require_once __DIR__ . '/../models/Activity.php';
 require_once __DIR__ . '/../models/Payment.php';
 require_once __DIR__ . '/../models/ProductLaserConversion.php';
 require_once __DIR__ . '/../models/ProductVariant.php';

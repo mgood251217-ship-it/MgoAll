@@ -7,7 +7,6 @@ require_once __DIR__ . '/../models/Order.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/Project.php';
 require_once __DIR__ . '/../models/Product.php';
-require_once __DIR__ . '/../models/Activity.php';
 require_once __DIR__ . '/../models/Payment.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../functions/cacheHelpers.php';
@@ -20,7 +19,6 @@ class OrderController {
     private $projectModel;
     private $productModel;
     private $paymentModel;
-    private $activityModel;
 
     public function __construct($koneksi) {
         $this->koneksi = $koneksi;
@@ -30,7 +28,6 @@ class OrderController {
         $this->projectModel = new Project($koneksi);
         $this->productModel = new Product($koneksi);
         $this->paymentModel = new Payment($koneksi);
-        $this->activityModel = new Activity($koneksi);
     }
 
     private function requestData() {
@@ -293,60 +290,6 @@ class OrderController {
         }
     }
 
-    public function delete() {
-        header('Content-Type: application/json');
-        global $store_id;
-
-        if (!isset($_POST['order_id']) || !isset($_SESSION['admin_logged_in'])) {
-            send_json_response(false, 'Akses ditolak atau data tidak valid.');
-            exit;
-        }
-
-        $administrator_id = startEnk('dek', $_SESSION['admin_logged_in']['administrator_id']);
-        $order_id = (int) $_POST['order_id'];
-        $keterangan = isset($_POST['keterangan_hapus']) ? trim($_POST['keterangan_hapus']) : '';
-        $date = date("Y-m-d H:i:s");
-
-        $this->koneksi->begin_transaction();
-
-        try {
-            $order = $this->orderModel->getOrderById($order_id);
-            if (!$order) throw new Exception("Order tidak ditemukan");
-
-            $this->paymentModel->deletePaymentByOrderId($order_id);
-            $this->projectModel->deleteProjectByOrderId($order_id);
-            $this->orderModel->deleteOrderDependencies($order_id);
-
-            $this->logActivity($order['store_id'], $order_id, $order['customer_name'], $order['nomorator'], $keterangan, $administrator_id);
-            $this->orderModel->archiveOrder($order, $administrator_id, $date);
-            $this->orderModel->archiveOrderItems($order_id);
-            $this->orderModel->deleteOrderAndItems($order_id);
-            $this->koneksi->commit();
-            $financeController = new FinanceController($this->koneksi);
-            $financeController->refreshFinance($order['store_id'], date('Y-m-d', strtotime($order['date'])));
-            updateStoreCache($store_id, 'orders');
-            send_json_response(true, 'Order berhasil dihapus');
-
-        } catch (Exception $e) {
-            $this->koneksi->rollback();
-            send_json_response(false, $e->getMessage());
-        }
-        exit;
-    }
-
-    private function logActivity($store_id, $order_id, $customer_name, $nomorator, $keterangan, $administrator_id) {
-        $data = new stdClass();
-        $data->store_id = $store_id;
-        $data->title = "HAPUS ORDER";
-        $data->message = "HAPUS ORDERAN DENGAN NAMA " . $customer_name . " NOMORATOR " . $nomorator;
-        $data->information = $keterangan;
-        $data->date = date("Y-m-d H:i:s");
-        $data->order_id = $order_id;
-        $data->done = 0;
-        $data->administrator_id = $administrator_id;
-        updateStoreCache($store_id, 'activities');
-        return $this->activityModel->createActivity($data);
-    }
     public function createNote() {
         global $store_id;
         $note_for = 'CTM';

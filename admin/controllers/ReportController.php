@@ -1,11 +1,9 @@
 <?php
 require_once __DIR__ . '/../models/Order.php';
 require_once __DIR__ . '/../models/User.php';
-require_once __DIR__ . '/../models/Project.php';
 require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/../models/Activity.php';
 require_once __DIR__ . '/../models/Finance.php';
-require_once __DIR__ . '/../models/Payment.php';
 
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 
@@ -15,9 +13,7 @@ class ReportController {
     private $koneksi;
     private $orderModel;
     private $userModel;
-    private $projectModel;
     private $productModel;
-    private $paymentModel;
     private $activityModel;
     private $financeModel;
     private $authMiddleware;
@@ -26,9 +22,7 @@ class ReportController {
         $this->koneksi = $koneksi;
         $this->orderModel = new Order($koneksi);
         $this->userModel = new User($koneksi);
-        $this->projectModel = new Project($koneksi);
         $this->productModel = new Product($koneksi);
-        $this->paymentModel = new Payment($koneksi);
         $this->activityModel = new Activity($koneksi);
         $this->financeModel = new Finance($koneksi);
         $this->authMiddleware = new AuthMiddleware($koneksi);
