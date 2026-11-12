@@ -128,7 +128,13 @@ class ProductPriceTier {
         $saved = self::snapshot($row);
         $data = $saved ?? ['rules' => [], 'measure' => self::measure($target), 'factor' => 1,
             'discount' => $discount, 'stock' => $this->legacyStock($row)];
-        if (!$saved && in_array($data['measure'], ['m2', 'cm2'], true) && preg_match('/^([\d.]+)x([\d.]+)$/i', $row['size'], $size)) $data['factor'] = round((float)$size[1] * (float)$size[2], 8);
+        // Migrasi mengikuti satuan tujuan; nominal pada nota tetap dipertahankan.
+        $targetMeasure = self::measure($target);
+        if (!$saved || ($data['measure'] ?? null) !== $targetMeasure) {
+            $data['measure'] = $targetMeasure;
+            $data['factor'] = 1;
+            if (in_array($targetMeasure, ['m2', 'cm2'], true) && preg_match('/^([\d.]+)x([\d.]+)$/i', $row['size'], $size)) $data['factor'] = round((float)$size[1] * (float)$size[2], 8);
+        }
         $data['variant'] = (int)$variant['id'];
         unset($data['variant_tiers']);
         $data['normal'] = (float)$row['unit'];
@@ -136,11 +142,10 @@ class ProductPriceTier {
         $sources = $data['migration_product_ids'] ?? [];
         $sources[] = (int)$row['product_id'];
         $data['migration_product_ids'] = array_values(array_unique($sources));
-        $sourceFactor = $data['stock']['products'][$row['product_id']] ?? null;
         unset($data['stock']['products'][$row['product_id']]);
         if ($target['unit_type'] !== '~') {
             $targetRow = array_replace($row, ['product_id' => (int)$target['product_id']]);
-            $data['stock']['products'][(int)$target['product_id']] = $sourceFactor ?? ($this->legacyStock($targetRow)['products'][$target['product_id']] ?? 1);
+            $data['stock']['products'][(int)$target['product_id']] = $this->legacyStock($targetRow)['products'][$target['product_id']] ?? 1;
         }
         return $data;
     }

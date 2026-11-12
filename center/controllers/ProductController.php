@@ -426,13 +426,7 @@ class ProductController {
             foreach ($variants as $v) if ((int)$v['id'] === $variantId) $variant = $v;
             if (($variants && !$variant) || ($variantId && !$variant)) throw new InvalidArgumentException('Pilih varian yang tersedia pada produk tujuan. Muat ulang jika pilihan sudah berubah.');
             $pricing = new ProductPriceTier($this->koneksi);
-            if ($variant) {
-                if (!$pricing->isAvailable()) throw new InvalidArgumentException('Pengaturan harga varian belum tersedia.');
-                foreach ($sourceIds as $sourceId) {
-                    $sourceUnit = strtoupper($products[$sourceId]['unit_type']); $targetUnit = strtoupper($target['unit_type']);
-                    if ($sourceUnit !== $targetUnit && !(in_array($sourceUnit, ['PCS', '~'], true) && in_array($targetUnit, ['PCS', '~'], true))) throw new InvalidArgumentException('Satuan produk sumber dan tujuan harus sesuai untuk migrasi varian.');
-                }
-            }
+            if ($variant && !$pricing->isAvailable()) throw new InvalidArgumentException('Pengaturan harga varian belum tersedia.');
 
             // Kunci nota bersama itemnya; migrasi tidak menjalankan perhitungan ulang harga/stok.
             $placeholders = implode(',', array_fill(0, count($sourceIds), '?'));
