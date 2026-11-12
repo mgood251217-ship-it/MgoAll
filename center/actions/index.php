@@ -9,8 +9,14 @@ if (empty($action)) {
 }
 
 require_once __DIR__ . '/../config/connect.php';
+require_once __DIR__ . '/../controllers/AdministratorAccessController.php';
+$administratorAccess = new AdministratorAccessController($koneksi);
+$administratorAccess->enforce($action, $_POST);
 
 switch ($action) {
+    case 'save_administrator_access':
+        $administratorAccess->save();
+        break;
     case 'login':
     case 'logout':
         require_once __DIR__ . '/../controllers/AuthController.php';

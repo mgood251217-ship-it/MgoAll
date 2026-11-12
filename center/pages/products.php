@@ -14,6 +14,12 @@ require_once __DIR__ . '/../controllers/ProductController.php';
 
 $access = isset($_SESSION['admin_logged_in']['access']) ? startEnk('dek', $_SESSION['admin_logged_in']['access']) : '';
 
+require_once __DIR__ . '/../controllers/AdministratorAccessController.php';
+$administratorAccess = new AdministratorAccessController($koneksi);
+$canProductAction = function ($action) use ($administratorAccess) {
+    foreach ($administratorAccess->requiredFor($action, []) as $permission) if (!$administratorAccess->can($permission)) return false;
+    return true;
+};
 $controller = new ProductController($koneksi);
 $data = $controller->getIndexData($access);
 $_SESSION['category_csrf'] = $_SESSION['category_csrf'] ?? bin2hex(random_bytes(32));
@@ -38,11 +44,12 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
 
 
 
+<style>[data-center-access="denied"] { display: none !important; }</style>
 <div class="page-header">
     <h2>Data Produk & Finishing</h2>
     <div class="migrated-style-88">
         <?php if ($data['current_store_id']): ?>
-            <form method="post" action="/action?action=refresh_product_cache" style="display:inline-flex" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = 'Memperbarui...';">
+            <form <?= !$canProductAction('refresh_product_cache') ? 'hidden data-center-access="denied"' : '' ?> method="post" action="/action?action=refresh_product_cache" style="display:inline-flex" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = 'Memperbarui...';">
                 <input type="hidden" name="store_id" value="<?= (int)$data['current_store_id'] ?>">
                 <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['product_cache_csrf'], ENT_QUOTES, 'UTF-8') ?>">
                 <?= $returnInputs ?>
@@ -53,13 +60,13 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
             <a class="btn-primary-custom" href="/product-variants?store_id=<?= (int)$data['current_store_id'] ?>&amp;category_id=<?= (int)$data['current_category_id'] ?>">Varian Produk</a>
             <a class="btn-primary-custom" href="/package-prices?store_id=<?= (int)$data['current_store_id'] ?>">Harga Paket</a>
             <a class="btn-primary-custom" href="/laser-conversions?store_id=<?= (int)$data['current_store_id'] ?>">Konversi Print Laser</a>
-            <button class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalTambahKategori">
+            <button <?= !$canProductAction('add_category') ? 'hidden data-center-access="denied"' : '' ?> class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalTambahKategori">
                 <i class="fas fa-tags"></i> Tambah Kategori
             </button>
-            <button class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalTambahProduk">
+            <button <?= !$canProductAction('add_product') ? 'hidden data-center-access="denied"' : '' ?> class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalTambahProduk">
                 <i class="fas fa-box"></i> Tambah Produk
             </button>
-            <button class="btn-success-custom" data-bs-toggle="modal" data-bs-target="#modalTambahFinishing">
+            <button <?= !$canProductAction('add_finishing') ? 'hidden data-center-access="denied"' : '' ?> class="btn-success-custom" data-bs-toggle="modal" data-bs-target="#modalTambahFinishing">
                 <i class="fas fa-layer-group"></i> Tambah Finishing
             </button>
         <?php endif; ?>
@@ -132,10 +139,10 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                     <?php endforeach; ?>
                 </select>
             </div>
-            <button id="bulkUpdateCategory" type="submit" class="btn-primary-custom" disabled>Ganti Kategori</button>
-            <button id="bulkMigrateProducts" type="button" class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#migrateProductModal" disabled>Migrasi Terpilih</button>
-            <button id="bulkCopyProducts" type="button" class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#copyProductsModal" disabled>Salin ke Cabang</button>
-            <button id="bulkDeleteProducts" type="submit" class="btn btn-danger" formaction="/action?action=bulk_delete_products" formnovalidate disabled>Hapus Terpilih</button>
+            <button <?= !$canProductAction('edit_product') ? 'hidden data-center-access="denied"' : '' ?> id="bulkUpdateCategory" type="submit" class="btn-primary-custom" disabled>Ganti Kategori</button>
+            <button <?= !$canProductAction('migrate_product') ? 'hidden data-center-access="denied"' : '' ?> id="bulkMigrateProducts" type="button" class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#migrateProductModal" disabled>Migrasi Terpilih</button>
+            <button <?= !$canProductAction('copy_products') ? 'hidden data-center-access="denied"' : '' ?> id="bulkCopyProducts" type="button" class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#copyProductsModal" disabled>Salin ke Cabang</button>
+            <button <?= !$canProductAction('delete_product') ? 'hidden data-center-access="denied"' : '' ?> id="bulkDeleteProducts" type="submit" class="btn btn-danger" formaction="/action?action=bulk_delete_products" formnovalidate disabled>Hapus Terpilih</button>
             <small id="bulkProductSelectionCount" aria-live="polite">0 produk dipilih pada halaman ini.</small>
         </form>
     <?php endif; ?>
@@ -181,7 +188,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                             <td><?= number_format($row['variant_count'] ?? 0, 0, ',', '.') ?></td>
                             <td><?= number_format($row['order_item_count'] ?? 0, 0, ',', '.') ?></td>
                             <td class="migrated-style-9">
-                                <button type="button" class="btn-action btn-warning me-1"
+                                <button <?= !$canProductAction('edit_product') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-warning me-1"
                                     data-bs-toggle="modal" 
                                     data-bs-target="#modalEditProduk"
                                     data-id="<?= $row['product_id'] ?>"
@@ -194,17 +201,17 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                                     data-unit-type="<?= htmlspecialchars($row['unit_type'] ?? '~') ?>">
                                     <i class="fas fa-pen"></i>
                                 </button>
-                                <button type="button" class="btn-action btn-danger" onclick="deleteData('product', <?= $row['product_id'] ?>)">
+                                <button <?= !$canProductAction('delete_product') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-danger" onclick="deleteData('product', <?= $row['product_id'] ?>)">
                                     <i class="fas fa-trash"></i>
                                 </button>
-                                <button type="button" class="btn-action btn-kelola btn-open" data-bs-toggle="modal" data-bs-target="#migrateProductModal"
+                                <button <?= !$canProductAction('migrate_product') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-kelola btn-open" data-bs-toggle="modal" data-bs-target="#migrateProductModal"
                                     data-id="<?= (int)$row['product_id'] ?>" data-category="<?= htmlspecialchars((string)($row['category_id'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
                                     data-name="<?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>" data-count="<?= (int)$row['order_item_count'] ?>"
                                     data-price="<?= htmlspecialchars((string)($row['price'] ?? 0), ENT_QUOTES, 'UTF-8') ?>"
                                     <?= empty($row['order_item_count']) ? 'disabled' : '' ?>>
                                     Migrasi
                                 </button>
-                                <button type="button" class="btn-action btn-kelola btn-open" data-bs-toggle="modal" data-bs-target="#copyProductsModal"
+                                <button <?= !$canProductAction('copy_products') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-kelola btn-open" data-bs-toggle="modal" data-bs-target="#copyProductsModal"
                                     data-id="<?= (int)$row['product_id'] ?>" data-name="<?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>" title="Salin produk beserta varian ke cabang lain">Salin</button>
                             </td>
                         </tr>
@@ -300,7 +307,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                             <td>Rp <?= number_format($row['price'] ?? 0, 0, ',', '.') ?></td>
                             <td><?= number_format($row['stock'] ?? 0, 0, ',', '.') ?></td>
                             <td class="migrated-style-9">
-                                <button type="button" class="btn-action btn-warning me-1"
+                                <button <?= !$canProductAction('edit_finishing') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-warning me-1"
                                     data-bs-toggle="modal" 
                                     data-bs-target="#modalEditFinishing"
                                     data-id="<?= $row['finishing_id'] ?>"
@@ -313,7 +320,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                                     data-unit-type="<?= htmlspecialchars($row['unit_type'] ?? '~') ?>">
                                     <i class="fas fa-pen"></i>
                                 </button>
-                                <button type="button" class="btn-action btn-danger" onclick="deleteData('finishing', <?= $row['finishing_id'] ?>)">
+                                <button <?= !$canProductAction('delete_finishing') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-danger" onclick="deleteData('finishing', <?= $row['finishing_id'] ?>)">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </td>
@@ -362,7 +369,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                             <td class="migrated-style-9">
                                 <a class="btn btn-sm btn-primary" href="<?= htmlspecialchars($categoryUrl, ENT_QUOTES, 'UTF-8') ?>">Lihat Produk</a>
                                 <?php $canDeleteCategory = (int)($category['product_count'] ?? 0) === 0 && (int)($category['finishing_count'] ?? 0) === 0; ?>
-                                <form method="post" action="/action?action=delete_category" style="display:inline-flex" onsubmit="const button = this.querySelector('button'); button.disabled = true; button.textContent = 'Menghapus...';">
+                                <form <?= !$canProductAction('delete_category') ? 'hidden data-center-access="denied"' : '' ?> method="post" action="/action?action=delete_category" style="display:inline-flex" onsubmit="const button = this.querySelector('button'); button.disabled = true; button.textContent = 'Menghapus...';">
                                     <?= $returnInputs ?>
                                     <input type="hidden" name="store_id" value="<?= (int)$data['current_store_id'] ?>">
                                     <input type="hidden" name="category_id" value="<?= (int)$category['category_id'] ?>">
@@ -718,7 +725,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                     <small class="d-block">Bisa pilih beberapa finishing. Tidak perlu dicentang jika tidak ingin menambah. Finishing lama tetap dipertahankan tanpa duplikat. Harga nota tetap.</small>
                 </div>
                 <label class="d-flex align-items-center mb-2" style="gap:8px;cursor:pointer">
-                    <input type="checkbox" class="form-check-input" name="delete_source_products" value="1" style="width:20px;height:20px;margin:0;flex-shrink:0">
+                    <input type="checkbox" class="form-check-input" name="delete_source_products" value="1" <?= !$canProductAction('delete_product') ? 'disabled' : '' ?> style="width:20px;height:20px;margin:0;flex-shrink:0">
                     <span>Hapus produk asal setelah migrasi</span>
                 </label>
                 <small class="d-block mb-3">Berlaku untuk semua produk asal yang dipilih. Produk dihapus hanya jika migrasi berhasil dan sudah tidak dipakai item order.</small>
