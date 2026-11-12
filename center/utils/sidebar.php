@@ -16,6 +16,7 @@ if (isset($koneksi) && !empty($_SESSION['admin_logged_in'])) {
         <li><a href="<?= $centerBaseUrl ?>/products"><i class="fas fa-box"></i> <span>Products</span></a></li>
         <?php if ($showProductHistory): ?><li><a href="<?= $centerBaseUrl ?>/product-history"><i class="fas fa-history"></i> <span>Riwayat Tambah Produk</span></a></li><?php endif; ?>
         <?php if ($showProductHistory): ?><li><a href="<?= $centerBaseUrl ?>/administrator-access"><i class="fas fa-user-shield"></i> <span>Akses Administrator</span></a></li><?php endif; ?>
+        <?php if ($showProductHistory): ?><li><a href="<?= $centerBaseUrl ?>/activities"><i class="fas fa-list-alt"></i> <span>Aktivitas</span></a></li><?php endif; ?>
         <li><a href="<?= $centerBaseUrl ?>/transactions"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a></li>
         <li><a href="<?= $centerBaseUrl ?>/stores"><i class="fas fa-store"></i> <span>Stores</span></a></li>
         <li><a href="<?= $centerBaseUrl ?>/finance"><i class="fas fa-wallet"></i> <span>Finance</span></a></li>
