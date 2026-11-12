@@ -33,7 +33,7 @@ $escape = function ($value) { return htmlspecialchars((string)$value, ENT_QUOTES
 <?php if ($selected && $selected['access'] === 'ALL'): ?>
     <div class="alert alert-info">Akun ini memiliki akses ALL. Seluruh tindakan diizinkan.</div>
 <?php elseif ($selected && $ready): ?>
-    <p>Centang untuk mengizinkan. Izin yang belum pernah diatur mengikuti akses lama. Perubahan berlaku tanpa login ulang. Salin produk memerlukan izin tambah produk dan kategori; menghapus produk asal setelah migrasi memerlukan izin hapus produk.</p>
+    <p>Centang untuk mengizinkan. Izin yang belum pernah diatur mengikuti akses lama. Perubahan berlaku tanpa login ulang. Salin produk memerlukan izin tambah produk dan kategori; impor katalog toko memerlukan izin tambah produk, kategori, dan finishing. Menghapus produk asal setelah migrasi memerlukan izin hapus produk.</p>
     <form method="post" action="/action?action=save_administrator_access">
         <input type="hidden" name="csrf" value="<?= $escape($_SESSION['administrator_access_csrf']) ?>">
         <input type="hidden" name="administrator_id" value="<?= $selectedId ?>">

@@ -13,6 +13,12 @@ class AdministratorAccessController {
 
     public static function definitions() {
         return [
+            'Toko' => [
+                'add_store' => 'Tambah toko',
+                'copy_store_catalog' => 'Impor produk dari toko lain',
+                'edit_store' => 'Edit toko',
+                'set_session' => 'Kelola toko',
+            ],
             'Produk' => [
                 'add_product' => 'Tambah produk', 'edit_product' => 'Ubah produk',
                 'delete_product' => 'Hapus produk', 'migrate_product' => 'Migrasi item order',
@@ -40,8 +46,6 @@ class AdministratorAccessController {
             'bulk_update_product_category' => 'edit_product',
             'bulk_delete_products' => 'delete_product',
             'link_production_components' => 'save_production_component',
-            // Salin seluruh katalog juga dapat membuat produk, kategori, dan finishing.
-            'copy_store_catalog' => 'copy_products',
         ];
         $key = $aliases[$action] ?? $action;
         foreach (self::definitions() as $group) if (isset($group[$key])) return $key;

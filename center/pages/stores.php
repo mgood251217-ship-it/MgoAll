@@ -11,6 +11,12 @@ if (!isset($_SESSION['admin_logged_in'])) {
 require_once __DIR__ . '/../config/connect.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../controllers/StoreController.php';
+require_once __DIR__ . '/../controllers/AdministratorAccessController.php';
+$administratorAccess = new AdministratorAccessController($koneksi);
+$canStoreAction = function ($action) use ($administratorAccess) {
+    foreach ($administratorAccess->requiredFor($action, []) as $permission) if (!$administratorAccess->can($permission)) return false;
+    return true;
+};
 
 $access = isset($_SESSION['admin_logged_in']['access']) ? startEnk('dek', $_SESSION['admin_logged_in']['access']) : '';
 
@@ -23,9 +29,10 @@ $_SESSION['store_copy_csrf'] = $_SESSION['store_copy_csrf'] ?? bin2hex(random_by
 
 
 
+<style>[data-center-access="denied"] { display: none !important; }</style>
 <div class="page-header">
     <h2>Cabang & Toko</h2>
-    <button class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalTambahToko">
+    <button <?= !$canStoreAction('add_store') ? 'hidden data-center-access="denied"' : '' ?> class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalTambahToko">
         <i class="fas fa-plus"></i> Tambah Toko
     </button>
 </div>
@@ -64,7 +71,7 @@ $_SESSION['store_copy_csrf'] = $_SESSION['store_copy_csrf'] ?? bin2hex(random_by
                             <td><?= htmlspecialchars($row['owner_name'] ?? '-') ?></td>
                             <td><span class="badge-custom"><?= (int)$row['total_karyawan'] ?> Orang</span></td>
                             <td class="migrated-style-95">
-                                <button type="button" class="btn-action btn-warning"
+                                <button <?= !$canStoreAction('edit_store') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-warning"
                                     data-bs-toggle="modal" 
                                     data-bs-target="#editModal"
                                     data-store-id="<?= $row['store_id'] ?>"
@@ -76,14 +83,14 @@ $_SESSION['store_copy_csrf'] = $_SESSION['store_copy_csrf'] ?? bin2hex(random_by
                                     data-owner-id="<?= $row['owner_id'] ?>">
                                     <i class="fas fa-pen"></i>
                                 </button>
-                                <button type="button" class="btn-action btn-kelola btn-open" data-bs-toggle="modal"
+                                <button <?= !$canStoreAction('copy_store_catalog') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-kelola btn-open" data-bs-toggle="modal"
                                     data-bs-target="#copyCatalogModal" data-store-id="<?= (int)$row['store_id'] ?>"
                                     data-store-name="<?= htmlspecialchars($row['name'] . ' - ' . $row['branch'], ENT_QUOTES, 'UTF-8') ?>">
                                     <i class="fas fa-file-import me-1"></i> Impor Produk
                                 </button>
                             </td>
                             <td class="migrated-style-95">
-                                <form class="kelolaForm migrated-style-96">
+                                <form <?= !$canStoreAction('set_session') ? 'hidden data-center-access="denied"' : '' ?> class="kelolaForm migrated-style-96">
                                     <input type="hidden" name="user_id" value="<?= $row['owner_id'] ?>">
                                     <button type="submit" class="btn btn-danger">Kelola</button>
                                 </form>
