@@ -110,7 +110,6 @@ $router->add('transactions_capture', ReportController::class, 'transactionsCaptu
 $router->add('order_analysis', ReportController::class, 'orderAnalysis', ['auth']);
 $router->add('omset_item', ReportController::class, 'omsetItem', ['auth']);
 $router->add('product_used', ReportController::class, 'productUsed', ['auth']);
-$router->add('activity', ReportController::class, 'activity', ['auth']);
 $router->add('statistics', ReportController::class, 'statistics', ['auth']);
 $router->add('order_archive', ReportController::class, 'orderArchive', ['auth']);
 $router->add('maklun', ReportController::class, 'maklun', ['auth']);

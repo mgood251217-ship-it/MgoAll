@@ -115,13 +115,4 @@ class Activity {
         return $rows;
     }
 
-    public function getActivitiesByStoreId($id, $start_date, $end_date) {
-        $stmt = $this->koneksi->prepare('SELECT a.*, COALESCE(o.date,
-            (SELECT d.date FROM deleted_orders d WHERE d.order_id = a.order_id AND d.store_id = a.store_id ORDER BY d.deleted_at DESC LIMIT 1)) AS order_date
-            FROM activity a LEFT JOIN orders o ON a.order_id = o.order_id AND a.store_id = o.store_id
-            WHERE a.store_id = ? AND a.date BETWEEN ? AND ? ORDER BY a.date DESC, a.activity_id DESC');
-        $stmt->bind_param('iss', $id, $start_date, $end_date); $stmt->execute();
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $stmt->close();
-        return $this->describe($rows);
-    }
 }

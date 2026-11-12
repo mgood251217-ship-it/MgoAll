@@ -2,7 +2,6 @@
 require_once __DIR__ . '/../models/Order.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/Product.php';
-require_once __DIR__ . '/../models/Activity.php';
 require_once __DIR__ . '/../models/Finance.php';
 
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
@@ -14,7 +13,6 @@ class ReportController {
     private $orderModel;
     private $userModel;
     private $productModel;
-    private $activityModel;
     private $financeModel;
     private $authMiddleware;
 
@@ -23,7 +21,6 @@ class ReportController {
         $this->orderModel = new Order($koneksi);
         $this->userModel = new User($koneksi);
         $this->productModel = new Product($koneksi);
-        $this->activityModel = new Activity($koneksi);
         $this->financeModel = new Finance($koneksi);
         $this->authMiddleware = new AuthMiddleware($koneksi);
     }
@@ -725,17 +722,6 @@ class ReportController {
 
         $dataPemakaian = $this->productModel->getMaterialUsageByIntervalDate($store_id, $start_date, $end_date);
         return $dataPemakaian;
-    }
-
-    public function activity() {
-        if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
-
-        global $store_id;
-        $start_date = ($_GET['start_date'] ?? date('Y-m-d')). ' 00:00:00';
-        $end_date = ($_GET['end_date'] ?? date('Y-m-d')). ' 23:59:59';
-
-        $activity = $this->activityModel->getActivitiesByStoreId($store_id, $start_date, $end_date);
-        return $activity;
     }
 
     public function statistics(){
