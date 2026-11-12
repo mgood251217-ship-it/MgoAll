@@ -74,6 +74,9 @@ a {
 .sidebar:hover {
   width: 260px;
 }
+.sidebar:focus-within {
+  width: 260px;
+}
 .sidebar-brand {
   height: 70px;
   display: flex;
@@ -98,12 +101,17 @@ a {
   font-weight: 600;
 }
 .sidebar:hover .sidebar-brand span,
-.sidebar:hover .sidebar-menu li a span {
+.sidebar:hover .sidebar-menu li a span,
+.sidebar:focus-within .sidebar-brand span,
+.sidebar:focus-within .sidebar-menu li a span {
   opacity: 1;
 }
 .sidebar-menu {
   flex: 1;
-  overflow: auto;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   margin: 0;
   padding: var(--space-4) var(--space-3);
   list-style: none;
@@ -115,6 +123,7 @@ a {
   position: relative;
   display: flex;
   align-items: center;
+  min-width: 0;
   height: 48px;
   padding: 0 14px;
   color: #94a3b8;
@@ -128,6 +137,7 @@ a {
   background: #1e293b;
 }
 .sidebar-menu li a i {
+  flex-shrink: 0;
   min-width: 24px;
   font-size: 1.25rem;
   text-align: center;
@@ -137,10 +147,49 @@ a {
   color: var(--color-primary);
 }
 .sidebar-menu li a span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   margin-left: var(--space-4);
   font-size: 0.95rem;
   font-weight: 500;
 }
+.sidebar-group > summary {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  gap: 16px;
+  height: 46px;
+  padding: 0 14px;
+  color: #94a3b8;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  list-style: none;
+}
+.sidebar-group > summary::-webkit-details-marker { display: none; }
+.sidebar-group { min-width: 0; }
+.sidebar-group > summary > i:first-child { flex-shrink: 0; min-width: 24px; font-size: 1.15rem; text-align: center; }
+.sidebar-group > summary > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: .9rem; font-weight: 600; }
+.sidebar-group > summary > span,
+.sidebar-group .sidebar-chevron { opacity: 0; transition: opacity .2s ease; }
+.sidebar:hover .sidebar-group > summary > span,
+.sidebar:hover .sidebar-chevron,
+.sidebar:focus-within .sidebar-group > summary > span,
+.sidebar:focus-within .sidebar-chevron { opacity: 1; }
+.sidebar-group > summary:hover,
+.sidebar-group.has-active > summary { color: #fff; background: #1e293b; }
+.sidebar-group.has-active > summary > i:first-child { color: var(--color-primary); }
+.sidebar-group .sidebar-chevron { margin-left: auto; font-size: .65rem; }
+.sidebar-group[open] .sidebar-chevron { transform: rotate(180deg); }
+.sidebar-submenu { margin: 4px 0 8px 25px; padding: 0 0 0 9px; border-left: 1px solid #334155; list-style: none; }
+.sidebar-submenu li { margin-bottom: 2px; }
+.sidebar-submenu li a { height: 36px; padding: 0 10px; }
+.sidebar-submenu li a i { min-width: 18px; font-size: .85rem; }
+.sidebar-submenu li a span { margin-left: 10px; font-size: .83rem; }
+.sidebar:not(:hover):not(:focus-within) .sidebar-submenu { display: none; }
+.sidebar a:focus-visible,
+.sidebar summary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 
 .main-wrapper {
   min-width: 0;
@@ -1075,7 +1124,8 @@ a {
     overflow-x: auto;
     overflow-y: hidden;
   }
-  .sidebar:hover {
+  .sidebar:hover,
+  .sidebar:focus-within {
     width: 100%;
   }
   .sidebar-brand {
@@ -1114,6 +1164,37 @@ a {
     font-weight: 500;
     white-space: nowrap;
   }
+  .sidebar-group > summary {
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    height: 60px;
+    padding: 4px 12px;
+  }
+  .sidebar-group > summary > i:first-child { min-width: 0; font-size: 1.05rem; }
+  .sidebar-group > summary > span { flex: initial; opacity: 1; font-size: .62rem; }
+  .sidebar-group .sidebar-chevron { display: none; }
+  .sidebar-group[open] .sidebar-submenu,
+  .sidebar:not(:hover):not(:focus-within) .sidebar-group[open] .sidebar-submenu {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    bottom: 68px;
+    z-index: 1001;
+    display: block;
+    max-height: 60vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    margin: 0;
+    padding: 8px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px #0006;
+  }
+  .sidebar-submenu li a { flex-direction: row; justify-content: flex-start; gap: 0; height: 44px; padding: 0 12px; }
+  .sidebar-submenu li a i { min-width: 22px; font-size: 1rem; }
+  .sidebar-submenu li a span { margin-left: 12px; font-size: .85rem; }
   .main-wrapper {
     padding-bottom: 60px;
   }
