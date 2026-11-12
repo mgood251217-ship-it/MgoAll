@@ -17,14 +17,17 @@ class AuthController {
     }
 
     public function testConnection(){
-        $query = $this->koneksi->query("SELECT NOW() AS server_time");
-        if (!$query) {
-            echo json_encode(["success" => false, "message" => $this->koneksi->error]);
-            exit;
+        try {
+            $query = $this->koneksi->query("SELECT NOW() AS server_time");
+            if (!$query) throw new RuntimeException('Database connection check failed.');
+            $data = $query->fetch_assoc();
+            $data['site_key'] = $_ENV['RECAPTCHA_SITE_KEY'] ?? '';
+            send_json_response(true, "Database Connected", $data);
+        } catch (Throwable $e) {
+            error_log('API connection check: ' . $e->getMessage());
+            http_response_code(503);
+            send_json_response(false, 'Server sementara tidak tersedia. Coba lagi nanti.');
         }
-        $data = $query->fetch_assoc();
-        $data['site_key'] = $_ENV['RECAPTCHA_SITE_KEY'] ?? '';
-        send_json_response(true, "Database Connected", $data);
     }
 
     public function session(){
