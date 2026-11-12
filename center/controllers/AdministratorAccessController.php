@@ -13,6 +13,9 @@ class AdministratorAccessController {
 
     public static function definitions() {
         return [
+            'Pengguna' => [
+                'migrate_user' => 'Migrasi order antaruser',
+            ],
             'Toko' => [
                 'add_store' => 'Tambah toko',
                 'copy_store_catalog' => 'Impor produk dari toko lain',

@@ -19,6 +19,29 @@ $data = $controller->getIndexData();
 $groupedUsers = $data['groupedUsers'];
 $deletedUsers = $data['deletedUsers'];
 $stores = $data['stores'];
+$migrationAccess = new AdministratorAccessController($koneksi);
+$canMigrateUsers = $migrationAccess->can('migrate_user');
+$migrationAdministrator = (new ProductHistoryController($koneksi))->getAdministrator();
+$migrationStoreIds = [];
+foreach ($stores as $store) {
+    if ($canMigrateUsers && $migrationAdministrator && ($migrationAdministrator['access'] === 'ALL'
+        || ((string)$migrationAdministrator['access'] !== '' && (string)$migrationAdministrator['access'] === (string)$store['administrator']))) $migrationStoreIds[] = (int)$store['store_id'];
+}
+$_SESSION['user_migration_csrf'] = $_SESSION['user_migration_csrf'] ?? bin2hex(random_bytes(32));
+$migrationUsers = [];
+foreach ($groupedUsers as $group) foreach ($group as $user) {
+    if (in_array((int)$user['store_id'], $migrationStoreIds, true)) $migrationUsers[] = [
+        'user_id' => (int)$user['user_id'], 'store_id' => (int)$user['store_id'], 'name' => $user['name'], 'username' => $user['username'],
+    ];
+}
+$renderUserMigration = function ($user) use ($migrationStoreIds) {
+    if (!in_array((int)$user['store_id'], $migrationStoreIds, true)) return;
+    ?>
+    <button type="button" class="btn-action btn-kelola btn-open" data-bs-toggle="modal" data-bs-target="#migrateUserModal"
+        data-id="<?= (int)$user['user_id'] ?>" data-store="<?= (int)$user['store_id'] ?>" data-count="<?= (int)$user['order_count'] ?>"
+        data-name="<?= htmlspecialchars($user['name'], ENT_QUOTES, 'UTF-8') ?>" <?= !(int)$user['order_count'] ? 'disabled' : '' ?>>Migrasi Order</button>
+    <?php
+};
 ?>
 
 
@@ -51,6 +74,7 @@ $stores = $data['stores'];
                             <th>Nama</th>
                             <th>Username</th>
                             <th>Peran</th>
+                        <th title="Jumlah order pada toko user ini">Jumlah Order</th>
                             <th class="migrated-style-9">Aksi & Pindah Toko</th>
                         </tr>
                     </thead>
@@ -68,7 +92,9 @@ $stores = $data['stores'];
                                 <td><strong><?= htmlspecialchars($row['name']) ?></strong></td>
                                 <td><?= htmlspecialchars($row['username']) ?></td>
                                 <td><span class="badge-role"><?= htmlspecialchars($row['role']) ?></span></td>
+                            <td><?= number_format((int)$row['order_count'], 0, ',', '.') ?></td>
                                 <td class="migrated-style-9">
+                                    <?php $renderUserMigration($row); ?>
                                     <button type="button" class="btn-action btn-warning me-1"
                                         data-bs-toggle="modal" 
                                         data-bs-target="#editModal"
@@ -125,6 +151,7 @@ $stores = $data['stores'];
                         <th>Username</th>
                         <th>Toko Terakhir</th>
                         <th>Peran</th>
+                        <th title="Jumlah order pada toko user ini">Jumlah Order</th>
                         <th class="migrated-style-9">Aksi</th>
                     </tr>
                 </thead>
@@ -136,7 +163,9 @@ $stores = $data['stores'];
                             <td><?= htmlspecialchars($row['username']) ?></td>
                             <td><?= htmlspecialchars($row['store_name'] ?: 'Tanpa Toko') ?></td>
                             <td><span class="badge-role"><?= htmlspecialchars($row['role']) ?></span></td>
+                            <td><?= number_format((int)$row['order_count'], 0, ',', '.') ?></td>
                             <td class="migrated-style-9">
+                                <?php $renderUserMigration($row); ?>
                                 <button type="button" class="btn-action btn-restore" 
                                     onclick="restoreUser(<?= $row['user_id'] ?>)" 
                                     title="Restore User">
@@ -149,6 +178,53 @@ $stores = $data['stores'];
             </table>
         </div>
     </div>
+<?php endif; ?>
+
+<?php if ($canMigrateUsers): ?>
+<div class="modal fade" id="migrateUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content modal-content-custom" method="post" action="/action?action=migrate_user" id="migrateUserForm">
+            <div class="modal-header modal-header-custom"><h5 class="modal-title-custom">Migrasi Order User</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div>
+            <div class="modal-body modal-body-custom">
+                <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['user_migration_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="source_user_id" id="migrate_source_user">
+                <input type="hidden" name="store_id" id="migrate_user_store">
+                <p>User asal: <strong id="migrate_user_name"></strong></p>
+                <p id="migrate_user_count"></p>
+                <label for="migrate_target_user" class="form-label-custom">User tujuan (toko yang sama)</label>
+                <select name="target_user_id" id="migrate_target_user" class="form-control-custom form-select" required></select>
+                <p class="mt-3 mb-0">Seluruh order user asal pada toko ini akan dipindahkan ke user tujuan. Data akun tetap tersimpan.</p>
+            </div>
+            <div class="modal-footer modal-footer-custom"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button><button type="submit" class="btn-primary-custom" id="migrate_user_submit" disabled>Migrasi Order</button></div>
+        </form>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const users = <?= json_encode($migrationUsers, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    const modal = document.getElementById('migrateUserModal');
+    const form = document.getElementById('migrateUserForm');
+    const target = document.getElementById('migrate_target_user');
+    const submit = document.getElementById('migrate_user_submit');
+    modal.addEventListener('show.bs.modal', event => {
+        const button = event.relatedTarget;
+        if (!button) return;
+        form.reset();
+        document.getElementById('migrate_source_user').value = button.dataset.id;
+        document.getElementById('migrate_user_store').value = button.dataset.store;
+        document.getElementById('migrate_user_name').textContent = `${button.dataset.name} (#${button.dataset.id})`;
+        document.getElementById('migrate_user_count').textContent = `${Number(button.dataset.count).toLocaleString('id-ID')} order pada toko ini.`;
+        const choices = users.filter(user => String(user.store_id) === button.dataset.store && String(user.user_id) !== button.dataset.id);
+        target.replaceChildren(new Option(choices.length ? 'Pilih user tujuan' : 'Tidak ada user tujuan aktif di toko ini', ''));
+        choices.forEach(user => target.add(new Option(`${user.name} (${user.username}) #${user.user_id}`, user.user_id)));
+        if (choices.length === 1) target.value = String(choices[0].user_id);
+        submit.disabled = !target.value;
+        submit.textContent = 'Migrasi Order';
+    });
+    target.addEventListener('change', () => { submit.disabled = !target.value; });
+    form.addEventListener('submit', () => { submit.disabled = true; submit.textContent = 'Memigrasikan...'; });
+});
+</script>
 <?php endif; ?>
 
 <div class="modal fade" id="modalTambahUser" tabindex="-1" aria-hidden="true">
