@@ -51,12 +51,6 @@ switch ($action) {
     case 'update_user':
         $userController->update();
         break;
-    case 'create_user':
-        $userController->create();
-        break;
-    case 'delete_user':
-        $userController->delete();
-        break;
     case 'set_location':
         $locationController->setLocation();
         break;

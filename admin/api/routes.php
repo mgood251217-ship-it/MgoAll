@@ -12,9 +12,7 @@ $router->add('check_update_dataset', DatasetController::class, 'checkUpdate', ['
 
 // User Controller
 $router->add('users', UserController::class, 'index', ['auth']);
-$router->add('create_user', UserController::class, 'create', ['auth']);
 $router->add('update_user', UserController::class, 'update', ['auth']);
-$router->add('delete_user', UserController::class, 'delete', ['auth']);
 $router->add('get_initial', UserController::class, 'getInitial', ['auth']);
 $router->add('create_help', UserController::class, 'createHelp', ['auth']);
 $router->add('helps', UserController::class, 'getHelps', ['auth']);

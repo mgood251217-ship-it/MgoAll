@@ -7,15 +7,6 @@ class User{
         $this->koneksi = $koneksi;
     }
 
-    public function createUser($data) {
-        $passwordHash = password_hash($data->password, PASSWORD_DEFAULT);
-        $stmt = $this->koneksi->prepare("INSERT INTO users (name, username, password, role, initial, picture, store_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param('ssssssi', $data->name, $data->username, $passwordHash, $data->role, $data->initial, $data->picture, $data->store_id);
-        $success = $stmt->execute();
-        $stmt->close();
-        return $success;
-    }
-
     public function updateUser ($data){
         if (!empty($data->password)) {
             $passwordHash = password_hash($data->password, PASSWORD_DEFAULT);
@@ -112,23 +103,6 @@ class User{
         $exists = $stmt->num_rows > 0;
         $stmt->close();
         return $exists;
-    }
-
-    public function checkUserStore ($id) {
-        $stmt = $this->koneksi->prepare("SELECT COUNT(*) AS total FROM users WHERE store_id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $result = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-        return isset($result['total']) ? (int)$result['total'] : 0;
-    }
-
-    public function deleteUserById($id){
-        $stmt = $this->koneksi->prepare("UPDATE users SET is_deleted = 1 WHERE user_id = ? LIMIT 1");
-        $stmt->bind_param("i", $id);
-        $success = $stmt->execute();
-        $stmt->close();
-        return $success;
     }
 
     public function createHelp($data){
