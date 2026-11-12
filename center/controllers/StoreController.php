@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../admin/models/ProductVariant.php';
 class StoreController {
     private $koneksi;
 
@@ -95,6 +96,7 @@ class StoreController {
                 $categoryMap[$category['category_id']] = $this->koneksi->insert_id;
                 $stmt->close();
             }
+            $productMap = $finishingMap = [];
             foreach (['products', 'finishings'] as $table) {
                 $columns = $table === 'products'
                     ? ['category_id', 'type', 'unit_type', 'name', 'price', 'reasonable_price', 'failed_price', 'store_id', 'stock']
@@ -114,15 +116,92 @@ class StoreController {
                         $values .= ', NOW(), NOW()';
                     }
                     $stmt = $this->catalogQuery("INSERT INTO $table ($names) VALUES ($values)", $params);
+                    if ($table === 'products') $productMap[$row['product_id']] = (int)$this->koneksi->insert_id;
+                    else $finishingMap[$row['finishing_id']] = (int)$this->koneksi->insert_id;
                     $stmt->close();
                 }
             }
+            $settings = $this->copyCatalogSettings($sourceId, $targetId, $productMap, $finishingMap);
             if (!$this->koneksi->commit()) throw new RuntimeException('Gagal menyimpan hasil impor.');
-            return array_map('count', $source);
+            return array_merge(array_map('count', $source), $settings);
         } catch (Throwable $e) {
             $this->koneksi->rollback();
             throw $e;
         }
+    }
+
+    private function catalogRows($table, $storeId) {
+        $stmt = $this->catalogQuery("SELECT * FROM `$table` WHERE store_id = ? ORDER BY id FOR UPDATE", [$storeId]);
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $stmt->close();
+        return $rows;
+    }
+
+    private function insertCatalogSetting($table, $row) {
+        unset($row['id']);
+        $columns = $values = $params = [];
+        foreach ($row as $column => $value) {
+            $columns[] = '`' . $column . '`';
+            if (in_array($column, ['created_at', 'updated_at'], true)) $values[] = 'NOW()';
+            else { $values[] = '?'; $params[] = $value; }
+        }
+        $stmt = $this->catalogQuery("INSERT INTO `$table` (" . implode(', ', $columns) . ') VALUES (' . implode(', ', $values) . ')', $params);
+        $id = (int)$this->koneksi->insert_id; $stmt->close();
+        return $id;
+    }
+
+    // Seluruh ID pengaturan harus menunjuk katalog baru, bukan data toko sumber.
+    private function copyCatalogSettings($sourceId, $targetId, $productMap, $finishingMap) {
+        $tables = array_column($this->koneksi->query('SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()')->fetch_all(MYSQLI_ASSOC), 'TABLE_NAME');
+        $counts = []; $variantMap = [];
+        $mapId = function ($map, $id, $label) {
+            if (!isset($map[$id])) throw new InvalidArgumentException("Relasi $label #$id di toko sumber tidak valid. Impor dibatalkan.");
+            return $map[$id];
+        };
+        $variantModel = new ProductVariant($this->koneksi);
+        $componentModel = new ProductionComponent($this->koneksi);
+        $masters = $componentModel->isAvailable();
+        foreach (['product_variants', 'product_package', 'product_price_tiers', 'product_variant_price_tiers', 'product_laser_conversion'] as $table) {
+            if (!in_array($table, $tables, true)) continue;
+            if ($this->catalogRows($table, $targetId)) throw new InvalidArgumentException('Toko tujuan masih memiliki pengaturan produk. Impor dibatalkan agar tidak duplikat.');
+            $rows = $this->catalogRows($table, $sourceId);
+            $counts[$table === 'product_package' ? 'product_finishing_prices' : $table] = count($rows);
+            $recipes = [];
+            foreach ($rows as $row) {
+                $sourceProduct = $row['product_id']; $sourceVariant = $row['id'];
+                $row['store_id'] = $targetId;
+                $row['product_id'] = $mapId($productMap, $sourceProduct, 'produk');
+                if (isset($row['finishing_id'])) $row['finishing_id'] = $mapId($finishingMap, $row['finishing_id'], 'finishing');
+                if (isset($row['product_variant_id'])) $row['product_variant_id'] = $mapId($variantMap, $row['product_variant_id'], 'varian');
+                if (isset($row['laser_product_id'])) $row['laser_product_id'] = $mapId($productMap, $row['laser_product_id'], 'bahan print laser');
+                if (isset($row['finishing_ids'])) {
+                    $ids = [];
+                    foreach (explode(',', $row['finishing_ids']) as $id) {
+                        if (trim($id) !== '' && trim($id) !== '-') $ids[] = $mapId($finishingMap, trim($id), 'finishing konversi');
+                    }
+                    $ids = array_values(array_unique($ids)); sort($ids, SORT_NUMERIC);
+                    $row['finishing_ids'] = implode(',', $ids);
+                }
+                $newId = $this->insertCatalogSetting($table, $row);
+                if ($table !== 'product_variants') continue;
+                $variantMap[$sourceVariant] = $newId;
+                if (!$variantModel->isAvailable()) throw new InvalidArgumentException('Skema varian belum lengkap. Lengkapi skema sebelum mengimpor.');
+                if (!isset($recipes[$sourceProduct])) $recipes[$sourceProduct] = array_column($variantModel->getByProduct($sourceId, $sourceProduct), null, 'id');
+                if (!isset($recipes[$sourceProduct][$sourceVariant])) throw new InvalidArgumentException('Resep varian sumber tidak ditemukan.');
+                $combined = [];
+                foreach ($recipes[$sourceProduct][$sourceVariant]['components'] as $component) {
+                    $master = $masters ? $componentModel->findOrCreate($targetId, $component['name']) : null;
+                    $key = $master ? 'id:' . $master['id'] : 'name:' . $component['name'];
+                    if (!isset($combined[$key])) {
+                        $combined[$key] = ['variant_id' => $newId, 'name' => $master['name'] ?? $component['name'], 'quantity' => 0];
+                        if ($master) $combined[$key]['component_id'] = $master['id'];
+                    }
+                    $combined[$key]['quantity'] = round($combined[$key]['quantity'] + $component['quantity'], 4);
+                }
+                foreach ($combined as $component) $this->insertCatalogSetting('product_variant_components', $component);
+            }
+        }
+        if (!empty($counts['product_variants']) && $masters) $counts['production_components'] = count($componentModel->getByStore($targetId));
+        return $counts;
     }
 
     private function verifyCopyPassword($password) {
@@ -167,11 +246,17 @@ class StoreController {
 
         try {
             require_once __DIR__ . '/../functions/cacheHelper.php';
-            foreach (array_keys($counts) as $module) updateStoreCache($targetId, $module);
+            foreach (array_diff(array_keys($counts), ['product_variant_price_tiers']) as $module) updateStoreCache($targetId, $module);
+            updateStoreCache($targetId, 'product_price_tiers');
         } catch (Throwable $e) {
             error_log('Store catalog cache refresh failed: ' . $e->getMessage());
+            $_SESSION['swal_error'] = 'Data sudah diimpor, tetapi cache gagal diperbarui. Gunakan Update Cache pada toko tujuan.';
+            header('Location: /stores'); exit;
         }
-        $_SESSION['swal_success'] = "Berhasil mengimpor {$counts['categories']} kategori, {$counts['products']} produk, dan {$counts['finishings']} finishing.";
+        $_SESSION['swal_success'] = "Berhasil mengimpor {$counts['categories']} kategori, {$counts['products']} produk, {$counts['finishings']} finishing, "
+            . ($counts['product_variants'] ?? 0) . ' varian, ' . ($counts['product_finishing_prices'] ?? 0) . ' harga paket, '
+            . (($counts['product_price_tiers'] ?? 0) + ($counts['product_variant_price_tiers'] ?? 0)) . ' tingkat harga, dan '
+            . ($counts['product_laser_conversion'] ?? 0) . ' konversi print laser.';
         header('Location: /stores');
         exit;
     }

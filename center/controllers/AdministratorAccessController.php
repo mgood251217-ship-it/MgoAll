@@ -80,7 +80,10 @@ class AdministratorAccessController {
         $required = $permission ? [$permission] : [];
         if ($action === 'migrate_product' && !empty($input['delete_source_products'])) $required[] = 'delete_product';
         if ($action === 'copy_products') $required = array_merge($required, ['add_product', 'add_category']);
-        if ($action === 'copy_store_catalog') $required = array_merge($required, ['add_product', 'add_category', 'add_finishing']);
+        if ($action === 'copy_store_catalog') $required = array_merge($required, [
+            'add_product', 'add_category', 'add_finishing', 'save_product_variant',
+            'save_production_component', 'save_package_price', 'save_price_tiers', 'save_laser_conversion',
+        ]);
         return array_values(array_unique($required));
     }
 

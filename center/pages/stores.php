@@ -129,7 +129,7 @@ $_SESSION['store_copy_csrf'] = $_SESSION['store_copy_csrf'] ?? bin2hex(random_by
                     <input type="password" id="copy_password" name="password" class="form-control-custom" autocomplete="current-password" required>
                     <small>Masukkan sandi akun administrator yang sedang login.</small>
                 </div>
-                <p class="mb-0">Tambahkan kategori, produk, dan finishing dari toko sumber ke toko ini, termasuk harga dan stok. Data toko sumber tetap utuh. Toko tujuan harus belum memiliki kategori, produk, atau finishing.</p>
+                <p class="mb-0">Impor kategori, produk, dan finishing beserta harga dan stok, varian dan komponen meteran, harga paket, harga bertingkat produk maupun varian, serta konversi print laser termasuk bahan, ukuran, dan finishing. Data toko sumber tetap utuh. Toko tujuan harus belum memiliki kategori, produk, finishing, atau pengaturan produk.</p>
             </div>
             <div class="modal-footer modal-footer-custom">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
