@@ -320,7 +320,7 @@ class FinanceController {
         $administrator_id = isset($_SESSION['admin_logged_in']['administrator_id']) ? startEnk('dek', $_SESSION['admin_logged_in']['administrator_id']) : 0;
         $expenditure_id = isset($_POST['expenditure_id']) ? (int)$_POST['expenditure_id'] : 0;
         $keterangan_hapus = isset($_POST['keterangan_hapus']) ? trim($_POST['keterangan_hapus']) : '';
-        $date_now = date("Y-m-d");
+        $date_now = date("Y-m-d H:i:s");
         $done = 0;
         $order_id = 0;
 
@@ -384,7 +384,7 @@ class FinanceController {
         $keterangan = isset($_POST['keterangan']) ? trim($_POST['keterangan']) : '';
         
         if (strlen($datetime) == 16) $datetime .= ':00';
-        $date_now = date("Y-m-d");
+        $date_now = date("Y-m-d H:i:s");
         $done = 0;
         $order_id = 0;
 
@@ -469,7 +469,7 @@ class FinanceController {
         $administrator_id = isset($_SESSION['admin_logged_in']['administrator_id']) ? startEnk('dek', $_SESSION['admin_logged_in']['administrator_id']) : 0;
         $income_id = isset($_POST['income_id']) ? (int)$_POST['income_id'] : 0;
         $keterangan_hapus = isset($_POST['keterangan_hapus']) ? trim($_POST['keterangan_hapus']) : '';
-        $date_now = date("Y-m-d");
+        $date_now = date("Y-m-d H:i:s");
         $done = 0;
         $order_id = 0;
 
@@ -534,7 +534,7 @@ class FinanceController {
         $keterangan = isset($_POST['keterangan']) ? trim($_POST['keterangan']) : '';
         
         if (strlen($datetime) == 16) $datetime .= ':00';
-        $date_now = date("Y-m-d");
+        $date_now = date("Y-m-d H:i:s");
         $done = 0;
         $order_id = 0;
 

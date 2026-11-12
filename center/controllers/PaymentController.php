@@ -194,6 +194,28 @@ class PaymentController {
         ]);
     }
 
+    // Dipanggil dalam transaksi agar data yang dicatat sama dengan pembayaran yang diubah.
+    private function paymentForChange($paymentId, $storeId, $orderId, $administratorId) {
+        $stmt = $this->koneksi->prepare('SELECT access FROM administrator WHERE administrator_id = ?');
+        $stmt->bind_param('i', $administratorId); $stmt->execute();
+        $administrator = $stmt->get_result()->fetch_assoc(); $stmt->close();
+        if (!$administrator) throw new Exception('Sesi administrator tidak valid.');
+
+        $stmt = $this->koneksi->prepare('SELECT p.*, s.administrator AS store_access FROM payment p
+            JOIN stores s ON s.store_id = p.store_id WHERE p.payment_id = ? FOR UPDATE');
+        $stmt->bind_param('i', $paymentId); $stmt->execute();
+        $payment = $stmt->get_result()->fetch_assoc(); $stmt->close();
+        if (!$payment) throw new Exception('Pembayaran tidak ditemukan.');
+        if ($administrator['access'] !== 'ALL' && ((string)$administrator['access'] === '' || (string)$administrator['access'] !== (string)$payment['store_access'])) {
+            throw new Exception('Anda tidak memiliki akses ke toko pembayaran ini.');
+        }
+        if ($storeId !== (int)$payment['store_id'] || !preg_match('/^[1-9][0-9]*$/D', (string)$payment['order_id'])
+            || $orderId !== (int)$payment['order_id']) {
+            throw new Exception('Pembayaran tidak sesuai dengan order atau toko yang dipilih. Muat ulang halaman.');
+        }
+        return $payment;
+    }
+
     public function delete() {
         if (session_status() === PHP_SESSION_NONE) session_start();
         header('Content-Type: application/json');
@@ -216,8 +238,11 @@ class PaymentController {
         $this->koneksi->begin_transaction();
 
         try {
-            $stmtOrder = $this->koneksi->prepare("SELECT customer_name, nomorator FROM orders WHERE order_id = ?");
-            $stmtOrder->bind_param("i", $order_id);
+            $payment = $this->paymentForChange($payment_id, $store_id, $order_id, $administrator_id);
+            $store_id = (int)$payment['store_id'];
+            $order_id = (int)$payment['order_id'];
+            $stmtOrder = $this->koneksi->prepare("SELECT customer_name, nomorator FROM orders WHERE order_id = ? AND store_id = ? FOR UPDATE");
+            $stmtOrder->bind_param("ii", $order_id, $store_id);
             $stmtOrder->execute();
             $order = $stmtOrder->get_result()->fetch_assoc();
             $stmtOrder->close();
@@ -284,8 +309,6 @@ class PaymentController {
         $tanggal    = isset($_POST['tanggal']) ? trim($_POST['tanggal']) : '';
         $keterangan = isset($_POST['keterangan']) ? trim($_POST['keterangan']) : '';
         
-        $tanggalOld = strtotime($tanggal);
-        $tanggalcek = date('Y-m-d', $tanggalOld);
         $tanggal = str_replace('T', ' ', $tanggal);
         if (strlen($tanggal) == 16) $tanggal .= ':00'; 
 
@@ -296,24 +319,24 @@ class PaymentController {
         $this->koneksi->begin_transaction();
 
         try {
-            $stmtOrder = $this->koneksi->prepare("SELECT customer_name, nomorator, total FROM orders WHERE order_id = ?");
-            $stmtOrder->bind_param("i", $order_id);
+            $payment = $this->paymentForChange($payment_id, $store_id, $order_id, $administrator_id);
+            $store_id = (int)$payment['store_id'];
+            $order_id = (int)$payment['order_id'];
+            $stmtOrder = $this->koneksi->prepare("SELECT customer_name, nomorator, total FROM orders WHERE order_id = ? AND store_id = ? FOR UPDATE");
+            $stmtOrder->bind_param("ii", $order_id, $store_id);
             $stmtOrder->execute();
             $order = $stmtOrder->get_result()->fetch_assoc();
             $stmtOrder->close();
             
             if (!$order) throw new Exception("Order tidak ditemukan.");
 
-            $stmtPay = $this->koneksi->prepare("SELECT nominal, payment_method, date FROM payment WHERE payment_id = ?");
-            $stmtPay->bind_param("i", $payment_id);
-            $stmtPay->execute();
-            $payment = $stmtPay->get_result()->fetch_assoc();
-            $stmtPay->close();
+            $parsedDate = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $tanggal);
+            if (!$parsedDate || $parsedDate->format('Y-m-d H:i:s') !== $tanggal) throw new Exception('Tanggal pembayaran tidak valid.');
+            $tanggalcek = $tanggal;
 
             $paymentNominal = $payment['nominal'] ?? '';
             $paymentPaymentmethod = $payment['payment_method'] ?? '';
-            $paymentDateOld = strtotime($payment['date']);
-            $paymentDate = date('Y-m-d', $paymentDateOld);
+            $paymentDate = $payment['date'];
 
             if ($method != $paymentPaymentmethod && $paymentNominal != $nominal && $paymentDate != $tanggalcek) {
                 $messageLog = "UBAH METODE PEMBAYARAN, NOMINAL, DAN TANGGAL BAYAR DARI: \n"
