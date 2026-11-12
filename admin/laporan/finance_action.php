@@ -5,11 +5,9 @@ require_once __DIR__ . '/../models/Finance.php';
 require_once __DIR__ . '/../controllers/FinanceController.php';
 require_once __DIR__ . '/../models/Payment.php';
 require_once __DIR__ . '/../controllers/PaymentController.php';
-require_once __DIR__ . '/../models/Activity.php';
 require_once __DIR__ . '/../controllers/OrderController.php';
 require_once __DIR__ . '/../controllers/ReportController.php';
 
-$activityModel = new Activity($koneksi);
 $financeModel = new Finance($koneksi);
 $financeController = new FinanceController($koneksi);
 $paymentModel = new Payment($koneksi);
@@ -31,16 +29,6 @@ switch ($action) {
         break;
     case 'delete_payment':
         $paymentController->delete();
-        break;
-    case 'update_activity':
-        $data = (object)[
-            'id' => $_POST['activity_id'] ?? 0,
-            'done' => $_POST['done'] ?? 0
-        ];
-
-        if ($activityModel->updateActivity($data)) {
-            echo json_encode(['success' => $success]);
-        }
         break;
     case 'create_expenditure':
         $financeController->createExpenditure();

@@ -43,15 +43,15 @@ $money = function ($value) { return 'Rp ' . number_format((float)$value, 0, ',',
 <p><?= number_format($data['total'], 0, ',', '.') ?> aktivitas dan arsip order, diurutkan dari yang terbaru.</p>
 <h3>Aktivitas</h3>
 <div class="table-container mb-4"><div class="table-scroll"><table class="table-modern">
-    <thead><tr><th>Waktu</th><th>Judul</th><th>Pesan</th><th>Keterangan</th><th>Administrator</th><th>Order</th><th>Tanggal Order</th><th>Status</th></tr></thead>
+    <thead><tr><th>Waktu</th><th>Judul</th><th>Pesan</th><th>Keterangan</th><th>Administrator</th><th>Order</th><th>Tanggal Order</th></tr></thead>
     <tbody>
-    <?php if (!$activities): ?><tr><td colspan="8">Tidak ada aktivitas pada halaman ini.</td></tr><?php endif; ?>
+    <?php if (!$activities): ?><tr><td colspan="7">Tidak ada aktivitas pada halaman ini.</td></tr><?php endif; ?>
     <?php foreach ($activities as $row): ?><tr>
         <td style="white-space:nowrap"><?= $escape($row['event_date']) ?></td><td><?= $escape($row['title']) ?></td>
         <td style="overflow-wrap:anywhere"><?= nl2br($escape($row['message'])) ?></td><td style="overflow-wrap:anywhere"><?= nl2br($escape($row['information'])) ?></td>
         <td><?= $escape($row['administrator_name'] ?? ($row['administrator_id'] ? 'Akun dihapus (#' . (int)$row['administrator_id'] . ')' : '-')) ?></td>
         <td><?php if ($row['live_order_id']): ?><a href="/order?id=<?= rawurlencode(startEnk('enk', $row['live_order_id'])) ?>&amp;store_id=<?= rawurlencode(startEnk('enk', $data['store'])) ?>">#<?= (int)$row['order_id'] ?></a><?php elseif ($row['archived_order_id']): ?><a href="<?= $url(['archive_order_id' => (int)$row['archived_order_id']]) ?>#archive-order-<?= (int)$row['archived_order_id'] ?>">#<?= (int)$row['order_id'] ?> (arsip)</a><?php else: ?><?= $row['order_id'] ? '#' . (int)$row['order_id'] . ' (tidak tersedia)' : '-' ?><?php endif; ?></td>
-        <td><?= $escape($row['order_date'] ?? '-') ?></td><td><?= (int)$row['done'] === 1 ? 'Selesai' : 'Belum selesai' ?></td>
+        <td><?= $escape($row['order_date'] ?? '-') ?></td>
     </tr><?php endforeach; ?>
     </tbody>
 </table></div></div>

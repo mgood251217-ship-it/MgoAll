@@ -224,10 +224,10 @@ class OrderController {
 
             $title = "HAPUS ORDER";
             $message = "HAPUS ORDERAN DENGAN NAMA " . $order['customer_name'] . " NOMORATOR " . $order['nomorator'];
-            $done = 0;
+
             
-            $stmt = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, done, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("issssiii", $order['store_id'], $title, $message, $keterangan, $date, $order_id, $done, $administrator_id);
+            $stmt = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("issssii", $order['store_id'], $title, $message, $keterangan, $date, $order_id, $administrator_id);
             $stmt->execute();
             $stmt->close();
 

@@ -251,10 +251,10 @@ class PaymentController {
 
             $title = "HAPUS PEMBAYARAN";
             $message = "HAPUS PEMBAYARAN UNTUK ORDERAN DENGAN NAMA " . $order['customer_name'] . " NOMORATOR " . $order['nomorator'];
-            $done = 0;
 
-            $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, done, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmtAct->bind_param("issssiii", $store_id, $title, $message, $keterangan, $date, $order_id, $done, $administrator_id);
+
+            $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmtAct->bind_param("issssii", $store_id, $title, $message, $keterangan, $date, $order_id, $administrator_id);
             $stmtAct->execute();
             $stmtAct->close();
 
@@ -314,7 +314,7 @@ class PaymentController {
 
         $title = "UBAH PEMBAYARAN";
         $messageLog = "";
-        $done = 0;
+
 
         $this->koneksi->begin_transaction();
 
@@ -374,8 +374,8 @@ class PaymentController {
             }
 
             if ($messageLog != "") {
-                $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, done, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmtAct->bind_param("issssiii", $store_id, $title, $messageLog, $keterangan, $date, $order_id, $done, $administrator_id);
+                $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $stmtAct->bind_param("issssii", $store_id, $title, $messageLog, $keterangan, $date, $order_id, $administrator_id);
                 $stmtAct->execute();
                 $stmtAct->close();
             }

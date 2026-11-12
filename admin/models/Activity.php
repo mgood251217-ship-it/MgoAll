@@ -8,29 +8,20 @@ class Activity {
     }
 
     public function createActivity($data) {
-        $stmt = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, done, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param(
-            "issssiii", 
+            "issssii",
             $data->store_id, 
             $data->title, 
             $data->message, 
             $data->information, 
             $data->date, 
-            $data->order_id, 
-            $data->done, 
+            $data->order_id,
             $data->administrator_id
         );
         $success = $stmt->execute();
         $stmt->close();
         
-        return $success;
-    }
-
-    public function updateActivity($data){
-        $stmt = $this->koneksi->prepare("UPDATE activity SET done = ? WHERE activity_id = ?");
-        $stmt->bind_param("ii", $data->done, $data->id);
-        $success = $stmt->execute();
-        $stmt->close();
         return $success;
     }
 
@@ -41,8 +32,7 @@ class Activity {
                                             a.message, 
                                             a.information, 
                                             a.order_id, 
-                                            a.date, 
-                                            a.done,
+                                            a.date,
                                             o.date AS order_date
                                         FROM activity a
                                         LEFT JOIN orders o ON a.order_id = o.order_id

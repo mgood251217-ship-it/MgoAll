@@ -41,16 +41,7 @@ $htmlTableAktivitas = renderTable([
             'header' => 'Tanggal',
             'field'  => 'date'
         ],
-        [
-            'header' => 'Aksi',
-            'render' => function($row) {
-                $isChecked = ($row['done'] == "1") ? 'checked' : '';
-                return '<input type="checkbox" 
-                            class="styled-checkbox activity-check" 
-                            data-id="' . htmlspecialchars($row['activity_id']) . '" 
-                            ' . $isChecked . '>';
-            }
-        ]
+
     ]
 ]);
 ?>
@@ -61,41 +52,7 @@ $htmlTableAktivitas = renderTable([
   <meta charset="UTF-8">
   <title>Aktivitas</title>
   <?php include __DIR__ . '/../header.php'; ?>
-  <style>
-    .checkbox-cell {
-      text-align: center;
-      vertical-align: middle;
-      padding: 0;
-    }
 
-    .styled-checkbox {
-      width: 20px;
-      height: 20px;
-      cursor: pointer;
-      accent-color: #dc3545;
-      border-radius: 6px;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-      display: inline-block;
-    }
-
-    .styled-checkbox:hover {
-      transform: scale(1.15);
-      box-shadow: 0 0 6px rgba(220, 53, 69, 0.5);
-    }
-
-    .styled-checkbox:checked {
-      transform: scale(1.2);
-      box-shadow: 0 0 6px rgba(220, 53, 69, 0.8);
-    }
-    #toggleAll {
-      min-width: 120px;
-      transition: 0.2s ease;
-    }
-    #toggleAll:hover {
-      transform: scale(1.05);
-    }
-
-  </style>
 </head>
 
 <body>
@@ -115,7 +72,6 @@ $htmlTableAktivitas = renderTable([
       <div class="table-responsive">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <h5>Daftar Aktivitas</h5>
-        <button id="toggleAll" class="btn btn-sm btn-success">✅ Cek Semua</button>
       </div>
             <?= $htmlTableAktivitas ?>
         </div>
@@ -127,60 +83,7 @@ $htmlTableAktivitas = renderTable([
   <?php include __DIR__ . '/../footer.php'; ?>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const toggleAllBtn = document.getElementById('toggleAll');
-  const rows = document.querySelectorAll('tr.activity-row');
 
-  function updateActivityStatus(activityId, doneValue, checkbox) {
-    fetch('finance_action.php?action=update_activity', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `activity_id=${activityId}&done=${doneValue}`
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (!data.success) {
-        checkbox.checked = !checkbox.checked;
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      checkbox.checked = !checkbox.checked;
-    });
-  }
-
-  rows.forEach(row => {
-    const checkbox = row.querySelector('.activity-check');
-    const activityId = checkbox.dataset.id;
-
-    row.addEventListener('click', e => {
-      if (e.target.classList.contains('activity-check')) return;
-      checkbox.checked = !checkbox.checked;
-      updateActivityStatus(activityId, checkbox.checked ? 1 : 0, checkbox);
-    });
-
-    checkbox.addEventListener('change', () => {
-      updateActivityStatus(activityId, checkbox.checked ? 1 : 0, checkbox);
-    });
-  });
-
-  toggleAllBtn.addEventListener('click', () => {
-    const allChecked = [...document.querySelectorAll('.activity-check')].every(cb => cb.checked);
-    const newStatus = allChecked ? 0 : 1;
-
-    document.querySelectorAll('.activity-check').forEach(cb => {
-      cb.checked = newStatus === 1;
-      const activityId = cb.dataset.id;
-      updateActivityStatus(activityId, newStatus, cb);
-    });
-
-    toggleAllBtn.textContent = newStatus === 1 ? '❌ Uncek Semua' : '✅ Cek Semua';
-    toggleAllBtn.classList.toggle('btn-danger', newStatus === 1);
-    toggleAllBtn.classList.toggle('btn-success', newStatus === 0);
-  });
-});
-</script>
 
 </body>
 </html>

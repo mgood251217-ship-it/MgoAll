@@ -321,7 +321,7 @@ class FinanceController {
         $expenditure_id = isset($_POST['expenditure_id']) ? (int)$_POST['expenditure_id'] : 0;
         $keterangan_hapus = isset($_POST['keterangan_hapus']) ? trim($_POST['keterangan_hapus']) : '';
         $date_now = date("Y-m-d H:i:s");
-        $done = 0;
+
         $order_id = 0;
 
         if (!$expenditure_id || !$administrator_id) {
@@ -346,8 +346,8 @@ class FinanceController {
             $title = "HAPUS PENGELUARAN";
             $message = "HAPUS PENGELUARAN " . $res['information'] . " SEBESAR " . $res['nominal'];
             
-            $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, done, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmtAct->bind_param("issssiii", $store_id, $title, $message, $keterangan_hapus, $date_now, $order_id, $done, $administrator_id);
+            $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmtAct->bind_param("issssii", $store_id, $title, $message, $keterangan_hapus, $date_now, $order_id, $administrator_id);
             $stmtAct->execute();
             $stmtAct->close();
 
@@ -385,7 +385,7 @@ class FinanceController {
         
         if (strlen($datetime) == 16) $datetime .= ':00';
         $date_now = date("Y-m-d H:i:s");
-        $done = 0;
+
         $order_id = 0;
 
         if (!$expenditure_id || !$administrator_id) {
@@ -431,8 +431,8 @@ class FinanceController {
 
             if ($messageLog != "") {
                 $title = "UBAH PENGELUARAN";
-                $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, done, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmtAct->bind_param("issssiii", $store_id, $title, $messageLog, $keterangan, $date_now, $order_id, $done, $administrator_id);
+                $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $stmtAct->bind_param("issssii", $store_id, $title, $messageLog, $keterangan, $date_now, $order_id, $administrator_id);
                 $stmtAct->execute();
                 $stmtAct->close();
             }
@@ -470,7 +470,7 @@ class FinanceController {
         $income_id = isset($_POST['income_id']) ? (int)$_POST['income_id'] : 0;
         $keterangan_hapus = isset($_POST['keterangan_hapus']) ? trim($_POST['keterangan_hapus']) : '';
         $date_now = date("Y-m-d H:i:s");
-        $done = 0;
+
         $order_id = 0;
 
         if (!$income_id || !$administrator_id) {
@@ -495,8 +495,8 @@ class FinanceController {
             $title = "HAPUS PEMASUKAN";
             $message = "HAPUS PEMASUKAN " . $res['information'] . " SEBESAR " . $res['nominal'];
             
-            $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, done, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmtAct->bind_param("issssiii", $store_id, $title, $message, $keterangan_hapus, $date_now, $order_id, $done, $administrator_id);
+            $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmtAct->bind_param("issssii", $store_id, $title, $message, $keterangan_hapus, $date_now, $order_id, $administrator_id);
             $stmtAct->execute();
             $stmtAct->close();
 
@@ -535,7 +535,7 @@ class FinanceController {
         
         if (strlen($datetime) == 16) $datetime .= ':00';
         $date_now = date("Y-m-d H:i:s");
-        $done = 0;
+
         $order_id = 0;
 
         if (!$income_id || !$administrator_id) {
@@ -565,8 +565,8 @@ class FinanceController {
 
             if ($messageLog != "") {
                 $title = "UBAH PEMASUKAN";
-                $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, done, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmtAct->bind_param("issssiii", $store_id, $title, $messageLog, $keterangan, $date_now, $order_id, $done, $administrator_id);
+                $stmtAct = $this->koneksi->prepare("INSERT INTO activity (store_id, title, message, information, date, order_id, administrator_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $stmtAct->bind_param("issssii", $store_id, $title, $messageLog, $keterangan, $date_now, $order_id, $administrator_id);
                 $stmtAct->execute();
                 $stmtAct->close();
             }
