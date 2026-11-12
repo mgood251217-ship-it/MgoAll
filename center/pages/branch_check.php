@@ -95,7 +95,7 @@ function renderChecklistRow($no, $name, $kind, $id, $status, $notes, $photos = [
             <span class="badge-pill bg-info-light"><?= $data['history_count'] ?> pengecekan tercatat</span>
         </h4>
         <div class="table-scroll">
-            <table class="table-modern">
+            <table class="table-modern branch-history-table">
                 <thead>
                     <tr>
                         <th>Tanggal</th>
@@ -143,14 +143,22 @@ function renderChecklistRow($no, $name, $kind, $id, $status, $notes, $photos = [
         <h4 class="table-title"><?= htmlspecialchars($table['name']) ?></h4>
         <div class="table-scroll">
             <table class="table-modern checklist-table">
+                <colgroup>
+                    <col class="checklist-col-no">
+                    <col class="checklist-col-name">
+                    <col class="checklist-col-status">
+                    <col class="checklist-col-status">
+                    <col class="checklist-col-notes">
+                    <col class="checklist-col-photos">
+                </colgroup>
                 <thead>
                     <tr>
-                        <th class="col-no">No</th>
-                        <th>List Check</th>
-                        <th class="text-center col-check">Sesuai / Baik / Berjalan</th>
-                        <th class="text-center col-check">Tidak / Rusak / Terhenti</th>
-                        <th>Keterangan</th>
-                        <th>Foto</th>
+                        <th scope="col" class="col-no">No</th>
+                        <th scope="col">Item Pemeriksaan</th>
+                        <th scope="col" class="text-center col-check"><span>Sesuai</span><small>Baik / Berjalan</small></th>
+                        <th scope="col" class="text-center col-check"><span>Tidak Sesuai</span><small>Rusak / Terhenti</small></th>
+                        <th scope="col">Keterangan</th>
+                        <th scope="col">Foto</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -278,14 +286,6 @@ function renderChecklistRow($no, $name, $kind, $id, $status, $notes, $photos = [
 </div>
 
 <style>
-.checklist-table { table-layout: fixed; font-size: 12.5px; }
-.checklist-table th, .checklist-table td { padding: 6px 8px; word-break: break-word; }
-.checklist-table th.col-no, .checklist-table td[data-label="No"] { width: 5%; }
-.checklist-table th:nth-child(2), .checklist-table td[data-label="List Check"] { width: 27%; }
-.checklist-table th.col-check, .checklist-table td[data-label="Sesuai"], .checklist-table td[data-label="Tidak Sesuai"] { width: 11%; font-size: 11px; line-height: 1.25; }
-.checklist-table th:nth-child(5), .checklist-table td[data-label="Keterangan"] { width: 24%; }
-.checklist-table th:nth-child(6), .checklist-table .row-photo-cell { width: 22%; }
-.checklist-table .row-notes { font-size: 12px; padding: 4px 6px; }
 
 .row-photo-cell { min-width: 40px; }
 .row-photo-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; }
@@ -302,6 +302,15 @@ function renderChecklistRow($no, $name, $kind, $id, $status, $notes, $photos = [
 .photo-thumb-download { position: absolute; bottom: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; background: #3b82f6; color: #fff; font-size: 9px; line-height: 18px; text-align: center; text-decoration: none; }
 
 @media (max-width: 768px) {
+.checklist-table { table-layout: fixed; font-size: 12.5px; }
+.checklist-table th, .checklist-table td { padding: 6px 8px; word-break: break-word; }
+.checklist-table th.col-no, .checklist-table td[data-label="No"] { width: 5%; }
+.checklist-table th:nth-child(2), .checklist-table td[data-label="List Check"] { width: 27%; }
+.checklist-table th.col-check, .checklist-table td[data-label="Sesuai"], .checklist-table td[data-label="Tidak Sesuai"] { width: 11%; font-size: 11px; line-height: 1.25; }
+.checklist-table th:nth-child(5), .checklist-table td[data-label="Keterangan"] { width: 24%; }
+.checklist-table th:nth-child(6), .checklist-table .row-photo-cell { width: 22%; }
+.checklist-table .row-notes { font-size: 12px; padding: 4px 6px; }
+
     .checklist-table .row-photo-cell {
         display: block !important;
         width: 100% !important;

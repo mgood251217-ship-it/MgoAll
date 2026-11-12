@@ -1281,11 +1281,84 @@ a {
   gap: var(--space-1);
 }
 
-.table-modern.checklist-table .col-no {
-  width: 1%;
-}
-.table-modern.checklist-table .col-check {
-  width: 1%;
+@media (min-width: 769px) {
+  .checklist-table-container > .table-title {
+    margin: 0;
+    padding: 18px 20px;
+    color: var(--color-text);
+    font-size: 1rem;
+    font-weight: 700;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .table-modern.checklist-table {
+    min-width: 960px;
+    width: 100%;
+    table-layout: fixed;
+    font-size: .875rem;
+  }
+  .checklist-table .checklist-col-no { width: 56px; }
+  .checklist-table .checklist-col-name { width: 34%; }
+  .checklist-table .checklist-col-status { width: 120px; }
+  .checklist-table .checklist-col-photos { width: 168px; }
+  .table-modern.checklist-table th,
+  .table-modern.checklist-table td {
+    padding: 12px 14px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    line-height: 1.5;
+  }
+  .table-modern.checklist-table thead th,
+  .branch-history-table thead th {
+    color: var(--color-text-soft);
+    background: var(--color-surface-muted);
+    font-size: .8rem;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--color-border-strong);
+  }
+  .checklist-table thead .col-check { padding: 12px 8px; }
+  .checklist-table thead .col-check span { display: block; white-space: nowrap; }
+  .checklist-table thead .col-check small {
+    display: block;
+    margin-top: 3px;
+    color: var(--color-text-muted);
+    font-size: .7rem;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+  .table-modern.checklist-table td[data-label="No"],
+  .table-modern.checklist-table th.col-no { text-align: center; color: var(--color-text-muted); }
+  .table-modern.checklist-table .checklist-item-row td { font-size: .875rem; }
+  .checklist-table td[data-label="List Check"] { font-weight: 500; }
+  .checklist-table .checklist-checkbox { width: 22px; height: 22px; margin: 0; vertical-align: middle; accent-color: var(--color-primary); }
+  .checklist-table .row-notes {
+    width: 100%;
+    min-width: 0;
+    min-height: 38px;
+    padding: 8px 10px;
+    font-size: .8125rem;
+    border-radius: 8px;
+  }
+  .table-modern.checklist-table .checklist-category-row td {
+    padding: 10px 18px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary-text);
+    font-size: .8125rem;
+    font-weight: 700;
+  }
+  .table-modern.checklist-table .checklist-group-row td {
+    padding: 10px 14px;
+    font-size: .8125rem;
+    font-weight: 600;
+    background: var(--color-surface-muted);
+  }
+  .checklist-table .row-photo-grid { gap: 8px; margin: 0 0 8px; }
+  .checklist-table .row-photo-grid:empty { display: none; }
+  .checklist-table .row-photo-upload-btn { width: 36px; height: 36px; color: var(--color-text-muted); border-color: var(--color-border-strong); }
+  .checklist-table .row-photo-upload-btn:hover { background: var(--color-surface-hover); }
 }
 
 @media (max-width: 768px) {
