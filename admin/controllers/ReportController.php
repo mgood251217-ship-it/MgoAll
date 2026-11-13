@@ -1001,7 +1001,7 @@ class ReportController {
                     } elseif ($unit_type === 'PCS') {
                         $hargaSatuan = $base_price_plus_finishing;
                         
-                        if (in_array($type, ['PAKAIAN', 'JERSEY'], true)) {
+                        if (in_array($type, ['TEKSTIL', 'PAKAIAN', 'JERSEY'], true)) {
                             $harga_jersey = 0;
                             if ($size === '5XL') {
                                 $harga_jersey += 50000;

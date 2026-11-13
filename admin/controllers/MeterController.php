@@ -368,7 +368,7 @@ class MeterController {
                 JOIN orders o ON oi.order_id = o.order_id
                 WHERE o.store_id = ? AND o.date BETWEEN ? AND ? $legacyOnly
             ) oi_filtered ON p.product_id = oi_filtered.product_id
-            WHERE UPPER(TRIM(c.name)) IN ('PAKAIAN', 'JERSEY') AND p.store_id = ?
+            WHERE UPPER(TRIM(c.name)) IN ('TEKSTIL', 'PAKAIAN', 'JERSEY') AND p.store_id = ?
             GROUP BY p.product_id, p.name
         ";
 
@@ -392,7 +392,7 @@ class MeterController {
             $total_all_qty_pakaian += $qty;
         }
 
-        foreach ($variantModel->productionRows($store_id, $start_date_full, $end_date_full, ['PAKAIAN', 'JERSEY'], true) as $component) {
+        foreach ($variantModel->productionRows($store_id, $start_date_full, $end_date_full, ['TEKSTIL', 'PAKAIAN', 'JERSEY'], true) as $component) {
             if ((float)$component['total_qty'] === 0.0) continue;
             $product_data_pakaian[] = $component;
             $total_all_qty_pakaian += $component['total_qty'];
@@ -963,7 +963,7 @@ class MeterController {
         $stmt = $this->koneksi->prepare("
             SELECT finishing_id, name 
             FROM finishings 
-            WHERE category_id IN (SELECT category_id FROM categories WHERE UPPER(TRIM(name)) IN ('PAKAIAN', 'JERSEY'))
+            WHERE category_id IN (SELECT category_id FROM categories WHERE UPPER(TRIM(name)) IN ('TEKSTIL', 'PAKAIAN', 'JERSEY'))
             AND store_id = ?
             ORDER BY name
         ");
