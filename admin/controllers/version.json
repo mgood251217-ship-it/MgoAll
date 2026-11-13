@@ -1,10 +1,15 @@
 {
-  "version": "2.1.0",
-  "min_required_version": "2.1.0",
-  "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.1.0/MgoDesktop_2.1.0_x64-setup.exe",
-  "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.1.0/MgoDesktop_2.1.0.apk",
+  "version": "2.1.1",
+  "min_required_version": "2.1.1",
+  "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.1.1/MgoDesktop_2.1.1_x64-setup.exe",
+  "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.1.1/MgoDesktop_2.1.1.apk",
   "force_update": false,
   "release_notes": [
-    "🧾 fix: Perbaikan Harga Nota: Memperbaiki perhitungan jumlah harga product untuk paketan dan juga variant pada nota supaya jumlah pembayaran tampil dengan benar dan sesuai pesanan."
+    "👕 update: Pakaian Jadi Tekstil: Mengganti nama kategori Pakaian menjadi Tekstil karena sekarang mencakup lebih banyak jenis produk.",
+    "🧵 update: Pengelolaan Kategori Bahan: Kategori bahan sekarang lebih rapi supaya lebih gampang digunakan saat input produk maupun saat analisis meteran.",
+    "🖨️ update: Pembaruan Sistem CETAKAN: Melakukan migrasi dan merapikan sistem CETAKAN supaya proses input lebih mudah, jelas, dan terstruktur.",
+    "📋 fix: Perbaikan Log Activity: Memperbaiki dan menghapus fitur Log Activity dari aplikasi. Sekarang fitur ini hanya tersedia di Panel Center.",
+    "🛡️ fix: Pesan Error reCAPTCHA: Memperjelas pesan error saat verifikasi reCAPTCHA gagal supaya pengguna lebih mudah mengetahui masalahnya.",
+    "🔐 update: Pembatasan Hak Akses: Menghapus akses Create, Read, dan Delete pada user management. Sekarang hanya akses Update yang tersedia."
   ]
 }
