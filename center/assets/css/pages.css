@@ -546,6 +546,20 @@ a {
 .table-modern td .btn-action {
   display: inline-flex;
 }
+#migrateProductModal .modal-dialog {
+  width: calc(100% - 2rem);
+  max-width: 1400px;
+  margin-right: auto;
+  margin-left: auto;
+}
+#migrationBatchWrap .table-modern {
+  table-layout: fixed;
+  min-width: 760px;
+}
+#migrationBatchWrap th:first-child { width: 30%; }
+#migrationBatchWrap td:first-child { white-space: normal; overflow-wrap: anywhere; }
+#migrationBatchWrap .form-select { width: 100%; min-width: 0; }
+
 .table-modern .product-selection-cell {
   width: 68px;
   padding: 4px 12px;

@@ -142,7 +142,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
             <button <?= !$canProductAction('edit_product') ? 'hidden data-center-access="denied"' : '' ?> id="bulkUpdateCategory" type="submit" class="btn-primary-custom" disabled>Ganti Kategori</button>
             <button <?= !$canProductAction('migrate_product') ? 'hidden data-center-access="denied"' : '' ?> id="bulkMigrateProducts" type="button" class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#migrateProductModal" disabled>Migrasi Terpilih</button>
             <button <?= !$canProductAction('copy_products') ? 'hidden data-center-access="denied"' : '' ?> id="bulkCopyProducts" type="button" class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#copyProductsModal" disabled>Salin ke Cabang</button>
-            <button <?= !$canProductAction('delete_product') ? 'hidden data-center-access="denied"' : '' ?> id="bulkDeleteProducts" type="submit" class="btn btn-danger" formaction="/action?action=bulk_delete_products" formnovalidate disabled>Hapus Terpilih</button>
+            <button <?= !$canProductAction('delete_product') ? 'hidden data-center-access="denied"' : '' ?> id="bulkDeleteProducts" title="Hapus produk tanpa item order; produk yang masih dipakai dilewati" type="submit" class="btn btn-danger" formaction="/action?action=bulk_delete_products" formnovalidate disabled>Hapus Terpilih</button>
             <small id="bulkProductSelectionCount" aria-live="polite">0 produk dipilih pada halaman ini.</small>
         </form>
     <?php endif; ?>
@@ -683,7 +683,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
 </div>
 
 <div class="modal fade" id="migrateProductModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <form id="migrateProductForm" class="modal-content modal-content-custom" method="post" action="/action?action=migrate_product">
             <?= $returnInputs ?>
             <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['product_migration_csrf'], ENT_QUOTES, 'UTF-8') ?>">
@@ -701,11 +701,13 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                     <select id="migrationTarget" name="target_product_id" class="form-control-custom form-select" required>
                         <option value="">-- Pilih Produk Pengganti --</option>
                         <?php foreach ($data['migration_products'] as $product): ?>
-                            <option value="<?= (int)$product['product_id'] ?>" data-category="<?= htmlspecialchars((string)($product['category_id'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                            <option value="<?= (int)$product['product_id'] ?>" data-category="<?= htmlspecialchars((string)($product['category_id'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                data-name="<?= htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8') ?>" data-variant-count="<?= (int)$product['variant_count'] ?>">
                                 #<?= (int)$product['product_id'] ?> - <?= htmlspecialchars($product['name']) ?> — Rp <?= number_format($product['price'] ?? 0, 0, ',', '.') ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <small id="migrationAutoInfo" class="d-block" aria-live="polite"></small>
                     <small id="migrationEmpty" hidden>Tidak ada produk pengganti pada kategori ini.</small>
                     <small class="d-block">Harga yang ditampilkan adalah harga dasar katalog. Harga pada nota tetap dipertahankan saat migrasi.</small>
                 </div>
@@ -713,6 +715,10 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                     <label for="migrationVariant" class="form-label-custom">Varian tujuan</label>
                     <select id="migrationVariant" name="target_variant_id" class="form-control-custom form-select" disabled></select>
                     <small id="migrationVariantInfo" class="d-block"></small>
+                </div>
+                <div id="migrationBatchWrap" class="mb-3" hidden>
+                    <div class="form-label-custom">Varian tujuan per produk asal</div>
+                    <div class="table-scroll"><table class="table-modern"><thead><tr><th>Produk asal</th><th>Varian tujuan</th></tr></thead><tbody id="migrationBatchVariants"></tbody></table></div>
                 </div>
                 <p id="migrationVariantStatus" class="text-muted" hidden></p>
                 <div class="mb-3">
@@ -735,7 +741,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                     <span>Hapus produk asal setelah migrasi</span>
                 </label>
                 <small class="d-block mb-3">Berlaku untuk semua produk asal yang dipilih. Produk dihapus hanya jika migrasi berhasil dan sudah tidak dipakai item order.</small>
-                <p class="mb-0">Semua item order terpilih memakai produk dan varian tujuan yang sama. Migrasikan ATASAN, CELANA, dan SETELAN secara terpisah. Quantity, harga, diskon, dan total nota tetap.</p>
+                <p class="mb-0">Pilih produk asal yang akan digabung ke satu produk pengganti. Varian tiap produk asal dicocokkan otomatis dan bisa diubah. Quantity, harga, diskon, dan total nota tetap.</p>
             </div>
             <div class="modal-footer modal-footer-custom">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -854,16 +860,72 @@ document.addEventListener('DOMContentLoaded', function() {
     const migrationVariantWrap = document.getElementById('migrationVariantWrap');
     const migrationVariantInfo = document.getElementById('migrationVariantInfo');
     const migrationVariantStatus = document.getElementById('migrationVariantStatus');
+    const migrationBatchWrap = document.getElementById('migrationBatchWrap');
+    const migrationBatchVariants = document.getElementById('migrationBatchVariants');
     const migrationPriceFormat = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
+    const migrationAutoInfo = document.getElementById('migrationAutoInfo');
+    let migrationSources = [];
+    // Hanya menyamakan penulisan, tanpa menebak berdasarkan harga atau kemiripan angka.
+    const migrationNameTokens = name => {
+        let text = String(name).toUpperCase().trim().replace(/\s*\((?:RIM|PCS|~)\)\s*$/, '');
+        // Produk lama nota belum memakai kata PORPORASI pada nama induknya.
+        text = text.replace(/^NOTA\s+PORPORASI\b/, 'NOTA');
+        if (/^BROSUR\b/.test(text)) {
+            // Katalog lama menulis AP150 tanpa GR, dan A3 untuk pilihan gabungan A3/A3+.
+            text = text.replace(/\b(AP\s*(?:150|210|260))\s*(?:GR|GSM)\b/g, '$1')
+                .replace(/\bA3\s*\/\s*A3\+/g, 'A3').replace(/\bA3\+/g, 'A3');
+        }
+        return text.replace(/\bSPARASI\b/g, 'SEPARASI').replace(/\bHALAMAN\b/g, 'HLM')
+            .replace(/\bSATU[\s-]+SISI\b/g, '').replace(/\b(ISI|UKURAN)\b/g, '')
+            .replace(/\bAP\s*(150|210|260)\b/g, 'AP_$1').replace(/\bA\s*([345])\b/g, 'A_$1')
+            .replace(/([A-Z])([0-9])/g, '$1 $2').replace(/([0-9])([A-Z])/g, '$1 $2')
+            // Angka harus melekat pada artinya: 2 RANGKAP berbeda dari 2 WARNA.
+            .replace(/\b(\d+)\s+(WARNA|RANGKAP|RIM|PASANG|HLM|GR)\b/g, '$1_$2')
+            .replace(/[^A-Z0-9_]+/g, ' ').trim().split(/\s+/).filter(Boolean);
+    };
+    const migrationNameKey = name => migrationNameTokens(name).sort().join(' ');
+    const migrationNameContains = (source, target) => {
+        const remaining = migrationNameTokens(source);
+        const tokens = migrationNameTokens(target);
+        return tokens.length > 0 && tokens.every(token => {
+            const index = remaining.indexOf(token);
+            if (index < 0) return false;
+            remaining.splice(index, 1); return true;
+        });
+    };
+    const migrationMatchingVariant = (sources, productName, variants) => {
+        if (!sources.length) return null;
+        const matches = sources.map(source => variants.filter(variant => {
+            const options = variant.options || {};
+            return Object.keys(options).length > 0
+                && migrationNameKey(source.name) === migrationNameKey([productName, ...Object.values(options)].join(' '));
+        }));
+        if (matches.some(list => list.length !== 1)) return null;
+        return matches.every(list => String(list[0].id) === String(matches[0][0].id)) ? matches[0][0] : null;
+    };
+    const migrationSuggestedProduct = (sources, options) => {
+        const candidates = options.filter(option => option.value && !option.disabled && !option.hidden
+            && Number(option.dataset.variantCount) > 0
+            && sources.length && sources.every(source => migrationNameContains(source.name, option.dataset.name)));
+        const longest = Math.max(0, ...candidates.map(option => migrationNameTokens(option.dataset.name).length));
+        const matches = candidates.filter(option => migrationNameTokens(option.dataset.name).length === longest);
+        return matches.length === 1 ? matches[0] : null;
+    };
+    const updateMigrationVariantInfo = () => {
+        const variant = migrationVariants.find(v => String(v.id) === migrationVariant.value);
+        migrationVariantInfo.textContent = variant ? 'Meteran per 1 satuan jual: ' + (variant.components.map(c => c.name + ' = ' + c.quantity).join(', ') || 'mengikuti nama varian') : '';
+    };
     let migrationRequest = 0, migrationVariants = [], migrationReady = true;
     const resetMigrationVariant = () => {
         migrationRequest++; migrationVariants = []; migrationReady = true;
         migrationVariant.replaceChildren(); migrationVariant.disabled = true; migrationVariant.required = false;
         migrationVariantWrap.hidden = true; migrationVariantInfo.textContent = '';
         migrationVariantStatus.hidden = true; migrationVariantStatus.textContent = '';
+        migrationBatchWrap.hidden = true; migrationBatchVariants.replaceChildren();
     };
     migrationTarget.addEventListener('change', async () => {
         resetMigrationVariant();
+        migrationAutoInfo.textContent = '';
         const productId = migrationTarget.value, request = migrationRequest;
         if (!productId) return;
         migrationReady = false; migrationSubmit.disabled = true;
@@ -879,6 +941,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 migrationVariant.appendChild(new Option('-- Pilih Varian Tujuan --', ''));
                 migrationVariants.forEach(v => migrationVariant.appendChild(new Option(Object.entries(v.options).map(([name, value]) => name + ': ' + value).join(' / ').toUpperCase() + ' — Rp ' + migrationPriceFormat.format(Number(v.price)), v.id)));
                 migrationVariant.disabled = false; migrationVariant.required = true; migrationVariantWrap.hidden = false;
+                const productName = migrationTarget.selectedOptions[0]?.dataset.name || '';
+                if (migrationSources.length > 1) {
+                    migrationVariant.disabled = true; migrationVariant.required = false; migrationVariantWrap.hidden = true;
+                    migrationBatchWrap.hidden = false;
+                    let matched = 0;
+                    migrationSources.forEach(source => {
+                        const row = document.createElement('tr'), nameCell = document.createElement('td'), choiceCell = document.createElement('td');
+                        nameCell.textContent = '#' + source.id + ' - ' + source.name;
+                        const select = document.createElement('select');
+                        select.name = 'source_variant_ids[' + source.id + ']'; select.required = true;
+                        select.className = 'form-control-custom form-select'; select.setAttribute('aria-label', 'Varian untuk ' + source.name);
+                        select.appendChild(new Option('-- Pilih Varian Tujuan --', ''));
+                        migrationVariants.forEach(v => select.appendChild(new Option(Object.values(v.options).join(' / ').toUpperCase() + ' ? Rp ' + migrationPriceFormat.format(Number(v.price)), v.id)));
+                        const match = migrationMatchingVariant([source], productName, migrationVariants);
+                        if (match) { select.value = String(match.id); matched++; }
+                        choiceCell.appendChild(select); row.appendChild(nameCell); row.appendChild(choiceCell); migrationBatchVariants.appendChild(row);
+                    });
+                    migrationAutoInfo.textContent = matched + ' dari ' + migrationSources.length + ' produk cocok otomatis. Periksa pilihan; lengkapi varian yang masih kosong.';
+                } else {
+                    const match = migrationMatchingVariant(migrationSources, productName, migrationVariants);
+                    if (match) {
+                        migrationVariant.value = String(match.id);
+                        updateMigrationVariantInfo();
+                        migrationAutoInfo.textContent = 'Produk dan varian dipilih berdasarkan nama produk asal. Pilihan tetap bisa diubah.';
+                    } else {
+                        migrationAutoInfo.textContent = 'Varian belum bisa dicocokkan secara pasti. Pilih varian tujuan secara manual.';
+                    }
+                }
             }
             migrationReady = true; migrationSubmit.disabled = false; migrationVariantStatus.hidden = true;
         } catch (error) {
@@ -887,8 +977,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     migrationVariant.addEventListener('change', () => {
-        const variant = migrationVariants.find(v => String(v.id) === migrationVariant.value);
-        migrationVariantInfo.textContent = variant ? 'Meteran per 1 satuan jual: ' + (variant.components.map(c => c.name + ' = ' + c.quantity).join(', ') || 'mengikuti nama varian') : '';
+        updateMigrationVariantInfo();
+        migrationAutoInfo.textContent = '';
     });
     migrationModal.addEventListener('show.bs.modal', function(event) {
         const button = event.relatedTarget;
@@ -899,6 +989,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const sources = button.id === 'bulkMigrateProducts'
             ? Array.from(document.querySelectorAll('.product-category-checkbox:checked')).map(checkbox => ({ id: checkbox.value, category: checkbox.dataset.category, name: checkbox.dataset.name, price: Number(checkbox.dataset.price) || 0, count: Number(checkbox.dataset.count) || 0 }))
             : [{ id: button.dataset.id, category: button.dataset.category, name: button.dataset.name, price: Number(button.dataset.price) || 0, count: Number(button.dataset.count) || 0 }];
+        migrationSources = sources;
+        migrationAutoInfo.textContent = '';
         const sourceIds = sources.map(source => String(source.id));
         const sameCategory = sources.length > 0 && new Set(sources.map(source => source.category)).size === 1;
         migrationForm.elements.source_product_id.value = sourceIds[0] || '';
@@ -938,6 +1030,11 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('migrationEmpty').hidden = available > 0;
         migrationSubmit.disabled = available === 0;
         migrationSubmit.textContent = 'Migrasi';
+        const suggestion = migrationSuggestedProduct(sources, Array.from(migrationTarget.options));
+        if (suggestion) {
+            migrationTarget.value = suggestion.value;
+            migrationTarget.dispatchEvent(new Event('change'));
+        }
     });
     migrationModal.addEventListener('hide.bs.modal', resetMigrationVariant);
     migrationForm.addEventListener('submit', function(event) {

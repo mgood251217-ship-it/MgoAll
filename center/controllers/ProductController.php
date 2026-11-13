@@ -46,7 +46,10 @@ class ProductController {
         $total = 0;
 
         if ($store_id !== null) {
-            $migrationStmt = $this->koneksi->prepare('SELECT product_id, category_id, name, price FROM products WHERE store_id = ? ORDER BY name, product_id');
+            $variantCount = (new ProductVariant($this->koneksi))->isAvailable()
+                ? '(SELECT COUNT(*) FROM product_variants v WHERE v.product_id = p.product_id AND v.store_id = p.store_id)'
+                : '0';
+            $migrationStmt = $this->koneksi->prepare("SELECT p.product_id, p.category_id, p.name, p.price, $variantCount AS variant_count FROM products p WHERE p.store_id = ? ORDER BY p.name, p.product_id");
             $migrationStmt->bind_param('i', $store_id);
             $migrationStmt->execute();
             $migrationProducts = $migrationStmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -90,9 +93,6 @@ class ProductController {
 
             $totalPages = ceil($total / $limit);
             $offset = ($page - 1) * $limit;
-            $variantCount = (new ProductVariant($this->koneksi))->isAvailable()
-                ? '(SELECT COUNT(*) FROM product_variants v WHERE v.product_id = p.product_id AND v.store_id = p.store_id)'
-                : '0';
 
             $stmt = $this->koneksi->prepare("
                 SELECT p.*, c.name AS category,
@@ -370,6 +370,13 @@ class ProductController {
             if ($variantId === '') $variantId = '0';
             if (!is_scalar($variantId) || !preg_match('/^\d+$/D', (string)$variantId) || (float)$variantId > 2147483647) throw new InvalidArgumentException('Pilihan varian tujuan tidak valid.');
             $variantId = (int)$variantId;
+            $sourceVariantIds = $_POST['source_variant_ids'] ?? [];
+            if (!is_array($sourceVariantIds) || ($sourceVariantIds && count($sourceVariantIds) !== count($sourceIds))) throw new InvalidArgumentException('Pilihan varian tiap produk asal belum lengkap.');
+            if ($sourceVariantIds) foreach ($sourceIds as $sourceId) {
+                $id = filter_var($sourceVariantIds[$sourceId] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
+                if (!$id) throw new InvalidArgumentException('Pilih varian tujuan untuk setiap produk asal.');
+                $sourceVariantIds[$sourceId] = $id;
+            }
             $finishingIds = $_POST['target_finishing_ids'] ?? [];
             if (!array_key_exists('target_finishing_ids', $_POST) && isset($_POST['target_finishing_id']) && !in_array($_POST['target_finishing_id'], ['', '0', 0], true)) $finishingIds = [$_POST['target_finishing_id']];
             if (!is_array($finishingIds) || count($finishingIds) > 1000) throw new InvalidArgumentException('Pilihan finishing tambahan tidak valid.');
@@ -422,11 +429,16 @@ class ProductController {
             }
             $variantModel = new ProductVariant($this->koneksi);
             $variants = $variantModel->getByProduct($storeId, $targetId);
-            $variant = null;
-            foreach ($variants as $v) if ((int)$v['id'] === $variantId) $variant = $v;
-            if (($variants && !$variant) || ($variantId && !$variant)) throw new InvalidArgumentException('Pilih varian yang tersedia pada produk tujuan. Muat ulang jika pilihan sudah berubah.');
+            $variantsById = array_column($variants, null, 'id');
+            $sourceVariants = [];
+            foreach ($sourceIds as $sourceId) {
+                $selectedId = $sourceVariantIds[$sourceId] ?? $variantId;
+                if (($variants && !isset($variantsById[$selectedId])) || ($selectedId && !isset($variantsById[$selectedId]))) throw new InvalidArgumentException('Pilih varian yang tersedia pada produk tujuan untuk setiap produk asal. Muat ulang jika pilihan sudah berubah.');
+                if ($selectedId) $sourceVariants[$sourceId] = $variantsById[$selectedId];
+            }
+            $hasVariant = (bool)$sourceVariants;
             $pricing = new ProductPriceTier($this->koneksi);
-            if ($variant && !$pricing->isAvailable()) throw new InvalidArgumentException('Pengaturan harga varian belum tersedia.');
+            if ($hasVariant && !$pricing->isAvailable()) throw new InvalidArgumentException('Pengaturan harga varian belum tersedia.');
 
             // Kunci nota bersama itemnya; migrasi tidak menjalankan perhitungan ulang harga/stok.
             $placeholders = implode(',', array_fill(0, count($sourceIds), '?'));
@@ -437,14 +449,15 @@ class ProductController {
             $stmt->execute();
             $orders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             $stmt->close();
-            if ($variant || $finishings) {
+            if ($hasVariant || $finishings) {
                 $hasPricing = $pricing->isAvailable();
-                $template = $variant ? $variantModel->resolve($storeId, $target, ['product_variant_id' => $variantId]) : null;
-                $discountField = $variant ? ', COALESCE(d.diskon, 0) AS migration_discount' : '';
-                $discountJoin = $variant ? ' LEFT JOIN diskon_order_items d ON d.order_id = oi.order_id AND d.product_id = oi.product_id' : '';
+                $templates = [];
+                foreach ($sourceVariants as $sourceId => $selected) $templates[$sourceId] = ProductVariant::orderData($selected, $target);
+                $discountField = $hasVariant ? ', COALESCE(d.diskon, 0) AS migration_discount' : '';
+                $discountJoin = $hasVariant ? ' LEFT JOIN diskon_order_items d ON d.order_id = oi.order_id AND d.product_id = oi.product_id' : '';
                 $stmt = $this->koneksi->prepare("SELECT oi.*$discountField FROM order_items oi$discountJoin WHERE oi.store_id = ? AND oi.product_id IN ($placeholders) ORDER BY oi.order_id, oi.order_item_id FOR UPDATE");
                 $stmt->bind_param($types, ...$params); $stmt->execute(); $items = $stmt->get_result();
-                $variantFields = $variant ? ', product_variant_id = ?, product_variant_data = ?' : '';
+                $variantFields = $hasVariant ? ', product_variant_id = ?, product_variant_data = ?' : '';
                 $pricingField = $hasPricing ? ', tier_price_data = ?' : '';
                 $update = $this->koneksi->prepare("UPDATE order_items SET product_id = ?, finishing = ?$variantFields$pricingField WHERE order_item_id = ? AND store_id = ?");
                 $count = 0;
@@ -461,13 +474,13 @@ class ProductController {
                     }
                     $pricingData = $hasPricing && !empty($row['tier_price_data']) ? json_decode($row['tier_price_data'], true, 512, JSON_THROW_ON_ERROR) : null;
                     $values = [$targetId, $finalFinishing]; $updateTypes = 'is';
-                    if ($variant) {
-                        $snapshot = $template;
+                    if ($hasVariant) {
+                        $snapshot = $templates[$row['product_id']];
                         $oldVariant = ProductVariant::snapshot($row);
                         $snapshot['price'] = (float)($oldVariant['price'] ?? $pricingData['base'] ?? $products[$row['product_id']]['price']);
                         $variantJson = json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
                         $pricingData = $pricing->variantMigrationData($row, $target, $snapshot, (float)$row['migration_discount']);
-                        array_push($values, $variantId, $variantJson); $updateTypes .= 'is';
+                        array_push($values, $snapshot['id'], $variantJson); $updateTypes .= 'is';
                     }
                     if ($addedIds && $pricingData) {
                         $factor = 1;
@@ -499,7 +512,7 @@ class ProductController {
             $transaction = false;
             $migrated = true;
             $sourceCount = count($sourceIds);
-            $variantLabel = $variant ? ' / ' . $variant['label'] : '';
+            $variantLabel = $sourceVariantIds ? ' / varian sesuai masing-masing produk asal' : ($hasVariant ? ' / ' . reset($sourceVariants)['label'] : '');
             $sourceMessage = $deleteSource ? "$sourceCount produk asal berhasil dihapus." : 'Produk asal tetap tersedia.';
             $_SESSION['swal_success'] = "$count item order dari $sourceCount produk berhasil dimigrasikan ke produk #$targetId$variantLabel. Harga, diskon, dan quantity tetap. $sourceMessage";
         } catch (Throwable $e) {
@@ -560,13 +573,6 @@ class ProductController {
             $count = $stmt->get_result()->num_rows;
             $stmt->close();
             if ($count !== count($ids)) throw new InvalidArgumentException('Ada produk yang tidak tersedia atau bukan milik toko ini. Penghapusan dibatalkan.');
-            $types = str_repeat('i', count($ids));
-            $stmt = $this->koneksi->prepare("SELECT DISTINCT product_id FROM order_items WHERE product_id IN ($placeholders) FOR UPDATE");
-            $stmt->bind_param($types, ...$ids);
-            $stmt->execute();
-            $used = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'product_id');
-            $stmt->close();
-            if ($used) throw new InvalidArgumentException('Produk #' . implode(', #', $used) . ' masih dipakai pada nota. Migrasikan item order-nya terlebih dahulu.');
             $types = str_repeat('i', count($params));
             $stmt = $this->koneksi->prepare("DELETE p FROM products p WHERE p.store_id = ? AND p.product_id IN ($placeholders)
                 AND NOT EXISTS(SELECT 1 FROM order_items oi WHERE oi.product_id = p.product_id)");
@@ -574,11 +580,12 @@ class ProductController {
             $stmt->execute();
             $count = $stmt->affected_rows;
             $stmt->close();
-            if ($count !== count($ids)) throw new InvalidArgumentException('Data produk berubah saat diproses. Penghapusan dibatalkan; muat ulang halaman.');
+            $skipped = count($ids) - $count;
             $this->koneksi->commit();
             $transaction = false;
-            $deleted = true;
-            $_SESSION['swal_success'] = "$count produk berhasil dihapus.";
+            $deleted = $count > 0;
+            $_SESSION['swal_success'] = "$count produk berhasil dihapus."
+                . ($skipped > 0 ? " $skipped produk dilewati karena masih memiliki item order." : '');
         } catch (Throwable $e) {
             if ($transaction) $this->koneksi->rollback();
             $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : 'Gagal menghapus produk. Perubahan dibatalkan.';

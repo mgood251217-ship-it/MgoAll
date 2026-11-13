@@ -72,6 +72,16 @@ class ProductVariant {
         return $rows;
     }
 
+    public static function orderData($variant, $product) {
+        // ID baris resep hanya untuk formulir pengaturan, bukan identitas komponen pada nota.
+        foreach ($variant['components'] as &$component) unset($component['recipe_id']);
+        unset($component);
+        return [
+            'id' => (int)$variant['id'], 'options' => $variant['options'], 'label' => $variant['label'], 'price' => (float)$variant['price'],
+            'components' => $variant['components'], 'product_name' => $product['name'], 'category' => $product['category']
+        ];
+    }
+
     public function resolve($store, $product, $input) {
         $id = $input['product_variant_id'] ?? 0;
         if ($id === '') $id = 0;
@@ -95,13 +105,7 @@ class ProductVariant {
         }
         $variants = $this->getByProduct($store, (int)$product['product_id']);
         foreach ($variants as $variant) if ((int)$variant['id'] === $id) {
-            // ID baris resep hanya untuk formulir pengaturan, bukan identitas komponen pada nota.
-            foreach ($variant['components'] as &$component) unset($component['recipe_id']);
-            unset($component);
-            return [
-            'id' => $id, 'options' => $variant['options'], 'label' => $variant['label'], 'price' => (float)$variant['price'],
-            'components' => $variant['components'], 'product_name' => $product['name'], 'category' => $product['category']
-            ];
+            return self::orderData($variant, $product);
         }
         if ($id || $variants) throw new InvalidArgumentException('Pilih kombinasi varian yang tersedia. Jika pilihan varian belum muncul, perbarui aplikasi atau muat ulang data.');
         return null;
