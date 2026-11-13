@@ -888,70 +888,68 @@ class MeterController {
 
     public function getBahanSublim() {
         global $store_id;
-
-        $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
-        $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
-
-        $data_meteran_assoc = [];
-        $data_kiloan_assoc = [];
-        
-        $queryStr = "
-            SELECT p.product_id, p.name, p.unit_type, oi_filtered.size, oi_filtered.quantity
-            FROM products p
-            JOIN categories c ON p.category_id = c.category_id
-            LEFT JOIN (
-                SELECT oi.product_id, oi.size, oi.quantity
-                FROM order_items oi
-                JOIN orders o ON oi.order_id = o.order_id
-                WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
-            ) oi_filtered ON p.product_id = oi_filtered.product_id
-            WHERE c.name = 'SUBLIM' AND p.name LIKE '%BAHAN%' AND p.store_id = ?
-        ";
-
-        $stmt = $this->koneksi->prepare($queryStr);
-        $stmt->bind_param("issi", $store_id, $start_date_full, $end_date_full, $store_id);
-        $stmt->execute();
-        $all_data = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-
-        foreach ($all_data as $row) {
-            $name = $row['name'];
-            $unit = $row['unit_type'];
-
-            if ($unit === 'M2' && !isset($data_meteran_assoc[$name])) {
-                $data_meteran_assoc[$name] = ['name' => $name, 'rows' => []];
-            } elseif ($unit === 'PCS' && !isset($data_kiloan_assoc[$name])) {
-                $data_kiloan_assoc[$name] = ['name' => $name, 'rows' => []];
+        $start = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
+        $end = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
+        $variantsReady = (new ProductVariant($this->koneksi))->isAvailable();
+        $variantField = $variantsReady ? 'oi.product_variant_data' : 'NULL AS product_variant_data';
+        $variantCondition = $variantsReady ? ' OR oi.product_variant_data IS NOT NULL' : '';
+        $stmt = $this->koneksi->prepare("SELECT p.name, p.unit_type, c.name AS category,
+                oi.size, oi.quantity, $variantField
+            FROM order_items oi
+            JOIN orders o ON o.order_id = oi.order_id AND o.store_id = oi.store_id
+            LEFT JOIN products p ON p.product_id = oi.product_id AND p.store_id = oi.store_id
+            LEFT JOIN categories c ON c.category_id = p.category_id AND c.store_id = p.store_id
+            WHERE oi.store_id = ? AND o.date BETWEEN ? AND ?
+                AND ((UPPER(TRIM(c.name)) = 'SUBLIM' AND UPPER(p.name) LIKE '%BAHAN%')$variantCondition)
+            ORDER BY oi.order_item_id");
+        $stmt->bind_param('iss', $store_id, $start, $end); $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $stmt->close();
+        $masters = new ProductionComponent($this->koneksi);
+        $masterNames = array_column($masters->getByStore($store_id), 'name', 'id');
+        $links = $masters->links($store_id);
+        $meteran = $kiloan = [];
+        foreach ($rows as $row) {
+            $saved = ProductVariant::snapshot($row);
+            $category = strtoupper(trim($saved['category'] ?? $row['category'] ?? ''));
+            $productName = $saved['product_name'] ?? $row['name'] ?? '';
+            if ($category !== 'SUBLIM' || !str_contains(strtoupper($productName), 'BAHAN')) continue;
+            $qty = (int)$row['quantity'];
+            if ($qty <= 0) continue;
+            $size = strtoupper(trim($row['size'] ?? ''));
+            $weight = preg_match('/^(\d+(?:\.\d+)?)\s*KG$/D', $size, $kg);
+            $area = preg_match('/^(\d+(?:\.\d+)?)[X](\d+(?:\.\d+)?)$/D', $size, $dimensions);
+            // Snapshot tetap terbaca jika produk lama sudah dihapus setelah migrasi.
+            if (!$saved) {
+                $weight = $weight && $row['unit_type'] === 'PCS';
+                $area = $area && $row['unit_type'] === 'M2';
             }
-
-            if (!empty($row['size']) && !empty($row['quantity'])) {
-                $size = strtoupper(trim($row['size']));
-                $qty = (int)$row['quantity'];
-
-                if ($unit === 'M2' && preg_match('/^([\d.]+)[xX]([\d.]+)$/', $size, $m)) {
-                    $p = (float)$m[1];
-                    $l = (float)$m[2];
-                    $m2 = $p * $l * $qty;
-                    $data_meteran_assoc[$name]['rows'][] = ['p' => $p, 'l' => $l, 'qty' => $qty, 'm2' => $m2];
-                } elseif ($unit === 'PCS' && preg_match('/([\d.]+)\s*KG/', $size, $m)) {
-                    $kg = (float)$m[1];
-                    $total_kg = $kg * $qty;
-                    $data_kiloan_assoc[$name]['rows'][] = ['kg' => $kg, 'qty' => $qty, 'kg_total' => $total_kg];
+            if (!$weight && !$area) continue;
+            if (($weight && (float)$kg[1] <= 0) || ($area && ((float)$dimensions[1] <= 0 || (float)$dimensions[2] <= 0))) continue;
+            $components = $saved ? $saved['components'] : [];
+            if (!$components) $components = [['name' => $saved ? $productName . ' - ' . $saved['label'] : $productName, 'quantity' => 1]];
+            foreach ($components as $component) {
+                $factor = (float)$component['quantity'];
+                if ($factor <= 0) continue;
+                $id = (int)($component['component_id'] ?? 0);
+                if ($saved && !$id) $id = (int)($links[ProductionComponent::legacyKey($saved, $component['name'])] ?? 0);
+                $id = ProductionComponent::resolveId($id, $links);
+                $name = $masterNames[$id] ?? $component['name'];
+                if ($weight) {
+                    if (!isset($kiloan[$name])) $kiloan[$name] = ['name' => $name, 'rows' => []];
+                    $perItem = round((float)$kg[1] * $factor, 4);
+                    $kiloan[$name]['rows'][] = ['kg' => $perItem, 'qty' => $qty, 'kg_total' => round($perItem * $qty, 4)];
+                } else {
+                    if (!isset($meteran[$name])) $meteran[$name] = ['name' => $name, 'rows' => []];
+                    $length = round((float)$dimensions[1] * $factor, 4);
+                    $meteran[$name]['rows'][] = ['p' => $length, 'l' => (float)$dimensions[2], 'qty' => $qty,
+                        'm2' => round($length * (float)$dimensions[2] * $qty, 4)];
                 }
             }
         }
-
-        $max_meteran = 0;
-        foreach ($data_meteran_assoc as $p) $max_meteran = max($max_meteran, count($p['rows']));
-        
-        $max_kiloan = 0;
-        foreach ($data_kiloan_assoc as $p) $max_kiloan = max($max_kiloan, count($p['rows']));
-
-        return [
-            'meteran' => array_values($data_meteran_assoc),
-            'kiloan' => array_values($data_kiloan_assoc),
-            'max_rows' => max($max_meteran, $max_kiloan)
-        ];
+        ksort($meteran, SORT_NATURAL | SORT_FLAG_CASE); ksort($kiloan, SORT_NATURAL | SORT_FLAG_CASE);
+        $max = 0;
+        foreach (array_merge(array_values($meteran), array_values($kiloan)) as $product) $max = max($max, count($product['rows']));
+        return ['meteran' => array_values($meteran), 'kiloan' => array_values($kiloan), 'max_rows' => $max];
     }
 
     public function getFinishingJersey() { return $this->getFinishingPakaian(); }

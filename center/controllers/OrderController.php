@@ -780,7 +780,7 @@ class OrderController {
                 $unit *= ($panjang * $lebar);
             }
 
-            if ($unit_type === 'PCS' && str_contains($name, 'BAHAN') && $kiloan != 0) {
+            if (ProductPriceTier::isWeightMaterial($product) && $kiloan != 0) {
                 $unit *= $kiloan;
                 $size = "{$kiloan} KG";
             }

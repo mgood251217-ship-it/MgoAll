@@ -28,6 +28,15 @@ class ProductPriceTier {
         return $stmt;
     }
 
+    public static function isWeightMaterial($product) {
+        return strtoupper(trim($product['unit_type'] ?? '')) === 'PCS'
+            && str_contains(strtoupper($product['name'] ?? ''), 'BAHAN');
+    }
+
+    public static function weightFromSize($size) {
+        return preg_match('/^(\d+(?:\.\d+)?)\s*KG$/iD', trim((string)$size), $match) ? (float)$match[1] : 0;
+    }
+
     public static function usesTime($product) {
         return strtoupper(trim($product['category'] ?? '')) === 'JASA'
             && in_array(strtoupper(trim($product['name'] ?? '')), ['SETTING', 'POTONG AKRILIK'], true);
@@ -135,6 +144,7 @@ class ProductPriceTier {
             $data['factor'] = 1;
             if (in_array($targetMeasure, ['m2', 'cm2'], true) && preg_match('/^([\d.]+)x([\d.]+)$/i', $row['size'], $size)) $data['factor'] = round((float)$size[1] * (float)$size[2], 8);
         }
+        if (self::isWeightMaterial($target) && ($weight = self::weightFromSize($row['size'])) > 0) $data['factor'] = $weight;
         $data['variant'] = (int)$variant['id'];
         unset($data['variant_tiers']);
         $data['normal'] = (float)$row['unit'];
@@ -154,7 +164,7 @@ class ProductPriceTier {
     public function preview(&$item, $product, $store, $input, $discount, $special = false) {
         $measure = self::measure($product);
         if (!$this->isAvailable()) return;
-        $weightBased = ($product['unit_type'] ?? '') === 'PCS' && str_contains($product['name'] ?? '', 'BAHAN') && (float)($input['kiloan'] ?? 0) > 0;
+        $weightBased = self::isWeightMaterial($product) && (float)($input['kiloan'] ?? 0) > 0;
         $rows = $this->items($store, $item['order_id'], $item['product_id']);
         $migrated = null; $migrationSources = [];
         foreach ($rows as $row) if ((int)$row['order_item_id'] === (int)($input['order_item_id'] ?? 0)) {
@@ -198,7 +208,7 @@ class ProductPriceTier {
         $variantRules = !empty($item['variant']) ? ($first ? ($first['rules'] ?? []) : $this->rules($store, $item['product_id'], (int)$item['variant']['id'])) : null;
         $useVariantTiers = $variantRules && (!$first || !empty($first['variant_tiers'])) && $measure && !$special && !$weightBased;
         if (!empty($item['variant']) && !$useVariantTiers) {
-            $data = ['rules' => [], 'variant' => (int)$item['variant']['id'], 'measure' => $measure, 'factor' => 1,
+            $data = ['rules' => [], 'variant' => (int)$item['variant']['id'], 'measure' => $measure, 'factor' => $weightBased ? (float)$input['kiloan'] : 1,
                 'normal' => round($item['unit'], 2), 'base' => (float)$product['price'],
                 'discount' => (float)$discount, 'stock' => self::stock($item)];
             if ($minimum = self::minimumAmount($product)) $data['minimum_amount'] = $minimum;
@@ -208,7 +218,8 @@ class ProductPriceTier {
                 if ($old['size'] === $item['size'] && self::finishingKey($old['finishing']) === self::finishingKey($item['finishing_str'])
                     && ($old['laser_product_id'] ?? null) == ($item['laser_product_id'] ?? null)
                     && ($old['product_finishing_price_id'] ?? null) == ($item['product_finishing_price_id'] ?? null)) {
-                    $data['normal'] = round(max(0, $saved['normal'] + (float)($saved['factor'] ?? 1) * (($saved['discount'] ?? 0) - $discount)), 2);
+                    $factor = $weightBased ? self::weightFromSize($old['size']) : (float)($saved['factor'] ?? 1);
+                    $data['normal'] = round(max(0, $saved['normal'] + $factor * (($saved['discount'] ?? 0) - $discount)), 2);
                     $item['unit'] = $data['normal'];
                     $item['amount'] = self::amount($data, $item['unit'], $item['quantity']);
                 }
