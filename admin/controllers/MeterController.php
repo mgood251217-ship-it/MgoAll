@@ -886,6 +886,36 @@ class MeterController {
         return $product_data_cetakan;
     }
 
+    public function getPelengkap() {
+        global $store_id;
+        $start = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
+        $end = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
+        $variants = new ProductVariant($this->koneksi);
+        $legacyOnly = $variants->isAvailable() ? ' AND oi.product_variant_data IS NULL' : '';
+        $stmt = $this->koneksi->prepare("SELECT p.name, SUM(oi.quantity) AS total_qty
+            FROM order_items oi
+            JOIN orders o ON o.order_id = oi.order_id AND o.store_id = oi.store_id
+            JOIN products p ON p.product_id = oi.product_id AND p.store_id = oi.store_id
+            JOIN categories c ON c.category_id = p.category_id AND c.store_id = p.store_id
+            WHERE oi.store_id = ? AND o.date BETWEEN ? AND ?
+                AND UPPER(TRIM(c.name)) = 'PELENGKAP' AND UPPER(TRIM(p.unit_type)) IN ('PCS', '~')$legacyOnly
+            GROUP BY p.product_id, p.name ORDER BY p.name");
+        $stmt->bind_param('iss', $store_id, $start, $end); $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $stmt->close();
+        $totals = [];
+        foreach ($rows as $row) $totals[$row['name']] = ($totals[$row['name']] ?? 0) + (float)$row['total_qty'];
+        foreach ($variants->productionRows($store_id, $start, $end, ['PELENGKAP'], true, ['PCS', '~']) as $row) {
+            $totals[$row['name']] = ($totals[$row['name']] ?? 0) + (float)$row['total_qty'];
+        }
+        ksort($totals, SORT_NATURAL | SORT_FLAG_CASE);
+        $result = [];
+        foreach ($totals as $name => $quantity) {
+            $quantity = round($quantity, 4);
+            if ($quantity != 0) $result[] = ['name' => $name, 'total_qty' => $quantity];
+        }
+        return $result;
+    }
+
     public function getBahanSublim() {
         global $store_id;
         $start = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';

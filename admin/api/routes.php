@@ -148,6 +148,7 @@ $router->add('meter_sublim', MeterController::class, 'getSublim', ['auth']);
 $router->add('meter_mercendise_akrilik', MeterController::class, 'getMercendiseAkrilik', ['auth']);
 $router->add('meter_dtf', MeterController::class, 'getDtf', ['auth']);
 $router->add('meter_cetakan', MeterController::class, 'getCetakan', ['auth']);
+$router->add('meter_pelengkap', MeterController::class, 'getPelengkap', ['auth']);
 $router->add('meter_bahan_sublim', MeterController::class, 'getBahanSublim', ['auth']);
 $router->add('meter_finishing_jersey', MeterController::class, 'getFinishingJersey', ['auth']);
 $router->add('meter_finishing_pakaian', MeterController::class, 'getFinishingPakaian', ['auth']);

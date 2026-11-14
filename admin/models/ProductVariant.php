@@ -122,19 +122,24 @@ class ProductVariant {
     }
 
     // Harga dan jumlah dari nota; nama terbaru dari master yang terhubung dengan ID.
-    public function productionRows($store, $start, $end, $category = null, $includeDefault = false) {
+    public function productionRows($store, $start, $end, $category = null, $includeDefault = false, $unitTypes = null) {
         if (!$this->isAvailable()) return [];
         $masterModel = new ProductionComponent($this->db);
         $ready = $masterModel->isAvailable();
         $masters = array_column($masterModel->getByStore($store), 'name', 'id');
         $links = $masterModel->links($store);
-        $stmt = $this->db->prepare('SELECT oi.quantity, oi.product_variant_data FROM order_items oi JOIN orders o ON o.order_id = oi.order_id AND o.store_id = oi.store_id WHERE oi.store_id = ? AND o.date BETWEEN ? AND ? AND oi.product_variant_data IS NOT NULL');
+        $units = $unitTypes === null ? null : array_map(function ($unit) { return strtoupper(trim($unit)); }, (array)$unitTypes);
+        $unitField = $units === null ? '' : ', p.unit_type AS current_unit_type';
+        $productJoin = $units === null ? '' : ' LEFT JOIN products p ON p.product_id = oi.product_id AND p.store_id = oi.store_id';
+        $stmt = $this->db->prepare("SELECT oi.quantity, oi.product_variant_data$unitField FROM order_items oi JOIN orders o ON o.order_id = oi.order_id AND o.store_id = oi.store_id$productJoin WHERE oi.store_id = ? AND o.date BETWEEN ? AND ? AND oi.product_variant_data IS NOT NULL");
         $stmt->bind_param('iss', $store, $start, $end); $stmt->execute();
         $totals = []; $result = $stmt->get_result();
         $categories = $category === null ? null : array_map(function ($name) { return strtoupper(trim($name)); }, (array)$category);
         while ($row = $result->fetch_assoc()) {
             $saved = self::snapshot($row);
             if ($categories !== null && !in_array(strtoupper(trim($saved['category'])), $categories, true)) continue;
+            // Nota lama tanpa satuan pada snapshot tetap dihitung sebagai pcs jika produk sudah dihapus.
+            if ($units !== null && !in_array(strtoupper(trim($row['current_unit_type'] ?? $saved['unit_type'] ?? 'PCS')), $units, true)) continue;
             $components = $saved['components'];
             $default = !$components && $includeDefault;
             if ($default) $components = [['name' => $saved['product_name'] . ' - ' . $saved['label'], 'quantity' => 1]];
