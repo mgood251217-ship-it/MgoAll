@@ -30,12 +30,13 @@ class ProductLaserConversion {
                     AND lp.product_id IS NOT NULL AND UPPER(TRIM(lc.name)) = 'LASER A3'
                     AND lp.unit_type IN ('PCS', '~') AND r.product_quantity > 0 AND r.print_quantity > 0) AS valid
             FROM product_laser_conversion r
-            LEFT JOIN products p ON p.product_id = r.product_id AND p.store_id = r.store_id
-            LEFT JOIN categories c ON c.category_id = p.category_id AND c.store_id = r.store_id
-            LEFT JOIN products lp ON lp.product_id = r.laser_product_id AND lp.store_id = r.store_id
-            LEFT JOIN categories lc ON lc.category_id = lp.category_id AND lc.store_id = r.store_id
+            LEFT JOIN products p ON p.product_id = r.product_id AND p.store_id = ?
+            LEFT JOIN categories c ON c.category_id = p.category_id AND c.store_id = ?
+            LEFT JOIN products lp ON lp.product_id = r.laser_product_id AND lp.store_id = ?
+            LEFT JOIN categories lc ON lc.category_id = lp.category_id AND lc.store_id = ?
             WHERE r.store_id = ? ORDER BY c.name, p.name, r.id");
-        $stmt->bind_param('i', $store_id);
+        // Semua alias tetap dibatasi ke toko yang sama; store_id lama bisa berupa VARCHAR.
+        $stmt->bind_param('iiiii', $store_id, $store_id, $store_id, $store_id, $store_id);
         $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();

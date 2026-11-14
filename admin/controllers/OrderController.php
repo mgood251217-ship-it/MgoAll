@@ -412,6 +412,12 @@ class OrderController {
             return ['error' => 'Produk bukan milik toko ini', 'status' => 400];
         }
 
+        try {
+            $bundle = (new ProductBundle($this->koneksi))->prepare($store_id, $product, $data,
+                function ($child) use ($store_id) { return $this->_prepareItemData($child, $store_id, true); });
+            if ($bundle) return $bundle;
+        } catch (InvalidArgumentException $e) { return ['error' => $e->getMessage(), 'status' => 400]; }
+
         if ($product['category'] === 'PAKET INDOOR OUTDOOR') {
             $nama_pencarian = trim($judul . ' ' . $size);
             $produk_baru = $this->productModel->getProductByNameAndStore($nama_pencarian, $store_id);

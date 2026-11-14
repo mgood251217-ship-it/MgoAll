@@ -39,17 +39,19 @@ class ProductVariant {
 
     public function getByProduct($store, $product) {
         if (!$this->isAvailable()) return [];
-        $stmt = $this->db->prepare('SELECT v.* FROM product_variants v JOIN products p ON p.product_id = v.product_id AND p.store_id = v.store_id WHERE v.store_id = ? AND v.product_id = ? ORDER BY v.id');
-        $stmt->bind_param('ii', $store, $product); $stmt->execute();
+        $stmt = $this->db->prepare('SELECT v.* FROM product_variants v JOIN products p ON p.product_id = v.product_id AND p.store_id = ? WHERE v.store_id = ? AND v.product_id = ? ORDER BY v.id');
+        $stmt->bind_param('iii', $store, $store, $product); $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $stmt->close();
         $componentModel = new ProductionComponent($this->db);
         $masters = $componentModel->isAvailable();
         $masterNames = $masters ? array_column($componentModel->getByStore($store), 'name', 'id') : [];
         $links = $masters ? $componentModel->links($store) : [];
         $fields = $masters ? 'c.id AS recipe_id, c.variant_id, c.component_id, COALESCE(m.name, c.name) AS name, c.quantity' : 'c.id AS recipe_id, c.variant_id, c.name, c.quantity';
-        $join = $masters ? ' LEFT JOIN production_components m ON m.id = c.component_id AND m.store_id = v.store_id' : '';
+        $join = $masters ? ' LEFT JOIN production_components m ON m.id = c.component_id AND m.store_id = ?' : '';
         $stmt = $this->db->prepare("SELECT $fields FROM product_variant_components c JOIN product_variants v ON v.id = c.variant_id $join WHERE v.store_id = ? AND v.product_id = ? ORDER BY c.id");
-        $stmt->bind_param('ii', $store, $product); $stmt->execute();
+        if ($masters) $stmt->bind_param('iii', $store, $store, $product);
+        else $stmt->bind_param('ii', $store, $product);
+        $stmt->execute();
         $components = [];
         foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $c) {
             $entry = ['name' => $c['name'], 'quantity' => (float)$c['quantity'], 'recipe_id' => (int)$c['recipe_id']];

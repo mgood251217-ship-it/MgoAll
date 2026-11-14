@@ -3,6 +3,7 @@ require_once __DIR__ . '/ProductFinishingPrice.php';
 require_once __DIR__ . '/ProductLaserConversion.php';
 require_once __DIR__ . '/ProductPromotion.php';
 require_once __DIR__ . '/ProductVariant.php';
+require_once __DIR__ . '/ProductBundle.php';
 
 class ProductPriceTier {
     private $db;
@@ -91,7 +92,7 @@ class ProductPriceTier {
     private static function snapshot($row) {
         if (empty($row['tier_price_data'])) return null;
         $data = json_decode($row['tier_price_data'], true, 512, JSON_THROW_ON_ERROR);
-        if (!is_array($data) || (empty($data['rules']) && empty($data['promotion']) && empty($data['variant'])) || !isset($data['factor'], $data['normal'], $data['base'], $data['stock'])) {
+        if (!is_array($data) || (empty($data['rules']) && empty($data['promotion']) && empty($data['variant']) && empty($data['bundle'])) || !isset($data['factor'], $data['normal'], $data['base'], $data['stock'])) {
             throw new RuntimeException('Data aturan harga pada item tidak lengkap.');
         }
         return $data;
@@ -126,6 +127,7 @@ class ProductPriceTier {
     }
 
     public static function stock($item) {
+        if (isset($item['bundle_stock'])) return $item['bundle_stock'];
         $qty = max(1, (int)$item['quantity']);
         $stock = ['products' => [], 'finishings' => []];
         if ($item['product']['unit_type'] !== '~') $stock['products'][(int)$item['product_id']] = round((float)$item['stok_butuh'] / $qty, 8);
@@ -261,7 +263,7 @@ class ProductPriceTier {
         if (!$this->isAvailable()) return false;
         $product = (int)($input['product_id'] ?? 0);
         $order = (int)($input['order_id'] ?? 0);
-        return (bool)$this->rules($store, $product) || (bool)$this->items($store, $order, $product)
+        return (bool)(new ProductBundle($this->db))->find($store, $product) || (bool)$this->rules($store, $product) || (bool)$this->items($store, $order, $product)
             || (bool)(new ProductPromotion($this->db))->rule($store, $product)
             || !empty($input['product_variant_id']) || (bool)(new ProductVariant($this->db))->getByProduct($store, $product);
     }
@@ -442,6 +444,7 @@ class ProductPriceTier {
             $group = self::tierGroup($row, $s); $totals[$group] = ($totals[$group] ?? 0) + $s['factor'] * (int)$row['quantity'];
         }
         foreach ($items as &$row) {
+            $row['bundle'] = !empty($row['tier_price_data']) ? (self::snapshot($row)['bundle'] ?? null) : null;
             $row['tier_pricing'] = null;
             $row['promotion'] = null;
             if ($s = self::snapshot($row)) {

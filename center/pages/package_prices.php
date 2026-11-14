@@ -4,10 +4,19 @@ if (empty($_SESSION['admin_logged_in'])) {
     header('Location: /login');
     exit;
 }
+$packageBufferLevel = ob_get_level();
+ob_start();
+try {
 require_once __DIR__ . '/../config/connect.php';
-require_once __DIR__ . '/../controllers/PackagePriceController.php';
-$controller = new PackagePriceController($koneksi);
-$data = $controller->getData();
+$isBundleTab = ($_GET['tab'] ?? '') === 'bundles';
+if ($isBundleTab) {
+    require_once __DIR__ . '/../controllers/ProductBundleController.php';
+    $bundlePageData = (new ProductBundleController($koneksi))->getData();
+    $data = ['store_id' => $bundlePageData['store'], 'finishings' => []];
+} else {
+    require_once __DIR__ . '/../controllers/PackagePriceController.php';
+    $data = (new PackagePriceController($koneksi))->getData();
+}
 $_SESSION['package_price_csrf'] = $_SESSION['package_price_csrf'] ?? bin2hex(random_bytes(32));
 $escape = function ($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); };
 $rupiah = function ($value) { return 'Rp' . number_format((float)$value, 0, ',', '.'); };
@@ -21,12 +30,19 @@ foreach ($data['finishings'] as $finishing) {
     <h2>Harga Paket</h2>
     <a class="btn-primary-custom" href="/products?store_id=<?= (int)$data['store_id'] ?>">Kembali ke Produk</a>
 </div>
+<div class="mb-3 d-flex" style="gap:8px;flex-wrap:wrap">
+<a class="<?= ($_GET['tab']??'')!=='bundles'?'btn-primary-custom':'btn-secondary-custom' ?>" href="/package-prices?store_id=<?= (int)$data['store_id'] ?>">Produk + Finishing</a>
+<a class="<?= ($_GET['tab']??'')==='bundles'?'btn-primary-custom':'btn-secondary-custom' ?>" href="/package-prices?tab=bundles&amp;store_id=<?= (int)$data['store_id'] ?>">Gabungan Produk</a>
+</div>
 <?php foreach (['swal_success' => 'success', 'swal_error' => 'danger'] as $key => $type): ?>
     <?php if (isset($_SESSION[$key])): ?>
         <div class="alert alert-<?= $type ?>"><?= $escape($_SESSION[$key]) ?></div>
         <?php unset($_SESSION[$key]); ?>
     <?php endif; ?>
 <?php endforeach; ?>
+<?php if ($isBundleTab) {
+    require __DIR__.'/product_bundles.php';
+} else { ?>
 <div class="filter-card">
     <form method="get" action="/package-prices" class="filter-form">
         <div class="form-group">
@@ -150,3 +166,20 @@ foreach ($data['finishings'] as $finishing) {
     updatePackageDimensions();
     </script>
 <?php endif; ?>
+<?php
+}
+$packageHtml = ob_get_clean();
+echo $packageHtml;
+} catch (Throwable $e) {
+    while (ob_get_level() > $packageBufferLevel) ob_end_clean();
+    $reference = 'paket-' . ((int)$e->getCode() ?: 'load');
+    error_log('Harga paket [' . $reference . ']: ' . $e);
+    $message = $e instanceof InvalidArgumentException
+        ? $e->getMessage()
+        : 'Halaman harga paket belum dapat dimuat. Periksa kelengkapan file dan skema database.';
+    if ((int)$e->getCode() === 1267) $message = 'Collation kolom database belum seragam. Periksa collation tabel yang digunakan paket gabungan.';
+    echo '<div class="page-header"><h2>Harga Paket</h2></div><div class="alert alert-danger" role="alert">'
+        . htmlspecialchars($message, ENT_QUOTES, 'UTF-8')
+        . ' Kode: ' . $reference . '.</div>';
+}
+?>

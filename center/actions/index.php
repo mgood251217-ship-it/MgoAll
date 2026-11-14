@@ -144,6 +144,11 @@ switch ($action) {
         else $variantController->linkComponents();
         break;
 
+    case 'save_product_bundle':
+        require_once __DIR__ . '/../controllers/ProductBundleController.php';
+        (new ProductBundleController($koneksi))->save();
+        break;
+
     case 'save_package_price':
     case 'get_product_finishing_prices':
         require_once __DIR__ . '/../controllers/PackagePriceController.php';

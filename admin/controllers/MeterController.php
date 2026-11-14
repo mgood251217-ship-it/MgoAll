@@ -6,6 +6,7 @@ require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/../models/Payment.php';
 require_once __DIR__ . '/../models/ProductLaserConversion.php';
 require_once __DIR__ . '/../models/ProductVariant.php';
+require_once __DIR__ . '/../models/ProductBundle.php';
 require_once __DIR__ . '/../functions/helpers.php';
 
 class MeterController {
@@ -357,6 +358,7 @@ class MeterController {
         $total_all_qty_pakaian = 0;
         $variantModel = new ProductVariant($this->koneksi);
         $legacyOnly = $variantModel->isAvailable() ? ' AND oi.product_variant_data IS NULL' : '';
+        if ((new ProductBundle($this->koneksi))->isAvailable()) $legacyOnly .= " AND JSON_EXTRACT(IF(JSON_VALID(oi.tier_price_data), oi.tier_price_data, '{}'), '$.bundle') IS NULL";
 
         $queryStr = "
             SELECT p.name, COALESCE(SUM(oi_filtered.quantity), 0) AS total_qty
@@ -397,6 +399,14 @@ class MeterController {
             $product_data_pakaian[] = $component;
             $total_all_qty_pakaian += $component['total_qty'];
         }
+        foreach ((new ProductBundle($this->koneksi))->quantityRows($store_id, $start_date_full, $end_date_full, ['TEKSTIL','PAKAIAN','JERSEY']) as $row) {
+            $product_data_pakaian[] = $row; $total_all_qty_pakaian += $row['total_qty'];
+        }
+        $merged = [];
+        foreach ($product_data_pakaian as $row) $merged[$row['name']] = ($merged[$row['name']] ?? 0) + $row['total_qty'];
+        ksort($merged, SORT_NATURAL | SORT_FLAG_CASE);
+        $product_data_pakaian = [];
+        foreach ($merged as $name => $qty) if ($qty != 0) $product_data_pakaian[] = ['name' => $name, 'total_qty' => $qty];
         return [
             'product_data' => $product_data_pakaian,
             'total_all_qty' => $total_all_qty_pakaian
@@ -408,6 +418,14 @@ class MeterController {
         $start = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
         $end = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
         $rows = (new ProductVariant($this->koneksi))->productionRows($store_id, $start, $end);
+        $rows = array_merge($rows, (new ProductBundle($this->koneksi))->quantityRows($store_id, $start, $end));
+        $merged = [];
+        foreach ($rows as $row) {
+            $name = $row['name'];
+            if (!isset($merged[$name])) $merged[$name] = array_merge(['component_id' => null], $row, ['total_qty' => 0]);
+            $merged[$name]['total_qty'] += $row['total_qty'];
+        }
+        $rows = array_values(array_filter($merged, function ($row) { return $row['total_qty'] != 0; }));
         return ['product_data' => $rows, 'total_all_qty' => array_sum(array_column($rows, 'total_qty'))];
     }
 
@@ -547,6 +565,9 @@ class MeterController {
             }
         }
 
+        foreach ((new ProductBundle($this->koneksi))->laserRows($store_id, $start_date_full, $end_date_full) as $name => $qty) {
+            $product_data_laser_a3[$name] = ($product_data_laser_a3[$name] ?? 0) + $qty;
+        }
         $product_data_laser_a3 = array_filter($product_data_laser_a3, function ($qty) { return (float)$qty !== 0.0; });
         foreach ($product_data_laser_a3 as $qty) {
             $total_all_qty_laser += $qty;
@@ -892,6 +913,7 @@ class MeterController {
         $end = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
         $variants = new ProductVariant($this->koneksi);
         $legacyOnly = $variants->isAvailable() ? ' AND oi.product_variant_data IS NULL' : '';
+        if ((new ProductBundle($this->koneksi))->isAvailable()) $legacyOnly .= " AND JSON_EXTRACT(IF(JSON_VALID(oi.tier_price_data), oi.tier_price_data, '{}'), '$.bundle') IS NULL";
         $stmt = $this->koneksi->prepare("SELECT p.name, SUM(oi.quantity) AS total_qty
             FROM order_items oi
             JOIN orders o ON o.order_id = oi.order_id AND o.store_id = oi.store_id
@@ -906,6 +928,9 @@ class MeterController {
         foreach ($rows as $row) $totals[$row['name']] = ($totals[$row['name']] ?? 0) + (float)$row['total_qty'];
         foreach ($variants->productionRows($store_id, $start, $end, ['PELENGKAP'], true, ['PCS', '~']) as $row) {
             $totals[$row['name']] = ($totals[$row['name']] ?? 0) + (float)$row['total_qty'];
+        }
+        foreach ((new ProductBundle($this->koneksi))->quantityRows($store_id, $start, $end, ['PELENGKAP']) as $row) {
+            $totals[$row['name']] = ($totals[$row['name']] ?? 0) + $row['total_qty'];
         }
         ksort($totals, SORT_NATURAL | SORT_FLAG_CASE);
         $result = [];

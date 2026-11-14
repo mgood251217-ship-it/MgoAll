@@ -45,6 +45,7 @@ $router->add('finishing_by_category', ProductController::class, 'getFinishingByC
 $router->add('product_finishing_prices', ProductController::class, 'getProductFinishingPrices', ['auth']);
 $router->add('product_laser_conversions', ProductController::class, 'getProductLaserConversions', ['auth']);
 $router->add('product_variants', ProductController::class, 'getProductVariants', ['auth']);
+$router->add('product_bundles', ProductController::class, 'getProductBundles', ['auth']);
 $router->add('create_finishing', ProductController::class, 'createFinishing', ['auth']);
 $router->add('update_finishing', ProductController::class, 'updateFinishing', ['auth']);
 $router->add('delete_finishing', ProductController::class, 'deleteFinishing', ['auth']);

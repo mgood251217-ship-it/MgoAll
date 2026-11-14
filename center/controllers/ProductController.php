@@ -295,6 +295,7 @@ class ProductController {
             $stmt = $this->copyProductQuery("SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON c.category_id = p.category_id AND c.store_id = p.store_id WHERE p.store_id = ? AND p.product_id IN ($placeholders) ORDER BY p.product_id FOR UPDATE", array_merge([$sourceId], $ids));
             $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $stmt->close();
             if (count($products) !== count($ids)) throw new InvalidArgumentException('Ada produk yang tidak tersedia pada cabang sumber. Penyalinan dibatalkan.');
+            foreach ($ids as $id) if ((new ProductBundle($this->koneksi))->find($sourceId,$id)) throw new InvalidArgumentException('Paket gabungan harus diatur ulang di Harga Paket cabang tujuan; penyalinan produk biasa tidak menyalin isinya.');
             $model = new ProductVariant($this->koneksi);
             $configured = [];
             foreach ((new ProductFinishingPrice($this->koneksi))->getByStore($targetId, 0, false) as $rule) $configured[(int)$rule['product_id']] = true;
@@ -418,6 +419,8 @@ class ProductController {
             }
             $products = array_column($products, null, 'product_id');
             $target = $products[$targetId];
+            $bundleModel = new ProductBundle($this->koneksi);
+            foreach ($allIds as $id) if ($bundleModel->find($storeId,$id)) throw new InvalidArgumentException('Produk paket gabungan dikelola melalui Harga Paket; tidak dimigrasikan sebagai produk biasa.');
             $finishings = [];
             if ($finishingIds) {
                 $finishingPlaceholders = implode(',', array_fill(0, count($finishingIds), '?'));
@@ -473,6 +476,7 @@ class ProductController {
                         sort($ids, SORT_NUMERIC); $finalFinishing = implode(',', $ids);
                     }
                     $pricingData = $hasPricing && !empty($row['tier_price_data']) ? json_decode($row['tier_price_data'], true, 512, JSON_THROW_ON_ERROR) : null;
+                    if (!empty($pricingData['bundle'])) throw new InvalidArgumentException('Item paket gabungan tidak dimigrasikan sebagai varian biasa.');
                     $values = [$targetId, $finalFinishing]; $updateTypes = 'is';
                     if ($hasVariant) {
                         $snapshot = $templates[$row['product_id']];

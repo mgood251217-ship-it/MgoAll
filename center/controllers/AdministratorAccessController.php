@@ -46,6 +46,7 @@ class AdministratorAccessController {
 
     public static function actionPermission($action) {
         $aliases = [
+            'save_product_bundle' => 'save_package_price',
             'bulk_update_product_category' => 'edit_product',
             'bulk_delete_products' => 'delete_product',
             'link_production_components' => 'save_production_component',

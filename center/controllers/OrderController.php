@@ -275,7 +275,7 @@ class OrderController {
 
         $this->koneksi->begin_transaction();
         try {
-            $stmt = $this->koneksi->prepare("SELECT store_id FROM orders WHERE order_id = ?");
+            $stmt = $this->koneksi->prepare("SELECT store_id FROM orders WHERE order_id = ? FOR UPDATE");
             $stmt->bind_param("i", $order_id);
             $stmt->execute();
             $order = $stmt->get_result()->fetch_assoc();
@@ -284,6 +284,7 @@ class OrderController {
             if (!$order) throw new Exception("Order tidak ditemukan.");
             $store_id = $order['store_id'];
 
+            (new ProductBundle($this->koneksi))->refundOrderStocks($store_id,$order_id);
             $this->koneksi->query("DELETE FROM diskon_order_items WHERE order_id = $order_id");
             $this->koneksi->query("DELETE FROM order_items WHERE order_id = $order_id");
             $this->koneksi->query("UPDATE orders SET total = 0 WHERE order_id = $order_id");
@@ -582,6 +583,12 @@ class OrderController {
         if ((int)$product['store_id'] !== (int)$store_id) {
             return ['error' => 'Produk bukan milik toko ini', 'status' => 400];
         }
+
+        try {
+            $bundle = (new ProductBundle($this->koneksi))->prepare($store_id, $product, $data,
+                function ($child) use ($store_id) { return $this->_prepareItemData($child, $store_id, true); });
+            if ($bundle) return $bundle;
+        } catch (InvalidArgumentException $e) { return ['error' => $e->getMessage(), 'status' => 400]; }
 
         if ($product['category'] === 'PAKET INDOOR OUTDOOR') {
             $nama_pencarian = trim($judul . ' ' . $size);

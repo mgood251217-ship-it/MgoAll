@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../admin/models/ProductVariant.php';
+require_once __DIR__ . '/../../admin/models/ProductBundle.php';
 class StoreController {
     private $koneksi;
 
@@ -79,6 +80,7 @@ class StoreController {
                     throw new InvalidArgumentException('Anda tidak memiliki akses ke toko sumber atau tujuan.');
                 }
             }
+            if ((new ProductBundle($this->koneksi))->getByStore($sourceId)) throw new InvalidArgumentException('Impor toko yang memiliki paket gabungan belum tersedia. Atur paket gabungan pada toko tujuan agar isi paket tidak hilang.');
             $source = [];
             foreach (['categories', 'products', 'finishings'] as $table) {
                 $stmt = $this->catalogQuery("SELECT 1 FROM $table WHERE store_id = ? LIMIT 1 FOR UPDATE", [$targetId]);

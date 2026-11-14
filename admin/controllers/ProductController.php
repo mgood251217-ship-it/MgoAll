@@ -3,18 +3,21 @@ require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/../models/ProductFinishingPrice.php';
 require_once __DIR__ . '/../models/ProductLaserConversion.php';
 require_once __DIR__ . '/../models/ProductVariant.php';
+require_once __DIR__ . '/../models/ProductBundle.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../functions/cacheHelpers.php';
 
 class ProductController {
     private $productModel;
+    private $db;
     private $authMiddleware;
     private $packagePrices;
     private $laserConversions;
     private $variants;
 
     public function __construct($koneksi) {
+        $this->db = $koneksi;
         $this->productModel = new Product($koneksi);
         $this->packagePrices = new ProductFinishingPrice($koneksi);
         $this->laserConversions = new ProductLaserConversion($koneksi);
@@ -84,6 +87,20 @@ class ProductController {
         global $store_id;
         $categories = $this->productModel->getCategoryByStoreId($store_id);
         send_json_response(true, 'Categories retrieved successfully.', $categories);
+    }
+
+    public function getProductBundles() {
+        global $store_id;
+        $model=new ProductBundle($this->db);$rows=$model->getByStore($store_id);
+        foreach ($rows as &$row) {
+            $row['contents']=[];$row['valid']=true;
+            try {
+                foreach ($model->compile($store_id,$row) as $item) $row['contents'][]=['quantity'=>$item['quantity'],
+                    'label'=>$item['product']['name'].($item['variant']?' - '.$item['variant']['label']:'')
+                        .($item['laser']?' - '.implode(' / ',array_filter([$item['laser']['laser_name'],$item['laser']['size'],$item['laser']['finishing_names']??''])):'')];
+            }catch(InvalidArgumentException $e){$row['valid']=false;$row['error']=$e->getMessage();}
+        }unset($row);
+        send_json_response(true, 'Paket gabungan produk', $rows);
     }
 
     public function getProductVariants() {
