@@ -71,6 +71,87 @@ class ProductBundle {
         return $row;
     }
 
+    // Pemanggil memegang transaksi dan kunci toko sumber/tujuan.
+    public function copyToStore(
+        $sourceStore,
+        $sourceProduct,
+        $targetStore,
+        $targetProduct,
+        $productMap,
+        $variantMap,
+        $laserMap
+    ) {
+        if ($this->find($targetStore, $targetProduct)) {
+            return false;
+        }
+        $source = $this->find($sourceStore, $sourceProduct);
+        if (!$source) {
+            throw new InvalidArgumentException('Paket gabungan sumber tidak tersedia.');
+        }
+        $this->compile($sourceStore, $source);
+        $mapId = function ($map, $id, $label) {
+            if (!isset($map[$id])) {
+                throw new InvalidArgumentException('Relasi ' . $label . ' isi paket belum tersalin.');
+            }
+            return (int) $map[$id];
+        };
+        $items = [];
+        foreach ($source['items'] as $item) {
+            $items[] = [
+                'product_id' => $mapId($productMap, $item['product_id'], 'produk'),
+                'product_variant_id' => empty($item['product_variant_id'])
+                    ? null
+                    : $mapId($variantMap, $item['product_variant_id'], 'varian'),
+                'laser_conversion_id' => empty($item['laser_conversion_id'])
+                    ? null
+                    : $mapId($laserMap, $item['laser_conversion_id'], 'konversi laser'),
+                'quantity' => $item['quantity'],
+                'size' => $item['size']
+            ];
+        }
+        $stmt = $this->query(
+            'SELECT p.unit_type,c.name AS category FROM products p JOIN categories c ON c.category_id=p.category_id AND c.store_id=? WHERE p.store_id=? AND p.product_id=?',
+            [$targetStore, $targetStore, $targetProduct]
+        );
+        $parent = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (
+            !$parent ||
+            $parent['unit_type'] !== '~' ||
+            strtoupper(trim($parent['category'])) !== 'PELENGKAP' ||
+            (new ProductVariant($this->db))->getByProduct($targetStore, $targetProduct)
+        ) {
+            throw new InvalidArgumentException('Produk paket tujuan harus PELENGKAP, satuan ~, tanpa varian sendiri.');
+        }
+        $this->compile($targetStore, ['product_id' => $targetProduct, 'items' => $items]);
+        $stmt = $this->query('INSERT INTO product_bundles(store_id,product_id,price) VALUES(?,?,?)', [
+            $targetStore,
+            $targetProduct,
+            $source['price']
+        ]);
+        $bundleId = (int) $this->db->insert_id;
+        $stmt->close();
+        foreach ($items as $item) {
+            $this->query(
+                'INSERT INTO product_bundle_items(bundle_id,product_id,product_variant_id,laser_conversion_id,quantity,size) VALUES(?,?,?,?,?,?)',
+                [
+                    $bundleId,
+                    $item['product_id'],
+                    $item['product_variant_id'],
+                    $item['laser_conversion_id'],
+                    $item['quantity'],
+                    $item['size']
+                ]
+            )->close();
+        }
+        $this->query('UPDATE products SET price=? WHERE store_id=? AND product_id=?', [
+            $source['price'],
+            $targetStore,
+            $targetProduct
+        ])->close();
+        return true;
+    }
+
     public function saved($store, $input) {
         if (!$this->isAvailable() || empty($input['order_item_id'])) {
             return null;

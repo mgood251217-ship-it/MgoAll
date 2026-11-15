@@ -80,7 +80,6 @@ class StoreController {
                     throw new InvalidArgumentException('Anda tidak memiliki akses ke toko sumber atau tujuan.');
                 }
             }
-            if ((new ProductBundle($this->koneksi))->getByStore($sourceId)) throw new InvalidArgumentException('Impor toko yang memiliki paket gabungan belum tersedia. Atur paket gabungan pada toko tujuan agar isi paket tidak hilang.');
             $source = [];
             foreach (['categories', 'products', 'finishings'] as $table) {
                 $stmt = $this->catalogQuery("SELECT 1 FROM $table WHERE store_id = ? LIMIT 1 FOR UPDATE", [$targetId]);
@@ -154,7 +153,7 @@ class StoreController {
     // Seluruh ID pengaturan harus menunjuk katalog baru, bukan data toko sumber.
     private function copyCatalogSettings($sourceId, $targetId, $productMap, $finishingMap) {
         $tables = array_column($this->koneksi->query('SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()')->fetch_all(MYSQLI_ASSOC), 'TABLE_NAME');
-        $counts = []; $variantMap = [];
+        $counts = []; $variantMap = $laserMap = [];
         $mapId = function ($map, $id, $label) {
             if (!isset($map[$id])) throw new InvalidArgumentException("Relasi $label #$id di toko sumber tidak valid. Impor dibatalkan.");
             return $map[$id];
@@ -184,6 +183,7 @@ class StoreController {
                     $row['finishing_ids'] = implode(',', $ids);
                 }
                 $newId = $this->insertCatalogSetting($table, $row);
+                if ($table === 'product_laser_conversion') $laserMap[$sourceVariant] = $newId;
                 if ($table !== 'product_variants') continue;
                 $variantMap[$sourceVariant] = $newId;
                 if (!$variantModel->isAvailable()) throw new InvalidArgumentException('Skema varian belum lengkap. Lengkapi skema sebelum mengimpor.');
@@ -200,6 +200,13 @@ class StoreController {
                     $combined[$key]['quantity'] = round($combined[$key]['quantity'] + $component['quantity'], 4);
                 }
                 foreach ($combined as $component) $this->insertCatalogSetting('product_variant_components', $component);
+            }
+        }
+        $bundleModel = new ProductBundle($this->koneksi);
+        foreach ($bundleModel->getByStore($sourceId) as $bundle) {
+            $sourceProduct = (int)$bundle['product_id'];
+            if ($bundleModel->copyToStore($sourceId, $sourceProduct, $targetId, $mapId($productMap, $sourceProduct, 'produk paket'), $productMap, $variantMap, $laserMap)) {
+                $counts['product_bundles'] = ($counts['product_bundles'] ?? 0) + 1;
             }
         }
         if (!empty($counts['product_variants']) && $masters) $counts['production_components'] = count($componentModel->getByStore($targetId));
@@ -258,7 +265,7 @@ class StoreController {
         $_SESSION['swal_success'] = "Berhasil mengimpor {$counts['categories']} kategori, {$counts['products']} produk, {$counts['finishings']} finishing, "
             . ($counts['product_variants'] ?? 0) . ' varian, ' . ($counts['product_finishing_prices'] ?? 0) . ' harga paket, '
             . (($counts['product_price_tiers'] ?? 0) + ($counts['product_variant_price_tiers'] ?? 0)) . ' tingkat harga, dan '
-            . ($counts['product_laser_conversion'] ?? 0) . ' konversi print laser.';
+            . ($counts['product_laser_conversion'] ?? 0) . ' konversi print laser, dan ' . ($counts['product_bundles'] ?? 0) . ' paket gabungan.';
         header('Location: /stores');
         exit;
     }
