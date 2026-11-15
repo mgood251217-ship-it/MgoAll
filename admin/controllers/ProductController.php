@@ -122,6 +122,20 @@ class ProductController {
             $limit
         );
 
+        $variantCounts = [];
+        if ($data && $this->variants->isAvailable()) {
+            $ids = array_map('intval', array_column($data, 'product_id'));
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $stmt = $this->db->prepare("SELECT product_id, COUNT(*) AS variant_count FROM product_variants WHERE store_id=? AND product_id IN ($placeholders) GROUP BY product_id");
+            $params = array_merge([(int)$store_id], $ids);
+            $stmt->bind_param(str_repeat('i', count($params)), ...$params);
+            $stmt->execute();
+            $variantCounts = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'variant_count', 'product_id');
+            $stmt->close();
+        }
+        foreach ($data as &$product) $product['variant_count'] = (int)($variantCounts[$product['product_id']] ?? 0);
+        unset($product);
+
         $total = $this->productModel->countProducts($store_id, $search);
         $totalPages = ceil($total / $limit);
 
