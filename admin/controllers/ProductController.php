@@ -121,15 +121,17 @@ class ProductController {
     public function getProductByPagination(){
         global $store_id;
 
-        $page = (int)($_GET['page'] ?? 1);
+        $page = max(1, (int)($_GET['page'] ?? 1));
         $search = $_GET['search'] ?? '';
-        $limit = (int)($_GET['limit'] ?? 25);
+        $limit = max(1, (int)($_GET['limit'] ?? 25));
+        $categoryId = max(0, (int)($_GET['category_id'] ?? 0));
 
         $data = $this->productModel->getProductByPagination(
             $store_id,
             $page,
             $search,
-            $limit
+            $limit,
+            $categoryId
         );
 
         $variantCounts = [];
@@ -161,7 +163,7 @@ class ProductController {
         }
         unset($product);
 
-        $total = $this->productModel->countProducts($store_id, $search);
+        $total = $this->productModel->countProducts($store_id, $search, $categoryId);
         $totalPages = ceil($total / $limit);
 
         return [

@@ -286,12 +286,12 @@ class Product{
         return $success;
     }
 
-    public function countProducts($store_id, $search){
+    public function countProducts($store_id, $search, $category_id = 0){
         $search_param = "%" . $search . "%";
 
-        $stmt = $this->koneksi->prepare("SELECT COUNT(*) as total FROM products WHERE store_id = ? AND name LIKE ?");
+        $stmt = $this->koneksi->prepare("SELECT COUNT(*) as total FROM products WHERE store_id = ? AND name LIKE ? AND (? = 0 OR category_id = ?)");
 
-        $stmt->bind_param("is", $store_id, $search_param);
+        $stmt->bind_param("isii", $store_id, $search_param, $category_id, $category_id);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -299,19 +299,19 @@ class Product{
         return $result['total'] ?? 0;
     }
 
-    public function getProductByPagination($store_id, $page, $search, $limit){
+    public function getProductByPagination($store_id, $page, $search, $limit, $category_id = 0){
         $offset = ($page - 1) * $limit;
         $search_param = "%" . $search . "%";
         $stmt = $this->koneksi->prepare("
             SELECT p.*, c.name AS category 
             FROM products p
-            LEFT JOIN categories c ON p.category_id = c.category_id
-            WHERE p.store_id = ? AND p.name LIKE ? 
+            LEFT JOIN categories c ON p.category_id = c.category_id AND c.store_id = ?
+            WHERE p.store_id = ? AND p.name LIKE ? AND (? = 0 OR p.category_id = ?)
             ORDER BY p.product_id DESC 
             LIMIT ? OFFSET ?
         ");
         
-        $stmt->bind_param("isii", $store_id, $search_param, $limit, $offset);
+        $stmt->bind_param("iisiiii", $store_id, $store_id, $search_param, $category_id, $category_id, $limit, $offset);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
