@@ -60,12 +60,12 @@ class ProductFinishingPrice {
                             AND ((r.panjang = 0 AND r.lebar = 0) OR (r.panjang > 0 AND r.lebar > 0)))
                     )) AS valid
             FROM {$this->tableName} r
-            LEFT JOIN products p ON p.product_id = r.product_id AND p.store_id = r.store_id
-            LEFT JOIN categories c ON c.category_id = p.category_id AND c.store_id = r.store_id
-            LEFT JOIN finishings f ON f.finishing_id = r.finishing_id AND f.store_id = r.store_id
+            LEFT JOIN products p ON p.product_id = r.product_id AND p.store_id = ?
+            LEFT JOIN categories c ON c.category_id = p.category_id AND c.store_id = ?
+            LEFT JOIN finishings f ON f.finishing_id = r.finishing_id AND f.store_id = ?
             WHERE r.store_id = ? AND (? = 0 OR p.category_id = ?)
             ORDER BY c.name, p.name, r.panjang, r.lebar");
-        $stmt->bind_param('iii', $store_id, $category_id, $category_id);
+        $stmt->bind_param('iiiiii', $store_id, $store_id, $store_id, $store_id, $category_id, $category_id);
         $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
