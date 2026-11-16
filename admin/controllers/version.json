@@ -1,15 +1,18 @@
 {
-  "version": "2.1.1",
-  "min_required_version": "2.1.1",
-  "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.1.1/MgoDesktop_2.1.1_x64-setup.exe",
-  "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.1.1/MgoDesktop_2.1.1.apk",
+  "version": "2.1.2",
+  "min_required_version": "2.1.2",
+  "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.1.2/MgoDesktop_2.1.2_x64-setup.exe",
+  "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.1.2/MgoDesktop_2.1.2.apk",
   "force_update": false,
   "release_notes": [
-    "👕 update: Pakaian Jadi Tekstil: Mengganti nama kategori Pakaian menjadi Tekstil karena sekarang mencakup lebih banyak jenis produk.",
-    "🧵 update: Pengelolaan Kategori Bahan: Kategori bahan sekarang lebih rapi supaya lebih gampang digunakan saat input produk maupun saat analisis meteran.",
-    "🖨️ update: Pembaruan Sistem CETAKAN: Melakukan migrasi dan merapikan sistem CETAKAN supaya proses input lebih mudah, jelas, dan terstruktur.",
-    "📋 fix: Perbaikan Log Activity: Memperbaiki dan menghapus fitur Log Activity dari aplikasi. Sekarang fitur ini hanya tersedia di Panel Center.",
-    "🛡️ fix: Pesan Error reCAPTCHA: Memperjelas pesan error saat verifikasi reCAPTCHA gagal supaya pengguna lebih mudah mengetahui masalahnya.",
-    "🔐 update: Pembatasan Hak Akses: Menghapus akses Create, Read, dan Delete pada user management. Sekarang hanya akses Update yang tersedia."
+    "📏 feat: Meteran Kategori Pelengkap: Menambahkan perhitungan meteran untuk produk kategori Pelengkap supaya kebutuhan bahan lebih mudah dicatat dan dianalisis.",
+    "🎨 feat: Tampilan Varian Produk: Sekarang varian produk seperti bahan, kualitas, ukuran, dan pilihan lainnya bisa ditampilkan dengan lebih jelas.",
+    "💰 feat: Tampilan Harga Bertingkat: Menampilkan tiered pricing supaya harga berdasarkan jumlah pembelian bisa langsung dilihat.",
+    "🎁 feat: Tampilan Promo Produk: Sekarang promo seperti beli 2 gratis 1 atau promo berdasarkan jumlah pembelian bisa ditampilkan pada produk.",
+    "📦 feat: Tampilan Produk Paketan: Menampilkan produk paketan beserta pilihan paketnya supaya lebih mudah dilihat dan digunakan.",
+    "🖨️ feat: Tampilan Konversi Print Laser: Menampilkan hasil konversi produk ke kebutuhan lembar Print Laser supaya perhitungan bahan lebih jelas.",
+    "🔍 feat: Filter Produk Berdasarkan Kategori: Sekarang produk bisa difilter berdasarkan kategori supaya lebih cepat menemukan produk yang dicari.",
+    "🚀 perf: Optimasi Cache & Loading: Mengoptimalkan sistem cache dan proses loading supaya aplikasi lebih ringan dan responsif.",
+    "⚙️ perf: Optimasi Query Bundle & Metadata Produk: Memperbaiki proses pengambilan data bundle dan metadata produk supaya lebih cepat dan efisien."
   ]
 }
