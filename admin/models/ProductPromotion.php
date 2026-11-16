@@ -29,6 +29,18 @@ class ProductPromotion {
         return $rule ?: null;
     }
 
+    public function rulesForProducts($store, $productIds) {
+        if (!$productIds || !$this->isAvailable()) return [];
+        $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+        $params = array_merge([(int)$store], array_map('intval', $productIds));
+        $stmt = $this->db->prepare("SELECT product_id, buy_quantity, free_quantity FROM product_promotions WHERE store_id=? AND product_id IN ($placeholders)");
+        $stmt->bind_param(str_repeat('i', count($params)), ...$params);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $rows;
+    }
+
     // Quantity adalah semua barang yang diterima, termasuk bonus. Sisa bonus pada
     // kelompok terakhir juga gratis: beli 10 gratis 2, input 11 berarti bayar 10.
     public static function calculate($rule, $quantity) {

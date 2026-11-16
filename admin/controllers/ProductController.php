@@ -5,6 +5,7 @@ require_once __DIR__ . '/../models/ProductLaserConversion.php';
 require_once __DIR__ . '/../models/ProductVariant.php';
 require_once __DIR__ . '/../models/ProductBundle.php';
 require_once __DIR__ . '/../models/ProductPriceTier.php';
+require_once __DIR__ . '/../models/ProductPromotion.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../functions/cacheHelpers.php';
@@ -150,6 +151,14 @@ class ProductController {
             $tiersByProduct[$rule['product_id']][] = $rule;
         }
         foreach ($data as &$product) $product['price_tiers'] = $tiersByProduct[$product['product_id']] ?? [];
+        unset($product);
+
+        $promotions = (new ProductPromotion($this->db))->rulesForProducts($store_id, array_column($data, 'product_id'));
+        $promotionsByProduct = array_column($promotions, null, 'product_id');
+        foreach ($data as &$product) {
+            $product['promotion'] = ProductPromotion::eligible($product) && !ProductPriceTier::isWeightMaterial($product)
+                ? ($promotionsByProduct[$product['product_id']] ?? null) : null;
+        }
         unset($product);
 
         $total = $this->productModel->countProducts($store_id, $search);
