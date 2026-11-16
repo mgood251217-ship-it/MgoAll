@@ -81,6 +81,24 @@ class ProductPriceTier {
         return $rows;
     }
 
+    public function rulesForProducts($store, $productIds) {
+        if (!$productIds || !$this->isAvailable()) return [];
+        $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+        $values = array_merge([(int)$store], array_map('intval', $productIds));
+        $stmt = $this->query("SELECT product_id, quantity_above, price FROM product_price_tiers WHERE store_id=? AND product_id IN ($placeholders) ORDER BY product_id, quantity_above", str_repeat('i', count($values)), $values);
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $rows;
+    }
+
+    public function rulesForVariants($store, $product) {
+        if (!$this->isAvailable() || !$this->hasVariantTiers()) return [];
+        $stmt = $this->query('SELECT product_variant_id, quantity_above, price FROM product_variant_price_tiers WHERE store_id=? AND product_id=? ORDER BY product_variant_id, quantity_above', 'ii', [$store, $product]);
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $rows;
+    }
+
     private function items($store, $order, $product = 0) {
         if (!$this->isAvailable()) return [];
         $stmt = $this->query('SELECT * FROM order_items WHERE store_id = ? AND order_id = ? AND (? = 0 OR product_id = ?) AND tier_price_data IS NOT NULL ORDER BY order_item_id', 'iiii', [$store, $order, $product, $product]);

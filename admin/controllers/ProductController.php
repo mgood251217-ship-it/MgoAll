@@ -4,6 +4,7 @@ require_once __DIR__ . '/../models/ProductFinishingPrice.php';
 require_once __DIR__ . '/../models/ProductLaserConversion.php';
 require_once __DIR__ . '/../models/ProductVariant.php';
 require_once __DIR__ . '/../models/ProductBundle.php';
+require_once __DIR__ . '/../models/ProductPriceTier.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../functions/cacheHelpers.php';
@@ -105,7 +106,15 @@ class ProductController {
 
     public function getProductVariants() {
         global $store_id;
-        send_json_response(true, 'Varian produk', $this->variants->getByProduct($store_id, (int)($_GET['product_id'] ?? 0)));
+        $productId = (int)($_GET['product_id'] ?? 0);
+        $variants = $this->variants->getByProduct($store_id, $productId);
+        $tiersByVariant = [];
+        foreach ((new ProductPriceTier($this->db))->rulesForVariants($store_id, $productId) as $rule) {
+            $tiersByVariant[$rule['product_variant_id']][] = $rule;
+        }
+        foreach ($variants as &$variant) $variant['price_tiers'] = $tiersByVariant[$variant['id']] ?? [];
+        unset($variant);
+        send_json_response(true, 'Varian produk', $variants);
     }
 
     public function getProductByPagination(){
@@ -134,6 +143,13 @@ class ProductController {
             $stmt->close();
         }
         foreach ($data as &$product) $product['variant_count'] = (int)($variantCounts[$product['product_id']] ?? 0);
+        unset($product);
+
+        $tiersByProduct = [];
+        foreach ((new ProductPriceTier($this->db))->rulesForProducts($store_id, array_column($data, 'product_id')) as $rule) {
+            $tiersByProduct[$rule['product_id']][] = $rule;
+        }
+        foreach ($data as &$product) $product['price_tiers'] = $tiersByProduct[$product['product_id']] ?? [];
         unset($product);
 
         $total = $this->productModel->countProducts($store_id, $search);
