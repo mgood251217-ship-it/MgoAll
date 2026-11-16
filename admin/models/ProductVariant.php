@@ -38,9 +38,17 @@ class ProductVariant {
     }
 
     public function getByProduct($store, $product) {
-        if (!$this->isAvailable()) return [];
-        $stmt = $this->db->prepare('SELECT v.* FROM product_variants v JOIN products p ON p.product_id = v.product_id AND p.store_id = ? WHERE v.store_id = ? AND v.product_id = ? ORDER BY v.id');
-        $stmt->bind_param('iii', $store, $store, $product); $stmt->execute();
+        return $this->getByProducts($store, [$product])[(int)$product] ?? [];
+    }
+
+    public function getByProducts($store, $productIds) {
+        $productIds = array_values(array_unique(array_map('intval', $productIds)));
+        if (!$productIds || !$this->isAvailable()) return [];
+        $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+        $params = array_merge([(int)$store, (int)$store], $productIds);
+        $stmt = $this->db->prepare("SELECT v.* FROM product_variants v JOIN products p ON p.product_id=v.product_id AND p.store_id=? WHERE v.store_id=? AND v.product_id IN ($placeholders) ORDER BY v.id");
+        $stmt->bind_param(str_repeat('i', count($params)), ...$params);
+        $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $stmt->close();
         $componentModel = new ProductionComponent($this->db);
         $masters = $componentModel->isAvailable();
@@ -48,9 +56,9 @@ class ProductVariant {
         $links = $masters ? $componentModel->links($store) : [];
         $fields = $masters ? 'c.id AS recipe_id, c.variant_id, c.component_id, COALESCE(m.name, c.name) AS name, c.quantity' : 'c.id AS recipe_id, c.variant_id, c.name, c.quantity';
         $join = $masters ? ' LEFT JOIN production_components m ON m.id = c.component_id AND m.store_id = ?' : '';
-        $stmt = $this->db->prepare("SELECT $fields FROM product_variant_components c JOIN product_variants v ON v.id = c.variant_id $join WHERE v.store_id = ? AND v.product_id = ? ORDER BY c.id");
-        if ($masters) $stmt->bind_param('iii', $store, $store, $product);
-        else $stmt->bind_param('ii', $store, $product);
+        $stmt = $this->db->prepare("SELECT $fields FROM product_variant_components c JOIN product_variants v ON v.id = c.variant_id $join WHERE v.store_id = ? AND v.product_id IN ($placeholders) ORDER BY c.id");
+        $params = array_merge($masters ? [(int)$store, (int)$store] : [(int)$store], $productIds);
+        $stmt->bind_param(str_repeat('i', count($params)), ...$params);
         $stmt->execute();
         $components = [];
         foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $c) {
@@ -71,7 +79,9 @@ class ProductVariant {
             unset($row['options_json'], $row['combination_key']);
         }
         unset($row);
-        return $rows;
+        $byProduct = [];
+        foreach ($rows as $row) $byProduct[(int)$row['product_id']][] = $row;
+        return $byProduct;
     }
 
     public static function orderData($variant, $product) {
@@ -84,7 +94,7 @@ class ProductVariant {
         ];
     }
 
-    public function resolve($store, $product, $input) {
+    public function resolve($store, $product, $input, $availableVariants = null) {
         $id = $input['product_variant_id'] ?? 0;
         if ($id === '') $id = 0;
         if (!is_scalar($id) || !preg_match('/^\d+$/D', (string)$id) || (float)$id > 2147483647) throw new InvalidArgumentException('Pilihan varian tidak valid.');
@@ -105,7 +115,7 @@ class ProductVariant {
             }
             if ($old && !empty($old['product_variant_id']) && !$id) throw new InvalidArgumentException('Item ini memakai varian. Pilih varian sesuai nota atau perbarui aplikasi.');
         }
-        $variants = $this->getByProduct($store, (int)$product['product_id']);
+        $variants = $availableVariants ?? $this->getByProduct($store, (int)$product['product_id']);
         foreach ($variants as $variant) if ((int)$variant['id'] === $id) {
             return self::orderData($variant, $product);
         }

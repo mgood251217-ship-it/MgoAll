@@ -93,15 +93,7 @@ class ProductController {
 
     public function getProductBundles() {
         global $store_id;
-        $model=new ProductBundle($this->db);$rows=$model->getByStore($store_id);
-        foreach ($rows as &$row) {
-            $row['contents']=[];$row['valid']=true;
-            try {
-                foreach ($model->compile($store_id,$row) as $item) $row['contents'][]=['quantity'=>$item['quantity'],
-                    'label'=>$item['product']['name'].($item['variant']?' - '.$item['variant']['label']:'')
-                        .($item['laser']?' - '.implode(' / ',array_filter([$item['laser']['laser_name'],$item['laser']['size'],$item['laser']['finishing_names']??''])):'')];
-            }catch(InvalidArgumentException $e){$row['valid']=false;$row['error']=$e->getMessage();}
-        }unset($row);
+        $rows = (new ProductBundle($this->db))->getCatalog($store_id);
         send_json_response(true, 'Paket gabungan produk', $rows);
     }
 
@@ -160,6 +152,18 @@ class ProductController {
         foreach ($data as &$product) {
             $product['promotion'] = ProductPromotion::eligible($product) && !ProductPriceTier::isWeightMaterial($product)
                 ? ($promotionsByProduct[$product['product_id']] ?? null) : null;
+        }
+        unset($product);
+
+        $productIds = array_column($data, 'product_id');
+        $packageCounts = $this->packagePrices->countsForProducts($store_id, $productIds);
+        $laserCounts = $this->laserConversions->countsForProducts($store_id, $productIds);
+        $bundleCounts = (new ProductBundle($this->db))->countsForProducts($store_id, $productIds);
+        foreach ($data as &$product) {
+            $id = $product['product_id'];
+            $product['package_count'] = (int)($packageCounts[$id] ?? 0);
+            $product['laser_conversion_count'] = (int)($laserCounts[$id] ?? 0);
+            $product['has_bundle'] = !empty($bundleCounts[$id]);
         }
         unset($product);
 

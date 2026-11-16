@@ -20,6 +20,18 @@ class ProductLaserConversion {
         return $this->available;
     }
 
+    public function countsForProducts($store, $productIds) {
+        if (!$productIds || !$this->isAvailable()) return [];
+        $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+        $params = array_merge([(int)$store], array_map('intval', $productIds));
+        $stmt = $this->koneksi->prepare("SELECT product_id, COUNT(*) AS total FROM product_laser_conversion WHERE store_id=? AND product_id IN ($placeholders) GROUP BY product_id");
+        $stmt->bind_param(str_repeat('i', count($params)), ...$params);
+        $stmt->execute();
+        $counts = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'total', 'product_id');
+        $stmt->close();
+        return $counts;
+    }
+
     public function getByStore($store_id, $validOnly = false) {
         if (!$this->isAvailable()) return [];
         $legacyFields = $this->hasVariants() ? '' : ", '' AS size, '' AS finishing_ids, NULL AS price";

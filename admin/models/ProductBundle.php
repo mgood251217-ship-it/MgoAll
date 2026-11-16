@@ -33,6 +33,18 @@ class ProductBundle {
         return $stmt;
     }
 
+    public function countsForProducts($store, $productIds) {
+        if (!$productIds || !$this->isAvailable()) return [];
+        $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+        $params = array_merge([(int)$store], array_map('intval', $productIds));
+        $stmt = $this->db->prepare("SELECT product_id, COUNT(*) AS total FROM product_bundles WHERE store_id=? AND product_id IN ($placeholders) GROUP BY product_id");
+        $stmt->bind_param(str_repeat('i', count($params)), ...$params);
+        $stmt->execute();
+        $counts = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'total', 'product_id');
+        $stmt->close();
+        return $counts;
+    }
+
     public function getByStore($store) {
         if (!$this->isAvailable()) {
             return [];
@@ -43,16 +55,62 @@ class ProductBundle {
         );
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        foreach ($rows as &$row) {
-            $stmt = $this->query(
-                'SELECT i.*, p.name, c.name AS category FROM product_bundle_items i LEFT JOIN products p ON p.product_id=i.product_id AND p.store_id=? LEFT JOIN categories c ON c.category_id=p.category_id AND c.store_id=? WHERE i.bundle_id=? ORDER BY i.id',
-                [$store, $store, $row['id']]
-            );
-            $row['items'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-            $stmt->close();
-        }
+        if (!$rows) return [];
+        $ids = array_column($rows, 'id');
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->query(
+            "SELECT i.*, p.name, c.name AS category FROM product_bundle_items i LEFT JOIN products p ON p.product_id=i.product_id AND p.store_id=? LEFT JOIN categories c ON c.category_id=p.category_id AND c.store_id=? WHERE i.bundle_id IN ($placeholders) ORDER BY i.id",
+            array_merge([$store, $store], $ids)
+        );
+        $items = [];
+        foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $item) $items[(int)$item['bundle_id']][] = $item;
+        $stmt->close();
+        foreach ($rows as &$row) $row['items'] = $items[(int)$row['id']] ?? [];
         unset($row);
         return $rows;
+    }
+
+    public function getCatalog($store) {
+        $bundles = $this->getByStore($store);
+        if (!$bundles) return [];
+        $productIds = [];
+        foreach ($bundles as $bundle) {
+            foreach ($bundle['items'] as $item) $productIds[] = (int)$item['product_id'];
+        }
+        $productIds = array_values(array_unique($productIds));
+        $products = [];
+        if ($productIds) {
+            $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+            $stmt = $this->query("SELECT p.*,c.name AS category FROM products p JOIN categories c ON c.category_id=p.category_id AND c.store_id=? WHERE p.store_id=? AND p.product_id IN ($placeholders)", array_merge([$store, $store], $productIds));
+            $products = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), null, 'product_id');
+            $stmt->close();
+        }
+        $variants = new ProductVariant($this->db);
+        $context = [
+            'store' => (int)$store,
+            'products' => $products,
+            'bundle_products' => array_fill_keys(array_column($bundles, 'product_id'), true),
+            'variant_model' => $variants,
+            'variants' => $variants->getByProducts($store, $productIds),
+            'laser_rules' => (new ProductLaserConversion($this->db))->getByStore($store, true)
+        ];
+        foreach ($bundles as &$bundle) {
+            $bundle['contents'] = [];
+            $bundle['valid'] = true;
+            try {
+                foreach ($this->compile($store, $bundle, $context) as $item) {
+                    $label = $item['product']['name'];
+                    if ($item['variant']) $label .= ' - ' . $item['variant']['label'];
+                    if ($item['laser']) $label .= ' - ' . implode(' / ', array_filter([$item['laser']['laser_name'], $item['laser']['size'], $item['laser']['finishing_names'] ?? '']));
+                    $bundle['contents'][] = ['quantity' => $item['quantity'], 'label' => $label];
+                }
+            } catch (InvalidArgumentException $e) {
+                $bundle['valid'] = false;
+                $bundle['error'] = $e->getMessage();
+            }
+        }
+        unset($bundle);
+        return $bundles;
     }
 
     public function find($store, $product) {
@@ -168,16 +226,16 @@ class ProductBundle {
         return json_decode($row['tier_price_data'], true, 512, JSON_THROW_ON_ERROR)['bundle'] ?? null;
     }
 
-    public function compile($store, $bundle) {
+    public function compile($store, $bundle, $context = null) {
+        if ($context !== null && $context['store'] !== (int)$store) throw new InvalidArgumentException('Toko isi paket tidak sesuai.');
         $items = $bundle['items'];
         if (count($items) < 2 || count($items) > 30) {
             throw new InvalidArgumentException('Isi paket harus 2 sampai 30 baris produk.');
         }
         $result = [];
         $seen = [];
-        $variants = new ProductVariant($this->db);
-        $lasers = new ProductLaserConversion($this->db);
-        $rules = $lasers->getByStore($store, true);
+        $variants = $context['variant_model'] ?? new ProductVariant($this->db);
+        $rules = $context['laser_rules'] ?? (new ProductLaserConversion($this->db))->getByStore($store, true);
         foreach ($items as $item) {
             // Select "Tanpa konversi" mengirim string kosong; data tersimpan memakai NULL.
             $laserId = is_array($item) ? $item['laser_conversion_id'] ?? 0 : 0;
@@ -201,12 +259,16 @@ class ProductBundle {
             if (!$id || !$qty || (int) $id === (int) $bundle['product_id']) {
                 throw new InvalidArgumentException('Produk isi dan jumlah paket tidak valid.');
             }
-            $stmt = $this->query(
-                'SELECT p.*, c.name AS category FROM products p JOIN categories c ON c.category_id=p.category_id AND c.store_id=? WHERE p.store_id=? AND p.product_id=?',
-                [$store, $store, $id]
-            );
-            $p = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
+            if ($context !== null) {
+                $p = $context['products'][$id] ?? null;
+            } else {
+                $stmt = $this->query(
+                    'SELECT p.*, c.name AS category FROM products p JOIN categories c ON c.category_id=p.category_id AND c.store_id=? WHERE p.store_id=? AND p.product_id=?',
+                    [$store, $store, $id]
+                );
+                $p = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+            }
             if (
                 !$p ||
                 !in_array($p['unit_type'], ['PCS', '~'], true) ||
@@ -220,12 +282,13 @@ class ProductBundle {
                     'Isi paket harus barang PCS/~ dari Tekstil, Pelengkap, atau Aneka Cetak pada toko yang sama.'
                 );
             }
-            if ($this->find($store, $id)) {
+            $nestedBundle = $context !== null ? isset($context['bundle_products'][$id]) : (bool)$this->find($store, $id);
+            if ($nestedBundle) {
                 throw new InvalidArgumentException('Paket tidak boleh berisi paket lain.');
             }
             $variant = $variants->resolve($store, $p, [
                 'product_variant_id' => $item['product_variant_id'] ?? 0
-            ]);
+            ], $context !== null ? ($context['variants'][$id] ?? []) : null);
             $rule = null;
             foreach ($rules as $r) {
                 if ((int) $r['id'] === (int) $laserId && (int) $r['product_id'] === $id) {

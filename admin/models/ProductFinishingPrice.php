@@ -44,6 +44,18 @@ class ProductFinishingPrice {
         return $this->isAvailable() && $this->tableName === 'product_package';
     }
 
+    public function countsForProducts($store, $productIds) {
+        if (!$productIds || !$this->isAvailable()) return [];
+        $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+        $params = array_merge([(int)$store], array_map('intval', $productIds));
+        $stmt = $this->koneksi->prepare("SELECT product_id, COUNT(*) AS total FROM {$this->tableName} WHERE store_id=? AND product_id IN ($placeholders) GROUP BY product_id");
+        $stmt->bind_param(str_repeat('i', count($params)), ...$params);
+        $stmt->execute();
+        $counts = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'total', 'product_id');
+        $stmt->close();
+        return $counts;
+    }
+
     public function getByStore($store_id, $category_id = 0, $validOnly = true) {
         if (!$this->isAvailable()) return [];
         $stmt = $this->koneksi->prepare("SELECT r.*, p.name AS product_name,
