@@ -149,11 +149,11 @@ class ProductLaserConversion {
         return $rule;
     }
 
-    // Bulatkan jumlah kelompok produk, lalu kalikan print per kelompok.
+    // Hitung kebutuhan print sesuai rasio, lalu bulatkan ke atas per item order.
     public static function printQuantity($quantity, $rule) {
         $quantity = max(0, (int)$quantity);
         $denominator = (int)$rule['product_quantity'];
-        $groups = intdiv($quantity, $denominator) + ($quantity % $denominator > 0 ? 1 : 0);
-        return $groups * (int)$rule['print_quantity'];
+        $totalPrint = $quantity * (int)$rule['print_quantity'];
+        return intdiv($totalPrint, $denominator) + ($totalPrint % $denominator > 0 ? 1 : 0);
     }
 }

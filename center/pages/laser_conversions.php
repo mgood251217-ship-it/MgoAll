@@ -68,7 +68,7 @@ $finishingCheckboxes = function ($selected = '', $formId = '') use ($data, $esca
         <h3>Tambah Varian Konversi</h3>
         <p>Produk diambil dari kategori ANEKA CETAK, sedangkan bahan print dari LASER A3. Contoh: 40 GANCI = 1 pcs print, atau 1 ID CARD = 1 pcs print.</p>
         <p>Hasil dibulatkan ke atas per item order: 41 ganci = 2 pcs print. Pengaturan berlaku juga untuk laporan nota lama; jumlah, harga, dan stok pada nota tetap sama.</p>
-        <p>Print dihitung per kelompok produk. Jika 25 produk = 2 print, maka 12 produk = 2 print dan 26 produk = 4 print.</p>
+        <p>Kebutuhan print dibulatkan ke atas per item order. Jika 25 produk = 2 print, maka 12 produk = 1 print, 25 produk = 2 print, dan 26 produk = 3 print.</p>
         <p>Ukuran boleh kosong atau berupa label, misalnya 44 mm atau A4. Harga final per pcs sudah mencakup semua finishing yang dicentang.</p>
         <p>Satu produk boleh memakai beberapa bahan, misalnya KARTU NAMA dengan AP260, LINEN, atau CONCORD. Tambahkan baris untuk setiap kombinasi bahan, ukuran, dan finishing.</p>
         <?php if (!$data['laserProducts']): ?><div class="alert alert-warning">Belum ada bahan print satuan di kategori LASER A3 pada toko ini.</div><?php endif; ?>
