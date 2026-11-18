@@ -18,20 +18,18 @@ class MeterController {
         $this->orderModel = new Order($koneksi);
     }
 
-    public function getOrderIds(){
+    public function getOrderIds() {
         global $store_id;
 
-        $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
-        $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
+        [$start_date_full, $end_date_full] = $this->getDateRange();
 
         return $this->orderModel->getOrderIdsByIntervalDate($store_id, $start_date_full, $end_date_full);
     }
 
-    public function getOutdoor(){
+    public function getOutdoor() {
         global $store_id;
 
-        $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
-        $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
+        [$start_date_full, $end_date_full] = $this->getDateRange();
 
         $product_data = [];
         $max_rows = 0;
@@ -39,31 +37,20 @@ class MeterController {
         $total_m2_product = [];
 
         $stmt = $this->koneksi->prepare("
-            SELECT p.product_id, p.name, c.name AS category 
-            FROM products p 
-            JOIN categories c ON p.category_id = c.category_id 
-            WHERE c.name IN ('OUTDOOR', 'PAKET INDOOR OUTDOOR') AND p.store_id = ?
+            SELECT p.product_id, p.name
+            FROM products p
+            JOIN categories c ON p.category_id = c.category_id
+            WHERE c.name = 'OUTDOOR' AND p.store_id = ?
         ");
         $stmt->bind_param("i", $store_id);
         $stmt->execute();
         $all_products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
-        $outdoor_products = [];
-        $paket_products = [];
-        
-        foreach ($all_products as $p) {
-            if ($p['category'] === 'OUTDOOR') {
-                $outdoor_products[] = $p;
-            } else {
-                $paket_products[] = $p;
-            }
-        }
-
         $productId_to_name = [];
         $product_data_assoc = [];
 
-        foreach ($outdoor_products as $outdoor) {
+        foreach ($all_products as $outdoor) {
             $productId_to_name[$outdoor['product_id']] = $outdoor['name'];
             $product_data_assoc[$outdoor['name']] = [
                 'name' => $outdoor['name'],
@@ -72,36 +59,27 @@ class MeterController {
             $total_m2_product[$outdoor['name']] = 0;
         }
 
-        foreach ($paket_products as $paket) {
-            foreach ($outdoor_products as $outdoor) {
-                if (stripos($paket['name'], $outdoor['name']) !== false) {
-                    $productId_to_name[$paket['product_id']] = $outdoor['name'];
-                    break;
-                }
-            }
-        }
-
         $valid_product_ids = array_keys($productId_to_name);
 
         if (!empty($valid_product_ids)) {
             $in_products = implode(',', array_fill(0, count($valid_product_ids), '?'));
-            
+
             $query = $this->koneksi->prepare("
-                SELECT oi.product_id, oi.size, oi.quantity 
+                SELECT oi.product_id, oi.size, oi.quantity
                 FROM order_items oi
                 JOIN orders o ON oi.order_id = o.order_id
-                WHERE o.store_id = ? 
+                WHERE o.store_id = ?
                   AND o.date BETWEEN ? AND ?
                   AND oi.product_id IN ($in_products)
             ");
-            
+
             $types = "iss" . str_repeat('i', count($valid_product_ids));
             $params = array_merge([$store_id, $start_date_full, $end_date_full], $valid_product_ids);
-            
+
             $query->bind_param($types, ...$params);
             $query->execute();
             $res = $query->get_result();
-            
+
             $rows = $res->fetch_all(MYSQLI_ASSOC);
             $query->close();
 
@@ -111,7 +89,7 @@ class MeterController {
 
                 $size = $row['size'];
                 $qty = (int)$row['quantity'];
-                
+
                 if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $size, $match)) {
                     $p = floatval($match[1]);
                     $l = floatval($match[2]);
@@ -125,12 +103,7 @@ class MeterController {
         }
 
         $product_data = array_values($product_data_assoc);
-        foreach ($product_data as $product) {
-            $count_rows = count($product['rows']);
-            if ($count_rows > $max_rows) {
-                $max_rows = $count_rows;
-            }
-        }
+        $max_rows = $this->getMaxRows($product_data);
 
         return [
             'product_data' => $product_data,
@@ -142,17 +115,16 @@ class MeterController {
 
     public function getIndoor() {
         global $store_id;
-        
-        $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
-        $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
+
+        [$start_date_full, $end_date_full] = $this->getDateRange();
 
         $max_rows_indoor = 0;
         $total_all_m2_indoor = 0;
-        $total_m2_product_indoor = []; 
+        $total_m2_product_indoor = [];
 
         $stmt = $this->koneksi->prepare("
-            SELECT p.product_id, p.name, c.name AS category, oi_filtered.size, oi_filtered.quantity 
-            FROM products p 
+            SELECT p.product_id, p.name, oi_filtered.size, oi_filtered.quantity
+            FROM products p
             JOIN categories c ON p.category_id = c.category_id
             LEFT JOIN (
                 SELECT oi.product_id, oi.size, oi.quantity
@@ -160,86 +132,47 @@ class MeterController {
                 JOIN orders o ON oi.order_id = o.order_id
                 WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
             ) oi_filtered ON p.product_id = oi_filtered.product_id
-            WHERE c.name IN ('INDOOR', 'PAKET INDOOR OUTDOOR') 
+            WHERE c.name = 'INDOOR'
               AND p.store_id = ?
         ");
-        
+
         $stmt->bind_param("issi", $store_id, $start_date_full, $end_date_full, $store_id);
         $stmt->execute();
-        
+
         $all_data = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
-        $indoor_names = [];
         $product_data_assoc = [];
-        $paket_rows = [];
 
         foreach ($all_data as $row) {
             $name = $row['name'];
-            $type = $row['category'];
-            
-            if ($type === 'INDOOR') {
-                if (!isset($product_data_assoc[$name])) {
-                    $indoor_names[] = $name;
-                    $product_data_assoc[$name] = [
-                        'name' => $name,
-                        'rows' => []
-                    ];
-                    $total_m2_product_indoor[$name] = 0;
-                }
-                
-                if (!empty($row['size']) && !empty($row['quantity'])) {
-                    $size = $row['size'];
-                    $qty = (int)$row['quantity'];
-                    if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $size, $match)) {
-                        $p = floatval($match[1]);
-                        $l = floatval($match[2]);
-                        $m2 = $p * $l * $qty;
-                        $product_data_assoc[$name]['rows'][] = ['p' => $p, 'l' => $l, 'qty' => $qty, 'm2' => $m2];
-                        
-                        $total_all_m2_indoor += $m2;
-                        $total_m2_product_indoor[$name] += $m2;
-                    }
-                }
-            } else {
-                if (!empty($row['size']) && !empty($row['quantity'])) {
-                    $paket_rows[] = $row;
-                }
-            }
-        }
 
-        foreach ($paket_rows as $row) {
-            $mapped_name = null;
-            foreach ($indoor_names as $in_name) {
-                if (stripos($row['name'], $in_name) !== false) {
-                    $mapped_name = $in_name;
-                    break;
-                }
+            if (!isset($product_data_assoc[$name])) {
+                $product_data_assoc[$name] = [
+                    'name' => $name,
+                    'rows' => []
+                ];
+                $total_m2_product_indoor[$name] = 0;
             }
 
-            if ($mapped_name) {
+            if (!empty($row['size']) && !empty($row['quantity'])) {
                 $size = $row['size'];
                 $qty = (int)$row['quantity'];
                 if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $size, $match)) {
                     $p = floatval($match[1]);
                     $l = floatval($match[2]);
                     $m2 = $p * $l * $qty;
-                    $product_data_assoc[$mapped_name]['rows'][] = ['p' => $p, 'l' => $l, 'qty' => $qty, 'm2' => $m2];
-                    
+                    $product_data_assoc[$name]['rows'][] = ['p' => $p, 'l' => $l, 'qty' => $qty, 'm2' => $m2];
+
                     $total_all_m2_indoor += $m2;
-                    $total_m2_product_indoor[$mapped_name] += $m2;
+                    $total_m2_product_indoor[$name] += $m2;
                 }
             }
         }
 
         $product_data_indoor = array_values($product_data_assoc);
-        
-        foreach ($product_data_indoor as $product) {
-            $count_rows = count($product['rows']);
-            if ($count_rows > $max_rows_indoor) {
-                $max_rows_indoor = $count_rows;
-            }
-        }
+
+        $max_rows_indoor = $this->getMaxRows($product_data_indoor);
 
         return [
             'product_data' => $product_data_indoor,
@@ -252,8 +185,7 @@ class MeterController {
     public function getAkrilik() {
         global $store_id;
 
-        $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
-        $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
+        [$start_date_full, $end_date_full] = $this->getDateRange();
 
         $product_data = [];
         $max_rows = 0;
@@ -261,7 +193,7 @@ class MeterController {
         $total_m2_product = [];
 
         $stmt = $this->koneksi->prepare("
-            SELECT p.product_id, p.name 
+            SELECT p.product_id, p.name
             FROM products p
             JOIN categories c ON p.category_id = c.category_id
             WHERE c.name = 'AKRILIK' AND p.store_id = ?
@@ -289,24 +221,26 @@ class MeterController {
             $in_products = implode(',', array_fill(0, count($valid_product_ids), '?'));
 
             $queryStr = "
-                SELECT oi.product_id, oi.size, oi.quantity 
+                SELECT oi.product_id, oi.size, oi.quantity
                 FROM order_items oi
                 JOIN orders o ON oi.order_id = o.order_id
-                WHERE o.store_id = ? 
+                WHERE o.store_id = ?
                   AND o.date BETWEEN ? AND ?
                   AND oi.product_id IN ($in_products)
             ";
-            
+
             $query = $this->koneksi->prepare($queryStr);
-            if (!$query) die("Query error: " . $this->koneksi->error);
-            
+            if (!$query) {
+                die("Query error: " . $this->koneksi->error);
+            }
+
             $types = "iss" . str_repeat('i', count($valid_product_ids));
             $params = array_merge([$store_id, $start_date_full, $end_date_full], $valid_product_ids);
-            
+
             $query->bind_param($types, ...$params);
             $query->execute();
             $res = $query->get_result();
-            
+
             $rows = $res->fetch_all(MYSQLI_ASSOC);
             $query->close();
 
@@ -316,14 +250,14 @@ class MeterController {
 
                 $size = $row['size'];
                 $qty = (int)$row['quantity'];
-                
+
                 if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $size, $match)) {
                     $p = floatval($match[1]);
                     $l = floatval($match[2]);
                     $m2 = $p * $l * $qty;
 
                     $product_data_assoc[$display_name]['rows'][] = ['p' => $p, 'l' => $l, 'qty' => $qty, 'm2' => $m2];
-                    
+
                     $total_all_m2_akrilik += $m2;
                     $total_m2_product[$display_name] += $m2;
                 }
@@ -331,12 +265,7 @@ class MeterController {
         }
 
         $product_data = array_values($product_data_assoc);
-        foreach ($product_data as $product) {
-            $count_rows = count($product['rows']);
-            if ($count_rows > $max_rows) {
-                $max_rows = $count_rows;
-            }
-        }
+        $max_rows = $this->getMaxRows($product_data);
 
         return [
             'product_data' => $product_data,
@@ -346,19 +275,22 @@ class MeterController {
         ];
     }
 
-    public function getJersey() { return $this->getPakaian(); }
+    public function getJersey() {
+        return $this->getPakaian();
+    }
 
     public function getPakaian() {
         global $store_id;
 
-        $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
-        $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
+        [$start_date_full, $end_date_full] = $this->getDateRange();
 
         $product_data_pakaian = [];
         $total_all_qty_pakaian = 0;
         $variantModel = new ProductVariant($this->koneksi);
         $legacyOnly = $variantModel->isAvailable() ? ' AND oi.product_variant_data IS NULL' : '';
-        if ((new ProductBundle($this->koneksi))->isAvailable()) $legacyOnly .= " AND JSON_EXTRACT(IF(JSON_VALID(oi.tier_price_data), oi.tier_price_data, '{}'), '$.bundle') IS NULL";
+        if ((new ProductBundle($this->koneksi))->isAvailable()) {
+            $legacyOnly .= " AND JSON_EXTRACT(IF(JSON_VALID(oi.tier_price_data), oi.tier_price_data, '{}'), '$.bundle') IS NULL";
+        }
 
         $queryStr = "
             SELECT p.name, COALESCE(SUM(oi_filtered.quantity), 0) AS total_qty
@@ -370,23 +302,27 @@ class MeterController {
                 JOIN orders o ON oi.order_id = o.order_id
                 WHERE o.store_id = ? AND o.date BETWEEN ? AND ? $legacyOnly
             ) oi_filtered ON p.product_id = oi_filtered.product_id
-            WHERE UPPER(TRIM(c.name)) IN ('TEKSTIL', 'PAKAIAN', 'JERSEY') AND p.store_id = ?
+            WHERE UPPER(TRIM(c.name)) = 'TEKSTIL' AND p.store_id = ?
             GROUP BY p.product_id, p.name
         ";
 
         $stmt = $this->koneksi->prepare($queryStr);
-        if (!$stmt) die("Query error: " . $this->koneksi->error);
+        if (!$stmt) {
+            die("Query error: " . $this->koneksi->error);
+        }
 
         $stmt->bind_param("issi", $store_id, $start_date_full, $end_date_full, $store_id);
         $stmt->execute();
-        
+
         $res = $stmt->get_result();
         $rows = $res->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
         foreach ($rows as $row) {
             $qty = (int)$row['total_qty'];
-            if ($qty === 0) continue;
+            if ($qty === 0) {
+                continue;
+            }
             $product_data_pakaian[] = [
                 'name' => $row['name'],
                 'total_qty' => $qty
@@ -394,19 +330,28 @@ class MeterController {
             $total_all_qty_pakaian += $qty;
         }
 
-        foreach ($variantModel->productionRows($store_id, $start_date_full, $end_date_full, ['TEKSTIL', 'PAKAIAN', 'JERSEY'], true) as $component) {
-            if ((float)$component['total_qty'] === 0.0) continue;
+        foreach ($variantModel->productionRows($store_id, $start_date_full, $end_date_full, ['TEKSTIL'], true) as $component) {
+            if ((float)$component['total_qty'] === 0.0) {
+                continue;
+            }
             $product_data_pakaian[] = $component;
             $total_all_qty_pakaian += $component['total_qty'];
         }
-        foreach ((new ProductBundle($this->koneksi))->quantityRows($store_id, $start_date_full, $end_date_full, ['TEKSTIL','PAKAIAN','JERSEY']) as $row) {
-            $product_data_pakaian[] = $row; $total_all_qty_pakaian += $row['total_qty'];
+        foreach ((new ProductBundle($this->koneksi))->quantityRows($store_id, $start_date_full, $end_date_full, ['TEKSTIL']) as $row) {
+            $product_data_pakaian[] = $row;
+            $total_all_qty_pakaian += $row['total_qty'];
         }
         $merged = [];
-        foreach ($product_data_pakaian as $row) $merged[$row['name']] = ($merged[$row['name']] ?? 0) + $row['total_qty'];
+        foreach ($product_data_pakaian as $row) {
+            $merged[$row['name']] = ($merged[$row['name']] ?? 0) + $row['total_qty'];
+        }
         ksort($merged, SORT_NATURAL | SORT_FLAG_CASE);
         $product_data_pakaian = [];
-        foreach ($merged as $name => $qty) if ($qty != 0) $product_data_pakaian[] = ['name' => $name, 'total_qty' => $qty];
+        foreach ($merged as $name => $qty) {
+            if ($qty != 0) {
+                $product_data_pakaian[] = ['name' => $name, 'total_qty' => $qty];
+            }
+        }
         return [
             'product_data' => $product_data_pakaian,
             'total_all_qty' => $total_all_qty_pakaian
@@ -415,25 +360,31 @@ class MeterController {
 
     public function getComponents() {
         global $store_id;
-        $start = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
-        $end = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
+        [$start, $end] = $this->getDateRange();
         $rows = (new ProductVariant($this->koneksi))->productionRows($store_id, $start, $end);
         $rows = array_merge($rows, (new ProductBundle($this->koneksi))->quantityRows($store_id, $start, $end));
         $merged = [];
         foreach ($rows as $row) {
             $name = $row['name'];
-            if (!isset($merged[$name])) $merged[$name] = array_merge(['component_id' => null], $row, ['total_qty' => 0]);
+            if (!isset($merged[$name])) {
+                $merged[$name] = array_merge(['component_id' => null], $row, ['total_qty' => 0]);
+            }
             $merged[$name]['total_qty'] += $row['total_qty'];
         }
-        $rows = array_values(array_filter($merged, function ($row) { return $row['total_qty'] != 0; }));
-        return ['product_data' => $rows, 'total_all_qty' => array_sum(array_column($rows, 'total_qty'))];
+        $rows = array_values(array_filter($merged, function ($row) {
+            return $row['total_qty'] != 0;
+        }));
+
+        return [
+            'product_data' => $rows,
+            'total_all_qty' => array_sum(array_column($rows, 'total_qty'))
+        ];
     }
 
     public function getLaser() {
         global $store_id;
 
-        $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
-        $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
+        [$start_date_full, $end_date_full] = $this->getDateRange();
 
         $product_data_laser_a3 = [];
         $total_all_qty_laser = 0;
@@ -458,8 +409,10 @@ class MeterController {
         ";
 
         $stmt1 = $this->koneksi->prepare($query1);
-        if (!$stmt1) die("Query error: " . $this->koneksi->error);
-        
+        if (!$stmt1) {
+            die("Query error: " . $this->koneksi->error);
+        }
+
         $stmt1->bind_param("issi", $store_id, $start_date_full, $end_date_full, $store_id);
         $stmt1->execute();
         $res1 = $stmt1->get_result();
@@ -470,105 +423,56 @@ class MeterController {
             $product_data_laser_a3[$row['name']] = ($product_data_laser_a3[$row['name']] ?? 0) + (int)$row['total_qty'];
         }
 
-        $materialFields = $conversionModel->hasOrderMaterials() ? 'oi.laser_product_id, oi.laser_material_name' : 'NULL AS laser_product_id, NULL AS laser_material_name';
         $conversionIds = array_keys($conversions);
-        $conversionCondition = $conversionIds ? ' OR p.product_id IN (' . implode(',', array_fill(0, count($conversionIds), '?')) . ')' : '';
-        $query2 = "
-            SELECT p.product_id, p.name, c.name AS category_name, oi.quantity AS total_qty, oi.size, oi.finishing, $materialFields
-            FROM order_items oi
-            JOIN orders o ON oi.order_id = o.order_id
-            JOIN products p ON oi.product_id = p.product_id
-            JOIN categories c ON p.category_id = c.category_id AND c.store_id = p.store_id
-            WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
-              AND p.store_id = ?
-              AND (
-                  (c.name = 'KARTU NAMA' AND p.name LIKE '%KN%') OR 
-                  (c.name = 'MERCENDISE' AND p.name LIKE '%JAM%') OR
-                  (c.name = 'STAMP')
-                  $conversionCondition
-              )
-        ";
+        if ($conversionIds) {
+            $materialFields = $conversionModel->hasOrderMaterials()
+                ? 'oi.laser_product_id, oi.laser_material_name'
+                : 'NULL AS laser_product_id, NULL AS laser_material_name';
+            $placeholders = implode(',', array_fill(0, count($conversionIds), '?'));
+            $query2 = "
+                SELECT p.product_id, oi.quantity AS total_qty, oi.size, oi.finishing, $materialFields
+                FROM order_items oi
+                JOIN orders o ON oi.order_id = o.order_id
+                JOIN products p ON oi.product_id = p.product_id
+                JOIN categories c ON p.category_id = c.category_id AND c.store_id = p.store_id
+                WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
+                  AND p.store_id = ? AND p.product_id IN ($placeholders)
+            ";
 
-        $stmt2 = $this->koneksi->prepare($query2);
-        if (!$stmt2) die("Query error: " . $this->koneksi->error);
+            $stmt2 = $this->koneksi->prepare($query2);
+            if (!$stmt2) {
+                die("Query error: " . $this->koneksi->error);
+            }
 
-        $params = array_merge([$store_id, $start_date_full, $end_date_full, $store_id], $conversionIds);
-        $types = 'issi' . str_repeat('i', count($conversionIds));
-        $stmt2->bind_param($types, ...$params);
-        $stmt2->execute();
-        $res2 = $stmt2->get_result();
-        $rows2 = $res2->fetch_all(MYSQLI_ASSOC);
-        $stmt2->close();
+            $params = array_merge([$store_id, $start_date_full, $end_date_full, $store_id], $conversionIds);
+            $types = 'issi' . str_repeat('i', count($conversionIds));
+            $stmt2->bind_param($types, ...$params);
+            $stmt2->execute();
+            $rows2 = $stmt2->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt2->close();
 
-        $qty_kn = 0;
-        $qty_kn_bb = 0;
-        $qty_jam = 0;
-        $qty_stamp = 0;
-
-        foreach ($rows2 as $row) {
-            if (isset($conversions[(int)$row['product_id']])) {
-                $rule = ProductLaserConversion::matchRule($conversions[(int)$row['product_id']], $row['size'], $row['finishing'], true, $row['laser_product_id'] ?? 0);
+            foreach ($rows2 as $row) {
+                $rule = ProductLaserConversion::matchRule(
+                    $conversions[(int)$row['product_id']],
+                    $row['size'],
+                    $row['finishing'],
+                    true,
+                    $row['laser_product_id'] ?? 0
+                );
                 if ($rule) {
                     $name = $row['laser_material_name'] ?: $rule['laser_name'];
                     $product_data_laser_a3[$name] = ($product_data_laser_a3[$name] ?? 0)
                         + ProductLaserConversion::printQuantity($row['total_qty'], $rule);
                 }
-                continue;
-            }
-            $name_upper = strtoupper($row['name']);
-            $cat_upper  = strtoupper($row['category_name']);
-            $qty        = (int)$row['total_qty'];
-            
-            if ($cat_upper === 'STAMP') {
-                $qty_stamp += $qty;
-            } elseif (strpos($name_upper, 'JAM') !== false) {
-                $qty_jam += $qty;
-            } elseif (strpos($name_upper, 'KN') !== false && strpos($name_upper, 'BB') !== false) {
-                $qty_kn_bb += $qty;
-            } elseif (strpos($name_upper, 'KN') !== false) {
-                $qty_kn += $qty;
-            }
-        }
-
-        // Tambahan ke AP260
-        $tambahan_ap260 = ($qty_kn * 4) + ($qty_kn_bb * 8) + ($qty_jam * 1);
-
-        if ($tambahan_ap260 > 0) {
-            $ap260_found = false;
-            foreach ($product_data_laser_a3 as $lname => $lqty) {
-                $lname_upper = strtoupper($lname);
-                if (strpos($lname_upper, 'AP260') !== false || strpos($lname_upper, 'AP 260') !== false) {
-                    $product_data_laser_a3[$lname] += $tambahan_ap260;
-                    $ap260_found = true;
-                    break;
-                }
-            }
-            
-            if (!$ap260_found) {
-                $product_data_laser_a3['AP260'] = $tambahan_ap260;
-            }
-        }
-
-        if ($qty_stamp > 0) {
-            $kalkir_found = false;
-            foreach ($product_data_laser_a3 as $lname => $lqty) {
-                $lname_upper = strtoupper($lname);
-                if (strpos($lname_upper, 'KALKIR') !== false) {
-                    $product_data_laser_a3[$lname] += $qty_stamp;
-                    $kalkir_found = true;
-                    break;
-                }
-            }
-            
-            if (!$kalkir_found) {
-                $product_data_laser_a3['KALKIR'] = $qty_stamp;
             }
         }
 
         foreach ((new ProductBundle($this->koneksi))->laserRows($store_id, $start_date_full, $end_date_full) as $name => $qty) {
             $product_data_laser_a3[$name] = ($product_data_laser_a3[$name] ?? 0) + $qty;
         }
-        $product_data_laser_a3 = array_filter($product_data_laser_a3, function ($qty) { return (float)$qty !== 0.0; });
+        $product_data_laser_a3 = array_filter($product_data_laser_a3, function ($qty) {
+            return (float)$qty !== 0.0;
+        });
         foreach ($product_data_laser_a3 as $qty) {
             $total_all_qty_laser += $qty;
         }
@@ -579,74 +483,18 @@ class MeterController {
         ];
     }
 
-    public function getMerchandise() {
-        global $store_id;
-
-        $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
-        $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
-
-        $merch_keywords = ['ID CARD', 'PIN', 'GANCI', 'JAM', 'THUMBLER', 'FRAME A4', 'FRAME A3'];
-        $product_data_merch = [];
-
-        foreach ($merch_keywords as $keyword) {
-            $product_data_merch[$keyword] = 0;
-        }
-
-        $like_conditions = [];
-        foreach ($merch_keywords as $k) {
-            $like_conditions[] = "p.name LIKE '%$k%'";
-        }
-        $like_sql = implode(' OR ', $like_conditions);
-
-        $query = "
-            SELECT p.name, COALESCE(SUM(oi_filtered.quantity), 0) AS total_qty
-            FROM products p
-            JOIN categories c ON p.category_id = c.category_id
-            LEFT JOIN (
-                SELECT oi.product_id, oi.quantity
-                FROM order_items oi
-                JOIN orders o ON oi.order_id = o.order_id
-                WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
-            ) oi_filtered ON p.product_id = oi_filtered.product_id
-            WHERE c.name = 'MERCENDISE' AND p.store_id = ? AND ($like_sql)
-            GROUP BY p.name
-            ORDER BY p.name ASC
-        ";
-
-        $stmt = $this->koneksi->prepare($query);
-        $stmt->bind_param("issi", $store_id, $start_date_full, $end_date_full, $store_id);
-        $stmt->execute();
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-
-        foreach ($rows as $row) {
-            $name = $row['name'];
-            $qty = (int)$row['total_qty'];
-            
-            foreach ($merch_keywords as $keyword) {
-                if (stripos($name, $keyword) !== false) {
-                    $product_data_merch[$keyword] += $qty;
-                    break;
-                }
-            }
-        }
-
-        return $product_data_merch;
-    }
-
     public function getSublim() {
         global $store_id;
 
-        $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
-        $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
+        [$start_date_full, $end_date_full] = $this->getDateRange();
 
         $product_data_sublim = [];
         $max_rows_sublim = 0;
         $total_all_m2_sublim = 0;
 
         $queryStr = "
-            SELECT p.product_id, p.name, oi_filtered.size, oi_filtered.quantity 
-            FROM products p 
+            SELECT p.product_id, p.name, oi_filtered.size, oi_filtered.quantity
+            FROM products p
             JOIN categories c ON p.category_id = c.category_id
             LEFT JOIN (
                 SELECT oi.product_id, oi.size, oi.quantity
@@ -654,7 +502,7 @@ class MeterController {
                 JOIN orders o ON oi.order_id = o.order_id
                 WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
             ) oi_filtered ON p.product_id = oi_filtered.product_id
-            WHERE c.name = 'SUBLIM' 
+            WHERE c.name = 'SUBLIM'
               AND p.store_id = ?
               AND (p.name LIKE '%TRANSFERPAPER%' OR p.name LIKE '%PRINT PRES%')
         ";
@@ -701,7 +549,9 @@ class MeterController {
             }
 
             foreach ($grouped_by_lebar as $lebar => $rows_lebar) {
-                if (empty($rows_lebar)) continue;
+                if (empty($rows_lebar)) {
+                    continue;
+                }
 
                 $label = ($lebar === 'LAINNYA') ? 'LAINNYA' : $lebar . 'm';
                 $product_data_sublim[] = [
@@ -711,10 +561,7 @@ class MeterController {
             }
         }
 
-        foreach ($product_data_sublim as $product) {
-            $row_count = count($product['rows']);
-            if ($row_count > $max_rows_sublim) $max_rows_sublim = $row_count;
-        }
+        $max_rows_sublim = $this->getMaxRows($product_data_sublim);
 
         return [
             'product_data' => $product_data_sublim,
@@ -726,8 +573,7 @@ class MeterController {
     public function getMercendiseAkrilik() {
         global $store_id;
 
-        $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
-        $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
+        [$start_date_full, $end_date_full] = $this->getDateRange();
 
         $product_data_mercendise_akrilik = [];
 
@@ -746,16 +592,20 @@ class MeterController {
         ";
 
         $stmt = $this->koneksi->prepare($queryStr);
-        if (!$stmt) die("Query error: " . $this->koneksi->error);
+        if (!$stmt) {
+            die("Query error: " . $this->koneksi->error);
+        }
 
         $stmt->bind_param("issi", $store_id, $start_date_full, $end_date_full, $store_id);
         $stmt->execute();
-        
+
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
         foreach ($rows as $row) {
-            if ((int)$row['total_qty'] === 0) continue;
+            if ((int)$row['total_qty'] === 0) {
+                continue;
+            }
             $product_data_mercendise_akrilik[] = [
                 'name' => $row['name'],
                 'total_qty' => (int)$row['total_qty']
@@ -768,8 +618,7 @@ class MeterController {
     public function getDtf() {
         global $store_id;
 
-        $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
-        $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
+        [$start_date_full, $end_date_full] = $this->getDateRange();
 
         $data_assoc = [];
         $total_panjang_dtf = 0;
@@ -777,7 +626,7 @@ class MeterController {
 
         $queryStr = "
             SELECT p.product_id, p.name, p.unit_type, c.name AS category_name, oi_filtered.size, oi_filtered.quantity
-            FROM products p 
+            FROM products p
             JOIN categories c ON p.category_id = c.category_id
             LEFT JOIN (
                 SELECT oi.product_id, oi.size, oi.quantity
@@ -815,27 +664,34 @@ class MeterController {
 
             if (!empty($row['quantity'])) {
                 $qty = (int)$row['quantity'];
-                
+
                 $total_val = 0;
                 $p = 0;
-                
+
                 if ($isA3 || $isUV_A3) {
                     $total_val = $qty;
-                    if ($isA3) $total_panjang_dtf += ($qty * 0.2);
-                    if ($isUV_A3) $total_panjang_dtf_uv += ($qty * 0.2);
+                    if ($isA3) {
+                        $total_panjang_dtf += ($qty * 0.2);
+                    }
+                    if ($isUV_A3) {
+                        $total_panjang_dtf_uv += ($qty * 0.2);
+                    }
                 } else {
                     if (!empty($row['size']) && preg_match('/^([\d.]+)[xX]([\d.]+)$/', $row['size'], $m)) {
                         $p = floatval($m[1]);
                         $total_val = $p * $qty;
-                        
-                        if ($isUV) $total_panjang_dtf_uv += $total_val;
-                        else $total_panjang_dtf += $total_val;
+
+                        if ($isUV) {
+                            $total_panjang_dtf_uv += $total_val;
+                        } else {
+                            $total_panjang_dtf += $total_val;
+                        }
                     }
                 }
 
                 $data_assoc[$groupKey]['rows'][] = [
-                    'p' => $p, 
-                    'qty' => $qty, 
+                    'p' => $p,
+                    'qty' => $qty,
                     'total' => $total_val
                 ];
             }
@@ -843,10 +699,7 @@ class MeterController {
 
         $product_data_dtf = array_values($data_assoc);
         $max_rows_dtf = 0;
-        foreach ($product_data_dtf as $p) {
-            $count = count($p['rows']);
-            if ($count > $max_rows_dtf) $max_rows_dtf = $count;
-        }
+        $max_rows_dtf = $this->getMaxRows($product_data_dtf);
 
         return [
             'product_data' => $product_data_dtf,
@@ -859,8 +712,7 @@ class MeterController {
     public function getCetakan() {
         global $store_id;
 
-        $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
-        $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
+        [$start_date_full, $end_date_full] = $this->getDateRange();
 
         $variantModel = new ProductVariant($this->koneksi);
         $legacyOnly = $variantModel->isAvailable() ? ' AND oi.product_variant_data IS NULL' : '';
@@ -883,13 +735,15 @@ class MeterController {
         $stmt = $this->koneksi->prepare($query);
         $stmt->bind_param("issi", $store_id, $start_date_full, $end_date_full, $store_id);
         $stmt->execute();
-        
+
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
         $totals = [];
         foreach ($rows as $row) {
-            if ((float)$row['total_qty'] === 0.0) continue;
+            if ((float)$row['total_qty'] === 0.0) {
+                continue;
+            }
             $totals[$row['name']] = ($totals[$row['name']] ?? 0) + (float)$row['total_qty'];
         }
         // Nota menyimpan komponen saat dibuat; varian lama tanpa komponen memakai nama + label.
@@ -901,7 +755,9 @@ class MeterController {
         $product_data_cetakan = [];
         foreach ($totals as $name => $quantity) {
             $quantity = round($quantity, 4);
-            if ($quantity == 0) continue;
+            if ($quantity == 0) {
+                continue;
+            }
             $product_data_cetakan[] = ['name' => $name, 'total_qty' => $quantity];
         }
         return $product_data_cetakan;
@@ -909,11 +765,12 @@ class MeterController {
 
     public function getPelengkap() {
         global $store_id;
-        $start = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
-        $end = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
+        [$start, $end] = $this->getDateRange();
         $variants = new ProductVariant($this->koneksi);
         $legacyOnly = $variants->isAvailable() ? ' AND oi.product_variant_data IS NULL' : '';
-        if ((new ProductBundle($this->koneksi))->isAvailable()) $legacyOnly .= " AND JSON_EXTRACT(IF(JSON_VALID(oi.tier_price_data), oi.tier_price_data, '{}'), '$.bundle') IS NULL";
+        if ((new ProductBundle($this->koneksi))->isAvailable()) {
+            $legacyOnly .= " AND JSON_EXTRACT(IF(JSON_VALID(oi.tier_price_data), oi.tier_price_data, '{}'), '$.bundle') IS NULL";
+        }
         $stmt = $this->koneksi->prepare("SELECT p.name, SUM(oi.quantity) AS total_qty
             FROM order_items oi
             JOIN orders o ON o.order_id = oi.order_id AND o.store_id = oi.store_id
@@ -922,10 +779,14 @@ class MeterController {
             WHERE oi.store_id = ? AND o.date BETWEEN ? AND ?
                 AND UPPER(TRIM(c.name)) = 'PELENGKAP' AND UPPER(TRIM(p.unit_type)) IN ('PCS', '~')$legacyOnly
             GROUP BY p.product_id, p.name ORDER BY p.name");
-        $stmt->bind_param('iss', $store_id, $start, $end); $stmt->execute();
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $stmt->close();
+        $stmt->bind_param('iss', $store_id, $start, $end);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
         $totals = [];
-        foreach ($rows as $row) $totals[$row['name']] = ($totals[$row['name']] ?? 0) + (float)$row['total_qty'];
+        foreach ($rows as $row) {
+            $totals[$row['name']] = ($totals[$row['name']] ?? 0) + (float)$row['total_qty'];
+        }
         foreach ($variants->productionRows($store_id, $start, $end, ['PELENGKAP'], true, ['PCS', '~']) as $row) {
             $totals[$row['name']] = ($totals[$row['name']] ?? 0) + (float)$row['total_qty'];
         }
@@ -936,89 +797,119 @@ class MeterController {
         $result = [];
         foreach ($totals as $name => $quantity) {
             $quantity = round($quantity, 4);
-            if ($quantity != 0) $result[] = ['name' => $name, 'total_qty' => $quantity];
+            if ($quantity != 0) {
+                $result[] = ['name' => $name, 'total_qty' => $quantity];
+            }
         }
         return $result;
     }
 
     public function getBahanSublim() {
         global $store_id;
-        $start = ($_GET['start_date'] ?? date('Y-m-d')) . ' 00:00:00';
-        $end = ($_GET['end_date'] ?? date('Y-m-d')) . ' 23:59:59';
-        $variantsReady = (new ProductVariant($this->koneksi))->isAvailable();
-        $variantField = $variantsReady ? 'oi.product_variant_data' : 'NULL AS product_variant_data';
-        $variantCondition = $variantsReady ? ' OR oi.product_variant_data IS NOT NULL' : '';
-        $stmt = $this->koneksi->prepare("SELECT p.name, p.unit_type, c.name AS category,
-                oi.size, oi.quantity, $variantField
+        [$start, $end] = $this->getDateRange();
+        $stmt = $this->koneksi->prepare("SELECT oi.size, oi.quantity, oi.product_variant_data
             FROM order_items oi
             JOIN orders o ON o.order_id = oi.order_id AND o.store_id = oi.store_id
-            LEFT JOIN products p ON p.product_id = oi.product_id AND p.store_id = oi.store_id
-            LEFT JOIN categories c ON c.category_id = p.category_id AND c.store_id = p.store_id
             WHERE oi.store_id = ? AND o.date BETWEEN ? AND ?
-                AND ((UPPER(TRIM(c.name)) = 'SUBLIM' AND UPPER(p.name) LIKE '%BAHAN%')$variantCondition)
+                AND oi.product_variant_data IS NOT NULL
             ORDER BY oi.order_item_id");
-        $stmt->bind_param('iss', $store_id, $start, $end); $stmt->execute();
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $stmt->close();
+        $stmt->bind_param('iss', $store_id, $start, $end);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
         $masters = new ProductionComponent($this->koneksi);
         $masterNames = array_column($masters->getByStore($store_id), 'name', 'id');
         $links = $masters->links($store_id);
         $meteran = $kiloan = [];
         foreach ($rows as $row) {
             $saved = ProductVariant::snapshot($row);
-            $category = strtoupper(trim($saved['category'] ?? $row['category'] ?? ''));
-            $productName = $saved['product_name'] ?? $row['name'] ?? '';
-            if ($category !== 'SUBLIM' || !str_contains(strtoupper($productName), 'BAHAN')) continue;
+            if (!$saved) {
+                continue;
+            }
+            $category = strtoupper(trim($saved['category'] ?? ''));
+            $productName = $saved['product_name'] ?? '';
+            if ($category !== 'SUBLIM' || !str_contains(strtoupper($productName), 'BAHAN')) {
+                continue;
+            }
             $qty = (int)$row['quantity'];
-            if ($qty <= 0) continue;
+            if ($qty <= 0) {
+                continue;
+            }
             $size = strtoupper(trim($row['size'] ?? ''));
             $weight = preg_match('/^(\d+(?:\.\d+)?)\s*KG$/D', $size, $kg);
             $area = preg_match('/^(\d+(?:\.\d+)?)[X](\d+(?:\.\d+)?)$/D', $size, $dimensions);
-            // Snapshot tetap terbaca jika produk lama sudah dihapus setelah migrasi.
-            if (!$saved) {
-                $weight = $weight && $row['unit_type'] === 'PCS';
-                $area = $area && $row['unit_type'] === 'M2';
+            if (!$weight && !$area) {
+                continue;
             }
-            if (!$weight && !$area) continue;
-            if (($weight && (float)$kg[1] <= 0) || ($area && ((float)$dimensions[1] <= 0 || (float)$dimensions[2] <= 0))) continue;
-            $components = $saved ? $saved['components'] : [];
-            if (!$components) $components = [['name' => $saved ? $productName . ' - ' . $saved['label'] : $productName, 'quantity' => 1]];
+            if (($weight && (float)$kg[1] <= 0) || ($area && ((float)$dimensions[1] <= 0 || (float)$dimensions[2] <= 0))) {
+                continue;
+            }
+            $components = $saved['components'];
+            if (!$components) {
+                $components = [[
+                    'name' => $productName . ' - ' . $saved['label'],
+                    'quantity' => 1
+                ]];
+            }
             foreach ($components as $component) {
                 $factor = (float)$component['quantity'];
-                if ($factor <= 0) continue;
+                if ($factor <= 0) {
+                    continue;
+                }
                 $id = (int)($component['component_id'] ?? 0);
-                if ($saved && !$id) $id = (int)($links[ProductionComponent::legacyKey($saved, $component['name'])] ?? 0);
+                if (!$id) {
+                    $id = (int)($links[ProductionComponent::legacyKey($saved, $component['name'])] ?? 0);
+                }
                 $id = ProductionComponent::resolveId($id, $links);
                 $name = $masterNames[$id] ?? $component['name'];
                 if ($weight) {
-                    if (!isset($kiloan[$name])) $kiloan[$name] = ['name' => $name, 'rows' => []];
+                    if (!isset($kiloan[$name])) {
+                        $kiloan[$name] = ['name' => $name, 'rows' => []];
+                    }
                     $perItem = round((float)$kg[1] * $factor, 4);
-                    $kiloan[$name]['rows'][] = ['kg' => $perItem, 'qty' => $qty, 'kg_total' => round($perItem * $qty, 4)];
+                    $kiloan[$name]['rows'][] = [
+                        'kg' => $perItem,
+                        'qty' => $qty,
+                        'kg_total' => round($perItem * $qty, 4)
+                    ];
                 } else {
-                    if (!isset($meteran[$name])) $meteran[$name] = ['name' => $name, 'rows' => []];
+                    if (!isset($meteran[$name])) {
+                        $meteran[$name] = ['name' => $name, 'rows' => []];
+                    }
                     $length = round((float)$dimensions[1] * $factor, 4);
-                    $meteran[$name]['rows'][] = ['p' => $length, 'l' => (float)$dimensions[2], 'qty' => $qty,
-                        'm2' => round($length * (float)$dimensions[2] * $qty, 4)];
+                    $meteran[$name]['rows'][] = [
+                        'p' => $length,
+                        'l' => (float)$dimensions[2],
+                        'qty' => $qty,
+                        'm2' => round($length * (float)$dimensions[2] * $qty, 4)
+                    ];
                 }
             }
         }
-        ksort($meteran, SORT_NATURAL | SORT_FLAG_CASE); ksort($kiloan, SORT_NATURAL | SORT_FLAG_CASE);
-        $max = 0;
-        foreach (array_merge(array_values($meteran), array_values($kiloan)) as $product) $max = max($max, count($product['rows']));
-        return ['meteran' => array_values($meteran), 'kiloan' => array_values($kiloan), 'max_rows' => $max];
+        ksort($meteran, SORT_NATURAL | SORT_FLAG_CASE);
+        ksort($kiloan, SORT_NATURAL | SORT_FLAG_CASE);
+        $max = $this->getMaxRows(array_merge(array_values($meteran), array_values($kiloan)));
+
+        return [
+            'meteran' => array_values($meteran),
+            'kiloan' => array_values($kiloan),
+            'max_rows' => $max
+        ];
     }
 
-    public function getFinishingJersey() { return $this->getFinishingPakaian(); }
+    public function getFinishingJersey() {
+        return $this->getFinishingPakaian();
+    }
 
     public function getFinishingPakaian() {
         global $store_id;
 
-        $start_date_full = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
-        $end_date_full   = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
+        [$start_date_full, $end_date_full] = $this->getDateRange();
 
         $stmt = $this->koneksi->prepare("
-            SELECT finishing_id, name 
-            FROM finishings 
-            WHERE category_id IN (SELECT category_id FROM categories WHERE UPPER(TRIM(name)) IN ('TEKSTIL', 'PAKAIAN', 'JERSEY'))
+            SELECT finishing_id, name
+            FROM finishings
+            WHERE category_id IN (SELECT category_id FROM categories WHERE UPPER(TRIM(name)) = 'TEKSTIL')
             AND store_id = ?
             ORDER BY name
         ");
@@ -1036,12 +927,12 @@ class MeterController {
             SELECT oi.finishing, oi.quantity
             FROM order_items oi
             JOIN orders o ON oi.order_id = o.order_id
-            WHERE o.store_id = ? 
+            WHERE o.store_id = ?
             AND o.date BETWEEN ? AND ?
-            AND oi.finishing IS NOT NULL 
+            AND oi.finishing IS NOT NULL
             AND oi.finishing != ''
         ";
-        
+
         $stmt = $this->koneksi->prepare($query);
         $stmt->bind_param("iss", $store_id, $start_date_full, $end_date_full);
         $stmt->execute();
@@ -1053,7 +944,9 @@ class MeterController {
             $fin_ids = array_map('trim', explode(',', $row['finishing']));
 
             foreach ($fin_ids as $fid) {
-                if ($fid === '') continue;
+                if ($fid === '') {
+                    continue;
+                }
                 if (isset($finishing_totals[$fid])) {
                     $finishing_totals[$fid] += $qty;
                 }
@@ -1065,7 +958,9 @@ class MeterController {
         foreach ($finishings as $fin) {
             $fid = $fin['finishing_id'];
             $qty = $finishing_totals[$fid];
-            if ($qty === 0) continue;
+            if ($qty === 0) {
+                continue;
+            }
             $result[] = [
                 'name' => $fin['name'],
                 'total_qty' => $qty
@@ -1077,6 +972,22 @@ class MeterController {
             'data' => $result,
             'total_all' => $total_all
         ];
+    }
+
+    private function getDateRange() {
+        $start = isset($_GET['start_date']) ? $_GET['start_date'] . " 00:00:00" : date('Y-m-d 00:00:00');
+        $end = isset($_GET['end_date']) ? $_GET['end_date'] . " 23:59:59" : date('Y-m-d 23:59:59');
+
+        return [$start, $end];
+    }
+
+    private function getMaxRows($products) {
+        $maxRows = 0;
+        foreach ($products as $product) {
+            $maxRows = max($maxRows, count($product['rows']));
+        }
+
+        return $maxRows;
     }
 
 }

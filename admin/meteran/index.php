@@ -122,7 +122,7 @@ $end_date_only   = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
           </div>
         </div>
 
-        <!-- LASER A3 dan MERCENDISE -->
+        <!-- LASER A3 -->
         <div class="row">
           <div class="col-12 col-md-6 data-accordion">
             <h3 class="btn-open" style="cursor: pointer;">Data Produksi Laser A3</h3>
@@ -131,12 +131,6 @@ $end_date_only   = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
             </div>
           </div>
 
-          <div class="col-12 col-md-6 data-accordion">
-            <h3 class="btn-open" style="cursor: pointer;">Data Laser Lainnya</h3>
-            <div class="data-open" style="display: none;" data-target="laser_a3_lainya">
-
-            </div>
-          </div>
 
         </div>
 

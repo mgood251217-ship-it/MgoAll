@@ -144,7 +144,6 @@ $router->add('meter_pakaian', MeterController::class, 'getPakaian', ['auth']);
 $router->add('meter_components', MeterController::class, 'getComponents', ['auth']);
 $router->add('meter_akrilik', MeterController::class, 'getAkrilik', ['auth']);
 $router->add('meter_laser', MeterController::class, 'getLaser', ['auth']);
-$router->add('meter_merchandise', MeterController::class, 'getMerchandise', ['auth']);
 $router->add('meter_sublim', MeterController::class, 'getSublim', ['auth']);
 $router->add('meter_mercendise_akrilik', MeterController::class, 'getMercendiseAkrilik', ['auth']);
 $router->add('meter_dtf', MeterController::class, 'getDtf', ['auth']);
