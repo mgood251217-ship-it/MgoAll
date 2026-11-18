@@ -11,6 +11,7 @@ class Payment {
         $stmt = $this->koneksi->prepare("INSERT INTO payment (order_id, store_id, nominal, payment_method, status, date) VALUES (?, ?, ?, ?, ?, ?)");
         $stmt->bind_param("iiisss", $data->order_id, $data->store_id, $data->nominal, $data->payment_method, $data->status, $data->date);
         $success = $stmt->execute();
+        if ($success) $data->payment_id = (int)$stmt->insert_id;
         $stmt->close();
         return $success;
     }

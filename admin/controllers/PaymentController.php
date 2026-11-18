@@ -53,7 +53,10 @@ class PaymentController {
         $data->status = $isLunasStatus ? 'LUNAS' : 'DP';
         $data->date = date('Y-m-d H:i:s');
 
-        $this->paymentModel->createPayment($data);
+        if (!$this->paymentModel->createPayment($data)) {
+            send_json_response(false, 'Pembayaran gagal disimpan.');
+            exit;
+        }
         $this->financeController->refreshFinance($store_id, date('Y-m-d'));
 
         $lastProcess = $this->projectModel->getLastProjectProcessByOrderId($order_id);
@@ -77,6 +80,14 @@ class PaymentController {
             'bayar' => $totalBayar,
             'keterangan' => $keteranganBaru,
             'isLunas' => $isLunasStatus,
+            'payment' => [
+                'payment_id' => $data->payment_id,
+                'order_id' => (int)$data->order_id,
+                'nominal' => $data->nominal,
+                'payment_method' => $data->payment_method,
+                'status' => $data->status,
+                'date' => $data->date
+            ],
         ]);
     }
 
