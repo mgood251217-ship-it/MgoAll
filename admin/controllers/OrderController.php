@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../models/ProductFinishingPrice.php';
 require_once __DIR__ . '/ProductPriceTierController.php';
-require_once __DIR__ . '/../models/ProductLaserConversion.php';
+require_once __DIR__ . '/ProductLaserConversionController.php';
 require_once __DIR__ . '/../models/OrderDiscount.php';
 require_once __DIR__ . '/../models/Order.php';
 require_once __DIR__ . '/../models/User.php';
@@ -952,10 +952,10 @@ class OrderController {
             $isAnekaCetak = strtoupper(trim($product['category'])) === 'ANEKA CETAK';
             if ($isAnekaCetak) {
                 $panjang = $lebar = 0;
-                $size = ProductLaserConversion::normalizeSize($data['size'] ?? '') ?: '-';
+                $size = ProductLaserConversionController::normalizeSize($data['size'] ?? '') ?: '-';
             }
             if ($isAnekaCetak) {
-                $laserVariant = (new ProductLaserConversion($this->koneksi))->resolve(
+                $laserVariant = (new ProductLaserConversionController($this->koneksi))->resolve(
                     $store_id, $product_id, $size, $finishing, $data['laser_product_id'] ?? 0
                 );
             }

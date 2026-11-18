@@ -80,7 +80,7 @@ class ProductBundleController {
                 }
                 $stmt->close();
             }
-            $rules = (new ProductLaserConversion($this->db))->getByStore($store, true);
+            $rules = (new ProductLaserConversionController($this->db))->getByStore($store, true);
             $bundles = $model->getByStore($store);
         }
         foreach ($bundles as &$bundle) {

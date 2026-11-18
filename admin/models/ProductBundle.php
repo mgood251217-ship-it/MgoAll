@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../controllers/ProductPriceTierController.php';
 require_once __DIR__ . '/../controllers/ProductVariantController.php';
-require_once __DIR__ . '/ProductLaserConversion.php';
+require_once __DIR__ . '/../controllers/ProductLaserConversionController.php';
 
 class ProductBundle {
     private $db;
@@ -93,7 +93,7 @@ class ProductBundle {
             'bundle_products' => array_fill_keys(array_column($bundles, 'product_id'), true),
             'variant_model' => $variants,
             'variants' => $variants->getByProducts($store, $productIds),
-            'laser_rules' => (new ProductLaserConversion($this->db))->getByStore($store, true)
+            'laser_rules' => (new ProductLaserConversionController($this->db))->getByStore($store, true)
         ];
         foreach ($bundles as &$bundle) {
             $bundle['contents'] = [];
@@ -236,7 +236,7 @@ class ProductBundle {
         $result = [];
         $seen = [];
         $variants = $context['variant_model'] ?? new ProductVariantController($this->db);
-        $rules = $context['laser_rules'] ?? (new ProductLaserConversion($this->db))->getByStore($store, true);
+        $rules = $context['laser_rules'] ?? (new ProductLaserConversionController($this->db))->getByStore($store, true);
         foreach ($items as $item) {
             // Select "Tanpa konversi" mengirim string kosong; data tersimpan memakai NULL.
             $laserId = is_array($item) ? $item['laser_conversion_id'] ?? 0 : 0;
@@ -354,7 +354,7 @@ class ProductBundle {
         if (
             !is_scalar($input['finishing'] ?? '') ||
             !empty($input['product_variant_id']) ||
-            !empty(ProductLaserConversion::finishingIds($input['finishing'] ?? ''))
+            !empty(ProductLaserConversionController::finishingIds($input['finishing'] ?? ''))
         ) {
             throw new InvalidArgumentException(
                 'Paket gabungan memakai pilihan isi yang diatur di Center, tanpa finishing tambahan pada produk paket.'
@@ -545,7 +545,7 @@ class ProductBundle {
         foreach ($this->orderItems($store, $start, $end) as $item) {
             if ($r = $item['laser']) {
                 $totals[$r['laser_name']] =
-                    ($totals[$r['laser_name']] ?? 0) + ProductLaserConversion::printQuantity($item['quantity'], $r);
+                    ($totals[$r['laser_name']] ?? 0) + ProductLaserConversionController::printQuantity($item['quantity'], $r);
             }
         }
         return $totals;

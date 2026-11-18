@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../models/ProductPriceTier.php';
 require_once __DIR__ . '/../models/ProductFinishingPrice.php';
-require_once __DIR__ . '/../models/ProductLaserConversion.php';
+require_once __DIR__ . '/ProductLaserConversionController.php';
 require_once __DIR__ . '/../models/ProductPromotion.php';
 require_once __DIR__ . '/ProductVariantController.php';
 require_once __DIR__ . '/../models/ProductBundle.php';
@@ -399,7 +399,7 @@ class ProductPriceTierController {
     }
 
     private static function finishingKey($value) {
-        $ids = ProductLaserConversion::finishingIds($value);
+        $ids = ProductLaserConversionController::finishingIds($value);
         return implode(',', $ids);
     }
 
@@ -439,7 +439,7 @@ class ProductPriceTierController {
         if ($p['unit_type'] !== '~') {
             $stock['products'][(int)$row['product_id']] = $factor;
         }
-        foreach (ProductLaserConversion::finishingIds($row['finishing']) as $id) {
+        foreach (ProductLaserConversionController::finishingIds($row['finishing']) as $id) {
             $f = $this->tierModel->getFinishing($row['store_id'], $id);
             if ($f && $f['unit_type'] !== '~') {
                 $stock['finishings'][$id] = $package ? 1 : ($area > 0 ? $area : 1);

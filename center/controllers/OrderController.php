@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../../admin/models/Activity.php';
 require_once __DIR__ . '/../../admin/models/ProductFinishingPrice.php';
 require_once __DIR__ . '/../../admin/controllers/ProductPriceTierController.php';
-require_once __DIR__ . '/../../admin/models/ProductLaserConversion.php';
+require_once __DIR__ . '/../../admin/controllers/ProductLaserConversionController.php';
 require_once __DIR__ . '/../../admin/models/OrderDiscount.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../functions/cacheHelper.php';
@@ -610,10 +610,10 @@ class OrderController {
         $isAnekaCetak = strtoupper(trim($product['category'])) === 'ANEKA CETAK';
         if ($isAnekaCetak) {
             $panjang = $lebar = 0;
-            $size = ProductLaserConversion::normalizeSize($data['size'] ?? '') ?: '-';
+            $size = ProductLaserConversionController::normalizeSize($data['size'] ?? '') ?: '-';
         }
         try {
-            if ($isAnekaCetak) $laserVariant = (new ProductLaserConversion($this->koneksi))->resolve($store_id, $product_id, $size, $finishing, $data['laser_product_id'] ?? 0);
+            if ($isAnekaCetak) $laserVariant = (new ProductLaserConversionController($this->koneksi))->resolve($store_id, $product_id, $size, $finishing, $data['laser_product_id'] ?? 0);
             $package = $isAnekaCetak || $product['category'] === 'PAKET INDOOR OUTDOOR' ? null
                 : $this->packagePrices->resolve($store_id, $product_id, $finishing, $panjang, $lebar);
         } catch (InvalidArgumentException $e) {
@@ -1231,7 +1231,7 @@ class OrderController {
                 array_push($params, $product_id, round($unit, 2));
             }
         }
-        if ((new ProductLaserConversion($this->koneksi))->hasOrderMaterials()) {
+        if ((new ProductLaserConversionController($this->koneksi))->hasOrderMaterials()) {
             // Bahan berbeda selalu menjadi baris terpisah, termasuk bila harganya sama.
             $query .= ' AND laser_product_id <=> ?';
             $types .= 'i';
@@ -1246,7 +1246,7 @@ class OrderController {
     }
 
     public function createOrderItem($data){
-        if (!empty($data->laser_product_id) && (new ProductLaserConversion($this->koneksi))->hasOrderMaterials()) {
+        if (!empty($data->laser_product_id) && (new ProductLaserConversionController($this->koneksi))->hasOrderMaterials()) {
             $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing, laser_product_id, laser_material_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->bind_param('iiissiddsis', $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str, $data->laser_product_id, $data->laser_material_name);
         } elseif (!empty($data->product_finishing_price_id)) {

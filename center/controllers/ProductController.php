@@ -388,12 +388,12 @@ class ProductController {
         $productId = $productMap[(int) $source['product_id']];
         $laserProductId = $productMap[(int) $source['laser_product_id']];
         $finishingIds = [];
-        foreach (ProductLaserConversion::finishingIds($source['finishing_ids']) as $id) {
+        foreach (ProductLaserConversionController::finishingIds($source['finishing_ids']) as $id) {
             $finishingIds[] = $this->copyBundleFinishing($sourceId, $targetId, $id, $finishingMap);
         }
         sort($finishingIds, SORT_NUMERIC);
         $finishing = implode(',', $finishingIds);
-        $model = new ProductLaserConversion($this->koneksi);
+        $model = new ProductLaserConversionController($this->koneksi);
         $matches = array_values(
             array_filter($model->getByStore($targetId), function ($rule) use (
                 $source,
@@ -404,10 +404,10 @@ class ProductController {
                 return (int) $rule['product_id'] === $productId &&
                     (int) $rule['laser_product_id'] === $laserProductId &&
                     strcasecmp(
-                        ProductLaserConversion::normalizeSize($rule['size']),
-                        ProductLaserConversion::normalizeSize($source['size'])
+                        ProductLaserConversionController::normalizeSize($rule['size']),
+                        ProductLaserConversionController::normalizeSize($source['size'])
                     ) === 0 &&
-                    ProductLaserConversion::finishingIds($rule['finishing_ids']) === $finishingIds;
+                    ProductLaserConversionController::finishingIds($rule['finishing_ids']) === $finishingIds;
             })
         );
         if (count($matches) > 1) {
@@ -514,7 +514,7 @@ class ProductController {
             }
             $bundleModel = new ProductBundle($this->koneksi);
             $bundleDefinitions = [];
-            $sourceLaserRules = (new ProductLaserConversion($this->koneksi))->getByStore($sourceId);
+            $sourceLaserRules = (new ProductLaserConversionController($this->koneksi))->getByStore($sourceId);
             $dependencyIds = $ids;
             foreach ($ids as $id) {
                 $bundle = $bundleModel->find($sourceId, $id);
@@ -565,7 +565,7 @@ class ProductController {
                 $configured[(int) $rule['product_id']] = true;
                 $packageProducts[(int) $rule['product_id']] = true;
             }
-            foreach ((new ProductLaserConversion($this->koneksi))->getByStore($targetId) as $rule) {
+            foreach ((new ProductLaserConversionController($this->koneksi))->getByStore($targetId) as $rule) {
                 $configured[(int) $rule['product_id']] = true;
             }
             $newProducts = $existingProducts = $newVariants = $skippedVariants = 0;
@@ -870,7 +870,7 @@ class ProductController {
                     if ($finishings) {
                         $previous = trim((string)$row['finishing']);
                         if ($previous !== '' && $previous !== '-' && !preg_match('/^\d+(?:\s*,\s*\d+)*$/D', $previous)) throw new InvalidArgumentException('Finishing lama pada item #' . $row['order_item_id'] . ' tidak valid. Periksa sebelum migrasi.');
-                        $ids = ProductLaserConversion::finishingIds($previous);
+                        $ids = ProductLaserConversionController::finishingIds($previous);
                         $addedIds = array_values(array_diff($finishingIds, $ids));
                         $ids = array_merge($ids, $addedIds);
                         sort($ids, SORT_NUMERIC); $finalFinishing = implode(',', $ids);

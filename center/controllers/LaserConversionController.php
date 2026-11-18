@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../../admin/models/ProductLaserConversion.php';
+require_once __DIR__ . '/../../admin/controllers/ProductLaserConversionController.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../functions/cacheHelper.php';
 
@@ -9,7 +9,7 @@ class LaserConversionController {
 
     public function __construct($koneksi) {
         $this->koneksi = $koneksi;
-        $this->conversions = new ProductLaserConversion($koneksi);
+        $this->conversions = new ProductLaserConversionController($koneksi);
     }
 
     private function getStores() {
@@ -131,7 +131,7 @@ class LaserConversionController {
                 $product_quantity = $this->quantityInput('product_quantity');
                 $print_quantity = $this->quantityInput('print_quantity');
                 if (!is_string($_POST['size'] ?? '')) throw new InvalidArgumentException('Ukuran tidak valid.');
-                $size = ProductLaserConversion::normalizeSize($_POST['size'] ?? '');
+                $size = ProductLaserConversionController::normalizeSize($_POST['size'] ?? '');
                 if (!preg_match('/^.{0,64}$/usD', $size)) throw new InvalidArgumentException('Ukuran maksimal 64 karakter.');
                 $priceInput = $_POST['price'] ?? '';
                 if (!is_scalar($priceInput) || !preg_match('/^\d+(?:\.\d{1,2})?$/D', (string)$priceInput)
@@ -142,7 +142,7 @@ class LaserConversionController {
                 foreach ($selectedFinishings as $fid) {
                     if (!is_scalar($fid) || !ctype_digit((string)$fid) || (int)$fid <= 0) throw new InvalidArgumentException('Pilihan finishing tidak valid.');
                 }
-                $ids = ProductLaserConversion::finishingIds(implode(',', $selectedFinishings));
+                $ids = ProductLaserConversionController::finishingIds(implode(',', $selectedFinishings));
                 $finishing_ids = implode(',', $ids);
                 if (strlen($finishing_ids) > 255) throw new InvalidArgumentException('Terlalu banyak finishing dipilih.');
                 $stmt = $this->koneksi->prepare("SELECT p.product_id FROM products p

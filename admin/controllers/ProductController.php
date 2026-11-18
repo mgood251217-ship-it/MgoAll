@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/../models/ProductFinishingPrice.php';
-require_once __DIR__ . '/../models/ProductLaserConversion.php';
+require_once __DIR__ . '/ProductLaserConversionController.php';
 require_once __DIR__ . '/ProductVariantController.php';
 require_once __DIR__ . '/../models/ProductBundle.php';
 require_once __DIR__ . '/ProductPriceTierController.php';
@@ -22,7 +22,7 @@ class ProductController {
         $this->db = $koneksi;
         $this->productModel = new Product($koneksi);
         $this->packagePrices = new ProductFinishingPrice($koneksi);
-        $this->laserConversions = new ProductLaserConversion($koneksi);
+        $this->laserConversions = new ProductLaserConversionController($koneksi);
         $this->variants = new ProductVariantController($koneksi);
         $this->authMiddleware = new AuthMiddleware($koneksi);
     }

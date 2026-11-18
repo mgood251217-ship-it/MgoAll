@@ -14,14 +14,18 @@ class ProductLaserConversion {
         if ($this->available === null) {
             $result = $this->koneksi->query("SELECT EXISTS(SELECT 1 FROM information_schema.TABLES
                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'product_laser_conversion') AS available");
-            if (!$result) throw new RuntimeException('Gagal memeriksa tabel konversi print laser.');
+            if (!$result) {
+                throw new RuntimeException('Gagal memeriksa tabel konversi print laser.');
+            }
             $this->available = (bool)$result->fetch_assoc()['available'];
         }
         return $this->available;
     }
 
     public function countsForProducts($store, $productIds) {
-        if (!$productIds || !$this->isAvailable()) return [];
+        if (!$productIds || !$this->isAvailable()) {
+            return [];
+        }
         $placeholders = implode(',', array_fill(0, count($productIds), '?'));
         $params = array_merge([(int)$store], array_map('intval', $productIds));
         $stmt = $this->koneksi->prepare("SELECT product_id, COUNT(*) AS total FROM product_laser_conversion WHERE store_id=? AND product_id IN ($placeholders) GROUP BY product_id");
@@ -32,8 +36,33 @@ class ProductLaserConversion {
         return $counts;
     }
 
-    public function getByStore($store_id, $validOnly = false) {
-        if (!$this->isAvailable()) return [];
+    public function hasVariants() {
+        if (!$this->isAvailable()) {
+            return false;
+        }
+        if ($this->variants === null) {
+            $result = $this->koneksi->query("SELECT COUNT(*) AS total FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'product_laser_conversion'
+                  AND COLUMN_NAME IN ('size', 'finishing_ids', 'price')");
+            $this->variants = (int)$result->fetch_assoc()['total'] === 3;
+        }
+        return $this->variants;
+    }
+
+    public function hasOrderMaterials() {
+        if ($this->orderMaterials === null) {
+            $result = $this->koneksi->query("SELECT COUNT(*) AS total FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'order_items'
+                  AND COLUMN_NAME IN ('laser_product_id', 'laser_material_name')");
+            $this->orderMaterials = (int)$result->fetch_assoc()['total'] === 2;
+        }
+        return $this->orderMaterials;
+    }
+
+    public function getByStore($store_id) {
+        if (!$this->isAvailable()) {
+            return [];
+        }
         $legacyFields = $this->hasVariants() ? '' : ", '' AS size, '' AS finishing_ids, NULL AS price";
         $stmt = $this->koneksi->prepare("SELECT r.*, p.name AS product_name, c.name AS category,
                 p.category_id, p.price AS product_price, lp.name AS laser_name $legacyFields,
@@ -52,108 +81,31 @@ class ProductLaserConversion {
         $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
+        return $rows;
+    }
+
+    public function getFinishings($store_id) {
         $stmt = $this->koneksi->prepare("SELECT finishing_id, category_id, name FROM finishings WHERE store_id = ?");
         $stmt->bind_param('i', $store_id);
         $stmt->execute();
-        $finishings = [];
-        foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $finishing) $finishings[(int)$finishing['finishing_id']] = $finishing;
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        foreach ($rows as &$row) {
-            $row['legacy_fallback'] = !$this->hasVariants();
-            $names = [];
-            foreach (self::finishingIds($row['finishing_ids']) as $id) {
-                $finishing = $finishings[$id] ?? null;
-                if (!$finishing || (int)$finishing['category_id'] !== (int)$row['category_id']) $row['valid'] = 0;
-                $names[] = $finishing['name'] ?? ('Finishing tidak tersedia (#' . $id . ')');
-            }
-            $row['finishing_names'] = implode(', ', $names);
-        }
-        unset($row);
-        return $validOnly ? array_values(array_filter($rows, function ($row) {
-            return (int)$row['valid'] === 1;
-        })) : $rows;
+
+        return $rows;
     }
 
-    public function hasVariants() {
-        if (!$this->isAvailable()) return false;
-        if ($this->variants === null) {
-            $result = $this->koneksi->query("SELECT COUNT(*) AS total FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'product_laser_conversion'
-                  AND COLUMN_NAME IN ('size', 'finishing_ids', 'price')");
-            $this->variants = (int)$result->fetch_assoc()['total'] === 3;
-        }
-        return $this->variants;
-    }
+    public function countProductFinishings($store_id, $product_id, $ids) {
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->koneksi->prepare("SELECT f.finishing_id FROM finishings f
+            JOIN products p ON p.product_id = ? AND p.store_id = f.store_id AND p.category_id = f.category_id
+            WHERE f.store_id = ? AND f.finishing_id IN ($placeholders)");
+        $params = array_merge([(int)$product_id, (int)$store_id], $ids);
+        $types = str_repeat('i', count($params));
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $found = $stmt->get_result()->num_rows;
+        $stmt->close();
 
-    public static function finishingIds($value) {
-        $ids = array_values(array_unique(array_filter(array_map('intval', explode(',', (string)$value)), function ($id) { return $id > 0; })));
-        sort($ids, SORT_NUMERIC);
-        return $ids;
-    }
-
-    public static function normalizeSize($size) {
-        $size = trim(preg_replace('/[\s\p{Z}]+/u', ' ', (string)$size) ?? '');
-        return $size === '-' ? '' : $size;
-    }
-
-    public function hasOrderMaterials() {
-        if ($this->orderMaterials === null) {
-            $result = $this->koneksi->query("SELECT COUNT(*) AS total FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'order_items'
-                  AND COLUMN_NAME IN ('laser_product_id', 'laser_material_name')");
-            $this->orderMaterials = (int)$result->fetch_assoc()['total'] === 2;
-        }
-        return $this->orderMaterials;
-    }
-
-    public static function matchRule($rules, $size, $finishing, $allowLegacyFallback = true, $laser_product_id = 0) {
-        $size = self::normalizeSize($size);
-        $ids = self::finishingIds($finishing);
-        $matches = $legacy = [];
-        foreach ($rules as $rule) {
-            if (empty($rule['valid'])) continue;
-            if ($laser_product_id && (int)$rule['laser_product_id'] !== (int)$laser_product_id) continue;
-            if (strcasecmp(self::normalizeSize($rule['size']), $size) === 0 && self::finishingIds($rule['finishing_ids']) === $ids) $matches[] = $rule;
-            // Konversi lama belum mengatur ukuran, finishing, atau harga.
-            if ($allowLegacyFallback && $rule['price'] === null && $rule['size'] === '' && $rule['finishing_ids'] === '') $legacy[] = $rule;
-        }
-        if ($matches) return count($matches) === 1 ? $matches[0] : null;
-        return count($legacy) === 1 ? $legacy[0] : null;
-    }
-
-    public function resolve($store_id, $product_id, $size, $finishing, $laser_product_id = 0) {
-        if (!is_scalar($laser_product_id) || !preg_match('/^\d+$/D', (string)$laser_product_id)
-            || (float)$laser_product_id > 2147483647) throw new InvalidArgumentException('Pilihan bahan tidak valid.');
-        $laser_product_id = (int)$laser_product_id;
-        if (!preg_match('/^(?:-|\d+(?:,\d+)*)?$/D', trim((string)$finishing))) throw new InvalidArgumentException('Pilihan finishing tidak valid.');
-        $ids = self::finishingIds($finishing);
-        if ($ids) {
-            $placeholders = implode(',', array_fill(0, count($ids), '?'));
-            $stmt = $this->koneksi->prepare("SELECT f.finishing_id FROM finishings f
-                JOIN products p ON p.product_id = ? AND p.store_id = f.store_id AND p.category_id = f.category_id
-                WHERE f.store_id = ? AND f.finishing_id IN ($placeholders)");
-            $params = array_merge([(int)$product_id, (int)$store_id], $ids);
-            $types = str_repeat('i', count($params));
-            $stmt->bind_param($types, ...$params);
-            $stmt->execute();
-            $found = $stmt->get_result()->num_rows;
-            $stmt->close();
-            if ($found !== count($ids)) throw new InvalidArgumentException('Finishing bukan milik kategori dan toko produk ini.');
-        }
-        $rules = array_values(array_filter($this->getByStore($store_id), function ($rule) use ($product_id) {
-            return (int)$rule['product_id'] === (int)$product_id;
-        }));
-        if (!$rules && !$laser_product_id) return null;
-        $rule = self::matchRule($rules, $size, $finishing, !$this->hasVariants(), $laser_product_id);
-        if (!$rule) throw new InvalidArgumentException('Pilih kombinasi bahan, ukuran, dan finishing yang tersedia. Jika pilihan bahan belum muncul, perbarui aplikasi.');
-        return $rule;
-    }
-
-    // Hitung kebutuhan print sesuai rasio, lalu bulatkan ke atas per item order.
-    public static function printQuantity($quantity, $rule) {
-        $quantity = max(0, (int)$quantity);
-        $denominator = (int)$rule['product_quantity'];
-        $totalPrint = $quantity * (int)$rule['print_quantity'];
-        return intdiv($totalPrint, $denominator) + ($totalPrint % $denominator > 0 ? 1 : 0);
+        return $found;
     }
 }

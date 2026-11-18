@@ -21,7 +21,7 @@ $laserOptions = function ($selected = 0) use ($data, $escape) {
     }
 };
 $finishingCheckboxes = function ($selected = '', $formId = '') use ($data, $escape) {
-    $ids = ProductLaserConversion::finishingIds($selected);
+    $ids = ProductLaserConversionController::finishingIds($selected);
     $options = $data['finishings'];
     foreach ($ids as $id) {
         if (!in_array($id, array_column($options, 'finishing_id'))) $options[] = ['finishing_id' => $id, 'name' => 'Finishing tidak tersedia (#' . $id . ')'];

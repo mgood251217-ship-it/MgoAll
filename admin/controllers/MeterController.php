@@ -4,7 +4,7 @@ require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/Project.php';
 require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/../models/Payment.php';
-require_once __DIR__ . '/../models/ProductLaserConversion.php';
+require_once __DIR__ . '/ProductLaserConversionController.php';
 require_once __DIR__ . '/ProductVariantController.php';
 require_once __DIR__ . '/../models/ProductBundle.php';
 require_once __DIR__ . '/../functions/helpers.php';
@@ -388,7 +388,7 @@ class MeterController {
 
         $product_data_laser_a3 = [];
         $total_all_qty_laser = 0;
-        $conversionModel = new ProductLaserConversion($this->koneksi);
+        $conversionModel = new ProductLaserConversionController($this->koneksi);
         $conversions = [];
         foreach ($conversionModel->getByStore($store_id, true) as $rule) {
             $conversions[(int)$rule['product_id']][] = $rule;
@@ -452,7 +452,7 @@ class MeterController {
             $stmt2->close();
 
             foreach ($rows2 as $row) {
-                $rule = ProductLaserConversion::matchRule(
+                $rule = ProductLaserConversionController::matchRule(
                     $conversions[(int)$row['product_id']],
                     $row['size'],
                     $row['finishing'],
@@ -462,7 +462,7 @@ class MeterController {
                 if ($rule) {
                     $name = $row['laser_material_name'] ?: $rule['laser_name'];
                     $product_data_laser_a3[$name] = ($product_data_laser_a3[$name] ?? 0)
-                        + ProductLaserConversion::printQuantity($row['total_qty'], $rule);
+                        + ProductLaserConversionController::printQuantity($row['total_qty'], $rule);
                 }
             }
         }

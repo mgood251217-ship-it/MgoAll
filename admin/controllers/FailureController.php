@@ -40,14 +40,14 @@ class FailureController {
         $products = $this->getProducts($productIds, $store_id);
         $finishingIds = [];
         foreach ($items as $item) {
-            $finishingIds = array_merge($finishingIds, ProductLaserConversion::finishingIds($item['finishing'] ?? ''));
+            $finishingIds = array_merge($finishingIds, ProductLaserConversionController::finishingIds($item['finishing'] ?? ''));
         }
         $finishings = $this->getFinishings(array_values(array_unique($finishingIds)), $store_id);
 
         foreach ($items as &$item) {
             $finishingNames = [];
             $finishingPrice = 0;
-            foreach (ProductLaserConversion::finishingIds($item['finishing'] ?? '') as $id) {
+            foreach (ProductLaserConversionController::finishingIds($item['finishing'] ?? '') as $id) {
                 if (isset($finishings[$id])) {
                     $finishingNames[] = $finishings[$id]['name'];
                     $finishingPrice += (float)$finishings[$id]['failed_price'];
@@ -288,7 +288,7 @@ class FailureController {
         $package = null;
         if ($isAnekaCetak) {
             $panjang = $lebar = $kiloan = $waktu = 0;
-            $size = ProductLaserConversion::normalizeSize($data['size']) ?: '-';
+            $size = ProductLaserConversionController::normalizeSize($data['size']) ?: '-';
         } else {
             $package = (new ProductFinishingPrice($this->koneksi))->resolve(
                 $store_id, $data['product_id'], $data['finishing_str'], $panjang, $lebar
@@ -301,7 +301,7 @@ class FailureController {
                 }
             }
         }
-        $ids = ProductLaserConversion::finishingIds($data['finishing_str']);
+        $ids = ProductLaserConversionController::finishingIds($data['finishing_str']);
         $finishings = $this->getFinishings($ids, $store_id, true);
         if (count($finishings) !== count($ids)) {
             throw new InvalidArgumentException('Finishing tidak ditemukan di toko ini.');
