@@ -817,7 +817,7 @@ class MeterController {
         $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        $masters = new ProductionComponent($this->koneksi);
+        $masters = new ProductionComponentController($this->koneksi);
         $masterNames = array_column($masters->getByStore($store_id), 'name', 'id');
         $links = $masters->links($store_id);
         $meteran = $kiloan = [];
@@ -858,9 +858,9 @@ class MeterController {
                 }
                 $id = (int)($component['component_id'] ?? 0);
                 if (!$id) {
-                    $id = (int)($links[ProductionComponent::legacyKey($saved, $component['name'])] ?? 0);
+                    $id = (int)($links[ProductionComponentController::legacyKey($saved, $component['name'])] ?? 0);
                 }
-                $id = ProductionComponent::resolveId($id, $links);
+                $id = ProductionComponentController::resolveId($id, $links);
                 $name = $masterNames[$id] ?? $component['name'];
                 if ($weight) {
                     if (!isset($kiloan[$name])) {

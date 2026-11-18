@@ -7,7 +7,7 @@ class VariantController {
     private $db;
     private $variants;
     private $components;
-    public function __construct($db) { $this->db = $db; $this->variants = new ProductVariantController($db); $this->components = new ProductionComponent($db); }
+    public function __construct($db) { $this->db = $db; $this->variants = new ProductVariantController($db); $this->components = new ProductionComponentController($db); }
 
     private function stores() {
         if (session_status() === PHP_SESSION_NONE) session_start();
@@ -143,7 +143,7 @@ class VariantController {
 
     public function saveComponent() {
         $this->componentAction(function ($store) {
-            $name = ProductionComponent::name($_POST['name'] ?? ''); $id = $_POST['component_id'] ?? '0';
+            $name = ProductionComponentController::name($_POST['name'] ?? ''); $id = $_POST['component_id'] ?? '0';
             if (!is_scalar($id) || !preg_match('/^\d+$/D', (string)$id) || (float)$id > 2147483647) throw new InvalidArgumentException('Komponen tidak valid.');
             $id = (int)$id;
             if ($id) {
@@ -249,7 +249,7 @@ class VariantController {
                     $recipeId = (int)$recipe;
                     if ($recipeId && !isset($oldRecipes[$recipeId])) throw new InvalidArgumentException('Komponen varian sudah berubah. Muat ulang halaman.');
                     if ($textNames) {
-                        $name = ProductionComponent::name($name);
+                        $name = ProductionComponentController::name($name);
                         if ($componentsReady) {
                             $componentId = (int)($oldRecipes[$recipeId]['component_id'] ?? 0);
                             if ($componentId) {
@@ -297,7 +297,7 @@ class VariantController {
                 $combined = [];
                 foreach ($components as $c) {
                     if ($componentsReady) {
-                        $c['component_id'] = ProductionComponent::resolveId($c['component_id'], $links);
+                        $c['component_id'] = ProductionComponentController::resolveId($c['component_id'], $links);
                         $c['name'] = $masterNames[$c['component_id']];
                     }
                     $componentKey = $componentsReady ? 'id:' . $c['component_id'] : 'name:' . $c['name'];

@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../models/ProductVariant.php';
-require_once __DIR__ . '/../models/ProductionComponent.php';
+require_once __DIR__ . '/ProductionComponentController.php';
 
 class ProductVariantController {
     private $db;
@@ -74,7 +74,7 @@ class ProductVariantController {
         }
         $rows = $this->variantModel->getByProducts($store, $productIds);
 
-        $componentModel = new ProductionComponent($this->db);
+        $componentModel = new ProductionComponentController($this->db);
         $hasMasters = $componentModel->isAvailable();
         $masterNames = $hasMasters ? array_column($componentModel->getByStore($store), 'name', 'id') : [];
         $links = $hasMasters ? $componentModel->links($store) : [];
@@ -87,10 +87,10 @@ class ProductVariantController {
             foreach ($row['components'] as &$component) {
                 $componentId = $component['component_id'] ?? null;
                 if ($componentId === null) {
-                    $legacyKey = ProductionComponent::legacyKey($row, $component['name']);
+                    $legacyKey = ProductionComponentController::legacyKey($row, $component['name']);
                     $componentId = $links[$legacyKey] ?? 0;
                 }
-                $linkedId = ProductionComponent::resolveId($componentId, $links);
+                $linkedId = ProductionComponentController::resolveId($componentId, $links);
                 if (isset($masterNames[$linkedId])) {
                     $component['component_id'] = (int)$linkedId;
                     $component['name'] = $masterNames[$linkedId];
@@ -192,7 +192,7 @@ class ProductVariantController {
         if (!$this->isAvailable()) {
             return [];
         }
-        $masterModel = new ProductionComponent($this->db);
+        $masterModel = new ProductionComponentController($this->db);
         $hasMasters = $masterModel->isAvailable();
         $masters = array_column($masterModel->getByStore($store), 'name', 'id');
         $links = $masterModel->links($store);
@@ -224,9 +224,9 @@ class ProductVariantController {
                 ]];
             }
             foreach ($components as $component) {
-                $legacyKey = ProductionComponent::legacyKey($saved, $component['name']);
+                $legacyKey = ProductionComponentController::legacyKey($saved, $component['name']);
                 $componentId = !empty($component['component_id']) ? $component['component_id'] : ($links[$legacyKey] ?? 0);
-                $id = ProductionComponent::resolveId($componentId, $links);
+                $id = ProductionComponentController::resolveId($componentId, $links);
                 if ($id) {
                     $key = 'component:' . $id;
                 } elseif ($hasMasters) {

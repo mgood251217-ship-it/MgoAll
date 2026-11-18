@@ -231,7 +231,7 @@ class ProductController {
         $upper = function ($value) {
             return function_exists('mb_strtoupper') ? mb_strtoupper($value, 'UTF-8') : strtoupper($value);
         };
-        $components = new ProductionComponent($this->koneksi);
+        $components = new ProductionComponentController($this->koneksi);
         $useMasters = $components->isAvailable();
         $copyTiers = (new ProductPriceTierController($this->koneksi))->hasVariantTiers();
         $added = $skipped = 0;
@@ -278,7 +278,7 @@ class ProductController {
             $variantMap[(int) $variant['id']] = $newVariantId;
             $recipe = [];
             foreach ($variant['components'] as $component) {
-                $name = ProductionComponent::name($component['name']);
+                $name = ProductionComponentController::name($component['name']);
                 $componentId = null;
                 if ($useMasters) {
                     $master = $components->findOrCreate($targetStore, $name);

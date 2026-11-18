@@ -501,7 +501,7 @@ class ProductBundle {
 
     public function quantityRows($store, $start, $end, $categories = null) {
         $totals = [];
-        $masters = new ProductionComponent($this->db);
+        $masters = new ProductionComponentController($this->db);
         $names = array_column($masters->getByStore($store), 'name', 'id');
         $links = $masters->links($store);
         foreach ($this->orderItems($store, $start, $end) as $item) {
@@ -524,9 +524,9 @@ class ProductBundle {
             foreach ($recipe as $component) {
                 $id = (int) ($component['component_id'] ?? 0);
                 if (!$id && $variant) {
-                    $id = (int) ($links[ProductionComponent::legacyKey($variant, $component['name'])] ?? 0);
+                    $id = (int) ($links[ProductionComponentController::legacyKey($variant, $component['name'])] ?? 0);
                 }
-                $id = ProductionComponent::resolveId($id, $links);
+                $id = ProductionComponentController::resolveId($id, $links);
                 $name = $names[$id] ?? $component['name'];
                 $totals[$name] = ($totals[$name] ?? 0) + (float) $component['quantity'] * $item['quantity'];
             }

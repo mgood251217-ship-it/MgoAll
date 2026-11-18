@@ -159,7 +159,7 @@ class StoreController {
             return $map[$id];
         };
         $variantModel = new ProductVariantController($this->koneksi);
-        $componentModel = new ProductionComponent($this->koneksi);
+        $componentModel = new ProductionComponentController($this->koneksi);
         $masters = $componentModel->isAvailable();
         foreach (['product_variants', 'product_package', 'product_price_tiers', 'product_variant_price_tiers', 'product_laser_conversion'] as $table) {
             if (!in_array($table, $tables, true)) continue;
