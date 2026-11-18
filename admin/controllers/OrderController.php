@@ -30,39 +30,6 @@ class OrderController {
         $this->paymentModel = new Payment($koneksi);
     }
 
-    private function requestData() {
-        global $store_id;
-
-        $deadline_input = $_POST['deadline'] ?? '';
-        $user_id = $_POST['user_id'] ?? 0;
-        $system = $_POST['system'] ?? 'OFFLINE';
-        if ($system != 'OFFLINE' && $system != 'ONLINE') {
-            $system = 'OFFLINE';
-        }
-
-        $data = new stdClass();
-        $data->order_id = (int)($_POST['order_id'] ?? 0);
-        $data->store_id = $store_id;
-        $data->user_id = $user_id;
-        $data->system = $system;
-            
-        if ($data->order_id > 0) {
-            $data->nomorator = trim($_POST['nomorator'] ?? '');
-        } else {
-            $data->nomorator = $this->nomorator($data->store_id, $data->system);
-        }
-
-        $data->customer_name = trim($_POST['customer_name'] ?? '');
-        $data->nomor = trim($_POST['nomor'] ?? '');
-        $data->total = 0;
-        
-        $data->deadline = $deadline_input ? date('Y-m-d H:i:s', strtotime($deadline_input)) : null;
-        
-        $data->date = trim($_POST['date'] ?? date('Y-m-d H:i:s')); 
-
-        return $data;
-    }
-
     public function index() {
         global $store_id, $koneksi, $role, $user_id;
 
@@ -150,7 +117,7 @@ class OrderController {
             $row['is_lunas_status'] = $pay['is_lunas'] ?? 0;
             $row['lunas_method'] = $pay['lunas_method'] ?? '';
             $row['is_lunas'] = ($row['total'] <= $row['total_paid']);
-            
+
             $row['project_status'] = $proj['status'] ?? '';
             $row['project_process'] = $proj['process'] ?? '';
             $row['project_user'] = $proj['user_id'] ?? 0;
@@ -170,7 +137,7 @@ class OrderController {
         ];
     }
 
-    public function create() { 
+    public function create() {
         header('Content-Type: application/json');
         date_default_timezone_set('Asia/Jakarta');
 
@@ -194,14 +161,14 @@ class OrderController {
             $data->order_id = $order_id;
             $this->projectModel->createProject($data);
             updateStoreCache($data->store_id, 'orders');
-            
+
             send_json_response(true, 'Order berhasil ditambahkan', ['order_id' => $order_id, 'id' => startEnk('enk', $order_id)]);
             exit;
         } else {
             send_json_response(false, 'Gagal menambahkan order');
             exit;
         }
-        
+
     }
 
     public function nomorator($store_id, $sys) {
@@ -212,7 +179,7 @@ class OrderController {
         if ($sys == 'OFFLINE') {
             $maxNomorator = 199999;
             $defaultStart = 100001;
-        }elseif ($sys == 'ONLINE'){
+        } elseif ($sys == 'ONLINE') {
             $defaultStart = 200001;
             $maxNomorator = 299999;
         }
@@ -325,13 +292,13 @@ class OrderController {
             $type = $row['category'];
             $unit_type = $row['unit_type'] ?? '';
             $product_name = $row['product_name'];
-            
+
             $is_outdoor = (($type === 'OUTDOOR' || ($type === 'SUBLIM' && $unit_type == 'M2')) && $product_name != 'ONEWAY');
 
             if ($is_outdoor && empty($row['product_finishing_price_id']) && !ProductPriceTier::hasPromotion($row)) {
                 $variant = ProductVariant::snapshot($row);
                 $pid = $row['product_id'] . ':' . ($variant['id'] ?? 0);
-                
+
                 if (!isset($outdoorGroups[$pid])) {
                     $outdoorGroups[$pid] = [
                         'total_size' => 0,
@@ -344,10 +311,10 @@ class OrderController {
                 if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $row['size'], $matches)) {
                     $luas = floatval($matches[1]) * floatval($matches[2]);
                 }
-                
+
                 $outdoorGroups[$pid]['total_size'] += ($luas * (int)$row['quantity']);
                 $outdoorGroups[$pid]['total_amount'] += (float)$row['amount'];
-                
+
             } else {
                 $grand_total += (float)$row['amount'];
             }
@@ -357,19 +324,19 @@ class OrderController {
             if ($group['total_size'] > 0 && $group['total_size'] < 1) {
                 $harga_full_1_meter = $group['total_amount'] / $group['total_size'];
                 $amount_minimal = max($harga_full_1_meter, $group['harga_per_meter_dasar']);
-                
+
                 $grand_total += $amount_minimal;
-                
+
             } else {
                 $grand_total += $group['total_amount'];
             }
         }
 
         $grand_total = floor(round($grand_total) / 500) * 500;
-        
+
         return $this->orderModel->updateOrderTotal($id, $grand_total);
     }
-    public function discount( $order_id, $product_id, $diskonInput) {
+    public function discount($order_id, $product_id, $diskonInput) {
         if ($diskonInput > 0) {
             if ($this->orderModel->checkDiscount($order_id, $product_id)) {
                 $this->orderModel->updateDiscount($order_id, $product_id, $diskonInput);
@@ -388,151 +355,7 @@ class OrderController {
         $this->paymentModel->updateLastStatusPayment($order_id, $status_bayar);
         return true;
     }
-    
-    private function _prepareItemData($data, $store_id, $previewOnly = false) {
-        $order_id = (int)($data['order_id'] ?? 0);
-        $product_id = (int)($data['product_id'] ?? 0);
-        $judul = trim($data['judul'] ?? '');
-        $size = trim($data['size'] ?? '-');
-        $quantity = (int)($data['quantity'] ?? 1);
 
-        if ($quantity < 1) $quantity = 1;
-
-        $panjang = (float)($data['panjang'] ?? 0);
-        $lebar = (float)($data['lebar'] ?? 0);
-        if ($panjang > 0 && $lebar > 0) {
-            $size = "{$panjang}x{$lebar}";
-        }
-
-        $product = $this->productModel->getProductById($product_id);
-        if (!$product) {
-            return ['error' => 'Produk tidak ditemukan', 'status' => 404];
-        }
-        if ((int)$product['store_id'] !== (int)$store_id) {
-            return ['error' => 'Produk bukan milik toko ini', 'status' => 400];
-        }
-
-        try {
-            $bundle = (new ProductBundle($this->koneksi))->prepare($store_id, $product, $data,
-                function ($child) use ($store_id) { return $this->_prepareItemData($child, $store_id, true); });
-            if ($bundle) return $bundle;
-        } catch (InvalidArgumentException $e) { return ['error' => $e->getMessage(), 'status' => 400]; }
-
-        if ($product['category'] === 'PAKET INDOOR OUTDOOR') {
-            $nama_pencarian = trim($judul . ' ' . $size);
-            $produk_baru = $this->productModel->getProductByNameAndStore($nama_pencarian, $store_id);
-            
-            if ($produk_baru) {
-                $product_id = $produk_baru['product_id'] ?? $produk_baru['product_id'];
-                $product = $produk_baru;
-            } else {
-                return ['error' => "Produk paket ($nama_pencarian) tidak ditemukan", 'status' => 404];
-            }
-        }
-
-        try { $variant = (new ProductVariant($this->koneksi))->resolve($store_id, $product, $data); }
-        catch (InvalidArgumentException $e) { return ['error' => $e->getMessage(), 'status' => 400]; }
-        if ($variant) $product['price'] = $variant['price'];
-        $finishing = trim($data['finishing'] ?? '-');
-        $laserVariant = null;
-        $isAnekaCetak = strtoupper(trim($product['category'])) === 'ANEKA CETAK';
-        if ($isAnekaCetak) {
-            $panjang = $lebar = 0;
-            $size = ProductLaserConversion::normalizeSize($data['size'] ?? '') ?: '-';
-        }
-        try {
-            if ($isAnekaCetak) $laserVariant = (new ProductLaserConversion($this->koneksi))->resolve($store_id, $product_id, $size, $finishing, $data['laser_product_id'] ?? 0);
-            $package = $isAnekaCetak || $product['category'] === 'PAKET INDOOR OUTDOOR' ? null
-                : $this->packagePrices->resolve($store_id, $product_id, $finishing, $panjang, $lebar);
-        } catch (InvalidArgumentException $e) {
-            return ['error' => $e->getMessage(), 'status' => 400];
-        }
-        if ($variant && ($package || $laserVariant)) return ['error' => 'Harga varian tidak digabung dengan harga paket atau konversi print laser.', 'status' => 400];
-        $diskonInput = (int)($data['diskon'] ?? 0);
-        // Diskon paket dihitung per set; tidak mengubah diskon bahan per meter.
-        $diskon = $package || ($laserVariant && $laserVariant['price'] !== null) ? max(0, $diskonInput) : ($previewOnly ? ($diskonInput > 0 ? $diskonInput : $this->orderModel->getDiscount($order_id, $product_id)) : $this->discount($order_id, $product_id, $diskonInput));
-        $waktu = (float)($data['waktu'] ?? 0);
-        $kiloan = (float)($data['kiloan'] ?? 0);
-        if ($isAnekaCetak) $kiloan = $waktu = 0;
-        if ($package) {
-            $kiloan = $waktu = 0;
-            if (empty($package['requires_size'])) {
-                $panjang = $lebar = 0;
-                $size = '-';
-            }
-        }
-
-        $stok_butuh = 0;
-        if ($package && !ProductFinishingPrice::requiresDimensions($product)) {
-            // Ukuran paket LASER A3 memilih harga; pemakaian bahan tetap per pcs.
-            $stok_butuh = $quantity;
-        } elseif ($product['category'] === 'DTF' && $panjang > 0) {
-            $stok_butuh = $panjang * $quantity;
-        } elseif ($panjang > 0 && $lebar > 0) {
-            $stok_butuh = $panjang * $lebar * $quantity;
-        } elseif ($kiloan > 0) {
-            $stok_butuh = $kiloan * $quantity;
-        } else {
-            $stok_butuh = $quantity;
-        }
-
-        $fData = $package ? [
-            'ids' => [(int)$package['finishing_id']],
-            'price' => 0,
-            'stocks' => $package['finishing_unit_type'] === '~' ? [] : [[
-                'finishing_id' => (int)$package['finishing_id'], 'qty' => 1
-            ]],
-        ] : $this->finishingData($finishing, $panjang, $lebar);
-        $finishing_ids = $fData['ids'] ?? [];
-        $finishing_price = $fData['price'] ?? 0;
-        $finishing_str = count($finishing_ids) ? implode(',', $finishing_ids) : '-';
-
-        $finishing_to_reduce = [];
-        if (!empty($fData['stocks'])) {
-            foreach ($fData['stocks'] as $f_stock) {
-                $finishing_to_reduce[] = [
-                    'finishing_id' => $f_stock['finishing_id'],
-                    'qty' => (float)$f_stock['qty'] * $quantity
-                ];
-            }
-        }
-
-        $base_unit_price = $product['price'] - $diskon;
-        $pricing = $package ? ProductFinishingPrice::calculate($package, $quantity, $diskon)
-            : $this->calculatePricingDetails($product, $base_unit_price, $finishing_price, $quantity, $panjang, $lebar, $waktu, $kiloan, $size);
-        if ($laserVariant && $laserVariant['price'] !== null) {
-            $unitPrice = max(0, (float)$laserVariant['price'] - $diskon);
-            $pricing = (object)['unit' => $unitPrice, 'amount' => $unitPrice * $quantity, 'size' => $laserVariant['size'] ?: '-'];
-        }
-
-        $unit = is_array($pricing) ? ($pricing['unit'] ?? 0) : ($pricing->unit ?? 0);
-        $amount = is_array($pricing) ? ($pricing['amount'] ?? 0) : ($pricing->amount ?? 0);
-        $final_size = is_array($pricing) ? ($pricing['size'] ?? $size) : ($pricing->size ?? $size);
-
-        $item = [
-            'success' => true,
-            'order_id' => $order_id,
-            'product_id' => $product_id,
-            'product' => $product,
-            'judul' => $judul,
-            'size' => $final_size,
-            'quantity' => $quantity,
-            'product_variant_id' => $variant['id'] ?? null,
-            'product_variant_data' => $variant ? json_encode($variant, JSON_THROW_ON_ERROR) : null,
-            'variant' => $variant,
-            'stok_butuh' => $stok_butuh,
-            'finishing_str' => $finishing_str,
-            'finishing_to_reduce' => $finishing_to_reduce,
-            'product_finishing_price_id' => $package ? (int)$package['id'] : null,
-            'is_laser_variant' => $isAnekaCetak,
-            'laser_product_id' => $laserVariant ? (int)$laserVariant['laser_product_id'] : null,
-            'laser_material_name' => $laserVariant['laser_name'] ?? null,
-            'unit' => $unit,
-            'amount' => $amount
-        ];
-        (new ProductPriceTier($this->koneksi))->preview($item, $product, $store_id, $data, $diskon, $package || ($laserVariant && $laserVariant['price'] !== null));
-        return $item;
-    }
     public function finishingData($input_finishing, $panjang, $lebar) {
         try {
             $finishing_ids = [];
@@ -553,25 +376,25 @@ class OrderController {
             if (!empty($unique_ids)) {
                 $placeholders = implode(',', array_fill(0, count($unique_ids), '?'));
                 $types = str_repeat('i', count($unique_ids));
-                
+
                 $stmt = $this->koneksi->prepare("SELECT finishing_id, name, unit_type, price FROM finishings WHERE finishing_id IN ($placeholders)");
-                
+
                 if (!$stmt) {
                     throw new Exception("Query Prepare Error: " . $this->koneksi->error);
                 }
 
                 $stmt->bind_param($types, ...$unique_ids);
-                
+
                 if (!$stmt->execute()) {
                     throw new Exception("Query Execute Error: " . $stmt->error);
                 }
-                
+
                 $result = $stmt->get_result();
-                
+
                 while ($row = $result->fetch_assoc()) {
                     $pid = (int)$row['finishing_id'];
                     $price = (float)$row['price'];
-                    
+
                     $qty = 1;
                     if ((float)$panjang > 0 && (float)$lebar > 0) {
                         $qty = (float)$panjang * (float)$lebar;
@@ -594,7 +417,7 @@ class OrderController {
                 'price' => $total_price,
                 'stocks' => $required_stocks
             ];
-            
+
         } catch (Throwable $e) {
             throw new Exception("finishingData Error: " . $e->getMessage() . " on line " . $e->getLine());
         }
@@ -602,7 +425,7 @@ class OrderController {
     public function calculatePricingDetails($product, $base_price, $finishing_price, $quantity, $panjang, $lebar, $waktu, $kiloan, $size) {
         try {
             $unit = $base_price + $finishing_price;
-            
+
             $name = $product['name'] ?? '';
             $category = $product['category'] ?? '';
             $unit_type = $product['unit_type'] ?? '';
@@ -640,7 +463,7 @@ class OrderController {
                 $unit += $extra_charge[$size] ?? 0;
             }
 
-            if($category === 'DTF' && str_contains($name, 'KAOS') && $unit_type === 'PCS') {
+            if ($category === 'DTF' && str_contains($name, 'KAOS') && $unit_type === 'PCS') {
                 $extra_change = ['5XL' => 50000, '4XL' => 40000, '3XL' => 30000, '2XL' => 20000, 'XL' => 10000];
                 $unit += $extra_change[$size] ?? 0;
             }
@@ -656,7 +479,7 @@ class OrderController {
                 'size'   => $size,
                 'amount' => $amount
             ];
-            
+
         } catch (Throwable $e) {
             throw new Exception("calculatePricingDetails Error: " . $e->getMessage() . " on line " . $e->getLine());
         }
@@ -683,7 +506,7 @@ class OrderController {
 
             send_json_response(true, 'Berhasil menghitung harga total', ['total' => $itemData['amount'], 'tier_pricing' => $itemData['tier_pricing'] ?? null, 'promotion' => $itemData['promotion'] ?? null]);
             exit;
-            
+
         } catch (Throwable $e) {
             send_json_response(false, 'Debug fullPrice: ' . $e->getMessage());
             exit;
@@ -752,77 +575,54 @@ class OrderController {
             }
 
             $rowExist = $this->orderModel->cekOrderItem($itemData['order_id'], $itemData['judul'], $itemData['finishing_str'], $itemData['size'], $itemData['product_finishing_price_id'], $itemData['product_id'], $itemData['unit'], $itemData['is_laser_variant'], $itemData['laser_product_id']);
-            
+
             if ($rowExist) {
                 $data_item->quantity = $rowExist['quantity'] + $itemData['quantity'];
                 $data_item->amount = round($itemData['unit'] * $data_item->quantity, 2);
                 $data_item->id = $rowExist['order_item_id'];
 
-                if ($this->orderModel->updateOrderItem($data_item)) {
-                    if ($product['unit_type'] !== '~') {
-                        $this->productModel->reduceStock($stok_butuh, $itemData['product_id']);
-                    }
-                    foreach ($itemData['finishing_to_reduce'] as $f_reduce) {
-                        $this->productModel->reduceFinishingStock($f_reduce['qty'], $f_reduce['finishing_id']);
-                    }
-
-                    $this->orderTotal($itemData['order_id']);
-                    $this->paymentStatus($itemData['order_id']);
-                    
-                    send_json_response(true, 'Item berhasil diperbarui.');
-                    exit;
-                } else {
-                    http_response_code(500);
-                    send_json_response(false, 'Gagal memperbarui item');
-                    exit;
-                }
+                $saved = $this->orderModel->updateOrderItem($data_item);
+                $successMessage = 'Item berhasil diperbarui.';
+                $errorMessage = 'Gagal memperbarui item';
             } else {
-                if ($this->orderModel->createOrderItem($data_item)) {
-                    if ($product['unit_type'] !== '~') {
-                        $this->productModel->reduceStock($stok_butuh, $itemData['product_id']);
-                    }
-                    foreach ($itemData['finishing_to_reduce'] as $f_reduce) {
-                        $this->productModel->reduceFinishingStock($f_reduce['qty'], $f_reduce['finishing_id']);
-                    }
-
-                    $this->orderTotal($itemData['order_id']);
-                    $this->paymentStatus($itemData['order_id']);
-                    
-                    send_json_response(true, 'Item berhasil ditambahkan.');
-                    exit;
-                } else {
-                    http_response_code(500);
-                    send_json_response(false, 'Gagal menambahkan item');
-                    exit;
-                }
+                $saved = $this->orderModel->createOrderItem($data_item);
+                $successMessage = 'Item berhasil ditambahkan.';
+                $errorMessage = 'Gagal menambahkan item';
             }
-            
+
+            if (!$saved) {
+                http_response_code(500);
+                send_json_response(false, $errorMessage);
+                exit;
+            }
+
+            $this->reduceItemStock($itemData);
+            $this->orderTotal($itemData['order_id']);
+            $this->paymentStatus($itemData['order_id']);
+
+            send_json_response(true, $successMessage);
+            exit;
+
         } catch (Throwable $e) {
             http_response_code(500);
-            if ($e instanceof InvalidArgumentException) http_response_code(400);
+            if ($e instanceof InvalidArgumentException) {
+                http_response_code(400);
+            }
             send_json_response(false, $e instanceof InvalidArgumentException ? $e->getMessage() : 'Debug createItem: ' . $e->getMessage());
             exit;
         }
     }
 
-    private function finishTierOrder($order) {
-        if (!$this->orderTotal($order)) throw new RuntimeException('Gagal memperbarui total nota.');
-        $this->paymentStatus($order);
-    }
-
-    private function saveTierItem($data, $store_id) {
-        (new ProductPriceTier($this->koneksi))->saveItem($store_id, $data,
-            function () use ($data, $store_id) { return $this->_prepareItemData($data, $store_id); },
-            function ($order) { $this->finishTierOrder($order); });
-        send_json_response(true, 'Item tersimpan dan perhitungan harga diperbarui.');
-    }
-
     public function updateItem() {
         global $store_id;
         try {
-            if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') throw new InvalidArgumentException('Gunakan metode POST.');
+            if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+                throw new InvalidArgumentException('Gunakan metode POST.');
+            }
             $data = json_decode(file_get_contents('php://input'), true) ?: $_POST;
-            if ((int)($data['order_item_id'] ?? 0) < 1) throw new InvalidArgumentException('Pilih item yang akan diubah.');
+            if ((int)($data['order_item_id'] ?? 0) < 1) {
+                throw new InvalidArgumentException('Pilih item yang akan diubah.');
+            }
             $this->saveTierItem($data, $store_id);
         } catch (Throwable $e) {
             http_response_code($e instanceof InvalidArgumentException ? 400 : 500);
@@ -853,8 +653,13 @@ class OrderController {
 
         if (!empty($item['tier_price_data'])) {
             try {
-                (new ProductPriceTier($this->koneksi))->deleteItem($store_id, $item,
-                    function ($order) { $this->finishTierOrder($order); });
+                (new ProductPriceTier($this->koneksi))->deleteItem(
+                    $store_id,
+                    $item,
+                    function ($order) {
+                        $this->finishTierOrder($order);
+                    }
+                );
                 send_json_response(true, 'Item dihapus, stok dan harga bertingkat diperbarui.');
             } catch (Throwable $e) {
                 http_response_code($e instanceof InvalidArgumentException ? 400 : 500);
@@ -895,7 +700,9 @@ class OrderController {
         }
 
         if ($isAnekaCetak || !empty($item['product_finishing_price_id'])) {
-            if ($unit_type !== '~') $this->productModel->addStock($stok_kembali, $product_id);
+            if ($unit_type !== '~') {
+                $this->productModel->addStock($stok_kembali, $product_id);
+            }
         } else {
             $this->productModel->addStock($product_id, $stok_kembali);
         }
@@ -904,7 +711,9 @@ class OrderController {
             $finishing_array = explode(',', $finishing_ids);
             foreach ($finishing_array as $fid) {
                 $fid = (int)$fid;
-                if ($fid === 0) continue;
+                if ($fid === 0) {
+                    continue;
+                }
                 if ($isAnekaCetak || !empty($item['product_finishing_price_id'])) {
                     $stmt = $this->koneksi->prepare("SELECT unit_type FROM finishings WHERE finishing_id = ? AND store_id = ?");
                     $stmt->bind_param("ii", $fid, $store_id);
@@ -968,11 +777,13 @@ class OrderController {
         try {
             updateStoreCache($store_id, 'orders');
             updateOrderTrigger($store_id, $order_id);
-        } catch (Throwable $e) { error_log('Order discount cache: ' . $e->getMessage()); }
+        } catch (Throwable $e) {
+            error_log('Order discount cache: ' . $e->getMessage());
+        }
         send_json_response(true, 'Diskon produk berhasil dihapus.');
     }
 
-    public function orderDetail(){
+    public function orderDetail() {
         global $store_id;
         $order_id = (int)($_GET['order_id'] ?? 0);
         $total = $this->orderModel->getOneValue($order_id, 'total');
@@ -1007,10 +818,9 @@ class OrderController {
         ]);
     }
 
-    public function updateProject(){
+    public function updateProject() {
         global $store_id;
         date_default_timezone_set('Asia/Jakarta');
-;
         $order_ids = $_POST['order_id'] ?? '';
 
         if ($order_ids) {
@@ -1041,38 +851,38 @@ class OrderController {
         $access = trim($_POST['access'] ?? '');
 
         if ($order_id && $note !== '') {
-        $data = (object)[
-            'order_id'=> $order_id,
-            'note_for' => 'OP'
-        ];
-        $existing = $this->orderModel->getNoteOrder($data);
+            $data = (object)[
+                'order_id' => $order_id,
+                'note_for' => 'OP'
+            ];
+            $existing = $this->orderModel->getNoteOrder($data);
 
-        if ($existing) {
-            $note_order_id = (int)$existing['note_order_id'];
-            $note_session = (int)$existing['session'];
-            if ($note_session <= 0 || $access == 'all') {
-                $note_session_set = $note_session + 1;
-                if ($this->orderModel->updateNoteAndSession($note_order_id, $note_session_set, $note)) {
-                    send_json_response(true, 'Note berhasil diperbarui', ['value' => $note]);
+            if ($existing) {
+                $note_order_id = (int)$existing['note_order_id'];
+                $note_session = (int)$existing['session'];
+                if ($note_session <= 0 || $access == 'all') {
+                    $note_session_set = $note_session + 1;
+                    if ($this->orderModel->updateNoteAndSession($note_order_id, $note_session_set, $note)) {
+                        send_json_response(true, 'Note berhasil diperbarui', ['value' => $note]);
+                    }
+                } else {
+                    send_json_response(false, 'access', []);
                 }
-            }else {
-                send_json_response(false, 'access', []);
+            } else {
+                $this->orderModel->createNote($order_id, $note, 'OP');
+                send_json_response(true, 'Note berhasil ditambahkan', ['value' => $note]);
             }
-
-        } else {
-            $this->orderModel->createNote($order_id, $note, 'OP');
-            send_json_response(true, 'Note berhasil ditambahkan', ['value' => $note]);
-        }
         }
     }
 
-    public function updateMaklun(){
+    public function updateMaklun() {
         global $store_id;
         $data = (object) [
             'store_id_maklun' => $_POST['store_id'] ?? 0,
             'order_item_id' => $_POST['order_item_id'] ?? 0,
-            'order_id' => $_POST['order_id'] ?? 0,];
-        if ($data->store_id_maklun == $store_id){
+            'order_id' => $_POST['order_id'] ?? 0,
+        ];
+        if ($data->store_id_maklun == $store_id) {
             $data->store_id_maklun = 0;
         }
         if ($this->orderModel->updateMaklun($data)) {
@@ -1100,6 +910,261 @@ class OrderController {
         updateStoreCache($store_id, 'products');
         updateStoreCache($store_id, 'orders');
         updateOrderTrigger($store_id, $order_id);
+    }
+
+    private function requestData() {
+        global $store_id;
+
+        $deadline_input = $_POST['deadline'] ?? '';
+        $user_id = $_POST['user_id'] ?? 0;
+        $system = $_POST['system'] ?? 'OFFLINE';
+        if ($system != 'OFFLINE' && $system != 'ONLINE') {
+            $system = 'OFFLINE';
+        }
+
+        $data = new stdClass();
+        $data->order_id = (int)($_POST['order_id'] ?? 0);
+        $data->store_id = $store_id;
+        $data->user_id = $user_id;
+        $data->system = $system;
+
+        if ($data->order_id > 0) {
+            $data->nomorator = trim($_POST['nomorator'] ?? '');
+        } else {
+            $data->nomorator = $this->nomorator($data->store_id, $data->system);
+        }
+
+        $data->customer_name = trim($_POST['customer_name'] ?? '');
+        $data->nomor = trim($_POST['nomor'] ?? '');
+        $data->total = 0;
+
+        $data->deadline = $deadline_input ? date('Y-m-d H:i:s', strtotime($deadline_input)) : null;
+
+        $data->date = trim($_POST['date'] ?? date('Y-m-d H:i:s'));
+
+        return $data;
+    }
+
+    private function _prepareItemData($data, $store_id, $previewOnly = false) {
+        $order_id = (int)($data['order_id'] ?? 0);
+        $product_id = (int)($data['product_id'] ?? 0);
+        $judul = trim($data['judul'] ?? '');
+        $size = trim($data['size'] ?? '-');
+        $quantity = (int)($data['quantity'] ?? 1);
+
+        if ($quantity < 1) {
+            $quantity = 1;
+        }
+
+        $panjang = (float)($data['panjang'] ?? 0);
+        $lebar = (float)($data['lebar'] ?? 0);
+        if ($panjang > 0 && $lebar > 0) {
+            $size = "{$panjang}x{$lebar}";
+        }
+
+        $product = $this->productModel->getProductById($product_id);
+        if (!$product) {
+            return ['error' => 'Produk tidak ditemukan', 'status' => 404];
+        }
+        if ((int)$product['store_id'] !== (int)$store_id) {
+            return ['error' => 'Produk bukan milik toko ini', 'status' => 400];
+        }
+
+        try {
+            $bundle = (new ProductBundle($this->koneksi))->prepare(
+                $store_id,
+                $product,
+                $data,
+                function ($child) use ($store_id) {
+                    return $this->_prepareItemData($child, $store_id, true);
+                }
+            );
+            if ($bundle) {
+                return $bundle;
+            }
+        } catch (InvalidArgumentException $e) {
+            return ['error' => $e->getMessage(), 'status' => 400];
+        }
+
+        if ($product['category'] === 'PAKET INDOOR OUTDOOR') {
+            $nama_pencarian = trim($judul . ' ' . $size);
+            $produk_baru = $this->productModel->getProductByNameAndStore($nama_pencarian, $store_id);
+
+            if ($produk_baru) {
+                $product_id = $produk_baru['product_id'] ?? $produk_baru['product_id'];
+                $product = $produk_baru;
+            } else {
+                return ['error' => "Produk paket ($nama_pencarian) tidak ditemukan", 'status' => 404];
+            }
+        }
+
+        try {
+            $variant = (new ProductVariant($this->koneksi))->resolve($store_id, $product, $data);
+        } catch (InvalidArgumentException $e) {
+            return ['error' => $e->getMessage(), 'status' => 400];
+        }
+        if ($variant) {
+            $product['price'] = $variant['price'];
+        }
+
+        $finishing = trim($data['finishing'] ?? '-');
+        $laserVariant = null;
+        $isAnekaCetak = strtoupper(trim($product['category'])) === 'ANEKA CETAK';
+        if ($isAnekaCetak) {
+            $panjang = $lebar = 0;
+            $size = ProductLaserConversion::normalizeSize($data['size'] ?? '') ?: '-';
+        }
+        try {
+            if ($isAnekaCetak) {
+                $laserVariant = (new ProductLaserConversion($this->koneksi))->resolve(
+                    $store_id, $product_id, $size, $finishing, $data['laser_product_id'] ?? 0
+                );
+            }
+
+            $package = null;
+            if (!$isAnekaCetak && $product['category'] !== 'PAKET INDOOR OUTDOOR') {
+                $package = $this->packagePrices->resolve($store_id, $product_id, $finishing, $panjang, $lebar);
+            }
+        } catch (InvalidArgumentException $e) {
+            return ['error' => $e->getMessage(), 'status' => 400];
+        }
+        if ($variant && ($package || $laserVariant)) {
+            return ['error' => 'Harga varian tidak digabung dengan harga paket atau konversi print laser.', 'status' => 400];
+        }
+
+        $diskonInput = (int)($data['diskon'] ?? 0);
+        // Diskon paket dihitung per set; tidak mengubah diskon bahan per meter.
+        if ($package || ($laserVariant && $laserVariant['price'] !== null)) {
+            $diskon = max(0, $diskonInput);
+        } elseif ($previewOnly) {
+            $diskon = $diskonInput > 0 ? $diskonInput : $this->orderModel->getDiscount($order_id, $product_id);
+        } else {
+            $diskon = $this->discount($order_id, $product_id, $diskonInput);
+        }
+
+        $waktu = (float)($data['waktu'] ?? 0);
+        $kiloan = (float)($data['kiloan'] ?? 0);
+        if ($isAnekaCetak) {
+            $kiloan = $waktu = 0;
+        }
+        if ($package) {
+            $kiloan = $waktu = 0;
+            if (empty($package['requires_size'])) {
+                $panjang = $lebar = 0;
+                $size = '-';
+            }
+        }
+
+        $stok_butuh = 0;
+        if ($package && !ProductFinishingPrice::requiresDimensions($product)) {
+            // Ukuran paket LASER A3 memilih harga; pemakaian bahan tetap per pcs.
+            $stok_butuh = $quantity;
+        } elseif ($product['category'] === 'DTF' && $panjang > 0) {
+            $stok_butuh = $panjang * $quantity;
+        } elseif ($panjang > 0 && $lebar > 0) {
+            $stok_butuh = $panjang * $lebar * $quantity;
+        } elseif ($kiloan > 0) {
+            $stok_butuh = $kiloan * $quantity;
+        } else {
+            $stok_butuh = $quantity;
+        }
+
+        if ($package) {
+            $fData = [
+                'ids' => [(int)$package['finishing_id']],
+                'price' => 0,
+                'stocks' => $package['finishing_unit_type'] === '~' ? [] : [[
+                    'finishing_id' => (int)$package['finishing_id'],
+                    'qty' => 1
+                ]],
+            ];
+        } else {
+            $fData = $this->finishingData($finishing, $panjang, $lebar);
+        }
+        $finishing_ids = $fData['ids'] ?? [];
+        $finishing_price = $fData['price'] ?? 0;
+        $finishing_str = count($finishing_ids) ? implode(',', $finishing_ids) : '-';
+
+        $finishing_to_reduce = [];
+        if (!empty($fData['stocks'])) {
+            foreach ($fData['stocks'] as $f_stock) {
+                $finishing_to_reduce[] = [
+                    'finishing_id' => $f_stock['finishing_id'],
+                    'qty' => (float)$f_stock['qty'] * $quantity
+                ];
+            }
+        }
+
+        $base_unit_price = $product['price'] - $diskon;
+        if ($package) {
+            $pricing = ProductFinishingPrice::calculate($package, $quantity, $diskon);
+        } else {
+            $pricing = $this->calculatePricingDetails(
+                $product, $base_unit_price, $finishing_price, $quantity, $panjang, $lebar, $waktu, $kiloan, $size
+            );
+        }
+        if ($laserVariant && $laserVariant['price'] !== null) {
+            $unitPrice = max(0, (float)$laserVariant['price'] - $diskon);
+            $pricing = (object)['unit' => $unitPrice, 'amount' => $unitPrice * $quantity, 'size' => $laserVariant['size'] ?: '-'];
+        }
+
+        $unit = is_array($pricing) ? ($pricing['unit'] ?? 0) : ($pricing->unit ?? 0);
+        $amount = is_array($pricing) ? ($pricing['amount'] ?? 0) : ($pricing->amount ?? 0);
+        $final_size = is_array($pricing) ? ($pricing['size'] ?? $size) : ($pricing->size ?? $size);
+
+        $item = [
+            'success' => true,
+            'order_id' => $order_id,
+            'product_id' => $product_id,
+            'product' => $product,
+            'judul' => $judul,
+            'size' => $final_size,
+            'quantity' => $quantity,
+            'product_variant_id' => $variant['id'] ?? null,
+            'product_variant_data' => $variant ? json_encode($variant, JSON_THROW_ON_ERROR) : null,
+            'variant' => $variant,
+            'stok_butuh' => $stok_butuh,
+            'finishing_str' => $finishing_str,
+            'finishing_to_reduce' => $finishing_to_reduce,
+            'product_finishing_price_id' => $package ? (int)$package['id'] : null,
+            'is_laser_variant' => $isAnekaCetak,
+            'laser_product_id' => $laserVariant ? (int)$laserVariant['laser_product_id'] : null,
+            'laser_material_name' => $laserVariant['laser_name'] ?? null,
+            'unit' => $unit,
+            'amount' => $amount
+        ];
+        (new ProductPriceTier($this->koneksi))->preview($item, $product, $store_id, $data, $diskon, $package || ($laserVariant && $laserVariant['price'] !== null));
+        return $item;
+    }
+
+    private function reduceItemStock($itemData) {
+        if ($itemData['product']['unit_type'] !== '~') {
+            $this->productModel->reduceStock($itemData['stok_butuh'], $itemData['product_id']);
+        }
+        foreach ($itemData['finishing_to_reduce'] as $finishing) {
+            $this->productModel->reduceFinishingStock($finishing['qty'], $finishing['finishing_id']);
+        }
+    }
+
+    private function finishTierOrder($order) {
+        if (!$this->orderTotal($order)) {
+            throw new RuntimeException('Gagal memperbarui total nota.');
+        }
+        $this->paymentStatus($order);
+    }
+
+    private function saveTierItem($data, $store_id) {
+        (new ProductPriceTier($this->koneksi))->saveItem(
+            $store_id,
+            $data,
+            function () use ($data, $store_id) {
+                return $this->_prepareItemData($data, $store_id);
+            },
+            function ($order) {
+                $this->finishTierOrder($order);
+            }
+        );
+        send_json_response(true, 'Item tersimpan dan perhitungan harga diperbarui.');
     }
 
 }
