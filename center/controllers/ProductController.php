@@ -514,7 +514,7 @@ class ProductController {
             }
             $bundleModel = new ProductBundle($this->koneksi);
             $bundleDefinitions = [];
-            $sourceLaserRules = [];
+            $sourceLaserRules = (new ProductLaserConversion($this->koneksi))->getByStore($sourceId);
             $dependencyIds = $ids;
             foreach ($ids as $id) {
                 $bundle = $bundleModel->find($sourceId, $id);
@@ -529,13 +529,23 @@ class ProductController {
                     }
                 }
             }
-            if ($bundleDefinitions) {
-                $sourceLaserRules = array_column(
-                    (new ProductLaserConversion($this->koneksi))->getByStore($sourceId, true),
-                    null,
-                    'id'
-                );
-                $dependencyIds = array_values(array_unique($dependencyIds));
+            $conversionProducts = array_fill_keys($dependencyIds, true);
+            $laserRulesByProduct = [];
+            foreach ($sourceLaserRules as $rule) {
+                $productId = (int) $rule['product_id'];
+                if (!isset($conversionProducts[$productId])) {
+                    continue;
+                }
+                if (!$rule['valid']) {
+                    throw new InvalidArgumentException(
+                        'Konversi print laser produk ' . $rule['product_name'] . ' tidak valid. Periksa bahan dan finishing sumber.'
+                    );
+                }
+                $laserRulesByProduct[$productId][] = $rule;
+                $dependencyIds[] = (int) $rule['laser_product_id'];
+            }
+            $dependencyIds = array_values(array_unique($dependencyIds));
+            if (count($dependencyIds) !== count($ids)) {
                 $placeholders = implode(',', array_fill(0, count($dependencyIds), '?'));
                 $stmt = $this->copyProductQuery(
                     "SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON c.category_id = p.category_id AND c.store_id = ? WHERE p.store_id = ? AND p.product_id IN ($placeholders) ORDER BY p.product_id FOR UPDATE",
@@ -544,14 +554,16 @@ class ProductController {
                 $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                 $stmt->close();
                 if (count($products) !== count($dependencyIds)) {
-                    throw new InvalidArgumentException('Isi paket sumber tidak lengkap. Penyalinan dibatalkan.');
+                    throw new InvalidArgumentException('Produk pendukung sumber tidak lengkap. Penyalinan dibatalkan.');
                 }
             }
             $productMap = $variantMap = $laserMap = $finishingMap = [];
             $model = new ProductVariant($this->koneksi);
             $configured = [];
+            $packageProducts = [];
             foreach ((new ProductFinishingPrice($this->koneksi))->getByStore($targetId, 0, false) as $rule) {
                 $configured[(int) $rule['product_id']] = true;
+                $packageProducts[(int) $rule['product_id']] = true;
             }
             foreach ((new ProductLaserConversion($this->koneksi))->getByStore($targetId) as $rule) {
                 $configured[(int) $rule['product_id']] = true;
@@ -635,6 +647,27 @@ class ProductController {
                     $variantMap += $count['map'];
                 }
             }
+            foreach ($laserRulesByProduct as $sourceProduct => $rules) {
+                $targetProduct = $productMap[$sourceProduct];
+                if (
+                    isset($packageProducts[$targetProduct]) ||
+                    $model->getByProduct($targetId, $targetProduct) ||
+                    $bundleModel->find($targetId, $targetProduct)
+                ) {
+                    throw new InvalidArgumentException(
+                        'Produk ' . $rules[0]['product_name'] . ' di tujuan sudah memakai varian atau paket. Konversi laser tidak dapat ditambahkan.'
+                    );
+                }
+                foreach ($rules as $rule) {
+                    $laserMap[(int) $rule['id']] = $this->copyBundleLaser(
+                        $rule,
+                        $sourceId,
+                        $targetId,
+                        $productMap,
+                        $finishingMap
+                    );
+                }
+            }
             $newBundles = $existingBundles = 0;
             foreach ($bundleDefinitions as $sourceProduct => $bundle) {
                 $targetProduct = $productMap[$sourceProduct];
@@ -645,22 +678,6 @@ class ProductController {
                 if (isset($configured[$targetProduct])) {
                     throw new InvalidArgumentException(
                         'Produk paket tujuan sudah memakai harga paket atau konversi laser.'
-                    );
-                }
-                foreach ($bundle['items'] as $item) {
-                    $ruleId = (int) ($item['laser_conversion_id'] ?? 0);
-                    if (!$ruleId || isset($laserMap[$ruleId])) {
-                        continue;
-                    }
-                    if (!isset($sourceLaserRules[$ruleId])) {
-                        throw new InvalidArgumentException('Konversi laser sumber tidak tersedia.');
-                    }
-                    $laserMap[$ruleId] = $this->copyBundleLaser(
-                        $sourceLaserRules[$ruleId],
-                        $sourceId,
-                        $targetId,
-                        $productMap,
-                        $finishingMap
                     );
                 }
                 $bundleModel->copyToStore(
@@ -680,6 +697,9 @@ class ProductController {
             $_SESSION[
                 'swal_success'
             ] = "$newProducts produk baru dan $newVariants varian berhasil disalin. $existingProducts produk dan $skippedVariants varian yang sudah ada dipertahankan.";
+            if ($laserRulesByProduct) {
+                $_SESSION['swal_success'] .= ' Konversi print laser ikut disalin.';
+            }
             if ($bundleDefinitions) {
                 $_SESSION[
                     'swal_success'

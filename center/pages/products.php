@@ -671,7 +671,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                     </select>
                     <small id="copyProductsNoTarget" hidden>Tidak ada cabang tujuan yang tersedia.</small>
                 </div>
-                <p>Varian dan isi paket gabungan ikut disalin. Data yang sudah ada dipertahankan. Stok produk baru <strong>0</strong>.</p>
+                <p>Varian, konversi print laser, dan isi paket gabungan ikut disalin. Data yang sudah ada dipertahankan. Stok produk baru <strong>0</strong>.</p>
                 <small>Produk yang sudah ada pada kategori yang sama tidak ditimpa. Hanya varian yang belum ada yang ditambahkan; harga dan stok cabang tujuan tetap.</small>
             </div>
             <div class="modal-footer modal-footer-custom">
@@ -841,7 +841,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const input = document.createElement('input'); input.type = 'hidden'; input.name = 'product_ids[]'; input.value = source.id; hidden.appendChild(input);
             const item = document.createElement('li'); item.textContent = '#' + source.id + ' - ' + source.name; names.appendChild(item);
         });
-        document.getElementById('copyProductsSummary').textContent = sources.length + ' produk beserta varian dan isi paketnya akan disalin.';
+        document.getElementById('copyProductsSummary').textContent = sources.length + ' produk beserta varian, konversi print laser, dan isi paketnya akan disalin.';
         const hasTarget = copyProductsTarget.options.length > 1;
         document.getElementById('copyProductsNoTarget').hidden = hasTarget;
         const submit = copyProductsForm.querySelector('button[type="submit"]'); submit.disabled = !sources.length || !hasTarget; submit.textContent = 'Salin Produk';
