@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/ProductVariant.php';
+require_once __DIR__ . '/../controllers/ProductVariantController.php';
 require_once __DIR__ . '/ProductLaserConversion.php';
 
 class ProductBundle {
@@ -85,7 +85,7 @@ class ProductBundle {
             $products = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), null, 'product_id');
             $stmt->close();
         }
-        $variants = new ProductVariant($this->db);
+        $variants = new ProductVariantController($this->db);
         $context = [
             'store' => (int)$store,
             'products' => $products,
@@ -177,7 +177,7 @@ class ProductBundle {
             !$parent ||
             $parent['unit_type'] !== '~' ||
             strtoupper(trim($parent['category'])) !== 'PELENGKAP' ||
-            (new ProductVariant($this->db))->getByProduct($targetStore, $targetProduct)
+            (new ProductVariantController($this->db))->getByProduct($targetStore, $targetProduct)
         ) {
             throw new InvalidArgumentException('Produk paket tujuan harus PELENGKAP, satuan ~, tanpa varian sendiri.');
         }
@@ -234,7 +234,7 @@ class ProductBundle {
         }
         $result = [];
         $seen = [];
-        $variants = $context['variant_model'] ?? new ProductVariant($this->db);
+        $variants = $context['variant_model'] ?? new ProductVariantController($this->db);
         $rules = $context['laser_rules'] ?? (new ProductLaserConversion($this->db))->getByStore($store, true);
         foreach ($items as $item) {
             // Select "Tanpa konversi" mengirim string kosong; data tersimpan memakai NULL.

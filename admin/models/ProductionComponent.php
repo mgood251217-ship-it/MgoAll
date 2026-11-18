@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../controllers/ProductVariantController.php';
 
 class ProductionComponent {
     private $db;
@@ -102,7 +103,7 @@ class ProductionComponent {
         $stmt->bind_param('iii', $store, $product, $product); $stmt->execute(); $result = $stmt->get_result();
         $groups = [];
         while ($row = $result->fetch_assoc()) {
-            $saved = ProductVariant::snapshot($row);
+            $saved = ProductVariantController::snapshot($row);
             foreach ($saved['components'] as $c) {
                 if (!empty($c['component_id'])) continue;
                 $key = self::legacyKey($saved, $c['name']);

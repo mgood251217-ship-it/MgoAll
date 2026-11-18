@@ -46,7 +46,7 @@ class ProductController {
         $total = 0;
 
         if ($store_id !== null) {
-            $variantCount = (new ProductVariant($this->koneksi))->isAvailable()
+            $variantCount = (new ProductVariantController($this->koneksi))->isAvailable()
                 ? '(SELECT COUNT(*) FROM product_variants v WHERE v.product_id = p.product_id AND v.store_id = p.store_id)'
                 : '0';
             $migrationStmt = $this->koneksi->prepare("SELECT p.product_id, p.category_id, p.name, p.price, $variantCount AS variant_count FROM products p WHERE p.store_id = ? ORDER BY p.name, p.product_id");
@@ -223,7 +223,7 @@ class ProductController {
     }
 
     private function copyProductVariants($sourceVariants, $targetStore, $targetProduct) {
-        $model = new ProductVariant($this->koneksi);
+        $model = new ProductVariantController($this->koneksi);
         $targetVariants = $model->getByProduct($targetStore, $targetProduct);
         $groups = $targetVariants
             ? array_keys($targetVariants[0]['options'])
@@ -255,7 +255,7 @@ class ProductController {
                 }
                 $options[$group] = $value;
             }
-            $options = ProductVariant::options(array_keys($options), array_values($options));
+            $options = ProductVariantController::options(array_keys($options), array_values($options));
             $key = json_encode(array_values($options), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
             $stmt = $this->copyProductQuery(
                 'SELECT id FROM product_variants WHERE store_id = ? AND product_id = ? AND combination_key = SHA2(LOWER(?), 256)',
@@ -558,7 +558,7 @@ class ProductController {
                 }
             }
             $productMap = $variantMap = $laserMap = $finishingMap = [];
-            $model = new ProductVariant($this->koneksi);
+            $model = new ProductVariantController($this->koneksi);
             $configured = [];
             $packageProducts = [];
             foreach ((new ProductFinishingPrice($this->koneksi))->getByStore($targetId, 0, false) as $rule) {
@@ -830,7 +830,7 @@ class ProductController {
                 $finishings = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), null, 'finishing_id'); $stmt->close();
                 if (count($finishings) !== count($finishingIds)) throw new InvalidArgumentException('Pilih finishing yang tersedia pada toko dan kategori produk tujuan.');
             }
-            $variantModel = new ProductVariant($this->koneksi);
+            $variantModel = new ProductVariantController($this->koneksi);
             $variants = $variantModel->getByProduct($storeId, $targetId);
             $variantsById = array_column($variants, null, 'id');
             $sourceVariants = [];
@@ -855,7 +855,7 @@ class ProductController {
             if ($hasVariant || $finishings) {
                 $hasPricing = $pricing->isAvailable();
                 $templates = [];
-                foreach ($sourceVariants as $sourceId => $selected) $templates[$sourceId] = ProductVariant::orderData($selected, $target);
+                foreach ($sourceVariants as $sourceId => $selected) $templates[$sourceId] = ProductVariantController::orderData($selected, $target);
                 $discountField = $hasVariant ? ', COALESCE(d.diskon, 0) AS migration_discount' : '';
                 $discountJoin = $hasVariant ? ' LEFT JOIN diskon_order_items d ON d.order_id = oi.order_id AND d.product_id = oi.product_id' : '';
                 $stmt = $this->koneksi->prepare("SELECT oi.*$discountField FROM order_items oi$discountJoin WHERE oi.store_id = ? AND oi.product_id IN ($placeholders) ORDER BY oi.order_id, oi.order_item_id FOR UPDATE");
@@ -880,7 +880,7 @@ class ProductController {
                     $values = [$targetId, $finalFinishing]; $updateTypes = 'is';
                     if ($hasVariant) {
                         $snapshot = $templates[$row['product_id']];
-                        $oldVariant = ProductVariant::snapshot($row);
+                        $oldVariant = ProductVariantController::snapshot($row);
                         $snapshot['price'] = (float)($oldVariant['price'] ?? $pricingData['base'] ?? $products[$row['product_id']]['price']);
                         $variantJson = json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
                         $pricingData = $pricing->variantMigrationData($row, $target, $snapshot, (float)$row['migration_discount']);

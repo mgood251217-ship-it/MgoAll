@@ -5,7 +5,7 @@ require_once __DIR__ . '/../models/Project.php';
 require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/../models/Payment.php';
 require_once __DIR__ . '/../models/ProductLaserConversion.php';
-require_once __DIR__ . '/../models/ProductVariant.php';
+require_once __DIR__ . '/ProductVariantController.php';
 require_once __DIR__ . '/../models/ProductBundle.php';
 require_once __DIR__ . '/../functions/helpers.php';
 
@@ -286,7 +286,7 @@ class MeterController {
 
         $product_data_pakaian = [];
         $total_all_qty_pakaian = 0;
-        $variantModel = new ProductVariant($this->koneksi);
+        $variantModel = new ProductVariantController($this->koneksi);
         $legacyOnly = $variantModel->isAvailable() ? ' AND oi.product_variant_data IS NULL' : '';
         if ((new ProductBundle($this->koneksi))->isAvailable()) {
             $legacyOnly .= " AND JSON_EXTRACT(IF(JSON_VALID(oi.tier_price_data), oi.tier_price_data, '{}'), '$.bundle') IS NULL";
@@ -361,7 +361,7 @@ class MeterController {
     public function getComponents() {
         global $store_id;
         [$start, $end] = $this->getDateRange();
-        $rows = (new ProductVariant($this->koneksi))->productionRows($store_id, $start, $end);
+        $rows = (new ProductVariantController($this->koneksi))->productionRows($store_id, $start, $end);
         $rows = array_merge($rows, (new ProductBundle($this->koneksi))->quantityRows($store_id, $start, $end));
         $merged = [];
         foreach ($rows as $row) {
@@ -714,7 +714,7 @@ class MeterController {
 
         [$start_date_full, $end_date_full] = $this->getDateRange();
 
-        $variantModel = new ProductVariant($this->koneksi);
+        $variantModel = new ProductVariantController($this->koneksi);
         $legacyOnly = $variantModel->isAvailable() ? ' AND oi.product_variant_data IS NULL' : '';
 
         $query = "
@@ -766,7 +766,7 @@ class MeterController {
     public function getPelengkap() {
         global $store_id;
         [$start, $end] = $this->getDateRange();
-        $variants = new ProductVariant($this->koneksi);
+        $variants = new ProductVariantController($this->koneksi);
         $legacyOnly = $variants->isAvailable() ? ' AND oi.product_variant_data IS NULL' : '';
         if ((new ProductBundle($this->koneksi))->isAvailable()) {
             $legacyOnly .= " AND JSON_EXTRACT(IF(JSON_VALID(oi.tier_price_data), oi.tier_price_data, '{}'), '$.bundle') IS NULL";
@@ -822,7 +822,7 @@ class MeterController {
         $links = $masters->links($store_id);
         $meteran = $kiloan = [];
         foreach ($rows as $row) {
-            $saved = ProductVariant::snapshot($row);
+            $saved = ProductVariantController::snapshot($row);
             if (!$saved) {
                 continue;
             }

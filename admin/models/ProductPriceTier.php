@@ -2,7 +2,7 @@
 require_once __DIR__ . '/ProductFinishingPrice.php';
 require_once __DIR__ . '/ProductLaserConversion.php';
 require_once __DIR__ . '/ProductPromotion.php';
-require_once __DIR__ . '/ProductVariant.php';
+require_once __DIR__ . '/../controllers/ProductVariantController.php';
 require_once __DIR__ . '/ProductBundle.php';
 
 class ProductPriceTier {
@@ -65,7 +65,7 @@ class ProductPriceTier {
     public function hasVariantTiers() {
         if ($this->variantTiers === null) {
             $row = $this->db->query("SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'product_variant_price_tiers') AS available")->fetch_assoc();
-            $this->variantTiers = (bool)$row['available'] && (new ProductVariant($this->db))->isAvailable();
+            $this->variantTiers = (bool)$row['available'] && (new ProductVariantController($this->db))->isAvailable();
         }
         return $this->variantTiers;
     }
@@ -283,7 +283,7 @@ class ProductPriceTier {
         $order = (int)($input['order_id'] ?? 0);
         return (bool)(new ProductBundle($this->db))->find($store, $product) || (bool)$this->rules($store, $product) || (bool)$this->items($store, $order, $product)
             || (bool)(new ProductPromotion($this->db))->rule($store, $product)
-            || !empty($input['product_variant_id']) || (bool)(new ProductVariant($this->db))->getByProduct($store, $product);
+            || !empty($input['product_variant_id']) || (bool)(new ProductVariantController($this->db))->getByProduct($store, $product);
     }
 
     private function lockOrder($store, $order) {
@@ -408,7 +408,7 @@ class ProductPriceTier {
             $fields = ['product_id', 'judul', 'size', 'quantity', 'unit', 'amount', 'finishing', 'tier_price_data'];
             $values = [$item['product_id'], $item['judul'], $item['size'], $item['quantity'], round($item['unit'], 2), round($item['amount'], 2), $item['finishing_str'], $item['tier_price_data'] ?? null];
             $types = 'issiddss';
-            if ((new ProductVariant($this->db))->isAvailable()) {
+            if ((new ProductVariantController($this->db))->isAvailable()) {
                 array_push($fields, 'product_variant_id', 'product_variant_data');
                 array_push($values, $item['product_variant_id'] ?? null, $item['product_variant_data'] ?? null); $types .= 'is';
             }
@@ -476,6 +476,6 @@ class ProductPriceTier {
             unset($row['tier_price_data']);
         }
         unset($row);
-        return ProductVariant::describe($items);
+        return ProductVariantController::describe($items);
     }
 }

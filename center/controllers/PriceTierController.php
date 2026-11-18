@@ -46,7 +46,7 @@ class PriceTierController {
             $products = array_values(array_filter($allProducts, function ($p) use ($category) { return (int)$p['category_id'] === $category; }));
             if (!$product || (int)$product['category_id'] !== $category) { $selected = 0; $product = null; }
             if ($ready) {
-                $variants = (new ProductVariant($this->db))->getByProduct($store, $selected);
+                $variants = (new ProductVariantController($this->db))->getByProduct($store, $selected);
                 if ($variants && (!isset($_GET['product_variant_id']) || $_GET['product_variant_id'] === '')) $variantId = (int)$variants[0]['id'];
                 foreach ($variants as $v) if ((int)$v['id'] === $variantId) $variant = $v;
                 $variantMissing = $variantId > 0 && !$variant;

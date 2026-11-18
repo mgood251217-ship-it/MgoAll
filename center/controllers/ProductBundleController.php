@@ -53,7 +53,7 @@ class ProductBundleController {
             $stmt->execute();
             $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             $stmt->close();
-            if ((new ProductVariant($this->db))->isAvailable()) {
+            if ((new ProductVariantController($this->db))->isAvailable()) {
                 $stmt = $this->db->prepare(
                     'SELECT id,product_id,options_json FROM product_variants WHERE store_id=? ORDER BY id'
                 );
@@ -177,7 +177,7 @@ class ProductBundleController {
             if (!$product || $product['unit_type'] !== '~' || strtoupper(trim($product['category'])) !== 'PELENGKAP') {
                 throw new InvalidArgumentException('Buat/pilih produk induk paket dari PELENGKAP dengan satuan ~.');
             }
-            if ((new ProductVariant($this->db))->getByProduct($store, $productId)) {
+            if ((new ProductVariantController($this->db))->getByProduct($store, $productId)) {
                 throw new InvalidArgumentException(
                     'Produk induk paket tidak memakai varian sendiri; pilih varian pada isi paket.'
                 );

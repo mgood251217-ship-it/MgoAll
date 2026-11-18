@@ -7,7 +7,7 @@ class VariantController {
     private $db;
     private $variants;
     private $components;
-    public function __construct($db) { $this->db = $db; $this->variants = new ProductVariant($db); $this->components = new ProductionComponent($db); }
+    public function __construct($db) { $this->db = $db; $this->variants = new ProductVariantController($db); $this->components = new ProductionComponent($db); }
 
     private function stores() {
         if (session_status() === PHP_SESSION_NONE) session_start();
@@ -91,7 +91,7 @@ class VariantController {
             $groups[] = ['original' => $original, 'name' => $name, 'default' => $default];
         }
         // Validasi nama unik, termasuk huruf kapital, sebelum menyentuh katalog.
-        ProductVariant::options(array_column($groups, 'name'), array_map(function ($g) { return $g['original'] === '' ? $g['default'] : 'TETAP'; }, $groups));
+        ProductVariantController::options(array_column($groups, 'name'), array_map(function ($g) { return $g['original'] === '' ? $g['default'] : 'TETAP'; }, $groups));
         $updates = [];
         foreach ($current as $v) {
             $values = [];
@@ -99,7 +99,7 @@ class VariantController {
                 if ($g['original'] !== '' && !array_key_exists($g['original'], $v['options'])) throw new InvalidArgumentException('Jenis varian yang tersimpan tidak seragam. Periksa varian produk ini.');
                 $values[] = $g['original'] === '' ? $g['default'] : $v['options'][$g['original']];
             }
-            $options = ProductVariant::options(array_column($groups, 'name'), $values);
+            $options = ProductVariantController::options(array_column($groups, 'name'), $values);
             $updates[] = ['id' => (int)$v['id'], 'json' => json_encode($options, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), 'key' => json_encode(array_values($options), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)];
         }
         // Simpan penghubung nama meteran lama sebelum nama/urutan pilihan berubah.
@@ -210,8 +210,8 @@ class VariantController {
                 $category = (int)$p['category_id'];
                 foreach ((new ProductFinishingPrice($this->db))->getByStore($store, 0, false) as $r) if ((int)$r['product_id'] === $product) throw new InvalidArgumentException('Produk ini memakai harga paket. Kelola melalui Harga Paket.');
                 foreach ((new ProductLaserConversion($this->db))->getByStore($store) as $r) if ((int)$r['product_id'] === $product) throw new InvalidArgumentException('Produk ini memakai konversi print laser. Kelola melalui Konversi Print Laser.');
-                $options = ProductVariant::options($_POST['option_name'] ?? [], $_POST['option_value'] ?? []);
-                $options = ProductVariant::options(array_map([$this, 'upper'], array_keys($options)), array_map([$this, 'upper'], array_values($options)));
+                $options = ProductVariantController::options($_POST['option_name'] ?? [], $_POST['option_value'] ?? []);
+                $options = ProductVariantController::options(array_map([$this, 'upper'], array_keys($options)), array_map([$this, 'upper'], array_values($options)));
                 $current = $this->variants->getByProduct($store, $product);
                 if ($current) {
                     if (array_keys($options) !== array_map([$this, 'upper'], array_keys($current[0]['options']))) throw new InvalidArgumentException('Jenis varian sudah berubah. Muat ulang halaman; gunakan Atur Jenis Varian untuk menambah atau mengubah jenisnya.');

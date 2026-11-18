@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../../admin/models/ProductVariant.php';
+require_once __DIR__ . '/../../admin/controllers/ProductVariantController.php';
 require_once __DIR__ . '/../../admin/models/ProductBundle.php';
 class StoreController {
     private $koneksi;
@@ -158,7 +158,7 @@ class StoreController {
             if (!isset($map[$id])) throw new InvalidArgumentException("Relasi $label #$id di toko sumber tidak valid. Impor dibatalkan.");
             return $map[$id];
         };
-        $variantModel = new ProductVariant($this->koneksi);
+        $variantModel = new ProductVariantController($this->koneksi);
         $componentModel = new ProductionComponent($this->koneksi);
         $masters = $componentModel->isAvailable();
         foreach (['product_variants', 'product_package', 'product_price_tiers', 'product_variant_price_tiers', 'product_laser_conversion'] as $table) {

@@ -296,7 +296,7 @@ class OrderController {
             $is_outdoor = (($type === 'OUTDOOR' || ($type === 'SUBLIM' && $unit_type == 'M2')) && $product_name != 'ONEWAY');
 
             if ($is_outdoor && empty($row['product_finishing_price_id']) && !ProductPriceTier::hasPromotion($row)) {
-                $variant = ProductVariant::snapshot($row);
+                $variant = ProductVariantController::snapshot($row);
                 $pid = $row['product_id'] . ':' . ($variant['id'] ?? 0);
 
                 if (!isset($outdoorGroups[$pid])) {
@@ -942,7 +942,7 @@ class OrderController {
                 return $bundle;
             }
 
-            $variant = (new ProductVariant($this->koneksi))->resolve($store_id, $product, $data);
+            $variant = (new ProductVariantController($this->koneksi))->resolve($store_id, $product, $data);
             if ($variant) {
                 $product['price'] = $variant['price'];
             }
