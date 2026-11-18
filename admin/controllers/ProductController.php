@@ -4,7 +4,7 @@ require_once __DIR__ . '/../models/ProductFinishingPrice.php';
 require_once __DIR__ . '/../models/ProductLaserConversion.php';
 require_once __DIR__ . '/ProductVariantController.php';
 require_once __DIR__ . '/../models/ProductBundle.php';
-require_once __DIR__ . '/../models/ProductPriceTier.php';
+require_once __DIR__ . '/ProductPriceTierController.php';
 require_once __DIR__ . '/../models/ProductPromotion.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
@@ -91,7 +91,7 @@ class ProductController {
         $productId = (int)($_GET['product_id'] ?? 0);
         $variants = $this->variants->getByProduct($store_id, $productId);
         $tiersByVariant = [];
-        foreach ((new ProductPriceTier($this->db))->rulesForVariants($store_id, $productId) as $rule) {
+        foreach ((new ProductPriceTierController($this->db))->rulesForVariants($store_id, $productId) as $rule) {
             $tiersByVariant[$rule['product_variant_id']][] = $rule;
         }
         foreach ($variants as &$variant) {
@@ -343,7 +343,7 @@ class ProductController {
         unset($product);
 
         $tiersByProduct = [];
-        foreach ((new ProductPriceTier($this->db))->rulesForProducts($store_id, array_column($data, 'product_id')) as $rule) {
+        foreach ((new ProductPriceTierController($this->db))->rulesForProducts($store_id, array_column($data, 'product_id')) as $rule) {
             $tiersByProduct[$rule['product_id']][] = $rule;
         }
         foreach ($data as &$product) {
@@ -354,7 +354,7 @@ class ProductController {
         $promotions = (new ProductPromotion($this->db))->rulesForProducts($store_id, array_column($data, 'product_id'));
         $promotionsByProduct = array_column($promotions, null, 'product_id');
         foreach ($data as &$product) {
-            $product['promotion'] = ProductPromotion::eligible($product) && !ProductPriceTier::isWeightMaterial($product)
+            $product['promotion'] = ProductPromotion::eligible($product) && !ProductPriceTierController::isWeightMaterial($product)
                 ? ($promotionsByProduct[$product['product_id']] ?? null) : null;
         }
         unset($product);

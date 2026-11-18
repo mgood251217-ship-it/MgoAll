@@ -350,8 +350,8 @@ class FailureController {
             $panjang = (float)$matches[1];
             $lebar = (float)$matches[2];
         }
-        if (ProductPriceTier::isWeightMaterial($product)) {
-            $kiloan = ProductPriceTier::weightFromSize($size);
+        if (ProductPriceTierController::isWeightMaterial($product)) {
+            $kiloan = ProductPriceTierController::weightFromSize($size);
             if (!$kiloan && preg_match('/^([\d.]+)(?:\s|$)/', $size, $matches)) {
                 $kiloan = (float)$matches[1];
             }

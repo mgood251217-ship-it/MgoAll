@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../controllers/ProductPriceTierController.php';
 require_once __DIR__ . '/../controllers/ProductVariantController.php';
 require_once __DIR__ . '/ProductLaserConversion.php';
 
@@ -390,7 +391,7 @@ class ProductBundle {
                 if (isset($item['error'])) {
                     throw new InvalidArgumentException($item['error']);
                 }
-                foreach (ProductPriceTier::stock($item) as $table => $entries) {
+                foreach (ProductPriceTierController::stock($item) as $table => $entries) {
                     foreach ($entries as $id => $factor) {
                         $stock[$table][$id] = ($stock[$table][$id] ?? 0) + $factor * $child['quantity'];
                     }

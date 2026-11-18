@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../../admin/models/ProductPriceTier.php';
+require_once __DIR__ . '/../../admin/controllers/ProductPriceTierController.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../functions/cacheHelper.php';
 
@@ -32,7 +32,7 @@ class VariantController {
         $store = (int)($_GET['store_id'] ?? ($stores[0]['store_id'] ?? 0));
         if ($store) $this->checkStore($store);
         $category = (int)($_GET['category_id'] ?? 0); $selected = (int)($_GET['product_id'] ?? 0);
-        $ready = $this->variants->isAvailable() && (new ProductPriceTier($this->db))->isAvailable();
+        $ready = $this->variants->isAvailable() && (new ProductPriceTierController($this->db))->isAvailable();
         $categories = $products = $variants = []; $product = $editing = null;
         if ($store) {
             $stmt = $this->db->prepare('SELECT category_id, name FROM categories WHERE store_id = ? ORDER BY name, category_id');
@@ -186,7 +186,7 @@ class VariantController {
             $this->checkStore($store);
             if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || empty($_SESSION['variant_csrf']) || !is_string($_POST['csrf_token'] ?? null)
                 || !hash_equals($_SESSION['variant_csrf'], $_POST['csrf_token'])) throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
-            if (!$this->variants->isAvailable() || !(new ProductPriceTier($this->db))->isAvailable()) throw new InvalidArgumentException('Jalankan SQL varian dan pastikan fitur harga bertingkat sudah terpasang.');
+            if (!$this->variants->isAvailable() || !(new ProductPriceTierController($this->db))->isAvailable()) throw new InvalidArgumentException('Jalankan SQL varian dan pastikan fitur harga bertingkat sudah terpasang.');
             $command = $_POST['command'] ?? '';
             if ($product < 1 || !in_array($command, ['save', 'delete', 'configure_options'], true)) throw new InvalidArgumentException('Pilih produk dan aksi yang valid.');
             $this->db->begin_transaction(); $transaction = true;
@@ -195,7 +195,7 @@ class VariantController {
             $stmt->bind_param('iii', $id, $store, $product); $stmt->execute(); $existing = $stmt->get_result()->fetch_assoc(); $stmt->close();
             if (($id || $command === 'delete') && !$existing) throw new InvalidArgumentException('Varian tidak ditemukan pada produk dan toko ini.');
             if ($command === 'delete') {
-                if ((new ProductPriceTier($this->db))->hasVariantTiers()) {
+                if ((new ProductPriceTierController($this->db))->hasVariantTiers()) {
                     $stmt = $this->db->prepare('DELETE FROM product_variant_price_tiers WHERE store_id = ? AND product_id = ? AND product_variant_id = ?');
                     $stmt->bind_param('iii', $store, $product, $id); $stmt->execute(); $stmt->close();
                 }

@@ -1,12 +1,12 @@
 <?php
-require_once __DIR__ . '/../../admin/models/ProductPriceTier.php';
+require_once __DIR__ . '/../../admin/controllers/ProductPriceTierController.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../functions/cacheHelper.php';
 
 class PriceTierController {
     private $db;
     private $tiers;
-    public function __construct($db) { $this->db = $db; $this->tiers = new ProductPriceTier($db); }
+    public function __construct($db) { $this->db = $db; $this->tiers = new ProductPriceTierController($db); }
 
     private function stores() {
         if (session_status() === PHP_SESSION_NONE) session_start();
@@ -109,7 +109,7 @@ class PriceTierController {
                     $stmt->bind_param('iii', $variantId, $productId, $store); $stmt->execute(); $variant = $stmt->get_result()->fetch_assoc(); $stmt->close();
                     if (!$variant) throw new InvalidArgumentException('Pilih varian pada produk dan toko yang sama.');
                 }
-                $measure = $product ? ProductPriceTier::measure($product) : null;
+                $measure = $product ? ProductPriceTierController::measure($product) : null;
                 if (!$measure) throw new InvalidArgumentException('Pilih produk satuan PCS, ~, M2, atau CM2 yang tersedia di toko ini dengan perhitungan jumlah atau luas.');
                 $category = (int)$product['category_id'];
                 $quantities = $_POST['quantity_above'] ?? []; $prices = $_POST['price'] ?? [];

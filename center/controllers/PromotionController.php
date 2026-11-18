@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../../admin/models/ProductPriceTier.php';
+require_once __DIR__ . '/../../admin/controllers/ProductPriceTierController.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../functions/cacheHelper.php';
 
@@ -28,7 +28,7 @@ class PromotionController {
         $store = (int)($_GET['store_id'] ?? ($stores[0]['store_id'] ?? 0));
         if ($store) $this->checkStore($store);
         $category = (int)($_GET['category_id'] ?? 0); $selected = (int)($_GET['product_id'] ?? 0);
-        $ready = $this->promotions->isAvailable() && (new ProductPriceTier($this->db))->isAvailable();
+        $ready = $this->promotions->isAvailable() && (new ProductPriceTierController($this->db))->isAvailable();
         $categories = $products = $rules = []; $product = $rule = null;
         if ($store) {
             $stmt = $this->db->prepare('SELECT category_id, name FROM categories WHERE store_id = ? ORDER BY name, category_id');
@@ -64,7 +64,7 @@ class PromotionController {
             $this->checkStore($store);
             if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || empty($_SESSION['promotion_csrf'])
                 || !is_string($_POST['csrf_token'] ?? null) || !hash_equals($_SESSION['promotion_csrf'], $_POST['csrf_token'])) throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
-            if (!$this->promotions->isAvailable() || !(new ProductPriceTier($this->db))->isAvailable()) throw new InvalidArgumentException('Jalankan SQL promo dan pastikan fitur harga bertingkat sudah terpasang.');
+            if (!$this->promotions->isAvailable() || !(new ProductPriceTierController($this->db))->isAvailable()) throw new InvalidArgumentException('Jalankan SQL promo dan pastikan fitur harga bertingkat sudah terpasang.');
             $command = $_POST['command'] ?? '';
             if ($productId < 1 || !in_array($command, ['save', 'delete'], true)) throw new InvalidArgumentException('Pilih produk dan aksi yang valid.');
             $this->db->begin_transaction(); $transaction = true;

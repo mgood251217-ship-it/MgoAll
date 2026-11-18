@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../models/ProductFinishingPrice.php';
-require_once __DIR__ . '/../models/ProductPriceTier.php';
+require_once __DIR__ . '/ProductPriceTierController.php';
 require_once __DIR__ . '/../models/ProductLaserConversion.php';
 require_once __DIR__ . '/../models/OrderDiscount.php';
 require_once __DIR__ . '/../models/Order.php';
@@ -295,7 +295,7 @@ class OrderController {
 
             $is_outdoor = (($type === 'OUTDOOR' || ($type === 'SUBLIM' && $unit_type == 'M2')) && $product_name != 'ONEWAY');
 
-            if ($is_outdoor && empty($row['product_finishing_price_id']) && !ProductPriceTier::hasPromotion($row)) {
+            if ($is_outdoor && empty($row['product_finishing_price_id']) && !ProductPriceTierController::hasPromotion($row)) {
                 $variant = ProductVariantController::snapshot($row);
                 $pid = $row['product_id'] . ':' . ($variant['id'] ?? 0);
 
@@ -433,7 +433,7 @@ class OrderController {
             $unit *= ($panjang * $lebar);
         }
 
-        if (ProductPriceTier::isWeightMaterial($product) && $kiloan != 0) {
+        if (ProductPriceTierController::isWeightMaterial($product) && $kiloan != 0) {
             $unit *= $kiloan;
             $size = "{$kiloan} KG";
         }
@@ -511,7 +511,7 @@ class OrderController {
             $input = json_decode(file_get_contents('php://input'), true);
             $data = $input ?: $_POST;
 
-            if ((new ProductPriceTier($this->koneksi))->handles($store_id, $data)) {
+            if ((new ProductPriceTierController($this->koneksi))->handles($store_id, $data)) {
                 $this->saveTierItem($data, $store_id);
                 exit;
             }
@@ -641,7 +641,7 @@ class OrderController {
 
         if (!empty($item['tier_price_data'])) {
             try {
-                (new ProductPriceTier($this->koneksi))->deleteItem(
+                (new ProductPriceTierController($this->koneksi))->deleteItem(
                     $store_id,
                     $item,
                     function ($order) {
@@ -677,7 +677,7 @@ class OrderController {
             $lebar = (float)$matches[2];
         }
 
-        $kiloan = $isAnekaCetak || $isPackage ? 0 : ProductPriceTier::weightFromSize($size);
+        $kiloan = $isAnekaCetak || $isPackage ? 0 : ProductPriceTierController::weightFromSize($size);
         $stok_kembali = $this->requiredProductStock($product ?? [], $quantity, $panjang, $lebar, $kiloan, $isPackage);
         if ($unit_type !== '~') {
             $this->productModel->addStock($stok_kembali, $product_id);
@@ -747,7 +747,7 @@ class OrderController {
             'laser_material_name' => $row['laser_material_name'] ?? null
         ]), $items_raw);
 
-        $items = ProductPriceTier::describe($items);
+        $items = ProductPriceTierController::describe($items);
 
         send_json_response(true, 'Berhasil mengambil data item', [
             'order' => $order,
@@ -1060,7 +1060,7 @@ class OrderController {
             'unit' => $unit,
             'amount' => $amount
         ];
-        (new ProductPriceTier($this->koneksi))->preview($item, $product, $store_id, $data, $diskon, $package || ($laserVariant && $laserVariant['price'] !== null));
+        (new ProductPriceTierController($this->koneksi))->preview($item, $product, $store_id, $data, $diskon, $package || ($laserVariant && $laserVariant['price'] !== null));
         return $item;
     }
 
@@ -1081,7 +1081,7 @@ class OrderController {
     }
 
     private function saveTierItem($data, $store_id) {
-        (new ProductPriceTier($this->koneksi))->saveItem(
+        (new ProductPriceTierController($this->koneksi))->saveItem(
             $store_id,
             $data,
             function () use ($data, $store_id) {

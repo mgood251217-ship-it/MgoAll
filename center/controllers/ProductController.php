@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../functions/helpers.php';
-require_once __DIR__ . '/../../admin/models/ProductPriceTier.php';
+require_once __DIR__ . '/../../admin/controllers/ProductPriceTierController.php';
 require_once __DIR__ . '/ProductHistoryController.php';
 class ProductController {
     private $koneksi;
@@ -233,7 +233,7 @@ class ProductController {
         };
         $components = new ProductionComponent($this->koneksi);
         $useMasters = $components->isAvailable();
-        $copyTiers = (new ProductPriceTier($this->koneksi))->hasVariantTiers();
+        $copyTiers = (new ProductPriceTierController($this->koneksi))->hasVariantTiers();
         $added = $skipped = 0;
         $variantMap = [];
         foreach ($sourceVariants as $variant) {
@@ -840,7 +840,7 @@ class ProductController {
                 if ($selectedId) $sourceVariants[$sourceId] = $variantsById[$selectedId];
             }
             $hasVariant = (bool)$sourceVariants;
-            $pricing = new ProductPriceTier($this->koneksi);
+            $pricing = new ProductPriceTierController($this->koneksi);
             if ($hasVariant && !$pricing->isAvailable()) throw new InvalidArgumentException('Pengaturan harga varian belum tersedia.');
 
             // Kunci nota bersama itemnya; migrasi tidak menjalankan perhitungan ulang harga/stok.

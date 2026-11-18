@@ -7,8 +7,8 @@ $data = (new PriceTierController($koneksi))->getData();
 $_SESSION['price_tier_csrf'] = $_SESSION['price_tier_csrf'] ?? bin2hex(random_bytes(32));
 $escape = function ($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); };
 $number = function ($value) { return rtrim(rtrim(number_format((float)$value, 4, '.', ''), '0'), '.'); };
-$unit = $data['product'] ? ProductPriceTier::measure($data['product']) : 'pcs';
-$unitLabel = ProductPriceTier::unitLabel($unit);
+$unit = $data['product'] ? ProductPriceTierController::measure($data['product']) : 'pcs';
+$unitLabel = ProductPriceTierController::unitLabel($unit);
 ?>
 <div class="page-header">
     <h2>Harga Bertingkat</h2>
@@ -56,7 +56,7 @@ $unitLabel = ProductPriceTier::unitLabel($unit);
     <div class="alert alert-info">
         <?php if (in_array(strtoupper(trim($data['product']['category'])), ['DTF', 'DTF UV'], true)): ?>
             DTF/DTF UV memakai perhitungan khusus. Harga bertingkat untuk perhitungan ini belum tersedia.
-        <?php elseif (ProductPriceTier::usesTime($data['product'])): ?>
+        <?php elseif (ProductPriceTierController::usesTime($data['product'])): ?>
             <?= $escape($data['product']['name']) ?> dihitung berdasarkan waktu di OrderController, meskipun satuan produknya tertulis PCS. Harga bertingkat berdasarkan waktu belum tersedia.
         <?php else: ?>
             Perhitungan produk ini (<?= $escape($data['product']['unit_type']) ?>) belum didukung harga bertingkat. Saat ini tersedia untuk PCS, ~ (seperti pcs tanpa batas stok), M2, dan CM2.
@@ -76,7 +76,7 @@ $unitLabel = ProductPriceTier::unitLabel($unit);
         <p>Harga dasar normal: <strong>Rp<?= number_format((float)($data['variant']['price'] ?? $data['product']['price']), 0, ',', '.') ?>/<?= $unitLabel ?></strong>.</p>
         <p>Jumlah dikumpulkan per <?= $data['variant'] ? 'varian' : 'produk tanpa varian' ?> dalam satu nota. Jumlah antar varian tidak digabung. <?= $unit === 'pcs' ? 'Batas 10 berlaku setelah 10, yaitu mulai 11 pcs.' : 'Luas dihitung dari panjang × lebar × quantity dalam ' . $unitLabel . '. Batas 500 berlaku saat total luas lebih dari 500 ' . $unitLabel . '.' ?> Tingkat dengan batas tertinggi yang terpenuhi berlaku untuk seluruh jumlah.</p>
         <?php if (trim($data['product']['unit_type']) === '~'): ?><p>Satuan ~ dihitung seperti pcs. Stok bahan tidak dibatasi dan tidak dikurangi.</p><?php endif; ?>
-        <?php if (ProductPriceTier::minimumAmount($data['product'])): ?><p>Minimum tagihan item PRINT UV tetap Rp7.500.</p><?php endif; ?>
+        <?php if (ProductPriceTierController::minimumAmount($data['product'])): ?><p>Minimum tagihan item PRINT UV tetap Rp7.500.</p><?php endif; ?>
         <p>Harga di bawah menggantikan harga dasar <?= $data['variant'] ? 'varian' : 'bahan' ?>; biaya finishing tetap ditambahkan. Harga paket dan konversi print laser mengikuti pengaturannya masing-masing.</p>
         <form method="post" action="/action?action=save_price_tiers" id="tierForm">
             <input type="hidden" name="csrf_token" value="<?= $escape($_SESSION['price_tier_csrf']) ?>">
@@ -122,7 +122,7 @@ $unitLabel = ProductPriceTier::unitLabel($unit);
     <?php if (!$data['groups']): ?><tr><td colspan="3">Belum ada harga bertingkat di toko ini.</td></tr><?php endif; ?>
     <?php foreach ($data['groups'] as $rows): $p = $rows[0]; $id = (int)$p['product_id']; $variantId = (int)$p['product_variant_id']; ?>
         <tr><td><?= $escape(($p['category'] ?? '') . ' / ' . ($p['product_name'] ?? 'Produk tidak tersedia')) ?> (#<?= $id ?>)<br><small><?= $variantId ? $escape(strtoupper($p['variant_label'])) : 'Tanpa varian' ?></small></td>
-            <td><?php foreach ($rows as $r): ?><div>Lebih dari <?= $number($r['quantity_above']) ?> <?= ProductPriceTier::unitLabel(strtolower(trim($p['unit_type'] ?? ''))) ?>: <strong>Rp<?= number_format((float)$r['price'], 0, ',', '.') ?></strong></div><?php endforeach; ?></td>
+            <td><?php foreach ($rows as $r): ?><div>Lebih dari <?= $number($r['quantity_above']) ?> <?= ProductPriceTierController::unitLabel(strtolower(trim($p['unit_type'] ?? ''))) ?>: <strong>Rp<?= number_format((float)$r['price'], 0, ',', '.') ?></strong></div><?php endforeach; ?></td>
             <td><div style="display:flex; gap:8px; flex-wrap:wrap"><a class="btn-secondary-custom" href="/price-tiers?store_id=<?= (int)$data['store'] ?>&amp;category_id=<?= (int)($p['category_id'] ?? 0) ?>&amp;product_id=<?= $id ?>&amp;product_variant_id=<?= $variantId ?>">Ubah</a>
                 <form method="post" action="/action?action=save_price_tiers">
                     <input type="hidden" name="csrf_token" value="<?= $escape($_SESSION['price_tier_csrf']) ?>"><input type="hidden" name="store_id" value="<?= (int)$data['store'] ?>"><input type="hidden" name="category_id" value="<?= (int)$data['category'] ?>"><input type="hidden" name="product_id" value="<?= $id ?>"><input type="hidden" name="product_variant_id" value="<?= $variantId ?>"><input type="hidden" name="command" value="delete"><button type="submit" class="btn btn-danger">Hapus Tingkatan</button>

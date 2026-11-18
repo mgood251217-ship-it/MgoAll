@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../admin/models/Activity.php';
 require_once __DIR__ . '/../../admin/models/ProductFinishingPrice.php';
-require_once __DIR__ . '/../../admin/models/ProductPriceTier.php';
+require_once __DIR__ . '/../../admin/controllers/ProductPriceTierController.php';
 require_once __DIR__ . '/../../admin/models/ProductLaserConversion.php';
 require_once __DIR__ . '/../../admin/models/OrderDiscount.php';
 require_once __DIR__ . '/../functions/helpers.php';
@@ -447,7 +447,7 @@ class OrderController {
             'laser_material_name' => $row['laser_material_name'] ?? null
         ]), $items_raw);
 
-        $items = ProductPriceTier::describe($items);
+        $items = ProductPriceTierController::describe($items);
 
         send_json_response(true, 'Berhasil mengambil data item', [
             'order' => $order,
@@ -500,7 +500,7 @@ class OrderController {
             
             $is_outdoor = (($type === 'OUTDOOR' || ($type === 'SUBLIM' && $unit_type == 'M2')) && $product_name != 'ONEWAY');
 
-            if ($is_outdoor && empty($row['product_finishing_price_id']) && !ProductPriceTier::hasPromotion($row)) {
+            if ($is_outdoor && empty($row['product_finishing_price_id']) && !ProductPriceTierController::hasPromotion($row)) {
                 $variant = ProductVariantController::snapshot($row);
                 $pid = $row['product_id'] . ':' . ($variant['id'] ?? 0);
                 
@@ -702,7 +702,7 @@ class OrderController {
             'unit' => $unit,
             'amount' => $amount
         ];
-        (new ProductPriceTier($this->koneksi))->preview($item, $product, $store_id, $data, $diskon, $package || ($laserVariant && $laserVariant['price'] !== null));
+        (new ProductPriceTierController($this->koneksi))->preview($item, $product, $store_id, $data, $diskon, $package || ($laserVariant && $laserVariant['price'] !== null));
         return $item;
     }
     public function finishingData($input_finishing, $panjang, $lebar) {
@@ -787,7 +787,7 @@ class OrderController {
                 $unit *= ($panjang * $lebar);
             }
 
-            if (ProductPriceTier::isWeightMaterial($product) && $kiloan != 0) {
+            if (ProductPriceTierController::isWeightMaterial($product) && $kiloan != 0) {
                 $unit *= $kiloan;
                 $size = "{$kiloan} KG";
             }
@@ -873,7 +873,7 @@ class OrderController {
             $input = json_decode(file_get_contents('php://input'), true);
             $data = $input ?: $_POST;
 
-            if ((new ProductPriceTier($this->koneksi))->handles($store_id, $data)) {
+            if ((new ProductPriceTierController($this->koneksi))->handles($store_id, $data)) {
                 $this->saveTierItem($data, $store_id);
                 exit;
             }
@@ -991,7 +991,7 @@ class OrderController {
 
     private function saveTierItem($data, $store_id) {
         $this->authorizeTierStore($store_id);
-        (new ProductPriceTier($this->koneksi))->saveItem($store_id, $data,
+        (new ProductPriceTierController($this->koneksi))->saveItem($store_id, $data,
             function () use ($data, $store_id) { return $this->_prepareItemData($data, $store_id); },
             function ($order) { $this->finishTierOrder($order); });
         send_json_response(true, 'Item tersimpan dan perhitungan harga diperbarui.');
@@ -1038,7 +1038,7 @@ class OrderController {
         if (!empty($item['tier_price_data'])) {
             try {
                 $this->authorizeTierStore($store_id);
-                (new ProductPriceTier($this->koneksi))->deleteItem($store_id, $item,
+                (new ProductPriceTierController($this->koneksi))->deleteItem($store_id, $item,
                     function ($order) { $this->finishTierOrder($order); });
                 send_json_response(true, 'Item dihapus, stok dan harga bertingkat diperbarui.');
             } catch (Throwable $e) {
@@ -1215,7 +1215,7 @@ class OrderController {
 
     public function cekOrderItem($order_id, $judul, $finishing, $size, $package_id = null, $product_id = 0, $unit = 0, $match_price = false, $laser_product_id = null){
         $query = "SELECT order_item_id, quantity, unit, amount FROM order_items WHERE order_id = ? AND judul = ? AND finishing = ? AND size = ?";
-        if ((new ProductPriceTier($this->koneksi))->isAvailable()) $query .= ' AND tier_price_data IS NULL';
+        if ((new ProductPriceTierController($this->koneksi))->isAvailable()) $query .= ' AND tier_price_data IS NULL';
         $types = 'isss';
         $params = [$order_id, $judul, $finishing, $size];
         if ($package_id) {
