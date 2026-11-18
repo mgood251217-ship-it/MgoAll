@@ -9,17 +9,6 @@ class ProductFinishingPrice {
         $this->koneksi = $koneksi;
     }
 
-    public static function requiresDimensions($product) {
-        return in_array(strtoupper(trim($product['category'] ?? '')), ['INDOOR', 'OUTDOOR'], true)
-            && strtoupper($product['unit_type'] ?? '') === 'M2';
-    }
-
-    public static function supportsDimensions($product) {
-        return self::requiresDimensions($product)
-            || (strtoupper(trim($product['category'] ?? '')) === 'LASER A3'
-                && in_array(strtoupper($product['unit_type'] ?? ''), ['PCS', '~'], true));
-    }
-
     public function isAvailable() {
         if ($this->available === null) {
             $result = $this->koneksi->query("SELECT
@@ -31,7 +20,9 @@ class ProductFinishingPrice {
                 EXISTS(SELECT 1 FROM information_schema.COLUMNS
                     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'order_items'
                       AND COLUMN_NAME = 'product_finishing_price_id') AS has_reference");
-            if (!$result) throw new RuntimeException('Gagal memeriksa tabel harga paket.');
+            if (!$result) {
+                throw new RuntimeException('Gagal memeriksa tabel harga paket.');
+            }
             $schema = $result->fetch_assoc();
             // Pembacaan tetap berjalan saat backend diunggah sebelum SQL penggantian tabel.
             $this->tableName = $schema['package_table'];
@@ -45,7 +36,9 @@ class ProductFinishingPrice {
     }
 
     public function countsForProducts($store, $productIds) {
-        if (!$productIds || !$this->isAvailable()) return [];
+        if (!$productIds || !$this->isAvailable()) {
+            return [];
+        }
         $placeholders = implode(',', array_fill(0, count($productIds), '?'));
         $params = array_merge([(int)$store], array_map('intval', $productIds));
         $stmt = $this->koneksi->prepare("SELECT product_id, COUNT(*) AS total FROM {$this->tableName} WHERE store_id=? AND product_id IN ($placeholders) GROUP BY product_id");
@@ -56,8 +49,10 @@ class ProductFinishingPrice {
         return $counts;
     }
 
-    public function getByStore($store_id, $category_id = 0, $validOnly = true) {
-        if (!$this->isAvailable()) return [];
+    public function getByStore($store_id, $category_id = 0) {
+        if (!$this->isAvailable()) {
+            return [];
+        }
         $stmt = $this->koneksi->prepare("SELECT r.*, p.name AS product_name,
                 p.category_id, c.name AS category, f.name AS finishing_name,
                 f.unit_type AS finishing_unit_type,
@@ -81,16 +76,10 @@ class ProductFinishingPrice {
         $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        return $validOnly ? array_values(array_filter($rows, function ($row) {
-            return (int)$row['valid'] === 1;
-        })) : $rows;
+        return $rows;
     }
 
-    // Finishing yang sudah dipetakan wajib memakai kombinasi dan ukuran yang sah.
-    // Kombinasi tidak sah tidak boleh jatuh ke harga finishing biasa (misalnya 0).
-    public function resolve($store_id, $product_id, $finishing, $panjang, $lebar) {
-        $ids = array_values(array_unique(array_filter(array_map('intval', explode(',', $finishing)))));
-        if (!$ids) return null;
+    public function getFinishings($store_id, $ids) {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $stmt = $this->koneksi->prepare("SELECT finishing_id FROM finishings WHERE store_id = ? AND finishing_id IN ($placeholders)");
         $params = array_merge([(int)$store_id], $ids);
@@ -99,46 +88,17 @@ class ProductFinishingPrice {
         $stmt->execute();
         $owned = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        if (count($owned) !== count($ids)) throw new InvalidArgumentException('Finishing tidak ditemukan pada toko ini.');
-        $rules = array_filter($this->getByStore($store_id, 0, false), function ($rule) use ($ids) {
-            return in_array((int)$rule['finishing_id'], $ids, true);
-        });
-        if (!$rules) {
-            // Katalog yang diimpor ke toko baru belum tentu memiliki pemetaan paket.
-            // Finishing paket bernilai 0 hanya boleh dipakai setelah harga paketnya diatur.
-            $stmt = $this->koneksi->prepare("SELECT finishing_id FROM finishings
-                WHERE store_id = ? AND UPPER(TRIM(name)) IN ('XBANNER', 'ROLLUP') AND price = 0");
-            $stmt->bind_param('i', $store_id);
-            $stmt->execute();
-            $unmapped = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-            $stmt->close();
-            foreach ($unmapped as $row) {
-                if (in_array((int)$row['finishing_id'], $ids, true)) {
-                    throw new InvalidArgumentException('Harga paket di toko ini belum dipetakan. Atur melalui Center terlebih dahulu.');
-                }
-            }
-            return null;
-        }
-        if (count($ids) !== 1) {
-            throw new InvalidArgumentException('Untuk paket ini, pilih satu finishing paket saja.');
-        }
-        foreach ($rules as $rule) {
-            if ((int)$rule['product_id'] === (int)$product_id && (int)$rule['valid'] === 1
-                && ((!$rule['requires_size'] && strtoupper(trim($rule['category'])) !== 'LASER A3') || (abs((float)$rule['panjang'] - $panjang) < 0.00001
-                    && abs((float)$rule['lebar'] - $lebar) < 0.00001))) {
-                return $rule;
-            }
-        }
-        throw new InvalidArgumentException('Paket belum tersedia untuk bahan dan ukuran ini. Pilih ukuran paket yang tersedia.');
+        return $owned;
     }
 
-    public static function calculate($rule, $quantity, $discount = 0) {
-        $unit = max(0, (float)$rule['price'] - max(0, (float)$discount));
-        return (object)[
-            'unit' => $unit,
-            'amount' => $unit * $quantity,
-            'size' => (float)$rule['panjang'] > 0 && (float)$rule['lebar'] > 0
-                ? (float)$rule['panjang'] . 'x' . (float)$rule['lebar'] : '-',
-        ];
+    public function getUnmappedFinishings($store_id) {
+        $stmt = $this->koneksi->prepare("SELECT finishing_id FROM finishings
+            WHERE store_id = ? AND UPPER(TRIM(name)) IN ('XBANNER', 'ROLLUP') AND price = 0");
+        $stmt->bind_param('i', $store_id);
+        $stmt->execute();
+        $unmapped = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        return $unmapped;
     }
 }

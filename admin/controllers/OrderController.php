@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../models/ProductFinishingPrice.php';
+require_once __DIR__ . '/ProductFinishingPriceController.php';
 require_once __DIR__ . '/ProductPriceTierController.php';
 require_once __DIR__ . '/ProductLaserConversionController.php';
 require_once __DIR__ . '/../models/OrderDiscount.php';
@@ -22,7 +22,7 @@ class OrderController {
 
     public function __construct($koneksi) {
         $this->koneksi = $koneksi;
-        $this->packagePrices = new ProductFinishingPrice($koneksi);
+        $this->packagePrices = new ProductFinishingPriceController($koneksi);
         $this->orderModel = new Order($koneksi);
         $this->userModel = new User($koneksi);
         $this->projectModel = new Project($koneksi);
@@ -854,7 +854,7 @@ class OrderController {
     }
 
     public function requiredProductStock($product, $quantity, $panjang, $lebar, $kiloan, $isPackage) {
-        if ($isPackage && !ProductFinishingPrice::requiresDimensions($product)) {
+        if ($isPackage && !ProductFinishingPriceController::requiresDimensions($product)) {
             // Ukuran paket LASER A3 memilih harga; pemakaian bahan tetap per pcs.
             return $quantity;
         }
@@ -1024,7 +1024,7 @@ class OrderController {
 
         $base_unit_price = $product['price'] - $diskon;
         if ($package) {
-            $pricing = ProductFinishingPrice::calculate($package, $quantity, $diskon);
+            $pricing = ProductFinishingPriceController::calculate($package, $quantity, $diskon);
         } else {
             $pricing = $this->calculatePricingDetails(
                 $product, $base_unit_price, $finishing_price, $quantity, $panjang, $lebar, $waktu, $kiloan, $size

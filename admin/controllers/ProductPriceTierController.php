@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../models/ProductPriceTier.php';
-require_once __DIR__ . '/../models/ProductFinishingPrice.php';
+require_once __DIR__ . '/ProductFinishingPriceController.php';
 require_once __DIR__ . '/ProductLaserConversionController.php';
 require_once __DIR__ . '/../models/ProductPromotion.php';
 require_once __DIR__ . '/ProductVariantController.php';
@@ -431,7 +431,7 @@ class ProductPriceTierController {
         }
         $package = !empty($row['product_finishing_price_id']);
         $factor = $area > 0 ? $area : 1;
-        if ($package && !ProductFinishingPrice::requiresDimensions($p)) {
+        if ($package && !ProductFinishingPriceController::requiresDimensions($p)) {
             $factor = 1;
         }
         elseif (strtoupper($p['category'] ?? '') === 'DTF' && $length > 0) $factor = $length;

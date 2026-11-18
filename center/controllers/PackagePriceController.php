@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../../admin/models/ProductFinishingPrice.php';
+require_once __DIR__ . '/../../admin/controllers/ProductFinishingPriceController.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../functions/cacheHelper.php';
 
@@ -9,7 +9,7 @@ class PackagePriceController {
 
     public function __construct($koneksi) {
         $this->koneksi = $koneksi;
-        $this->prices = new ProductFinishingPrice($koneksi);
+        $this->prices = new ProductFinishingPriceController($koneksi);
     }
 
     private function getStores() {
@@ -154,9 +154,9 @@ class PackagePriceController {
                 $product = $stmt->get_result()->fetch_assoc();
                 $stmt->close();
                 if (!$product) throw new InvalidArgumentException('Pilih bahan INDOOR, OUTDOOR, atau LASER dari toko yang sama.');
-                $requiresSize = ProductFinishingPrice::requiresDimensions($product);
+                $requiresSize = ProductFinishingPriceController::requiresDimensions($product);
                 $hasSizeInput = ($_POST['panjang'] ?? '') !== '' || ($_POST['lebar'] ?? '') !== '';
-                $useSize = $requiresSize || (ProductFinishingPrice::supportsDimensions($product) && $hasSizeInput);
+                $useSize = $requiresSize || (ProductFinishingPriceController::supportsDimensions($product) && $hasSizeInput);
                 $panjang = $useSize ? $this->decimalInput('panjang', 'Panjang', 4, 999999.9999) : 0;
                 $lebar = $useSize ? $this->decimalInput('lebar', 'Lebar', 4, 999999.9999) : 0;
                 $category_id = (int)$product['category_id'];

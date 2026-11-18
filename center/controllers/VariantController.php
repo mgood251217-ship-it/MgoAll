@@ -208,7 +208,7 @@ class VariantController {
                 $stmt->bind_param('ii', $product, $store); $stmt->execute(); $p = $stmt->get_result()->fetch_assoc(); $stmt->close();
                 if (!$p) throw new InvalidArgumentException('Produk tidak ditemukan pada toko ini.');
                 $category = (int)$p['category_id'];
-                foreach ((new ProductFinishingPrice($this->db))->getByStore($store, 0, false) as $r) if ((int)$r['product_id'] === $product) throw new InvalidArgumentException('Produk ini memakai harga paket. Kelola melalui Harga Paket.');
+                foreach ((new ProductFinishingPriceController($this->db))->getByStore($store, 0, false) as $r) if ((int)$r['product_id'] === $product) throw new InvalidArgumentException('Produk ini memakai harga paket. Kelola melalui Harga Paket.');
                 foreach ((new ProductLaserConversionController($this->db))->getByStore($store) as $r) if ((int)$r['product_id'] === $product) throw new InvalidArgumentException('Produk ini memakai konversi print laser. Kelola melalui Konversi Print Laser.');
                 $options = ProductVariantController::options($_POST['option_name'] ?? [], $_POST['option_value'] ?? []);
                 $options = ProductVariantController::options(array_map([$this, 'upper'], array_keys($options)), array_map([$this, 'upper'], array_values($options)));

@@ -290,7 +290,7 @@ class FailureController {
             $panjang = $lebar = $kiloan = $waktu = 0;
             $size = ProductLaserConversionController::normalizeSize($data['size']) ?: '-';
         } else {
-            $package = (new ProductFinishingPrice($this->koneksi))->resolve(
+            $package = (new ProductFinishingPriceController($this->koneksi))->resolve(
                 $store_id, $data['product_id'], $data['finishing_str'], $panjang, $lebar
             );
             if ($package) {

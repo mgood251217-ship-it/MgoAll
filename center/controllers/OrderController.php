@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../../admin/models/Activity.php';
-require_once __DIR__ . '/../../admin/models/ProductFinishingPrice.php';
+require_once __DIR__ . '/../../admin/controllers/ProductFinishingPriceController.php';
 require_once __DIR__ . '/../../admin/controllers/ProductPriceTierController.php';
 require_once __DIR__ . '/../../admin/controllers/ProductLaserConversionController.php';
 require_once __DIR__ . '/../../admin/models/OrderDiscount.php';
@@ -16,7 +16,7 @@ class OrderController {
 
     public function __construct($db) {
         $this->koneksi = $db;
-        $this->packagePrices = new ProductFinishingPrice($db);
+        $this->packagePrices = new ProductFinishingPriceController($db);
         $this->productController = new ProductController($db);
         $this->paymentController = new PaymentController($db);
     }
@@ -635,7 +635,7 @@ class OrderController {
         }
 
         $stok_butuh = 0;
-        if ($package && !ProductFinishingPrice::requiresDimensions($product)) {
+        if ($package && !ProductFinishingPriceController::requiresDimensions($product)) {
             // Ukuran paket LASER A3 memilih harga; pemakaian bahan tetap per pcs.
             $stok_butuh = $quantity;
         } elseif ($product['category'] === 'DTF' && $panjang > 0) {
@@ -670,7 +670,7 @@ class OrderController {
         }
 
         $base_unit_price = $product['price'] - $diskon;
-        $pricing = $package ? ProductFinishingPrice::calculate($package, $quantity, $diskon)
+        $pricing = $package ? ProductFinishingPriceController::calculate($package, $quantity, $diskon)
             : $this->calculatePricingDetails($product, $base_unit_price, $finishing_price, $quantity, $panjang, $lebar, $waktu, $kiloan, $size);
         if ($laserVariant && $laserVariant['price'] !== null) {
             $unitPrice = max(0, (float)$laserVariant['price'] - $diskon);
@@ -1070,7 +1070,7 @@ class OrderController {
         }
 
         if ($isAnekaCetak || !empty($item['product_finishing_price_id'])) {
-            $stok_kembali = ProductFinishingPrice::requiresDimensions($product ?? []) && $panjang > 0 && $lebar > 0
+            $stok_kembali = ProductFinishingPriceController::requiresDimensions($product ?? []) && $panjang > 0 && $lebar > 0
                 ? $panjang * $lebar * $quantity : $quantity;
         } elseif ($unit_type === 'M2' || $unit_type === 'CM2') {
             $stok_kembali = round(($panjang / 100) * ($lebar / 100) * $quantity, 4);

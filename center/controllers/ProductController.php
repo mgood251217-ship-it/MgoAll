@@ -561,7 +561,7 @@ class ProductController {
             $model = new ProductVariantController($this->koneksi);
             $configured = [];
             $packageProducts = [];
-            foreach ((new ProductFinishingPrice($this->koneksi))->getByStore($targetId, 0, false) as $rule) {
+            foreach ((new ProductFinishingPriceController($this->koneksi))->getByStore($targetId, 0, false) as $rule) {
                 $configured[(int) $rule['product_id']] = true;
                 $packageProducts[(int) $rule['product_id']] = true;
             }

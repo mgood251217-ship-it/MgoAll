@@ -71,7 +71,7 @@ foreach ($data['finishings'] as $finishing) {
                 <select id="target_product" name="product_id" class="form-control select2" required>
                     <option value="">Pilih bahan INDOOR / OUTDOOR / LASER</option>
                     <?php foreach ($data['products'] as $product): ?>
-                        <option value="<?= (int)$product['product_id'] ?>" data-supports-size="<?= ProductFinishingPrice::supportsDimensions($product) ? '1' : '0' ?>" data-requires-size="<?= ProductFinishingPrice::requiresDimensions($product) ? '1' : '0' ?>"><?= $escape($product['category']) ?> — #<?= (int)$product['product_id'] ?> <?= $escape($product['name']) ?> — <?= $rupiah($product['price']) ?>/<?= ProductFinishingPrice::requiresDimensions($product) ? 'm²' : ($product['unit_type'] === 'PCS' ? 'pcs' : 'item') ?></option>
+                        <option value="<?= (int)$product['product_id'] ?>" data-supports-size="<?= ProductFinishingPriceController::supportsDimensions($product) ? '1' : '0' ?>" data-requires-size="<?= ProductFinishingPriceController::requiresDimensions($product) ? '1' : '0' ?>"><?= $escape($product['category']) ?> — #<?= (int)$product['product_id'] ?> <?= $escape($product['name']) ?> — <?= $rupiah($product['price']) ?>/<?= ProductFinishingPriceController::requiresDimensions($product) ? 'm²' : ($product['unit_type'] === 'PCS' ? 'pcs' : 'item') ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
