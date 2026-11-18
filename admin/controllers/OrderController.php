@@ -357,132 +357,123 @@ class OrderController {
     }
 
     public function finishingData($input_finishing, $panjang, $lebar) {
-        try {
-            $finishing_ids = [];
+        $finishing_ids = [];
 
-            if ($input_finishing !== '-' && !empty($input_finishing)) {
-                $ids = explode(',', $input_finishing);
-                foreach ($ids as $id) {
-                    if (is_numeric(trim($id))) {
-                        $finishing_ids[] = (int)trim($id);
-                    }
+        if ($input_finishing !== '-' && !empty($input_finishing)) {
+            $ids = explode(',', $input_finishing);
+            foreach ($ids as $id) {
+                if (is_numeric(trim($id))) {
+                    $finishing_ids[] = (int)trim($id);
                 }
             }
-
-            $unique_ids = array_values(array_unique($finishing_ids));
-            $total_price = 0;
-            $required_stocks = [];
-
-            if (!empty($unique_ids)) {
-                $placeholders = implode(',', array_fill(0, count($unique_ids), '?'));
-                $types = str_repeat('i', count($unique_ids));
-
-                $stmt = $this->koneksi->prepare("SELECT finishing_id, name, unit_type, price FROM finishings WHERE finishing_id IN ($placeholders)");
-
-                if (!$stmt) {
-                    throw new Exception("Query Prepare Error: " . $this->koneksi->error);
-                }
-
-                $stmt->bind_param($types, ...$unique_ids);
-
-                if (!$stmt->execute()) {
-                    throw new Exception("Query Execute Error: " . $stmt->error);
-                }
-
-                $result = $stmt->get_result();
-
-                while ($row = $result->fetch_assoc()) {
-                    $pid = (int)$row['finishing_id'];
-                    $price = (float)$row['price'];
-
-                    $qty = 1;
-                    if ((float)$panjang > 0 && (float)$lebar > 0) {
-                        $qty = (float)$panjang * (float)$lebar;
-                    }
-
-                    $total_price += $price;
-
-                    if ($row['unit_type'] !== '~') {
-                        $required_stocks[] = [
-                            'finishing_id' => $pid,
-                            'qty' => $qty
-                        ];
-                    }
-                }
-                $stmt->close();
-            }
-
-            return [
-                'ids' => $unique_ids,
-                'price' => $total_price,
-                'stocks' => $required_stocks
-            ];
-
-        } catch (Throwable $e) {
-            throw new Exception("finishingData Error: " . $e->getMessage() . " on line " . $e->getLine());
         }
+
+        $unique_ids = array_values(array_unique($finishing_ids));
+        $total_price = 0;
+        $required_stocks = [];
+
+        if (!empty($unique_ids)) {
+            $placeholders = implode(',', array_fill(0, count($unique_ids), '?'));
+            $types = str_repeat('i', count($unique_ids));
+
+            $stmt = $this->koneksi->prepare("SELECT finishing_id, name, unit_type, price FROM finishings WHERE finishing_id IN ($placeholders)");
+
+            if (!$stmt) {
+                throw new Exception("Query Prepare Error: " . $this->koneksi->error);
+            }
+
+            $stmt->bind_param($types, ...$unique_ids);
+
+            if (!$stmt->execute()) {
+                throw new Exception("Query Execute Error: " . $stmt->error);
+            }
+
+            $result = $stmt->get_result();
+
+            while ($row = $result->fetch_assoc()) {
+                $pid = (int)$row['finishing_id'];
+                $price = (float)$row['price'];
+
+                $qty = 1;
+                if ((float)$panjang > 0 && (float)$lebar > 0) {
+                    $qty = (float)$panjang * (float)$lebar;
+                }
+
+                $total_price += $price;
+
+                if ($row['unit_type'] !== '~') {
+                    $required_stocks[] = [
+                        'finishing_id' => $pid,
+                        'qty' => $qty
+                    ];
+                }
+            }
+            $stmt->close();
+        }
+
+        return [
+            'ids' => $unique_ids,
+            'price' => $total_price,
+            'stocks' => $required_stocks
+        ];
     }
+
     public function calculatePricingDetails($product, $base_price, $finishing_price, $quantity, $panjang, $lebar, $waktu, $kiloan, $size) {
-        try {
-            $unit = $base_price + $finishing_price;
+        $unit = $base_price + $finishing_price;
 
-            $name = $product['name'] ?? '';
-            $category = $product['category'] ?? '';
-            $unit_type = $product['unit_type'] ?? '';
+        $name = $product['name'] ?? '';
+        $category = $product['category'] ?? '';
+        $unit_type = $product['unit_type'] ?? '';
 
-            if ($unit_type === 'M2') {
-                $unit *= ($category === 'DTF' || $category === 'DTF UV') ? $panjang : ($panjang * $lebar);
-            }
-
-            if ($unit_type === 'CM2') {
-                $unit *= ($panjang * $lebar);
-            }
-
-            if (ProductPriceTier::isWeightMaterial($product) && $kiloan != 0) {
-                $unit *= $kiloan;
-                $size = "{$kiloan} KG";
-            }
-
-            if ($category === 'JASA') {
-                if ($name === 'SETTING') {
-                    $waktu = max(15, $waktu);
-                    $jam = floor($waktu / 60);
-                    $sisa_menit = $waktu % 60;
-                    $size = ($waktu >= 60) ? "{$jam} Jam {$sisa_menit} Menit" : "{$waktu} Menit";
-                    $unit *= ($waktu / 60);
-                }
-
-                if ($name === 'POTONG AKRILIK') {
-                    $unit *= $waktu;
-                    $size = "{$waktu} MENIT";
-                }
-            }
-
-            if (in_array($category, ['TEKSTIL', 'PAKAIAN', 'JERSEY'], true)) {
-                $extra_charge = ['5XL' => 50000, '4XL' => 40000, '3XL' => 30000, '2XL' => 20000, 'XL' => 10000];
-                $unit += $extra_charge[$size] ?? 0;
-            }
-
-            if ($category === 'DTF' && str_contains($name, 'KAOS') && $unit_type === 'PCS') {
-                $extra_change = ['5XL' => 50000, '4XL' => 40000, '3XL' => 30000, '2XL' => 20000, 'XL' => 10000];
-                $unit += $extra_change[$size] ?? 0;
-            }
-
-            $amount = $unit * $quantity;
-
-            if ($category === 'AKRILIK' && $name === 'PRINT UV' && $amount < 7500) {
-                $amount = 7500;
-            }
-
-            return (object)[
-                'unit'   => $unit,
-                'size'   => $size,
-                'amount' => $amount
-            ];
-
-        } catch (Throwable $e) {
-            throw new Exception("calculatePricingDetails Error: " . $e->getMessage() . " on line " . $e->getLine());
+        if ($unit_type === 'M2') {
+            $unit *= ($category === 'DTF' || $category === 'DTF UV') ? $panjang : ($panjang * $lebar);
         }
+
+        if ($unit_type === 'CM2') {
+            $unit *= ($panjang * $lebar);
+        }
+
+        if (ProductPriceTier::isWeightMaterial($product) && $kiloan != 0) {
+            $unit *= $kiloan;
+            $size = "{$kiloan} KG";
+        }
+
+        if ($category === 'JASA') {
+            if ($name === 'SETTING') {
+                $waktu = max(15, $waktu);
+                $jam = floor($waktu / 60);
+                $sisa_menit = $waktu % 60;
+                $size = ($waktu >= 60) ? "{$jam} Jam {$sisa_menit} Menit" : "{$waktu} Menit";
+                $unit *= ($waktu / 60);
+            }
+
+            if ($name === 'POTONG AKRILIK') {
+                $unit *= $waktu;
+                $size = "{$waktu} MENIT";
+            }
+        }
+
+        if ($category === 'TEKSTIL') {
+            $extra_charge = ['5XL' => 50000, '4XL' => 40000, '3XL' => 30000, '2XL' => 20000, 'XL' => 10000];
+            $unit += $extra_charge[$size] ?? 0;
+        }
+
+        if ($category === 'DTF' && str_contains($name, 'KAOS') && $unit_type === 'PCS') {
+            $extra_change = ['5XL' => 50000, '4XL' => 40000, '3XL' => 30000, '2XL' => 20000, 'XL' => 10000];
+            $unit += $extra_change[$size] ?? 0;
+        }
+
+        $amount = $unit * $quantity;
+
+        if ($category === 'AKRILIK' && $name === 'PRINT UV' && $amount < 7500) {
+            $amount = 7500;
+        }
+
+        return (object)[
+            'unit'   => $unit,
+            'size'   => $size,
+            'amount' => $amount
+        ];
     }
 
     public function fullPrice() {
@@ -616,9 +607,6 @@ class OrderController {
     public function updateItem() {
         global $store_id;
         try {
-            if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-                throw new InvalidArgumentException('Gunakan metode POST.');
-            }
             $data = json_decode(file_get_contents('php://input'), true) ?: $_POST;
             if ((int)($data['order_item_id'] ?? 0) < 1) {
                 throw new InvalidArgumentException('Pilih item yang akan diubah.');
@@ -680,7 +668,7 @@ class OrderController {
 
         $isAnekaCetak = strtoupper(trim($type)) === 'ANEKA CETAK';
 
-        $stok_kembali = $quantity;
+        $isPackage = !empty($item['product_finishing_price_id']);
         $panjang = 0;
         $lebar = 0;
 
@@ -689,58 +677,19 @@ class OrderController {
             $lebar = (float)$matches[2];
         }
 
-        if ($isAnekaCetak || !empty($item['product_finishing_price_id'])) {
-            $stok_kembali = ProductFinishingPrice::requiresDimensions($product ?? []) && $panjang > 0 && $lebar > 0
-                ? $panjang * $lebar * $quantity : $quantity;
-        } elseif ($unit_type === 'M2' || $unit_type === 'CM2') {
-            $stok_kembali = round(($panjang / 100) * ($lebar / 100) * $quantity, 4);
-        }
-        if (strtoupper($type) === 'SPANDUK') {
-            $stok_kembali = round((($panjang + 5) * ($lebar + 5)) / 10000 * $quantity, 4);
+        $kiloan = $isAnekaCetak || $isPackage ? 0 : ProductPriceTier::weightFromSize($size);
+        $stok_kembali = $this->requiredProductStock($product ?? [], $quantity, $panjang, $lebar, $kiloan, $isPackage);
+        if ($unit_type !== '~') {
+            $this->productModel->addStock($stok_kembali, $product_id);
         }
 
-        if ($isAnekaCetak || !empty($item['product_finishing_price_id'])) {
-            if ($unit_type !== '~') {
-                $this->productModel->addStock($stok_kembali, $product_id);
-            }
-        } else {
-            $this->productModel->addStock($product_id, $stok_kembali);
-        }
-
-        if ($finishing_ids !== '-') {
-            $finishing_array = explode(',', $finishing_ids);
-            foreach ($finishing_array as $fid) {
-                $fid = (int)$fid;
-                if ($fid === 0) {
-                    continue;
-                }
-                if ($isAnekaCetak || !empty($item['product_finishing_price_id'])) {
-                    $stmt = $this->koneksi->prepare("SELECT unit_type FROM finishings WHERE finishing_id = ? AND store_id = ?");
-                    $stmt->bind_param("ii", $fid, $store_id);
-                    $stmt->execute();
-                    $f = $stmt->get_result()->fetch_assoc();
-                    $stmt->close();
-                    if ($f && $f['unit_type'] !== '~') {
-                        $this->productModel->addFinishingStock($quantity, $fid);
-                    }
-                    continue;
-                }
-
-                $fin_product = $this->productModel->getProductById($fid);
-                $fin_type = strtoupper($fin_product['category'] ?? '');
-
-                $stok_kembali_fin = $quantity;
-
-                if ($fin_type === 'FINISHING STIKER A3' || $fin_type === 'FINISHING PHOTO A3') {
-                    $stok_kembali_fin = 0.1536 * $quantity;
-                } elseif ($fin_type === 'FINISHING STIKER PERMETER' || $fin_type === 'FINISHING PHOTO PERMETER') {
-                    $panjang_meter = ($panjang > 20) ? $panjang / 100 : $panjang;
-                    $lebar_meter = ($lebar > 20) ? $lebar / 100 : $lebar;
-                    $stok_kembali_fin = $panjang_meter * $lebar_meter * $quantity;
-                }
-
-                $this->productModel->addFinishingStock($fid, $stok_kembali_fin);
-            }
+        $finishingData = $this->finishingData(
+            $finishing_ids,
+            $isAnekaCetak || $isPackage ? 0 : $panjang,
+            $isAnekaCetak || $isPackage ? 0 : $lebar
+        );
+        foreach ($finishingData['stocks'] as $finishing) {
+            $this->productModel->addFinishingStock($finishing['qty'] * $quantity, $finishing['finishing_id']);
         }
 
         if ($this->orderModel->deleteOrderItem($order_item_id, $store_id)) {
@@ -756,10 +705,6 @@ class OrderController {
 
     public function deleteDiscount() {
         global $store_id;
-        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-            http_response_code(405);
-            send_json_response(false, 'Gunakan POST untuk menghapus diskon.');
-        }
         $input = json_decode(file_get_contents('php://input'), true);
         $data = is_array($input) ? $input : $_POST;
         $order_id = (int)($data['order_id'] ?? 0);
@@ -774,12 +719,8 @@ class OrderController {
             http_response_code(500);
             send_json_response(false, 'Gagal menghapus diskon.');
         }
-        try {
-            updateStoreCache($store_id, 'orders');
-            updateOrderTrigger($store_id, $order_id);
-        } catch (Throwable $e) {
-            error_log('Order discount cache: ' . $e->getMessage());
-        }
+        updateStoreCache($store_id, 'orders');
+        updateOrderTrigger($store_id, $order_id);
         send_json_response(true, 'Diskon produk berhasil dihapus.');
     }
 
@@ -982,39 +923,19 @@ class OrderController {
             if ($bundle) {
                 return $bundle;
             }
-        } catch (InvalidArgumentException $e) {
-            return ['error' => $e->getMessage(), 'status' => 400];
-        }
 
-        if ($product['category'] === 'PAKET INDOOR OUTDOOR') {
-            $nama_pencarian = trim($judul . ' ' . $size);
-            $produk_baru = $this->productModel->getProductByNameAndStore($nama_pencarian, $store_id);
-
-            if ($produk_baru) {
-                $product_id = $produk_baru['product_id'] ?? $produk_baru['product_id'];
-                $product = $produk_baru;
-            } else {
-                return ['error' => "Produk paket ($nama_pencarian) tidak ditemukan", 'status' => 404];
-            }
-        }
-
-        try {
             $variant = (new ProductVariant($this->koneksi))->resolve($store_id, $product, $data);
-        } catch (InvalidArgumentException $e) {
-            return ['error' => $e->getMessage(), 'status' => 400];
-        }
-        if ($variant) {
-            $product['price'] = $variant['price'];
-        }
+            if ($variant) {
+                $product['price'] = $variant['price'];
+            }
 
-        $finishing = trim($data['finishing'] ?? '-');
-        $laserVariant = null;
-        $isAnekaCetak = strtoupper(trim($product['category'])) === 'ANEKA CETAK';
-        if ($isAnekaCetak) {
-            $panjang = $lebar = 0;
-            $size = ProductLaserConversion::normalizeSize($data['size'] ?? '') ?: '-';
-        }
-        try {
+            $finishing = trim($data['finishing'] ?? '-');
+            $laserVariant = null;
+            $isAnekaCetak = strtoupper(trim($product['category'])) === 'ANEKA CETAK';
+            if ($isAnekaCetak) {
+                $panjang = $lebar = 0;
+                $size = ProductLaserConversion::normalizeSize($data['size'] ?? '') ?: '-';
+            }
             if ($isAnekaCetak) {
                 $laserVariant = (new ProductLaserConversion($this->koneksi))->resolve(
                     $store_id, $product_id, $size, $finishing, $data['laser_product_id'] ?? 0
@@ -1022,7 +943,7 @@ class OrderController {
             }
 
             $package = null;
-            if (!$isAnekaCetak && $product['category'] !== 'PAKET INDOOR OUTDOOR') {
+            if (!$isAnekaCetak) {
                 $package = $this->packagePrices->resolve($store_id, $product_id, $finishing, $panjang, $lebar);
             }
         } catch (InvalidArgumentException $e) {
@@ -1055,19 +976,7 @@ class OrderController {
             }
         }
 
-        $stok_butuh = 0;
-        if ($package && !ProductFinishingPrice::requiresDimensions($product)) {
-            // Ukuran paket LASER A3 memilih harga; pemakaian bahan tetap per pcs.
-            $stok_butuh = $quantity;
-        } elseif ($product['category'] === 'DTF' && $panjang > 0) {
-            $stok_butuh = $panjang * $quantity;
-        } elseif ($panjang > 0 && $lebar > 0) {
-            $stok_butuh = $panjang * $lebar * $quantity;
-        } elseif ($kiloan > 0) {
-            $stok_butuh = $kiloan * $quantity;
-        } else {
-            $stok_butuh = $quantity;
-        }
+        $stok_butuh = $this->requiredProductStock($product, $quantity, $panjang, $lebar, $kiloan, (bool)$package);
 
         if ($package) {
             $fData = [
@@ -1135,6 +1044,24 @@ class OrderController {
         ];
         (new ProductPriceTier($this->koneksi))->preview($item, $product, $store_id, $data, $diskon, $package || ($laserVariant && $laserVariant['price'] !== null));
         return $item;
+    }
+
+    private function requiredProductStock($product, $quantity, $panjang, $lebar, $kiloan, $isPackage) {
+        if ($isPackage && !ProductFinishingPrice::requiresDimensions($product)) {
+            // Ukuran paket LASER A3 memilih harga; pemakaian bahan tetap per pcs.
+            return $quantity;
+        }
+        if (($product['category'] ?? '') === 'DTF' && $panjang > 0) {
+            return $panjang * $quantity;
+        }
+        if ($panjang > 0 && $lebar > 0) {
+            return $panjang * $lebar * $quantity;
+        }
+        if ($kiloan > 0) {
+            return $kiloan * $quantity;
+        }
+
+        return $quantity;
     }
 
     private function reduceItemStock($itemData) {
