@@ -10,8 +10,8 @@ try {
 require_once __DIR__ . '/../config/connect.php';
 $isBundleTab = ($_GET['tab'] ?? '') === 'bundles';
 if ($isBundleTab) {
-    require_once __DIR__ . '/../controllers/ProductBundleController.php';
-    $bundlePageData = (new ProductBundleController($koneksi))->getData();
+    require_once __DIR__ . '/../controllers/BundleController.php';
+    $bundlePageData = (new BundleController($koneksi))->getData();
     $data = ['store_id' => $bundlePageData['store'], 'finishings' => []];
 } else {
     require_once __DIR__ . '/../controllers/PackagePriceController.php';

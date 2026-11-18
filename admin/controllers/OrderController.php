@@ -930,7 +930,7 @@ class OrderController {
         }
 
         try {
-            $bundle = (new ProductBundle($this->koneksi))->prepare(
+            $bundle = (new ProductBundleController($this->koneksi))->prepare(
                 $store_id,
                 $product,
                 $data,

@@ -4,7 +4,7 @@ require_once __DIR__ . '/ProductFinishingPriceController.php';
 require_once __DIR__ . '/ProductLaserConversionController.php';
 require_once __DIR__ . '/../models/ProductPromotion.php';
 require_once __DIR__ . '/ProductVariantController.php';
-require_once __DIR__ . '/../models/ProductBundle.php';
+require_once __DIR__ . '/ProductBundleController.php';
 
 class ProductPriceTierController {
     private $db;
@@ -261,7 +261,7 @@ class ProductPriceTierController {
         }
         $product = (int)($input['product_id'] ?? 0);
         $order = (int)($input['order_id'] ?? 0);
-        return (bool)(new ProductBundle($this->db))->find($store, $product) || (bool)$this->rules($store, $product) || (bool)$this->items($store, $order, $product)
+        return (bool)(new ProductBundleController($this->db))->find($store, $product) || (bool)$this->rules($store, $product) || (bool)$this->items($store, $order, $product)
             || (bool)(new ProductPromotion($this->db))->rule($store, $product)
             || !empty($input['product_variant_id']) || (bool)(new ProductVariantController($this->db))->getByProduct($store, $product);
     }

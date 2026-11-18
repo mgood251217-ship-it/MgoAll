@@ -512,7 +512,7 @@ class ProductController {
                     'Ada produk yang tidak tersedia pada cabang sumber. Penyalinan dibatalkan.'
                 );
             }
-            $bundleModel = new ProductBundle($this->koneksi);
+            $bundleModel = new ProductBundleController($this->koneksi);
             $bundleDefinitions = [];
             $sourceLaserRules = (new ProductLaserConversionController($this->koneksi))->getByStore($sourceId);
             $dependencyIds = $ids;
@@ -819,7 +819,7 @@ class ProductController {
             }
             $products = array_column($products, null, 'product_id');
             $target = $products[$targetId];
-            $bundleModel = new ProductBundle($this->koneksi);
+            $bundleModel = new ProductBundleController($this->koneksi);
             foreach ($allIds as $id) if ($bundleModel->find($storeId,$id)) throw new InvalidArgumentException('Produk paket gabungan dikelola melalui Harga Paket; tidak dimigrasikan sebagai produk biasa.');
             $finishings = [];
             if ($finishingIds) {

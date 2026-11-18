@@ -145,8 +145,8 @@ switch ($action) {
         break;
 
     case 'save_product_bundle':
-        require_once __DIR__ . '/../controllers/ProductBundleController.php';
-        (new ProductBundleController($koneksi))->save();
+        require_once __DIR__ . '/../controllers/BundleController.php';
+        (new BundleController($koneksi))->save();
         break;
 
     case 'save_package_price':

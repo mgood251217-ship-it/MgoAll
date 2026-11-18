@@ -284,7 +284,7 @@ class OrderController {
             if (!$order) throw new Exception("Order tidak ditemukan.");
             $store_id = $order['store_id'];
 
-            (new ProductBundle($this->koneksi))->refundOrderStocks($store_id,$order_id);
+            (new ProductBundleController($this->koneksi))->refundOrderStocks($store_id,$order_id);
             $this->koneksi->query("DELETE FROM diskon_order_items WHERE order_id = $order_id");
             $this->koneksi->query("DELETE FROM order_items WHERE order_id = $order_id");
             $this->koneksi->query("UPDATE orders SET total = 0 WHERE order_id = $order_id");
@@ -585,7 +585,7 @@ class OrderController {
         }
 
         try {
-            $bundle = (new ProductBundle($this->koneksi))->prepare($store_id, $product, $data,
+            $bundle = (new ProductBundleController($this->koneksi))->prepare($store_id, $product, $data,
                 function ($child) use ($store_id) { return $this->_prepareItemData($child, $store_id, true); });
             if ($bundle) return $bundle;
         } catch (InvalidArgumentException $e) { return ['error' => $e->getMessage(), 'status' => 400]; }

@@ -3,7 +3,7 @@ require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/ProductFinishingPriceController.php';
 require_once __DIR__ . '/ProductLaserConversionController.php';
 require_once __DIR__ . '/ProductVariantController.php';
-require_once __DIR__ . '/../models/ProductBundle.php';
+require_once __DIR__ . '/ProductBundleController.php';
 require_once __DIR__ . '/ProductPriceTierController.php';
 require_once __DIR__ . '/../models/ProductPromotion.php';
 require_once __DIR__ . '/../functions/helpers.php';
@@ -82,7 +82,7 @@ class ProductController {
 
     public function getProductBundles() {
         global $store_id;
-        $rows = (new ProductBundle($this->db))->getCatalog($store_id);
+        $rows = (new ProductBundleController($this->db))->getCatalog($store_id);
         send_json_response(true, 'Paket gabungan produk', $rows);
     }
 
@@ -362,7 +362,7 @@ class ProductController {
         $productIds = array_column($data, 'product_id');
         $packageCounts = $this->packagePrices->countsForProducts($store_id, $productIds);
         $laserCounts = $this->laserConversions->countsForProducts($store_id, $productIds);
-        $bundleCounts = (new ProductBundle($this->db))->countsForProducts($store_id, $productIds);
+        $bundleCounts = (new ProductBundleController($this->db))->countsForProducts($store_id, $productIds);
         foreach ($data as &$product) {
             $id = $product['product_id'];
             $product['package_count'] = (int)($packageCounts[$id] ?? 0);

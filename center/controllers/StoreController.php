@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../../admin/controllers/ProductVariantController.php';
-require_once __DIR__ . '/../../admin/models/ProductBundle.php';
+require_once __DIR__ . '/../../admin/controllers/ProductBundleController.php';
 class StoreController {
     private $koneksi;
 
@@ -202,7 +202,7 @@ class StoreController {
                 foreach ($combined as $component) $this->insertCatalogSetting('product_variant_components', $component);
             }
         }
-        $bundleModel = new ProductBundle($this->koneksi);
+        $bundleModel = new ProductBundleController($this->koneksi);
         foreach ($bundleModel->getByStore($sourceId) as $bundle) {
             $sourceProduct = (int)$bundle['product_id'];
             if ($bundleModel->copyToStore($sourceId, $sourceProduct, $targetId, $mapId($productMap, $sourceProduct, 'produk paket'), $productMap, $variantMap, $laserMap)) {

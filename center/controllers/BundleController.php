@@ -1,10 +1,10 @@
 <?php
-require_once __DIR__ . '/../../admin/models/ProductBundle.php';
+require_once __DIR__ . '/../../admin/controllers/ProductBundleController.php';
 require_once __DIR__ . '/ProductHistoryController.php';
 require_once __DIR__ . '/AdministratorAccessController.php';
 require_once __DIR__ . '/../functions/cacheHelper.php';
 
-class ProductBundleController {
+class BundleController {
     private $db;
 
     public function __construct($db) {
@@ -41,7 +41,7 @@ class ProductBundleController {
         if ($store && !in_array($store, array_column($stores, 'store_id'))) {
             throw new InvalidArgumentException('Anda tidak memiliki akses ke toko ini.');
         }
-        $model = new ProductBundle($this->db);
+        $model = new ProductBundleController($this->db);
         $ready = $model->isAvailable();
         $products = $variants = $rules = $bundles = $warnings = [];
         if ($store && $ready) {
@@ -138,7 +138,7 @@ class ProductBundleController {
             ) {
                 throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
             }
-            $model = new ProductBundle($this->db);
+            $model = new ProductBundleController($this->db);
             if (!$model->isAvailable()) {
                 throw new InvalidArgumentException('Pengaturan paket gabungan belum tersedia.');
             }

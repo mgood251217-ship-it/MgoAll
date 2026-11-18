@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/../controllers/ProductBundleController.php';
+require_once __DIR__ . '/../controllers/BundleController.php';
 
-$bundleData = $bundlePageData ?? (new ProductBundleController($koneksi))->getData();
+$bundleData = $bundlePageData ?? (new BundleController($koneksi))->getData();
 $canBundle = (new AdministratorAccessController($koneksi))->can('save_product_bundle');
 $_SESSION['product_bundle_csrf'] = $_SESSION['product_bundle_csrf'] ?? bin2hex(random_bytes(32));
 $editing = null;
