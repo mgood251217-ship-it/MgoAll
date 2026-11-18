@@ -853,6 +853,24 @@ class OrderController {
         updateOrderTrigger($store_id, $order_id);
     }
 
+    public function requiredProductStock($product, $quantity, $panjang, $lebar, $kiloan, $isPackage) {
+        if ($isPackage && !ProductFinishingPrice::requiresDimensions($product)) {
+            // Ukuran paket LASER A3 memilih harga; pemakaian bahan tetap per pcs.
+            return $quantity;
+        }
+        if (($product['category'] ?? '') === 'DTF' && $panjang > 0) {
+            return $panjang * $quantity;
+        }
+        if ($panjang > 0 && $lebar > 0) {
+            return $panjang * $lebar * $quantity;
+        }
+        if ($kiloan > 0) {
+            return $kiloan * $quantity;
+        }
+
+        return $quantity;
+    }
+
     private function requestData() {
         global $store_id;
 
@@ -1044,24 +1062,6 @@ class OrderController {
         ];
         (new ProductPriceTier($this->koneksi))->preview($item, $product, $store_id, $data, $diskon, $package || ($laserVariant && $laserVariant['price'] !== null));
         return $item;
-    }
-
-    private function requiredProductStock($product, $quantity, $panjang, $lebar, $kiloan, $isPackage) {
-        if ($isPackage && !ProductFinishingPrice::requiresDimensions($product)) {
-            // Ukuran paket LASER A3 memilih harga; pemakaian bahan tetap per pcs.
-            return $quantity;
-        }
-        if (($product['category'] ?? '') === 'DTF' && $panjang > 0) {
-            return $panjang * $quantity;
-        }
-        if ($panjang > 0 && $lebar > 0) {
-            return $panjang * $lebar * $quantity;
-        }
-        if ($kiloan > 0) {
-            return $kiloan * $quantity;
-        }
-
-        return $quantity;
     }
 
     private function reduceItemStock($itemData) {

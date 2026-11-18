@@ -1,313 +1,385 @@
 <?php
 require_once __DIR__ . '/../models/Failure.php';
-require_once __DIR__ . '/../functions/helpers.php';
-require_once __DIR__ . '/../models/Product.php'; 
+require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/../controllers/OrderController.php';
+require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../functions/cacheHelpers.php';
-        
-class FailureController{
+
+class FailureController {
     private $koneksi;
     private $productModel;
     private $orderController;
     private $failureModel;
 
-    public function __construct($koneksi){
+    public function __construct($koneksi) {
         $this->koneksi = $koneksi;
         $this->failureModel = new Failure($koneksi);
         $this->orderController = new OrderController($koneksi);
         $this->productModel = new Product($koneksi);
     }
 
-    public function index(){
+    public function index() {
         global $store_id;
         $start_date = $_GET['start_date'] ?? date('Y-m-d');
         $end_date = $_GET['end_date'] ?? date('Y-m-d');
 
-        $sql = "SELECT f.*, m.name AS nama_mesin, m.type AS machine_type, u.name AS operator_name
-                FROM failure f 
-                LEFT JOIN machine m ON f.machine_id = m.machine_id
-                LEFT JOIN users u ON f.user_id = u.user_id
-                WHERE f.store_id = ? AND f.date BETWEEN ? AND ?
-                ORDER BY f.date DESC";
+        $stmt = $this->koneksi->prepare("
+            SELECT f.*, m.name AS nama_mesin, m.type AS machine_type, u.name AS operator_name
+            FROM failure f
+            LEFT JOIN machine m ON f.machine_id = m.machine_id
+            LEFT JOIN users u ON f.user_id = u.user_id
+            WHERE f.store_id = ? AND f.date BETWEEN ? AND ?
+            ORDER BY f.date DESC
+        ");
+        $stmt->bind_param('iss', $store_id, $start_date, $end_date);
+        $stmt->execute();
+        $items = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
 
-        $stmt2 = $this->koneksi->prepare($sql);
-        $stmt2->bind_param("iss", $store_id, $start_date, $end_date);
-        $stmt2->execute();  
-        $items = $stmt2->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt2->close();
-
-        $product_ids = [];
-        $finishing_ids = [];
-
+        $productIds = array_values(array_unique(array_filter(array_column($items, 'product_id'))));
+        $products = $this->getProducts($productIds, $store_id);
+        $finishingIds = [];
         foreach ($items as $item) {
-            if (!empty($item['product_id'])) {
-                $product_ids[$item['product_id']] = true;
-            }
-            if (!empty($item['finishing']) && $item['finishing'] !== '-') {
-                $fids = explode(',', $item['finishing']);
-                foreach ($fids as $fid) {
-                    $fid = trim($fid);
-                    if (ctype_digit($fid)) {
-                        $finishing_ids[$fid] = true;
-                    }
-                }
-            }
+            $finishingIds = array_merge($finishingIds, ProductLaserConversion::finishingIds($item['finishing'] ?? ''));
         }
-
-        $products_map = [];
-        if (!empty($product_ids)) {
-            $ids_keys = array_keys($product_ids);
-            $placeholders = implode(',', array_fill(0, count($ids_keys), '?'));
-            $stmt_prod = $this->koneksi->prepare("SELECT p.product_id, p.name, unit_type, c.name AS category, p.failed_price FROM products p LEFT JOIN categories c ON p.category_id = c.category_id WHERE p.product_id IN ($placeholders)");
-            $stmt_prod->bind_param(str_repeat('i', count($ids_keys)), ...$ids_keys);
-            $stmt_prod->execute();
-            $res_prod = $stmt_prod->get_result();
-            while ($row = $res_prod->fetch_assoc()) {
-                $products_map[$row['product_id']] = $row;
-            }
-            $stmt_prod->close();
-        }
-
-        $finishings_map = [];
-        if (!empty($finishing_ids)) {
-            $fids_keys = array_keys($finishing_ids);
-            $placeholders = implode(',', array_fill(0, count($fids_keys), '?'));
-            $stmt_finish = $this->koneksi->prepare("SELECT finishing_id, name, failed_price FROM finishings WHERE finishing_id IN ($placeholders)");
-            $stmt_finish->bind_param(str_repeat('i', count($fids_keys)), ...$fids_keys);
-            $stmt_finish->execute();
-            $res_finish = $stmt_finish->get_result();
-            while ($row = $res_finish->fetch_assoc()) {
-                $finishings_map[$row['finishing_id']] = $row;
-            }
-            $stmt_finish->close();
-        }
+        $finishings = $this->getFinishings(array_values(array_unique($finishingIds)), $store_id);
 
         foreach ($items as &$item) {
-            $finishing_names = [];
-            $finishing_price = 0;
-            
-            if (!empty($item['finishing']) && $item['finishing'] !== '-') {
-                $fids = explode(',', $item['finishing']);
-                foreach ($fids as $fid) {
-                    $fid = trim($fid);
-                    if (ctype_digit($fid) && isset($finishings_map[$fid])) {
-                        $finishing_names[] = $finishings_map[$fid]['name'];
-                        $finishing_price += (int)($finishings_map[$fid]['failed_price'] ?? 0);
-                    }
+            $finishingNames = [];
+            $finishingPrice = 0;
+            foreach (ProductLaserConversion::finishingIds($item['finishing'] ?? '') as $id) {
+                if (isset($finishings[$id])) {
+                    $finishingNames[] = $finishings[$id]['name'];
+                    $finishingPrice += (float)$finishings[$id]['failed_price'];
                 }
             }
-            
-            $item['finishing_names_str'] = empty($finishing_names) ? '-' : implode(', ', $finishing_names);
-            
-            $hargaSatuan = 0;
-            $pid = $item['product_id'];
-            if ($pid != 0 && isset($products_map[$pid])) {
-                $prod = $products_map[$pid];
-                $unit_type = $prod['unit_type'];
-                $type = $prod['category'];
-                $failed_price = (float)$prod['failed_price'];
-                $product_name = $prod['name'];
-                $size = $item['size'];
-                
-                $failed_price += $finishing_price;
-                
-                if ($unit_type == 'M2') {
-                    if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $size, $match)) {
-                        $p = floatval($match[1]);
-                        $l = floatval($match[2]);
-                        if ($type == 'DTF') {
-                            $hargaSatuan = $p * $failed_price;
-                        } else {
-                            $hargaSatuan = $p * $l * $failed_price;
-                        }
-                    }
-                } elseif ($unit_type == 'PCS') {
-                    $hargaSatuan = $failed_price;
-                    if (in_array($type, ['TEKSTIL', 'PAKAIAN', 'JERSEY'], true)) {
-                        $harga_jersey = 0;
-                        if ($size === '5XL') {
-                            $harga_jersey += 40000;
-                        } elseif ($size === '4XL') {
-                            $harga_jersey += 30000;
-                        } elseif ($size === '3XL') {
-                            $harga_jersey += 20000;
-                        } elseif ($size === '2XL') {
-                            $harga_jersey += 10000;
-                        }
-                        $hargaSatuan += $harga_jersey;
-                    } elseif ($type == 'SUBLIM' && str_contains($product_name, 'BAHAN')) {
-                        if (preg_match('/^([\d.]+)\s*KG$/i', $size, $match)) {
-                            $hargaSatuan *= (float)$match[1];
-                        } else {
-                            $kata = explode(" ", $size);
-                            if (isset($kata[0]) && is_numeric($kata[0])) {
-                                $hargaSatuan *= (float)$kata[0];
-                            }
-                        }
-                    }
-                }
-            }
-            
+            $product = $products[$item['product_id']] ?? null;
+            $item['finishing_names_str'] = $finishingNames ? implode(', ', $finishingNames) : '-';
             $item['formatted_date'] = date('d M Y', strtotime($item['date']));
-            $item['total_loss'] = $hargaSatuan * (int)$item['quantity'];
-            
-            $details = [];
-            if (!empty($item['failure_design'])) $details[] = "Desain: " . $item['failure_design'];
-            if (!empty($item['failure_print'])) $details[] = "Cetak: " . $item['failure_print'];
-            if (!empty($item['failure_finishing'])) $details[] = "Finishing: " . $item['failure_finishing'];
-            if (!empty($item['failure_cause'])) $details[] = "Penyebab: " . $item['failure_cause'];
-            if (!empty($item['failure_cause_other'])) $details[] = "Lainnya: " . $item['failure_cause_other'];
-            $item['detail_gagal'] = empty($details) ? '-' : implode('<br>', $details);
+            $item['total_loss'] = $product
+                ? $this->calculateLoss($product, $finishingPrice, $item['quantity'], $item['size'])->amount
+                : 0;
+            $item['detail_gagal'] = $this->failureDetails($item);
         }
         unset($item);
 
         return $items;
     }
 
-    public function create(){
-        error_reporting(E_ALL);
-        ini_set('display_errors', 1);
-
+    public function create() {
         global $store_id;
+        $transaction = $saved = false;
 
-        header('Content-Type: application/json');
+        try {
+            $data = $this->requestData($this->readRequest(), $store_id);
+            if ($data['product_id'] <= 0 || $data['quantity'] <= 0) {
+                throw new InvalidArgumentException('Pilih produk dan isi jumlah lebih dari 0.');
+            }
 
-        $request = $_POST;
-        if (empty($request)) {
-            $rawInput = trim(file_get_contents('php://input'));
-            if ($rawInput !== '') {
-                $decodedInput = json_decode($rawInput, true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($decodedInput)) {
-                    $request = $decodedInput;
+            if (!$this->koneksi->begin_transaction()) {
+                throw new RuntimeException('Gagal memulai transaksi kegagalan.');
+            }
+            $transaction = true;
+            $product = $this->lockProduct($data['product_id'], $store_id);
+            if (!$product) {
+                throw new InvalidArgumentException('Produk tidak ditemukan di toko ini.');
+            }
+            $item = $this->prepareFailureItem($product, $data, $store_id);
+            $data['size'] = $item['size'];
+            $data['finishing_str'] = $item['finishing_str'];
+
+            if (!$this->failureModel->createFailure($data)) {
+                throw new RuntimeException('Gagal menyimpan kegagalan.');
+            }
+            if ($product['unit_type'] !== '~') {
+                if ((float)$product['stock'] < $item['stock']) {
+                    throw new InvalidArgumentException('Stok produk tidak mencukupi.');
+                }
+                if (!$this->productModel->reduceStock($item['stock'], $data['product_id'])) {
+                    throw new RuntimeException('Gagal mengurangi stok produk.');
+                }
+            }
+            foreach ($item['finishing_stocks'] as $finishing) {
+                if (!$this->productModel->reduceFinishingStock($finishing['quantity'], $finishing['id'])) {
+                    throw new RuntimeException('Gagal mengurangi stok finishing.');
+                }
+            }
+            if (!$this->koneksi->commit()) {
+                throw new RuntimeException('Gagal menyimpan transaksi kegagalan.');
+            }
+            $transaction = false;
+            $saved = true;
+            foreach (['failures', 'products', 'finishings'] as $module) {
+                updateStoreCache($store_id, $module);
+            }
+        } catch (Throwable $e) {
+            if ($transaction) {
+                $this->koneksi->rollback();
+            }
+            if ($saved) {
+                error_log('Failure cache: ' . $e->getMessage());
+                send_json_response(true, 'Kegagalan tersimpan. Cache belum berhasil diperbarui, muat ulang data.');
+            }
+            http_response_code($e instanceof InvalidArgumentException ? 400 : 500);
+            if (!($e instanceof InvalidArgumentException)) {
+                error_log('Create failure: ' . $e->getMessage());
+            }
+            send_json_response(false, $e instanceof InvalidArgumentException ? $e->getMessage() : 'Gagal menyimpan kegagalan.');
+        }
+
+        send_json_response(true, 'Item berhasil ditambahkan.');
+    }
+
+    public function delete() {
+        global $store_id;
+        $failure_id = $_POST['failure_id'] ?? '';
+        if ($this->failureModel->deleteFailure($failure_id)) {
+            updateStoreCache($store_id, 'failures');
+            send_json_response(true, 'Berhasil menghapus kegagalan', $failure_id);
+        } else {
+            send_json_response(false, 'Gagal menghapus kegagalan');
+        }
+    }
+
+    public function updateInfo() {
+        global $store_id;
+        $data = (object)[
+            'failure_id' => (int)($_POST['failure_id'] ?? 0),
+            'info' => trim($_POST['info'] ?? ''),
+            'store_id' => $store_id
+        ];
+        if ($this->failureModel->updateFailureInfo($data)) {
+            updateStoreCache($store_id, 'failures');
+            send_json_response(true, 'Kegagalan berhasil diperbaharui');
+        } else {
+            send_json_response(false, 'Gagal memperbaharui kegagalan');
+        }
+    }
+
+    private function readRequest() {
+        if ($_POST) {
+            return $_POST;
+        }
+        $data = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($data)) {
+            throw new InvalidArgumentException('Data kegagalan tidak valid.');
+        }
+
+        return $data;
+    }
+
+    private function requestValue(array $request, string $key, $default = null) {
+        $value = array_key_exists($key, $request) ? $request[$key] : $default;
+        if ($value !== null && !is_scalar($value)) {
+            throw new InvalidArgumentException('Data ' . $key . ' tidak valid.');
+        }
+
+        return $value;
+    }
+
+    private function requestArray(array $request, string $key): array {
+        $value = $request[$key] ?? [];
+        if (!is_array($value)) {
+            $value = $value === '' ? [] : explode(',', (string)$value);
+        }
+        foreach ($value as $item) {
+            if (!is_scalar($item)) {
+                throw new InvalidArgumentException('Data ' . $key . ' tidak valid.');
+            }
+        }
+
+        return $value;
+    }
+
+    private function requestData($request, $store_id) {
+        $date = trim((string)$this->requestValue($request, 'date', ''));
+        if ($date !== '' && strtotime($date) === false) {
+            throw new InvalidArgumentException('Tanggal kegagalan tidak valid.');
+        }
+        $data = [
+            'store_id' => $store_id,
+            'user_id_fail' => (int)$this->requestValue($request, 'user_id', 0),
+            'product_id' => (int)$this->requestValue($request, 'product_id', 0),
+            'machine_id' => (int)$this->requestValue($request, 'machine_id', 0),
+            'quantity' => (int)$this->requestValue($request, 'quantity', 1),
+            'date' => $date === '' ? date('Y-m-d') : date('Y-m-d', strtotime($date)),
+        ];
+        foreach (['judul', 'nomorator', 'customer_name', 'loss_burden', 'info', 'failure_cause_other'] as $field) {
+            $data[$field] = trim((string)$this->requestValue($request, $field, ''));
+        }
+        $data['size'] = trim((string)$this->requestValue($request, 'size', '-'));
+        $data['finishing_str'] = trim((string)$this->requestValue($request, 'finishing', '-'));
+        foreach (['panjang', 'lebar', 'kiloan', 'waktu'] as $field) {
+            $data[$field] = (float)$this->requestValue($request, $field, 0);
+            if (!is_finite($data[$field]) || $data[$field] < 0) {
+                throw new InvalidArgumentException('Ukuran, berat, dan waktu harus berupa angka positif.');
+            }
+        }
+        foreach (['failure_design', 'failure_print', 'failure_finishing', 'failure_cause'] as $field) {
+            $data[$field] = implode(',', $this->requestArray($request, $field));
+        }
+
+        return $data;
+    }
+
+    private function getProducts($ids, $store_id) {
+        if (!$ids) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->koneksi->prepare("SELECT p.*, c.name AS category
+            FROM products p LEFT JOIN categories c ON p.category_id = c.category_id AND c.store_id = p.store_id
+            WHERE p.store_id = ? AND p.product_id IN ($placeholders)");
+        $params = array_merge([$store_id], $ids);
+        $stmt->bind_param(str_repeat('i', count($params)), ...$params);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        return array_column($rows, null, 'product_id');
+    }
+
+    private function getFinishings($ids, $store_id, $lock = false) {
+        if (!$ids) {
+            return [];
+        }
+        sort($ids, SORT_NUMERIC);
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "SELECT finishing_id, name, unit_type, failed_price, stock FROM finishings
+            WHERE store_id = ? AND finishing_id IN ($placeholders) ORDER BY finishing_id";
+        if ($lock) {
+            $sql .= ' FOR UPDATE';
+        }
+        $stmt = $this->koneksi->prepare($sql);
+        $params = array_merge([$store_id], $ids);
+        $stmt->bind_param(str_repeat('i', count($params)), ...$params);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        return array_column($rows, null, 'finishing_id');
+    }
+
+    private function lockProduct($product_id, $store_id) {
+        $stmt = $this->koneksi->prepare("SELECT p.*, c.name AS category
+            FROM products p LEFT JOIN categories c ON p.category_id = c.category_id AND c.store_id = p.store_id
+            WHERE p.product_id = ? AND p.store_id = ? FOR UPDATE");
+        $stmt->bind_param('ii', $product_id, $store_id);
+        $stmt->execute();
+        $product = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        return $product;
+    }
+
+    private function prepareFailureItem($product, $data, $store_id) {
+        $size = $data['size'];
+        [$panjang, $lebar, $waktu, $kiloan] = $this->parseSize($product, $size);
+        $panjang = $data['panjang'] ?: $panjang;
+        $lebar = $data['lebar'] ?: $lebar;
+        $kiloan = $data['kiloan'] ?: $kiloan;
+        $waktu = $data['waktu'] ?: $waktu;
+        if ($panjang > 0 && $lebar > 0) {
+            $size = "{$panjang}x{$lebar}";
+        } elseif ($kiloan > 0) {
+            $size = "{$kiloan} KG";
+        }
+        $isAnekaCetak = strtoupper(trim($product['category'] ?? '')) === 'ANEKA CETAK';
+        $package = null;
+        if ($isAnekaCetak) {
+            $panjang = $lebar = $kiloan = $waktu = 0;
+            $size = ProductLaserConversion::normalizeSize($data['size']) ?: '-';
+        } else {
+            $package = (new ProductFinishingPrice($this->koneksi))->resolve(
+                $store_id, $data['product_id'], $data['finishing_str'], $panjang, $lebar
+            );
+            if ($package) {
+                $kiloan = $waktu = 0;
+                if (empty($package['requires_size'])) {
+                    $panjang = $lebar = 0;
+                    $size = '-';
                 }
             }
         }
-
-        function requestValue(array $request, string $key, $default = null) {
-            return array_key_exists($key, $request) ? $request[$key] : $default;
+        $ids = ProductLaserConversion::finishingIds($data['finishing_str']);
+        $finishings = $this->getFinishings($ids, $store_id, true);
+        if (count($finishings) !== count($ids)) {
+            throw new InvalidArgumentException('Finishing tidak ditemukan di toko ini.');
         }
-
-        function requestArray(array $request, string $key): array {
-            $value = requestValue($request, $key, []);
-            if (is_array($value)) {
-                return $value;
+        $finishingPrice = 0;
+        $finishingStocks = [];
+        $finishingUsage = $panjang > 0 && $lebar > 0 && !$package ? $panjang * $lebar : 1;
+        foreach ($finishings as $id => $finishing) {
+            $finishingPrice += (float)$finishing['failed_price'];
+            if ($finishing['unit_type'] === '~') {
+                continue;
             }
-            if ($value === '' || $value === null) {
-                return [];
+            $quantity = $finishingUsage * $data['quantity'];
+            if ((float)$finishing['stock'] < $quantity) {
+                throw new InvalidArgumentException('Stok finishing tidak mencukupi.');
             }
-            return explode(',', (string) $value);
+            $finishingStocks[] = ['id' => $id, 'quantity' => $quantity];
         }
+        $pricing = $this->orderController->calculatePricingDetails(
+            $product, (float)$product['failed_price'], $finishingPrice,
+            $data['quantity'], $panjang, $lebar, $waktu, $kiloan, $size
+        );
 
-        $user_id_fail  = (int) requestValue($request, 'user_id', 0);
-        $product_id    = (int) requestValue($request, 'product_id', 0);
-        $judul         = trim((string) requestValue($request, 'judul', ''));
-        $size          = trim((string) requestValue($request, 'size', '-'));
-        $quantity      = (int) requestValue($request, 'quantity', 1);
-        $finishing     = trim((string) requestValue($request, 'finishing', '-'));
-        $panjang       = (float) requestValue($request, 'panjang', 0);
-        $lebar         = (float) requestValue($request, 'lebar', 0);
-        $kiloan        = (float) requestValue($request, 'kiloan', 0);
-        $nomorator     = trim((string) requestValue($request, 'nomorator', ''));
-        $customer_name = trim((string) requestValue($request, 'customer_name', ''));
-        $machine_id    = (int) requestValue($request, 'machine_id', 0);
-        $loss_burden   = trim((string) requestValue($request, 'loss_burden', ''));
-        $info          = trim((string) requestValue($request, 'info', ''));
-        $dateRaw       = trim((string) requestValue($request, 'date', ''));
-        $date          = $dateRaw !== '' ? date('Y-m-d', strtotime($dateRaw)) : date('Y-m-d');
-
-        $failure_design = implode(',', requestArray($request, 'failure_design'));
-        $failure_print = implode(',', requestArray($request, 'failure_print'));
-        $failure_finishing = implode(',', requestArray($request, 'failure_finishing'));
-        $failure_cause = implode(',', requestArray($request, 'failure_cause'));
-        $failure_cause_other = trim((string) requestValue($request, 'failure_cause_other', ''));
-
-        if ($kiloan > 0) {
-            $size = rtrim(rtrim(number_format($kiloan, 2, '.', ''), '0'), '.') . 'KG';
-        } elseif ($panjang > 0 && $lebar > 0) {
-            $size = "{$panjang}x{$lebar}";
-        }
-
-        $product = $this->productModel->getProductById($product_id);
-
-        $unit_type = $product['unit_type'];
-
-        $stok_butuh = 0;
-        if ($panjang > 0 && $lebar > 0) {
-            $stok_butuh = $panjang * $lebar * $quantity;
-        } elseif ($kiloan > 0) {
-            $stok_butuh = $kiloan * $quantity;
-        } else {
-            $stok_butuh = $quantity;
-        }
-
-        $fData = $this->orderController->finishingData($finishing, $panjang, $lebar);
-        $finishing_ids = $fData['ids'] ?? [];
-        $finishing_str = count($finishing_ids) ? implode(',', $finishing_ids) : '-';
-
-        $data = [
-            'user_id_fail' => $user_id_fail,
-            'store_id' => $store_id,
-            'nomorator' => $nomorator,
-            'customer_name' => $customer_name,
-            'machine_id' => $machine_id,
-            'product_id' => $product_id,
-            'judul' => $judul,
-            'size' => $size,
-            'quantity' => $quantity,
-            'finishing_str' => $finishing_str,
-            'date' => $date,
-            'failure_design' => $failure_design,
-            'failure_print' => $failure_print,
-            'failure_finishing' => $failure_finishing,
-            'failure_cause' => $failure_cause,
-            'failure_cause_other' => $failure_cause_other,
-            'loss_burden' => $loss_burden,
-            'info' => $info
+        return [
+            'size' => $pricing->size,
+            'finishing_str' => $ids ? implode(',', $ids) : '-',
+            'stock' => $this->orderController->requiredProductStock(
+                $product, $data['quantity'], $panjang, $lebar, $kiloan, (bool)$package
+            ),
+            'finishing_stocks' => $finishingStocks
         ];
-
-        if ($this->failureModel->createFailure($data)) {
-            if ($unit_type !== '~') {
-                $this->productModel->updateStock($product_id, $stok_butuh);
-            }
-            updateStoreCache($store_id, 'failures');
-            send_json_response(true, "Item berhasil ditambahkan.");
-        } else {
-            send_json_response(false, "Gagal Insert Data: ");
-        }
     }
 
-    public function delete(){
-        global $store_id;
-        $failure_id   = isset($_POST['failure_id']) ? $_POST['failure_id'] : '';
-        if($this->failureModel->deleteFailure($failure_id)){
-            updateStoreCache($store_id, 'failures');
-            send_json_response(true, "Berhasil menghapus kegagalan", $failure_id);
-        }else {
-            send_json_response(false, "Gagal menghapus kegagalan");
-        }
+    private function calculateLoss($product, $finishingPrice, $quantity, $size) {
+        [$panjang, $lebar, $waktu, $kiloan] = $this->parseSize($product, $size);
+
+        return $this->orderController->calculatePricingDetails(
+            $product, (float)$product['failed_price'], $finishingPrice,
+            (int)$quantity, $panjang, $lebar, $waktu, $kiloan, $size
+        );
     }
 
-    public function updateInfo(){
-        global $store_id;
-        $failure_id = (int)($_POST['failure_id'] ?? 0);
-        $info = trim($_POST['info'] ?? '');
-
-        $data = (object)[
-            'failure_id' => $failure_id,
-            'info' => $info,
-            'store_id' => $store_id
-        ];
-
-        if ($this->failureModel->updateFailureInfo($data)) {
-            updateStoreCache($store_id, 'failures');
-            send_json_response(true, "Kegagalan berhasil diperbaharui");
-        }else {
-            send_json_response(false, "Gagal memperbaharui kegagalan");
+    private function parseSize($product, $size) {
+        $panjang = $lebar = $waktu = $kiloan = 0;
+        if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $size, $matches)) {
+            $panjang = (float)$matches[1];
+            $lebar = (float)$matches[2];
         }
+        if (ProductPriceTier::isWeightMaterial($product)) {
+            $kiloan = ProductPriceTier::weightFromSize($size);
+            if (!$kiloan && preg_match('/^([\d.]+)(?:\s|$)/', $size, $matches)) {
+                $kiloan = (float)$matches[1];
+            }
+        }
+        if (preg_match('/^(\d+) Jam (\d+) Menit$/i', $size, $matches)) {
+            $waktu = (int)$matches[1] * 60 + (int)$matches[2];
+        } elseif (preg_match('/^([\d.]+)\s*Menit$/i', $size, $matches)) {
+            $waktu = (float)$matches[1];
+        }
+
+        return [$panjang, $lebar, $waktu, $kiloan];
+    }
+
+    private function failureDetails($item) {
+        $labels = [
+            'failure_design' => 'Desain',
+            'failure_print' => 'Cetak',
+            'failure_finishing' => 'Finishing',
+            'failure_cause' => 'Penyebab',
+            'failure_cause_other' => 'Lainnya'
+        ];
+        $details = [];
+        foreach ($labels as $field => $label) {
+            if (!empty($item[$field])) {
+                $details[] = $label . ': ' . $item[$field];
+            }
+        }
+
+        return $details ? implode('<br>', $details) : '-';
     }
 }
-
-
-
-
-?>

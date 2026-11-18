@@ -12,7 +12,7 @@ class Failure {
             (user_id, store_id, nomorator, customer_name, machine_id, product_id, judul, size, quantity, finishing, date, failure_design, failure_print, failure_finishing, failure_cause, failure_cause_other, loss_burden, info) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param(
-            "iissiisssissssssss", 
+            "iissiississsssssss",
             $data['user_id_fail'], 
             $data['store_id'], 
             $data['nomorator'], 
