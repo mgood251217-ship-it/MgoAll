@@ -28,7 +28,7 @@ if ($data['selectedArchive'] && !in_array((int)$data['selectedArchive']['order_i
     $selected['event_date'] = $selected['deleted_at'];
     array_unshift($archives, $selected);
 }
-$money = function ($value) { return 'Rp ' . number_format((float)$value, 0, ',', '.'); };
+$money = function ($value) { return format_rupiah($value); };
 ?>
 <div class="page-header"><h2>Aktivitas</h2></div>
 <div class="filter-card"><form method="get" action="/activities" class="filter-form">

@@ -63,7 +63,7 @@ $totalPiutang = $piutangData['total'] ?? 0;
 <div class="top-info-grid">
     <div class="info-box migrated-style-30">
         <span class="migrated-style-28">Total Piutang Berjalan</span>
-        <strong class="migrated-style-81">Rp <?= number_format($totalPiutang, 0, ',', '.') ?></strong>
+        <strong class="migrated-style-81"><?= format_rupiah($totalPiutang) ?></strong>
     </div>
 </div>
 
@@ -104,8 +104,8 @@ $totalPiutang = $piutangData['total'] ?? 0;
                             <td><?= date('d M Y, H:i', strtotime($row['date'])) ?></td>
                             <td><strong><?= htmlspecialchars($row['nomorator']) ?></strong></td>
                             <td><?= htmlspecialchars(title_case($row['nama'])) ?></td>
-                            <td>Rp <?= number_format($row['total'], 0, ',', '.') ?></td>
-                            <td class="migrated-style-84">Rp <?= number_format($row['hutang'], 0, ',', '.') ?></td>
+                            <td><?= format_rupiah($row['total']) ?></td>
+                            <td class="migrated-style-84"><?= format_rupiah($row['hutang']) ?></td>
                             <td>
                                 <div class="badge-info"><?= htmlspecialchars($row['op_initial'] ?: '-') ?></div>
                             </td>

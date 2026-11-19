@@ -62,11 +62,11 @@ class ReportController {
         $stmt->close();
 
         $jumlahPaymentHarian = (int)($row['jml_harian'] ?? 0);
-        $pendapatanHarian = (int)($row['nom_harian'] ?? 0);
+        $pendapatanHarian = (float)($row['nom_harian'] ?? 0);
         $jumlahPaymentBulanan = (int)($row['jml_bulanan'] ?? 0);
-        $pendapatanBulanan = (int)($row['nom_bulanan'] ?? 0);
-        $cashTotal = (int)($row['cash_total'] ?? 0);
-        $tfTotal = (int)($row['tf_total'] ?? 0);
+        $pendapatanBulanan = (float)($row['nom_bulanan'] ?? 0);
+        $cashTotal = (float)($row['cash_total'] ?? 0);
+        $tfTotal = (float)($row['tf_total'] ?? 0);
 
         $product_ids = [];
         $stmt = $this->koneksi->prepare("
@@ -90,7 +90,7 @@ class ReportController {
             $pid = (int)$row['product_id'];
             $prod_name = $row['name'];
             $qty = (int)$row['total_qty'];
-            $omset = (int)$row['total_omset'];
+            $omset = (float)$row['total_omset'];
 
             $product_ids[] = $pid;
 
@@ -144,7 +144,7 @@ class ReportController {
         $stmt->close();
 
         $jumlah_pelanggan_belum_bayar = (int)$jumlah_pelanggan_belum_bayar;
-        $total_hutang = (int)$total_hutang;
+        $total_hutang = (float)$total_hutang;
 
         $stmt = $this->koneksi->prepare("SELECT omset_offline, omset_online FROM finance WHERE store_id=? ORDER BY date DESC LIMIT 1");
         $stmt->bind_param("i", $store_id);
@@ -152,8 +152,8 @@ class ReportController {
         $row = $stmt->get_result()->fetch_assoc() ?? [];
         $stmt->close();
 
-        $omset_offline = (int)($row['omset_offline'] ?? 0);
-        $omset_online = (int)($row['omset_online'] ?? 0);
+        $omset_offline = (float)($row['omset_offline'] ?? 0);
+        $omset_online = (float)($row['omset_online'] ?? 0);
 
         $stmt = $this->koneksi->prepare("
             SELECT u.name FROM projects p
@@ -509,7 +509,7 @@ class ReportController {
         foreach ($rows30 as $row) {
             $data_tanggal[] = $row['tanggal'];
             $data_jumlah[] = (int)$row['jumlah_order'];
-            $data_total[] = (int)$row['total_order'];
+            $data_total[] = (float)$row['total_order'];
         }
 
         $stmt365 = $this->koneksi->prepare(
@@ -532,7 +532,7 @@ class ReportController {
         foreach ($rows365 as $row) {
             $data_bulan_365[] = $row['bulan'];
             $data_jumlah_365[] = (int)$row['jumlah_order'];
-            $data_total_365[] = (int)$row['total_order'];
+            $data_total_365[] = (float)$row['total_order'];
         }
 
         $stmtSummary = $this->koneksi->prepare(
@@ -548,8 +548,8 @@ class ReportController {
         $summaryRow = $stmtSummary->get_result()->fetch_assoc();
         $stmtSummary->close();
 
-        $total30 = (int)($summaryRow['total30'] ?? 0);
-        $total_today = (int)($summaryRow['total_today'] ?? 0);
+        $total30 = (float)($summaryRow['total30'] ?? 0);
+        $total_today = (float)($summaryRow['total_today'] ?? 0);
 
         $stmtTop = $this->koneksi->prepare(
             "SELECT
@@ -583,7 +583,7 @@ class ReportController {
                 'total_30' => $total30,
                 'total_today' => $total_today,
                 'top_customer' => $topRow['customer_name'] ?? '-',
-                'top_total' => (int)($topRow['total'] ?? 0)
+                'top_total' => (float)($topRow['total'] ?? 0)
             ]
         ];
     }

@@ -56,31 +56,31 @@ $data = $controller->getIndexData($access);
 <div class="stats-grid">
     <div class="stat-card">
         <h5>Total Omset</h5>
-        <h3>Rp <?= number_format($data['totals']['omset'], 0, ',', '.') ?></h3>
+        <h3><?= format_rupiah($data['totals']['omset']) ?></h3>
     </div>
     <div class="stat-card">
         <h5>Total Cash</h5>
-        <h3>Rp <?= number_format($data['totals']['cash'], 0, ',', '.') ?></h3>
+        <h3><?= format_rupiah($data['totals']['cash']) ?></h3>
     </div>
     <div class="stat-card">
         <h5>Total Omset Offline</h5>
-        <h3>Rp <?= number_format($data['totals']['offline'], 0, ',', '.') ?></h3>
+        <h3><?= format_rupiah($data['totals']['offline']) ?></h3>
     </div>
     <div class="stat-card">
         <h5>Total Omset Online</h5>
-        <h3>Rp <?= number_format($data['totals']['online'], 0, ',', '.') ?></h3>
+        <h3><?= format_rupiah($data['totals']['online']) ?></h3>
     </div>
     <div class="stat-card">
         <h5>Total Saldo</h5>
-        <h3>Rp <?= number_format($data['totals']['saldo'], 0, ',', '.') ?></h3>
+        <h3><?= format_rupiah($data['totals']['saldo']) ?></h3>
     </div>
     <div class="stat-card">
         <h5>Total Transfer</h5>
-        <h3>Rp <?= number_format($data['totals']['transfer'], 0, ',', '.') ?></h3>
+        <h3><?= format_rupiah($data['totals']['transfer']) ?></h3>
     </div>
     <div class="stat-card">
         <h5>Total Pengeluaran</h5>
-        <h3>Rp <?= number_format($data['totals']['expenditure'], 0, ',', '.') ?></h3>
+        <h3><?= format_rupiah($data['totals']['expenditure']) ?></h3>
     </div>
 </div>
 
@@ -113,13 +113,13 @@ $data = $controller->getIndexData($access);
                             <td><?= $no++ ?></td>
                             <td><?= htmlspecialchars($row['date']) ?></td>
                             <td><strong><?= htmlspecialchars($row['store_name']) ?></strong></td>
-                            <td class="migrated-style-5">Rp <?= number_format($row['total_omset'], 0, ',', '.') ?></td>
-                            <td class="migrated-style-6">Rp <?= number_format($row['cash'], 0, ',', '.') ?></td>
-                            <td>Rp <?= number_format($row['omset_offline'], 0, ',', '.') ?></td>
-                            <td>Rp <?= number_format($row['omset_online'], 0, ',', '.') ?></td>
-                            <td>Rp <?= number_format($row['saldo'], 0, ',', '.') ?></td>
-                            <td>Rp <?= number_format($row['transfer'], 0, ',', '.') ?></td>
-                            <td class="text-danger">Rp <?= number_format($row['expenditure'], 0, ',', '.') ?></td>
+                            <td class="migrated-style-5"><?= format_rupiah($row['total_omset']) ?></td>
+                            <td class="migrated-style-6"><?= format_rupiah($row['cash']) ?></td>
+                            <td><?= format_rupiah($row['omset_offline']) ?></td>
+                            <td><?= format_rupiah($row['omset_online']) ?></td>
+                            <td><?= format_rupiah($row['saldo']) ?></td>
+                            <td><?= format_rupiah($row['transfer']) ?></td>
+                            <td class="text-danger"><?= format_rupiah($row['expenditure']) ?></td>
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>

@@ -38,7 +38,7 @@ $pageUrl = function ($page) use ($data, $escape) { return '?' . $escape(http_bui
                     <td><?= $row['store_id'] !== null ? $escape($row['store_name']) . ' (#' . (int)$row['store_id'] . ')' : '-' ?></td>
                     <td><strong><?= $escape($row['product_name'] ?? 'Produk dihapus') ?></strong> <small>(#<?= (int)$row['product_id'] ?>)</small></td>
                     <td><?= $row['product_name'] !== null ? $escape($row['category_name'] ?? 'Tanpa Kategori') : '-' ?></td>
-                    <td><?= $row['price'] !== null ? 'Rp' . number_format((float)$row['price'], 0, ',', '.') . ' / ' . $escape($row['unit_type']) : '-' ?></td>
+                    <td><?= $row['price'] !== null ? format_rupiah($row['price']) . ' / ' . $escape($row['unit_type']) : '-' ?></td>
                 </tr>
             <?php endforeach; ?>
         </tbody>

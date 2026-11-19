@@ -73,8 +73,8 @@ $data = $controller->getIndexData($access, $startDateGet, $endDateGet);
                             <td><span class="badge badge-danger"><?= $store['belumBayar'] ?></span></td>
                             <td><span class="badge badge-warning"><?= $store['dp'] ?></span></td>
                             <td><span class="badge badge-success"><?= $store['lunas'] ?></span></td>
-                            <td>Rp <?= number_format($store['totalNominal'], 0, ',', '.') ?></td>
-                            <td><strong>Rp <?= number_format($store['pendapatan'], 0, ',', '.') ?></strong></td>
+                            <td><?= format_rupiah($store['totalNominal']) ?></td>
+                            <td><strong><?= format_rupiah($store['pendapatan']) ?></strong></td>
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>

@@ -292,6 +292,11 @@ if (isset($_GET['ajax_payment'])) {
 </div>
 
 <script>
+const formatMoneyValue = (value) => {
+    const amount = Math.round((Number(value) || 0) * 100) / 100;
+    return amount.toLocaleString('id-ID', { minimumFractionDigits: Number.isInteger(amount) ? 0 : 2, maximumFractionDigits: 2 });
+};
+
 window.sisaTagihanGlobal = 0;
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -418,7 +423,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('packageSizeRow').style.display = hasPackage && requiresPackageSize ? '' : 'none';
         packageSize.required = hasPackage && requiresPackageSize;
         packageSize.replaceChildren(new Option('Pilih ukuran paket', ''));
-        choices.forEach(rule => packageSize.add(new Option(`${Number(rule.panjang) > 0 && Number(rule.lebar) > 0 ? `${Number(rule.panjang)} × ${Number(rule.lebar)} m` : 'Tanpa ukuran'} — Rp${Number(rule.price).toLocaleString('id-ID')}/set`, String(rule.id))));
+        choices.forEach(rule => packageSize.add(new Option(`${Number(rule.panjang) > 0 && Number(rule.lebar) > 0 ? `${Number(rule.panjang)} × ${Number(rule.lebar)} m` : 'Tanpa ukuran'} — Rp${formatMoneyValue(rule.price)}/set`, String(rule.id))));
         if (hasPackage) {
             const rule = choices.find(row => Number(row.panjang) === Number(elPanjang.value) && Number(row.lebar) === Number(elLebar.value))
                 || (choices.length === 1 ? choices[0] : null);
@@ -497,7 +502,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <td>${item.size || '-'}</td>
                                 <td>${item.quantity}</td>
                                 <td>${item.unit}</td>
-                                <td>Rp ${Number(item.amount).toLocaleString('id-ID')}</td>
+                                <td>Rp ${formatMoneyValue(item.amount)}</td>
                                 <td class="migrated-style-51">
                                     <button class="btn-action btn-danger migrated-style-52">
                                         <i class="fas fa-trash"></i>
@@ -508,7 +513,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (item.tier_pricing?.price != null) {
                             const tier = document.createElement('small');
                             tier.style.display = 'block';
-                            tier.textContent = `Harga dasar bertingkat: Rp${Number(item.tier_pricing.price).toLocaleString('id-ID')}/${tierUnitLabel(item.tier_pricing)}`;
+                            tier.textContent = `Harga dasar bertingkat: Rp${formatMoneyValue(item.tier_pricing.price)}/${tierUnitLabel(item.tier_pricing)}`;
                             tbody.lastElementChild.cells[0].appendChild(tier);
                         }
                         tbody.lastElementChild.variantSnapshot = item.variant || null;
@@ -544,7 +549,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     const amount = document.createElement('td');
                     amount.colSpan = 2;
                     amount.className = 'migrated-style-55';
-                    amount.textContent = `- Rp ${Number(discount.discount).toLocaleString('id-ID')}`;
+                    amount.textContent = `- Rp ${formatMoneyValue(discount.discount)}`;
                     const action = document.createElement('td');
                     if (discount.product_id) {
                         const button = document.createElement('button');
@@ -578,7 +583,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 tbody.insertAdjacentHTML('beforeend', `
                     <tr class="migrated-style-56">
                         <td class="migrated-style-57" colspan="5"><strong>TOTAL:</strong></td>
-                        <td class="migrated-style-58" colspan="2"><strong>Rp ${Number(total).toLocaleString('id-ID')}</strong></td>
+                        <td class="migrated-style-58" colspan="2"><strong>Rp ${formatMoneyValue(total)}</strong></td>
                     </tr>
                 `);
 
@@ -829,9 +834,9 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(response => {
                 const priceDisplay = document.getElementById('priceDisplay');
                 if (priceDisplay) {
-                    priceDisplay.textContent = response.success ? 'Total Harga: Rp ' + Number(response.data.total || 0).toLocaleString('id-ID') : 'Rp 0';
+                    priceDisplay.textContent = response.success ? 'Total Harga: Rp ' + formatMoneyValue(response.data.total || 0) : 'Rp 0';
                     const tier = response.data?.tier_pricing;
-                    if (response.success && tier?.price != null) priceDisplay.textContent += ` | Harga dasar bertingkat Rp${Number(tier.price).toLocaleString('id-ID')}/${tierUnitLabel(tier)} (total ${Number(tier.quantity).toLocaleString('id-ID', { maximumFractionDigits: 8 })})`;
+                    if (response.success && tier?.price != null) priceDisplay.textContent += ` | Harga dasar bertingkat Rp${formatMoneyValue(tier.price)}/${tierUnitLabel(tier)} (total ${Number(tier.quantity).toLocaleString('id-ID', { maximumFractionDigits: 8 })})`;
                     const promo = response.data?.promotion;
                     if (response.success && promo) priceDisplay.textContent += ` | Beli ${promo.buy_quantity} gratis ${promo.free_quantity}: bayar ${promo.paid_quantity}, gratis ${promo.bonus_quantity} (total ${promo.quantity} pcs)`;
                 }
@@ -1092,7 +1097,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="migrated-style-63">
                     <label class="migrated-style-64">Tipe Pembayaran</label>
                     <select id="swal-tipe" class="form-control mb-3 migrated-style-65">
-                        <option value="LUNAS">LUNAS (Rp ${Number(sisa).toLocaleString('id-ID')})</option>
+                        <option value="LUNAS">LUNAS (Rp ${formatMoneyValue(sisa)})</option>
                         <option value="DP">DP / Sebagian</option>
                     </select>
 
@@ -1313,9 +1318,9 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch(window.location.pathname + window.location.search + '&ajax_payment=1')
             .then(r => r.json())
             .then(res => {
-                document.getElementById('total-tagihan-text').innerText = 'Rp ' + Number(res.totalOrder).toLocaleString('id-ID');
-                document.getElementById('terbayar-text').innerText = 'Rp ' + Number(res.totalPaid).toLocaleString('id-ID');
-                document.getElementById('kekurangan-text').innerText = 'Rp ' + Number(res.sisaTagihan).toLocaleString('id-ID');
+                document.getElementById('total-tagihan-text').innerText = 'Rp ' + formatMoneyValue(res.totalOrder);
+                document.getElementById('terbayar-text').innerText = 'Rp ' + formatMoneyValue(res.totalPaid);
+                document.getElementById('kekurangan-text').innerText = 'Rp ' + formatMoneyValue(res.sisaTagihan);
 
                 const listContainer = document.getElementById('payment-list-container');
                 if (res.payments.length === 0) {
@@ -1338,7 +1343,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 data-nominal="${pay.nominal}"
                                 data-method="${pay.payment_method}"
                                 data-date="${rawDate}">
-                                <div class="payment-amount">Rp ${Number(pay.nominal).toLocaleString('id-ID')}</div>
+                                <div class="payment-amount">Rp ${formatMoneyValue(pay.nominal)}</div>
                                 <div class="payment-date"><i class="far fa-calendar-alt"></i> ${dateStr}</div>
                                 <div class="payment-method"><strong>${pay.payment_method}</strong>${isLunas}</div>
                                 <div class="payment-actions">

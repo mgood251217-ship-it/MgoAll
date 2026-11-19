@@ -183,8 +183,8 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                                     <span class="migrated-style-90">(<?= htmlspecialchars($row['unit_type']) ?>)</span>
                                 <?php endif; ?>
                             </td>
-                            <td>Rp <?= number_format($row['price'] ?? 0, 0, ',', '.') ?></td>
-                            <td><?= number_format($row['stock'] ?? 0, 0, ',', '.') ?></td>
+                            <td><?= format_rupiah($row['price'] ?? 0) ?></td>
+                            <td><?= format_stock($row['stock'] ?? 0) ?></td>
                             <td><?= number_format($row['variant_count'] ?? 0, 0, ',', '.') ?></td>
                             <td><?= number_format($row['order_item_count'] ?? 0, 0, ',', '.') ?></td>
                             <td class="migrated-style-9">
@@ -310,8 +310,8 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                                     <span class="migrated-style-90">(<?= htmlspecialchars($row['unit_type']) ?>)</span>
                                 <?php endif; ?>
                             </td>
-                            <td>Rp <?= number_format($row['price'] ?? 0, 0, ',', '.') ?></td>
-                            <td><?= number_format($row['stock'] ?? 0, 0, ',', '.') ?></td>
+                            <td><?= format_rupiah($row['price'] ?? 0) ?></td>
+                            <td><?= format_stock($row['stock'] ?? 0) ?></td>
                             <td class="migrated-style-9">
                                 <button <?= !$canProductAction('edit_finishing') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-warning me-1"
                                     data-bs-toggle="modal" 
@@ -703,7 +703,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                         <?php foreach ($data['migration_products'] as $product): ?>
                             <option value="<?= (int)$product['product_id'] ?>" data-category="<?= htmlspecialchars((string)($product['category_id'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
                                 data-name="<?= htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8') ?>" data-variant-count="<?= (int)$product['variant_count'] ?>">
-                                #<?= (int)$product['product_id'] ?> - <?= htmlspecialchars($product['name']) ?> — Rp <?= number_format($product['price'] ?? 0, 0, ',', '.') ?>
+                                #<?= (int)$product['product_id'] ?> - <?= htmlspecialchars($product['name']) ?> — <?= format_rupiah($product['price'] ?? 0) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -862,7 +862,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const migrationVariantStatus = document.getElementById('migrationVariantStatus');
     const migrationBatchWrap = document.getElementById('migrationBatchWrap');
     const migrationBatchVariants = document.getElementById('migrationBatchVariants');
-    const migrationPriceFormat = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
+    const migrationPriceFormat = {
+        format(value) {
+            const amount = Math.round((Number(value) || 0) * 100) / 100;
+            return amount.toLocaleString('id-ID', { minimumFractionDigits: Number.isInteger(amount) ? 0 : 2, maximumFractionDigits: 2 });
+        }
+    };
     const migrationAutoInfo = document.getElementById('migrationAutoInfo');
     let migrationSources = [];
     // Hanya menyamakan penulisan, tanpa menebak berdasarkan harga atau kemiripan angka.

@@ -106,8 +106,8 @@ $data = $controller->getIndexData($access);
                                     <span class="unit-suffix">(<?= htmlspecialchars($row['unit_type']) ?>)</span>
                                 <?php endif; ?>
                             </td>
-                            <td>Rp <?= number_format($row['price'] ?? 0, 0, ',', '.') ?></td>
-                            <td><?= number_format($row['stock'] ?? 0, 0, ',', '.') ?></td>
+                            <td><?= format_rupiah($row['price'] ?? 0) ?></td>
+                            <td><?= format_stock($row['stock'] ?? 0) ?></td>
                             <td class="table-actions">
                                 <button type="button" class="btn-action btn-warning me-1"
                                     data-bs-toggle="modal" 
@@ -216,8 +216,8 @@ $data = $controller->getIndexData($access);
                                     <span class="unit-suffix">(<?= htmlspecialchars($row['unit_type']) ?>)</span>
                                 <?php endif; ?>
                             </td>
-                            <td>Rp <?= number_format($row['price'] ?? 0, 0, ',', '.') ?></td>
-                            <td><?= number_format($row['stock'] ?? 0, 0, ',', '.') ?></td>
+                            <td><?= format_rupiah($row['price'] ?? 0) ?></td>
+                            <td><?= format_stock($row['stock'] ?? 0) ?></td>
                             <td class="table-actions">
                                 <button type="button" class="btn-action btn-warning me-1"
                                     data-bs-toggle="modal" 

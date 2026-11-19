@@ -124,8 +124,8 @@ $data = $controller->getIndexData($access);
                                 <span class="text-muted-small">OP: <?= htmlspecialchars($row['op_initial']) ?></span>
                             </td>
                             <td><span class="badge-pill bg-info-light"><?= (int)$row['item_count'] ?> Item</span></td>
-                            <td>Rp <?= number_format($row['total'] ?? 0, 0, ',', '.') ?></td>
-                            <td>Rp <?= number_format($row['total_paid'] ?? 0, 0, ',', '.') ?></td>
+                            <td><?= format_rupiah($row['total'] ?? 0) ?></td>
+                            <td><?= format_rupiah($row['total_paid'] ?? 0) ?></td>
                             <td><span class="badge-pill <?= $paymentBadge ?>"><?= $paymentStatus ?></span></td>
                             <td class="migrated-style-9">
                                 <a href="<?= $orderUrl ?>" class="btn-action btn-open me-1" title="Buka Order">

@@ -88,14 +88,14 @@ $data = $controller->getIndexData($access);
                                 ?>
                             </td>
                             <td class="migrated-style-85">
-                                Rp <?= number_format($row['total_omset'], 0, ',', '.') ?>
+                                <?= format_rupiah($row['total_omset']) ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                     <tr class="migrated-style-86">
                         <td class="migrated-style-9" colspan="4">GRAND TOTAL OMSET</td>
                         <td class="migrated-style-87">
-                            Rp <?= number_format($grandTotalOmset, 0, ',', '.') ?>
+                            <?= format_rupiah($grandTotalOmset) ?>
                         </td>
                     </tr>
                 <?php endif; ?>

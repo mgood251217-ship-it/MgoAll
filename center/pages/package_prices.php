@@ -19,7 +19,7 @@ if ($isBundleTab) {
 }
 $_SESSION['package_price_csrf'] = $_SESSION['package_price_csrf'] ?? bin2hex(random_bytes(32));
 $escape = function ($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); };
-$rupiah = function ($value) { return 'Rp' . number_format((float)$value, 0, ',', '.'); };
+$rupiah = function ($value) { return format_rupiah($value); };
 $finishingsByCategory = [];
 foreach ($data['finishings'] as $finishing) {
     $finishingsByCategory[(int)$finishing['category_id']][] = $finishing;

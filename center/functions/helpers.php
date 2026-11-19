@@ -17,6 +17,10 @@ function format_rupiah($angka) {
     return "Rp " . formatMoneyNumber($angka);
 }
 
+function format_stock($value) {
+    return rtrim(rtrim(number_format((float)$value, 4, ',', '.'), '0'), ',');
+}
+
 function title_case($teks) {
     return ucwords(strtolower($teks));
 }
