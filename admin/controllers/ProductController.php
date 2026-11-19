@@ -7,6 +7,7 @@ require_once __DIR__ . '/ProductBundleController.php';
 require_once __DIR__ . '/ProductPriceTierController.php';
 require_once __DIR__ . '/../models/ProductPromotion.php';
 require_once __DIR__ . '/../functions/helpers.php';
+require_once __DIR__ . '/../functions/productPrices.php';
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../functions/cacheHelpers.php';
 
@@ -307,10 +308,16 @@ class ProductController {
     }
 
     private function validateProductData($data) {
-        if (empty($data->name) || empty($data->price) || empty($data->unit)) {
+        if (empty($data->name) || !is_scalar($data->price) || trim((string)$data->price) === '' || empty($data->unit)) {
             send_json_response(false, 'Validasi gagal: Nama, harga, dan satuan harus diisi.');
             exit;
         }
+        $prices = productPriceValues((array)$data);
+        if ($prices === null) {
+            send_json_response(false, 'Harga harus berupa angka positif atau nol, maksimal 13 digit dan 2 angka desimal.');
+            exit;
+        }
+        [$data->price, $data->reasonable_price, $data->failed_price] = $prices;
     }
 
     private function getVariantCounts($products, $store_id) {

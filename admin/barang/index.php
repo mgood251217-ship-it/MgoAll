@@ -261,9 +261,9 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
               ['type' => 'hidden', 'name' => 'product_id', 'id' => 'edit_product_id'],
               ['type' => 'select', 'name' => 'category_id', 'id' => 'edit_category_id', 'label' => 'Jenis', 'required' => true, 'options' => $optionsJenis, 'no_default_option' => true],
               ['type' => 'text', 'name' => 'name', 'id' => 'edit_name', 'label' => 'Nama Barang', 'required' => true],
-              ['type' => 'number', 'name' => 'price', 'id' => 'edit_price', 'label' => 'Harga', 'required' => true],
-              ['type' => 'number', 'name' => 'reasonable_price', 'id' => 'edit_reasonable_price', 'label' => 'Harga Maklun'],
-              ['type' => 'number', 'name' => 'failed_price', 'id' => 'edit_failed_price', 'label' => 'Harga Kegagalan'],
+              ['type' => 'number', 'name' => 'price', 'custom_attr' => 'step="0.01" min="0" max="9999999999999.99"', 'id' => 'edit_price', 'label' => 'Harga', 'required' => true],
+              ['type' => 'number', 'name' => 'reasonable_price', 'custom_attr' => 'step="0.01" min="0" max="9999999999999.99"', 'id' => 'edit_reasonable_price', 'label' => 'Harga Maklun'],
+              ['type' => 'number', 'name' => 'failed_price', 'custom_attr' => 'step="0.01" min="0" max="9999999999999.99"', 'id' => 'edit_failed_price', 'label' => 'Harga Kegagalan'],
               ['type' => 'select', 'name' => 'unit_type', 'id' => 'edit_unit_type', 'label' => 'Satuan', 'required' => true, 'options' => $optionsUnit, 'no_default_option' => true]
           ]
       ]);
@@ -285,9 +285,9 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
               ['type' => 'hidden', 'name' => 'product', 'value' => 'create_product'],
               ['type' => 'select', 'name' => 'category_id', 'id' => 'add_category_id', 'label' => 'Jenis', 'required' => true, 'options' => $optionsJenis],
               ['type' => 'text', 'name' => 'name', 'id' => 'add_name', 'label' => 'Nama Barang', 'required' => true],
-              ['type' => 'number', 'name' => 'price', 'id' => 'add_price', 'label' => 'Harga', 'required' => true],
-              ['type' => 'number', 'name' => 'reasonable_price', 'id' => 'add_reasonable_price', 'label' => 'Harga Maklun', 'required' => true],
-              ['type' => 'number', 'name' => 'failed_price', 'id' => 'add_failed_price', 'label' => 'Harga Gagal', 'required' => true],
+              ['type' => 'number', 'name' => 'price', 'custom_attr' => 'step="0.01" min="0" max="9999999999999.99"', 'id' => 'add_price', 'label' => 'Harga', 'required' => true],
+              ['type' => 'number', 'name' => 'reasonable_price', 'custom_attr' => 'step="0.01" min="0" max="9999999999999.99"', 'id' => 'add_reasonable_price', 'label' => 'Harga Maklun', 'required' => true],
+              ['type' => 'number', 'name' => 'failed_price', 'custom_attr' => 'step="0.01" min="0" max="9999999999999.99"', 'id' => 'add_failed_price', 'label' => 'Harga Gagal', 'required' => true],
               ['type' => 'select', 'name' => 'unit_type', 'id' => 'add_unit_type', 'label' => 'Satuan', 'required' => true, 'options' => $optionsUnit]
           ]
       ]);
@@ -309,9 +309,9 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
               ['type' => 'hidden', 'name' => 'finishing', 'value' => 'create_finishing'],
               ['type' => 'select', 'name' => 'category_id', 'id' => 'add_finishing_category_id', 'label' => 'Jenis', 'required' => true, 'options' => $optionsJenis],
               ['type' => 'text', 'name' => 'name', 'id' => 'add_finishing_name', 'label' => 'Nama Finishing', 'required' => true],
-              ['type' => 'number', 'name' => 'price', 'id' => 'add_finishing_price', 'label' => 'Harga', 'required' => true],
-              ['type' => 'number', 'name' => 'reasonable_price', 'id' => 'add_finishing_reasonable_price', 'label' => 'Harga Maklun', 'required' => true],
-              ['type' => 'number', 'name' => 'failed_price', 'id' => 'add_finishing_failed_price', 'label' => 'Harga Gagal', 'required' => true],
+              ['type' => 'number', 'name' => 'price', 'custom_attr' => 'step="0.01" min="0" max="9999999999999.99"', 'id' => 'add_finishing_price', 'label' => 'Harga', 'required' => true],
+              ['type' => 'number', 'name' => 'reasonable_price', 'custom_attr' => 'step="0.01" min="0" max="9999999999999.99"', 'id' => 'add_finishing_reasonable_price', 'label' => 'Harga Maklun', 'required' => true],
+              ['type' => 'number', 'name' => 'failed_price', 'custom_attr' => 'step="0.01" min="0" max="9999999999999.99"', 'id' => 'add_finishing_failed_price', 'label' => 'Harga Gagal', 'required' => true],
               ['type' => 'select', 'name' => 'unit_type', 'id' => 'add_finishing_unit_type', 'label' => 'Satuan', 'required' => true, 'options' => $optionsUnit]
           ]
       ]);
@@ -334,9 +334,9 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
               ['type' => 'hidden', 'name' => 'finishing_id', 'id' => 'edit_finishing_id'],
               ['type' => 'select', 'name' => 'category_id', 'id' => 'edit_finishing_category_id', 'label' => 'Jenis', 'required' => true, 'options' => $optionsJenis, 'no_default_option' => true],
               ['type' => 'text', 'name' => 'name', 'id' => 'edit_finishing_name', 'label' => 'Nama Finishing', 'required' => true],
-              ['type' => 'number', 'name' => 'price', 'id' => 'edit_finishing_price', 'label' => 'Harga', 'required' => true],
-              ['type' => 'number', 'name' => 'reasonable_price', 'id' => 'edit_finishing_reasonable_price', 'label' => 'Harga Maklun'],
-              ['type' => 'number', 'name' => 'failed_price', 'id' => 'edit_finishing_failed_price', 'label' => 'Harga Kegagalan'],
+              ['type' => 'number', 'name' => 'price', 'custom_attr' => 'step="0.01" min="0" max="9999999999999.99"', 'id' => 'edit_finishing_price', 'label' => 'Harga', 'required' => true],
+              ['type' => 'number', 'name' => 'reasonable_price', 'custom_attr' => 'step="0.01" min="0" max="9999999999999.99"', 'id' => 'edit_finishing_reasonable_price', 'label' => 'Harga Maklun'],
+              ['type' => 'number', 'name' => 'failed_price', 'custom_attr' => 'step="0.01" min="0" max="9999999999999.99"', 'id' => 'edit_finishing_failed_price', 'label' => 'Harga Kegagalan'],
               ['type' => 'select', 'name' => 'unit_type', 'id' => 'edit_finishing_unit_type', 'label' => 'Satuan', 'required' => true, 'options' => $optionsUnit, 'no_default_option' => true]
           ]
       ]);

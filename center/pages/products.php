@@ -453,15 +453,15 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Harga Jual (Rp)</label>
-                    <input type="number" class="form-control-custom" name="price" value="0" required>
+                    <input type="number" class="form-control-custom" name="price" step="0.01" min="0" max="9999999999999.99" value="0" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Harga Maklun (Rp)</label>
-                    <input type="number" class="form-control-custom" name="reasonable_price" value="0" required>
+                    <input type="number" class="form-control-custom" name="reasonable_price" step="0.01" min="0" max="9999999999999.99" value="0" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Harga Kegagalan (Rp)</label>
-                    <input type="number" class="form-control-custom" name="failed_price" value="0" required>
+                    <input type="number" class="form-control-custom" name="failed_price" step="0.01" min="0" max="9999999999999.99" value="0" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Stok Awal</label>
@@ -510,15 +510,15 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Harga Jual (Rp)</label>
-                    <input type="number" class="form-control-custom" name="price" id="edit_product_price" required>
+                    <input type="number" class="form-control-custom" name="price" step="0.01" min="0" max="9999999999999.99" id="edit_product_price" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Harga Maklun (Rp)</label>
-                    <input type="number" class="form-control-custom" name="reasonable_price" id="edit_product_reasonable_price" required>
+                    <input type="number" class="form-control-custom" name="reasonable_price" step="0.01" min="0" max="9999999999999.99" id="edit_product_reasonable_price" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Harga Kegagalan (Rp)</label>
-                    <input type="number" class="form-control-custom" name="failed_price" id="edit_product_failed_price" required>
+                    <input type="number" class="form-control-custom" name="failed_price" step="0.01" min="0" max="9999999999999.99" id="edit_product_failed_price" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Stok</label>
@@ -567,15 +567,15 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Harga Jual (Rp)</label>
-                    <input type="number" class="form-control-custom" name="price" value="0" required>
+                    <input type="number" class="form-control-custom" name="price" step="0.01" min="0" max="9999999999999.99" value="0" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Harga Maklun (Rp)</label>
-                    <input type="number" class="form-control-custom" name="reasonable_price" value="0" required>
+                    <input type="number" class="form-control-custom" name="reasonable_price" step="0.01" min="0" max="9999999999999.99" value="0" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Harga Kegagalan (Rp)</label>
-                    <input type="number" class="form-control-custom" name="failed_price" value="0" required>
+                    <input type="number" class="form-control-custom" name="failed_price" step="0.01" min="0" max="9999999999999.99" value="0" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Stok Awal</label>
@@ -624,15 +624,15 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Harga Jual (Rp)</label>
-                    <input type="number" class="form-control-custom" name="price" id="edit_finishing_price" required>
+                    <input type="number" class="form-control-custom" name="price" step="0.01" min="0" max="9999999999999.99" id="edit_finishing_price" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Harga Maklun (Rp)</label>
-                    <input type="number" class="form-control-custom" name="reasonable_price" id="edit_finishing_reasonable_price" required>
+                    <input type="number" class="form-control-custom" name="reasonable_price" step="0.01" min="0" max="9999999999999.99" id="edit_finishing_reasonable_price" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Harga Kegagalan (Rp)</label>
-                    <input type="number" class="form-control-custom" name="failed_price" id="edit_finishing_failed_price" required>
+                    <input type="number" class="form-control-custom" name="failed_price" step="0.01" min="0" max="9999999999999.99" id="edit_finishing_failed_price" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Stok</label>

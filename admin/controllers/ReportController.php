@@ -954,7 +954,7 @@ class ReportController {
             $stmtP->execute();
             $resP = $stmtP->get_result();
             while ($rP = $resP->fetch_assoc()) {
-                $finishing_prices_map[$rP['product_id']] = (int)$rP['reasonable_price'];
+                $finishing_prices_map[$rP['product_id']] = (float)$rP['reasonable_price'];
             }
             $stmtP->close();
         }

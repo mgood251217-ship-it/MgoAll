@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../functions/helpers.php';
+require_once __DIR__ . '/../../admin/functions/productPrices.php';
 require_once __DIR__ . '/../../admin/controllers/ProductPriceTierController.php';
 require_once __DIR__ . '/ProductHistoryController.php';
 class ProductController {
@@ -1249,13 +1250,9 @@ class ProductController {
             $categoryId = $categoryId === '' ? null : filter_var($categoryId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             $unit = $_POST['unit_type'] ?? '~';
             if ($storeId <= 0 || $name === '' || $categoryId === false || !in_array($unit, ['~', 'PCS', 'M2', 'CM2'], true)) throw new InvalidArgumentException('Periksa toko, nama, kategori, dan satuan produk.');
-            $numbers = [];
-            foreach (['price', 'reasonable_price', 'failed_price', 'stock'] as $field) {
-                $value = filter_var($_POST[$field] ?? 0, FILTER_VALIDATE_INT);
-                if ($value === false) throw new InvalidArgumentException('Harga dan stok harus berupa angka bulat.');
-                $numbers[] = $value;
-            }
-            [$price, $reasonablePrice, $failedPrice, $stock] = $numbers;
+            [$price, $reasonablePrice, $failedPrice] = $this->requestPrices();
+            $stock = filter_var($_POST['stock'] ?? 0, FILTER_VALIDATE_INT);
+            if ($stock === false) throw new InvalidArgumentException('Stok harus berupa angka bulat.');
             $this->koneksi->begin_transaction(); $transaction = true;
             $stmt = $this->koneksi->prepare('SELECT administrator FROM stores WHERE store_id = ? FOR UPDATE');
             $stmt->bind_param('i', $storeId); $stmt->execute(); $store = $stmt->get_result()->fetch_assoc(); $stmt->close();
@@ -1266,7 +1263,7 @@ class ProductController {
                 if (!$category) throw new InvalidArgumentException('Kategori tidak tersedia di toko ini.');
             }
             $stmt = $this->koneksi->prepare('INSERT INTO products (store_id, category_id, name, price, reasonable_price, failed_price, stock, unit_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-            $stmt->bind_param('iisiiiis', $storeId, $categoryId, $name, $price, $reasonablePrice, $failedPrice, $stock, $unit);
+            $stmt->bind_param('iissssis', $storeId, $categoryId, $name, $price, $reasonablePrice, $failedPrice, $stock, $unit);
             $stmt->execute(); $productId = (int)$this->koneksi->insert_id; $stmt->close();
             $history->record($productId, (int)$admin['administrator_id']);
             $this->koneksi->commit(); $transaction = false; $saved = true;
@@ -1309,19 +1306,27 @@ class ProductController {
         $this->deleteData('finishings', 'finishing_id');
     }
 
+    private function requestPrices() {
+        $prices = productPriceValues($_POST);
+        if ($prices === null) {
+            $_SESSION['swal_error'] = 'Harga harus berupa angka positif atau nol, maksimal 13 digit dan 2 angka desimal.';
+            header('Location: ' . $this->productReturnUrl());
+            exit;
+        }
+        return $prices;
+    }
+
     private function saveData($table, $label) {
         $store_id = $_POST['store_id'] ?? null;
         $category_id = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
         $name = trim($_POST['name'] ?? '');
-        $price = isset($_POST['price']) ? (int)$_POST['price'] : 0;
-        $reasonable_price = isset($_POST['reasonable_price']) ? (int)$_POST['reasonable_price'] : 0;
-        $failed_price = isset($_POST['failed_price']) ? (int)$_POST['failed_price'] : 0;
+        [$price, $reasonable_price, $failed_price] = $this->requestPrices();
         $stock = isset($_POST['stock']) ? (int)$_POST['stock'] : 0;
         $unit_type = trim($_POST['unit_type'] ?? '');
 
         if ($store_id && $name) {
             $stmt = $this->koneksi->prepare("INSERT INTO $table (store_id, category_id, name, price, reasonable_price, failed_price, stock, unit_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("iisiiiis", $store_id, $category_id, $name, $price, $reasonable_price, $failed_price, $stock, $unit_type);
+            $stmt->bind_param("iissssis", $store_id, $category_id, $name, $price, $reasonable_price, $failed_price, $stock, $unit_type);
 
             if ($stmt->execute()) {
                 require_once __DIR__ . '/../functions/cacheHelper.php';
@@ -1344,9 +1349,7 @@ class ProductController {
         $id = $_POST[$id_column] ?? null;
         $category_id = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
         $name = trim($_POST['name'] ?? '');
-        $price = isset($_POST['price']) ? (int)$_POST['price'] : 0;
-        $reasonable_price = isset($_POST['reasonable_price']) ? (int)$_POST['reasonable_price'] : 0;
-        $failed_price = isset($_POST['failed_price']) ? (int)$_POST['failed_price'] : 0;
+        [$price, $reasonable_price, $failed_price] = $this->requestPrices();
         $stock = isset($_POST['stock']) ? (int)$_POST['stock'] : 0;
         $unit_type = trim($_POST['unit_type'] ?? '');
 
@@ -1358,7 +1361,7 @@ class ProductController {
             $stmtGet->close();
 
             $stmt = $this->koneksi->prepare("UPDATE $table SET category_id=?, name=?, price=?, reasonable_price=?, failed_price=?, stock=?, unit_type=? WHERE $id_column=?");
-            $stmt->bind_param("isiiiisi", $category_id, $name, $price, $reasonable_price, $failed_price, $stock, $unit_type, $id);
+            $stmt->bind_param("issssisi", $category_id, $name, $price, $reasonable_price, $failed_price, $stock, $unit_type, $id);
 
             if ($stmt->execute()) {
                 if ($store_id) {
