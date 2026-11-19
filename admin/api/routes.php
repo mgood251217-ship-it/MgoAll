@@ -112,6 +112,7 @@ $router->add('order_archive', ReportController::class, 'orderArchive', ['auth'])
 $router->add('maklun', ReportController::class, 'maklun', ['auth']);
 
 // Failure Controller
+$router->add('failure_reasons', FailureReasonController::class, 'index', ['auth']);
 $router->add('failure', FailureController::class, 'index', ['auth']);
 $router->add('create_failure', FailureController::class, 'create', ['auth']);
 $router->add('update_failure_info', FailureController::class, 'updateInfo', ['auth']);

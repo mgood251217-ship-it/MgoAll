@@ -3,6 +3,9 @@
   "min_required_version": "2.1.2",
   "download_url": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.1.2/MgoDesktop_2.1.2_x64-setup.exe",
   "download_url_mobile": "https://github.com/mgood251217-ship-it/MgoApp/releases/download/v2.1.2/MgoDesktop_2.1.2.apk",
+  "version_linux": null,
+  "min_required_version_linux": null,
+  "download_url_linux": null,
   "force_update": false,
   "release_notes": [
     "📏 feat: Meteran Kategori Pelengkap: Menambahkan perhitungan meteran untuk produk kategori Pelengkap supaya kebutuhan bahan lebih mudah dicatat dan dianalisis.",

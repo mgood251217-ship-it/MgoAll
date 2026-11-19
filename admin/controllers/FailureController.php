@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../models/Failure.php';
+require_once __DIR__ . '/FailureReasonController.php';
 require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/../controllers/OrderController.php';
 require_once __DIR__ . '/../functions/helpers.php';
@@ -10,10 +11,12 @@ class FailureController {
     private $productModel;
     private $orderController;
     private $failureModel;
+    private $failureReasons;
 
     public function __construct($koneksi) {
         $this->koneksi = $koneksi;
         $this->failureModel = new Failure($koneksi);
+        $this->failureReasons = new FailureReasonController($koneksi);
         $this->orderController = new OrderController($koneksi);
         $this->productModel = new Product($koneksi);
     }
@@ -36,6 +39,7 @@ class FailureController {
         $items = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
+        $items = $this->failureReasons->attach($items);
         $productIds = array_values(array_unique(array_filter(array_column($items, 'product_id'))));
         $products = $this->getProducts($productIds, $store_id);
         $finishingIds = [];
@@ -88,7 +92,9 @@ class FailureController {
             $data['size'] = $item['size'];
             $data['finishing_str'] = $item['finishing_str'];
 
-            if (!$this->failureModel->createFailure($data)) {
+            $data['failure_reason_ids'] = json_encode($this->failureReasons->resolve($data));
+            $failureId = $this->failureModel->createFailure($data);
+            if (!$failureId) {
                 throw new RuntimeException('Gagal menyimpan kegagalan.');
             }
             if ($product['unit_type'] !== '~') {
@@ -133,7 +139,7 @@ class FailureController {
     public function delete() {
         global $store_id;
         $failure_id = $_POST['failure_id'] ?? '';
-        if ($this->failureModel->deleteFailure($failure_id)) {
+        if ($this->failureModel->deleteFailure($failure_id, $store_id)) {
             updateStoreCache($store_id, 'failures');
             send_json_response(true, 'Berhasil menghapus kegagalan', $failure_id);
         } else {
@@ -219,6 +225,13 @@ class FailureController {
             $data[$field] = implode(',', $this->requestArray($request, $field));
         }
 
+        $ids = [];
+        foreach ($this->requestArray($request, 'failure_reason_ids') as $value) {
+            $id = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 4294967295]]);
+            if ($id === false) throw new InvalidArgumentException('ID alasan kegagalan tidak valid.');
+            $ids[] = $id;
+        }
+        $data['failure_reason_ids'] = array_values(array_unique($ids));
         return $data;
     }
 
@@ -376,7 +389,7 @@ class FailureController {
         $details = [];
         foreach ($labels as $field => $label) {
             if (!empty($item[$field])) {
-                $details[] = $label . ': ' . $item[$field];
+                $details[] = $label . ': ' . htmlspecialchars((string)$item[$field], ENT_QUOTES, 'UTF-8');
             }
         }
 
