@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../../admin/functions/productPrices.php';
+require_once __DIR__ . '/../../admin/functions/productStock.php';
 require_once __DIR__ . '/../../admin/controllers/ProductPriceTierController.php';
 require_once __DIR__ . '/ProductHistoryController.php';
 class ProductController {
@@ -1251,8 +1252,7 @@ class ProductController {
             $unit = $_POST['unit_type'] ?? '~';
             if ($storeId <= 0 || $name === '' || $categoryId === false || !in_array($unit, ['~', 'PCS', 'M2', 'CM2'], true)) throw new InvalidArgumentException('Periksa toko, nama, kategori, dan satuan produk.');
             [$price, $reasonablePrice, $failedPrice] = $this->requestPrices();
-            $stock = filter_var($_POST['stock'] ?? 0, FILTER_VALIDATE_INT);
-            if ($stock === false) throw new InvalidArgumentException('Stok harus berupa angka bulat.');
+            $stock = $this->requestStock();
             $this->koneksi->begin_transaction(); $transaction = true;
             $stmt = $this->koneksi->prepare('SELECT administrator FROM stores WHERE store_id = ? FOR UPDATE');
             $stmt->bind_param('i', $storeId); $stmt->execute(); $store = $stmt->get_result()->fetch_assoc(); $stmt->close();
@@ -1263,7 +1263,7 @@ class ProductController {
                 if (!$category) throw new InvalidArgumentException('Kategori tidak tersedia di toko ini.');
             }
             $stmt = $this->koneksi->prepare('INSERT INTO products (store_id, category_id, name, price, reasonable_price, failed_price, stock, unit_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-            $stmt->bind_param('iissssis', $storeId, $categoryId, $name, $price, $reasonablePrice, $failedPrice, $stock, $unit);
+            $stmt->bind_param('iissssss', $storeId, $categoryId, $name, $price, $reasonablePrice, $failedPrice, $stock, $unit);
             $stmt->execute(); $productId = (int)$this->koneksi->insert_id; $stmt->close();
             $history->record($productId, (int)$admin['administrator_id']);
             $this->koneksi->commit(); $transaction = false; $saved = true;
@@ -1306,6 +1306,16 @@ class ProductController {
         $this->deleteData('finishings', 'finishing_id');
     }
 
+    private function requestStock() {
+        $stock = productStockValue($_POST['stock'] ?? 0);
+        if ($stock === null) {
+            $_SESSION['swal_error'] = 'Stok harus berupa angka, maksimal 11 digit dan 4 angka desimal.';
+            header('Location: ' . $this->productReturnUrl());
+            exit;
+        }
+        return $stock;
+    }
+
     private function requestPrices() {
         $prices = productPriceValues($_POST);
         if ($prices === null) {
@@ -1321,12 +1331,12 @@ class ProductController {
         $category_id = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
         $name = trim($_POST['name'] ?? '');
         [$price, $reasonable_price, $failed_price] = $this->requestPrices();
-        $stock = isset($_POST['stock']) ? (int)$_POST['stock'] : 0;
+        $stock = $this->requestStock();
         $unit_type = trim($_POST['unit_type'] ?? '');
 
         if ($store_id && $name) {
             $stmt = $this->koneksi->prepare("INSERT INTO $table (store_id, category_id, name, price, reasonable_price, failed_price, stock, unit_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("iissssis", $store_id, $category_id, $name, $price, $reasonable_price, $failed_price, $stock, $unit_type);
+            $stmt->bind_param("iissssss", $store_id, $category_id, $name, $price, $reasonable_price, $failed_price, $stock, $unit_type);
 
             if ($stmt->execute()) {
                 require_once __DIR__ . '/../functions/cacheHelper.php';
@@ -1350,7 +1360,7 @@ class ProductController {
         $category_id = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
         $name = trim($_POST['name'] ?? '');
         [$price, $reasonable_price, $failed_price] = $this->requestPrices();
-        $stock = isset($_POST['stock']) ? (int)$_POST['stock'] : 0;
+        $stock = $this->requestStock();
         $unit_type = trim($_POST['unit_type'] ?? '');
 
         if ($id && $name) {
@@ -1361,7 +1371,7 @@ class ProductController {
             $stmtGet->close();
 
             $stmt = $this->koneksi->prepare("UPDATE $table SET category_id=?, name=?, price=?, reasonable_price=?, failed_price=?, stock=?, unit_type=? WHERE $id_column=?");
-            $stmt->bind_param("issssisi", $category_id, $name, $price, $reasonable_price, $failed_price, $stock, $unit_type, $id);
+            $stmt->bind_param("issssssi", $category_id, $name, $price, $reasonable_price, $failed_price, $stock, $unit_type, $id);
 
             if ($stmt->execute()) {
                 if ($store_id) {
@@ -1485,16 +1495,16 @@ class ProductController {
     }
 
     public function addStock($quantity, $product_id) {
-        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock + ? WHERE product_id = ?");
-        $stmt->bind_param("di", $quantity, $product_id);
+        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock + CAST(? AS DECIMAL(30,12)) WHERE product_id = ?");
+        $stmt->bind_param("si", $quantity, $product_id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;
     }
 
     public function addFinishingStock($quantity, $finishing_id) {
-        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock + ? WHERE finishing_id = ?");
-        $stmt->bind_param("di", $quantity, $finishing_id);
+        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock + CAST(? AS DECIMAL(30,12)) WHERE finishing_id = ?");
+        $stmt->bind_param("si", $quantity, $finishing_id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;
@@ -1510,16 +1520,16 @@ class ProductController {
     }
 
     public function reduceStock($quantity, $product_id) {
-        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock - ? WHERE product_id = ?");
-        $stmt->bind_param("di", $quantity, $product_id);
+        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock - CAST(? AS DECIMAL(30,12)) WHERE product_id = ?");
+        $stmt->bind_param("si", $quantity, $product_id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;
     }
 
     public function reduceFinishingStock($quantity, $finishing_id) {
-        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock - ? WHERE finishing_id = ?");
-        $stmt->bind_param("di", $quantity, $finishing_id);
+        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock - CAST(? AS DECIMAL(30,12)) WHERE finishing_id = ?");
+        $stmt->bind_param("si", $quantity, $finishing_id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;

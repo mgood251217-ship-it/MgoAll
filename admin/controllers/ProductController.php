@@ -8,6 +8,7 @@ require_once __DIR__ . '/ProductPriceTierController.php';
 require_once __DIR__ . '/../models/ProductPromotion.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../functions/productPrices.php';
+require_once __DIR__ . '/../functions/productStock.php';
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../functions/cacheHelpers.php';
 
@@ -254,7 +255,11 @@ class ProductController {
         global $store_id;
         header('Content-Type: application/json');
         $id       = $_POST['product_id'] ?? 0;
-        $quantity = $_POST['quantity'] ?? 0;
+        $quantity = productStockValue($_POST['quantity'] ?? 0);
+        if ($quantity === null) {
+            send_json_response(false, 'Stok harus berupa angka, maksimal 11 digit dan 4 angka desimal.');
+            exit;
+        }
 
         if (empty($id)) {
             send_json_response(false, 'ID produk tidak ditemukan.');
@@ -274,7 +279,11 @@ class ProductController {
         global $store_id;
         header('Content-Type: application/json');
         $id       = $_POST['finishing_id'] ?? 0;
-        $quantity = $_POST['quantity'] ?? 0;
+        $quantity = productStockValue($_POST['quantity'] ?? 0);
+        if ($quantity === null) {
+            send_json_response(false, 'Stok harus berupa angka, maksimal 11 digit dan 4 angka desimal.');
+            exit;
+        }
 
         if (empty($id)) {
             send_json_response(false, 'ID finishing tidak ditemukan.');

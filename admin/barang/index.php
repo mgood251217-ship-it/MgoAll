@@ -90,7 +90,7 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
                         <div class="d-flex gap-1 align-items-center">                          
                             <form class="d-inline-flex stock-form m-0">
                                 <input type="hidden" name="product_id" value="<?= sanitize($row['product_id']) ?>">
-                                <input type="number" name="quantity" value="<?= sanitize($row['stock']) ?>" class="form-control form-control-sm me-1" style="width: 75px;" required>
+                                <input type="number" step="0.0001" min="-99999999999.9999" max="99999999999.9999" name="quantity" value="<?= sanitize($row['stock']) ?>" class="form-control form-control-sm me-1" style="width: 75px;" required>
                                 <button type="submit" class="d-none" title="Update Stok" style="line-height: 0; padding: .4rem .5rem;">
                                     <?= get_icon('update', ['width' => '16', 'height' => '16']) ?>
                                 </button>
@@ -177,7 +177,7 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
                         <div class="d-flex gap-1 align-items-center">                          
                             <form class="d-inline-flex stock-finishing-form m-0">
                                 <input type="hidden" name="finishing_id" value="<?= sanitize($row['finishing_id']) ?>">
-                                <input type="number" name="quantity" value="<?= sanitize($row['stock']) ?>" class="form-control form-control-sm me-1" style="width: 75px;" required>
+                                <input type="number" step="0.0001" min="-99999999999.9999" max="99999999999.9999" name="quantity" value="<?= sanitize($row['stock']) ?>" class="form-control form-control-sm me-1" style="width: 75px;" required>
                                 <button type="submit" class="d-none" title="Update Stok" style="line-height: 0; padding: .4rem .5rem;">
                                     <?= get_icon('update', ['width' => '16', 'height' => '16']) ?>
                                 </button>

@@ -213,7 +213,7 @@ class Product{
 
     public function updateStock($id, $quantity) {
         $stmt = $this->koneksi->prepare("UPDATE products SET stock = ? WHERE product_id = ?");
-        $stmt->bind_param("di", $quantity, $id);
+        $stmt->bind_param("si", $quantity, $id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;
@@ -221,7 +221,7 @@ class Product{
 
     public function updateStockFinishing($id, $quantity) {
         $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = ? WHERE finishing_id = ?");
-        $stmt->bind_param("di", $quantity, $id);
+        $stmt->bind_param("si", $quantity, $id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;
@@ -244,32 +244,32 @@ class Product{
     }
 
     public function reduceStock($quantity, $product_id) {
-        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock - ? WHERE product_id = ?");
-        $stmt->bind_param("di", $quantity, $product_id);
+        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock - CAST(? AS DECIMAL(30,12)) WHERE product_id = ?");
+        $stmt->bind_param("si", $quantity, $product_id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;
     }
 
     public function reduceFinishingStock($quantity, $finishing_id) {
-        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock - ? WHERE finishing_id = ?");
-        $stmt->bind_param("di", $quantity, $finishing_id);
+        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock - CAST(? AS DECIMAL(30,12)) WHERE finishing_id = ?");
+        $stmt->bind_param("si", $quantity, $finishing_id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;
     }
 
     public function addStock($quantity, $product_id) {
-        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock + ? WHERE product_id = ?");
-        $stmt->bind_param("di", $quantity, $product_id);
+        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock + CAST(? AS DECIMAL(30,12)) WHERE product_id = ?");
+        $stmt->bind_param("si", $quantity, $product_id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;
     }
 
     public function addFinishingStock($quantity, $finishing_id) {
-        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock + ? WHERE finishing_id = ?");
-        $stmt->bind_param("di", $quantity, $finishing_id);
+        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock + CAST(? AS DECIMAL(30,12)) WHERE finishing_id = ?");
+        $stmt->bind_param("si", $quantity, $finishing_id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;

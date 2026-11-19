@@ -465,7 +465,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Stok Awal</label>
-                    <input type="number" class="form-control-custom" name="stock" value="0" required>
+                    <input type="number" class="form-control-custom" name="stock" step="0.0001" min="-99999999999.9999" max="99999999999.9999" value="0" required>
                 </div>
             </div>
             <div class="modal-footer modal-footer-custom">
@@ -522,7 +522,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Stok</label>
-                    <input type="number" class="form-control-custom" name="stock" id="edit_product_stock" required>
+                    <input type="number" class="form-control-custom" name="stock" step="0.0001" min="-99999999999.9999" max="99999999999.9999" id="edit_product_stock" required>
                 </div>
             </div>
             <div class="modal-footer modal-footer-custom">
@@ -579,7 +579,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Stok Awal</label>
-                    <input type="number" class="form-control-custom" name="stock" value="0" required>
+                    <input type="number" class="form-control-custom" name="stock" step="0.0001" min="-99999999999.9999" max="99999999999.9999" value="0" required>
                 </div>
             </div>
             <div class="modal-footer modal-footer-custom">
@@ -636,7 +636,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Stok</label>
-                    <input type="number" class="form-control-custom" name="stock" id="edit_finishing_stock" required>
+                    <input type="number" class="form-control-custom" name="stock" step="0.0001" min="-99999999999.9999" max="99999999999.9999" id="edit_finishing_stock" required>
                 </div>
             </div>
             <div class="modal-footer modal-footer-custom">
