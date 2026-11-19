@@ -226,7 +226,7 @@ class OrderController {
             (new Activity($this->koneksi))->record($order['store_id'], 'ORDER_DELETE', [], $keterangan, $date, $order_id, $administrator_id);
 
             $stmt = $this->koneksi->prepare("INSERT INTO deleted_orders (order_id, store_id, nomorator, nomor, customer_name, total, deadline, user_id, system, date, deleted_by, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("iisssisissis", $order['order_id'], $order['store_id'], $order['nomorator'], $order['nomor'], $order['customer_name'], $order['total'], $order['deadline'], $order['user_id'], $order['system'], $order['date'], $administrator_id, $date);
+            $stmt->bind_param("iisssssissis", $order['order_id'], $order['store_id'], $order['nomorator'], $order['nomor'], $order['customer_name'], $order['total'], $order['deadline'], $order['user_id'], $order['system'], $order['date'], $administrator_id, $date);
             $stmt->execute();
             $stmt->close();
 
@@ -238,7 +238,7 @@ class OrderController {
 
             $stmtInsert = $this->koneksi->prepare("INSERT INTO deleted_order_items (order_item_id, store_id, order_id, product_id, judul, finishing, size, quantity, unit, amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             while ($item = $resultItems->fetch_assoc()) {
-                $stmtInsert->bind_param("iiiisssiii", $item['order_item_id'], $item['store_id'], $item['order_id'], $item['product_id'], $item['judul'], $item['finishing'], $item['size'], $item['quantity'], $item['unit'], $item['amount']);
+                $stmtInsert->bind_param("iiiisssiss", $item['order_item_id'], $item['store_id'], $item['order_id'], $item['product_id'], $item['judul'], $item['finishing'], $item['size'], $item['quantity'], $item['unit'], $item['amount']);
                 $stmtInsert->execute();
             }
             $stmtInsert->close();
@@ -334,14 +334,14 @@ class OrderController {
 
     public function createDiscount( $order_id, $product_id, $value ) {
         $stmt = $this->koneksi->prepare("INSERT INTO diskon_order_items (order_id, product_id, diskon) VALUES (?, ?, ?)");
-        $stmt->bind_param("iii", $order_id, $product_id, $value);
+        $stmt->bind_param("iis", $order_id, $product_id, $value);
         $stmt->execute();
         $stmt->close();
     }
 
     public function updateDiscount($order_id, $product_id, $value) {
         $stmt = $this->koneksi->prepare("UPDATE diskon_order_items SET diskon = ? WHERE order_id = ? AND product_id = ?");
-        $stmt->bind_param("iii", $value, $order_id, $product_id);
+        $stmt->bind_param("sii", $value, $order_id, $product_id);
         $stmt->execute();
         $stmt->close();
     }
@@ -436,7 +436,7 @@ class OrderController {
 
         array_walk($items_raw, function($row) use (&$diskon_per_produk) {
             if (!empty($row['diskon']) && $row['diskon'] > 0) {
-                $diskon_per_produk[$row['judul']] = (int)$row['diskon'];
+                $diskon_per_produk[$row['judul']] = (float)$row['diskon'];
             }
         });
 
@@ -537,7 +537,8 @@ class OrderController {
             }
         }
 
-        $grand_total = floor(round($grand_total) / 500) * 500;
+        // Harga item tetap desimal; total nota dibulatkan ke bawah per Rp500.
+        $grand_total = floor(moneyCents($grand_total) / 50000) * 500;
         
         return $this->updateOrderTotal($id, $grand_total);
     }
@@ -620,7 +621,9 @@ class OrderController {
             return ['error' => $e->getMessage(), 'status' => 400];
         }
         if ($variant && ($package || $laserVariant)) return ['error' => 'Harga varian tidak digabung dengan harga paket atau konversi print laser.', 'status' => 400];
-        $diskonInput = (int)($data['diskon'] ?? 0);
+        $discountValue = moneyInputDecimal(($data['diskon'] ?? '') === '' ? 0 : $data['diskon']);
+        if ($discountValue === null) return ['error' => 'Diskon harus berupa angka dengan maksimal 2 angka desimal.', 'status' => 400];
+        $diskonInput = (float)$discountValue;
         // Diskon paket dihitung per set; tidak mengubah diskon bahan per meter.
         $diskon = $package || ($laserVariant && $laserVariant['price'] !== null) ? max(0, $diskonInput) : ($previewOnly ? ($diskonInput > 0 ? $diskonInput : $this->getDiscount($order_id, $product_id)) : $this->discount($order_id, $product_id, $diskonInput));
         $waktu = (float)($data['waktu'] ?? 0);
@@ -1195,7 +1198,7 @@ class OrderController {
 
     public function updateOrderTotal($id, $value) {
         $stmt = $this->koneksi->prepare("UPDATE orders SET total = ? WHERE order_id = ?");
-        $stmt->bind_param("ii", $value, $id);
+        $stmt->bind_param("si", $value, $id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;
@@ -1248,13 +1251,13 @@ class OrderController {
     public function createOrderItem($data){
         if (!empty($data->laser_product_id) && (new ProductLaserConversionController($this->koneksi))->hasOrderMaterials()) {
             $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing, laser_product_id, laser_material_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param('iiissiddsis', $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str, $data->laser_product_id, $data->laser_material_name);
+            $stmt->bind_param('iiississsis', $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str, $data->laser_product_id, $data->laser_material_name);
         } elseif (!empty($data->product_finishing_price_id)) {
             $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing, product_finishing_price_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("iiissiddsi", $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str, $data->product_finishing_price_id);
+            $stmt->bind_param("iiississsi", $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str, $data->product_finishing_price_id);
         } else {
             $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $types = !empty($data->is_laser_variant) ? 'iiissidds' : 'iisssiiis';
+            $types = 'iiississs';
             $stmt->bind_param($types, $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str);
         }
         $success = $stmt->execute();
@@ -1264,7 +1267,7 @@ class OrderController {
 
     public function updateOrderItem($data) {
         $stmt = $this->koneksi->prepare("UPDATE order_items SET quantity = ?, unit = ?, amount = ? WHERE order_item_id = ?");
-        $stmt->bind_param("iddi", $data->quantity, $data->unit, $data->amount, $data->id);
+        $stmt->bind_param("issi", $data->quantity, $data->unit, $data->amount, $data->id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;

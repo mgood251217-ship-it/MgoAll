@@ -332,7 +332,8 @@ class OrderController {
             }
         }
 
-        $grand_total = floor(round($grand_total) / 500) * 500;
+        // Harga item tetap desimal; total nota dibulatkan ke bawah per Rp500.
+        $grand_total = floor(moneyCents($grand_total) / 50000) * 500;
 
         return $this->orderModel->updateOrderTotal($id, $grand_total);
     }
@@ -736,7 +737,7 @@ class OrderController {
 
         array_walk($items_raw, function($row) use (&$diskon_per_produk) {
             if (!empty($row['diskon']) && $row['diskon'] > 0) {
-                $diskon_per_produk[$row['judul']] = (int)$row['diskon'];
+                $diskon_per_produk[$row['judul']] = (float)$row['diskon'];
             }
         });
 
@@ -971,7 +972,9 @@ class OrderController {
             return ['error' => 'Harga varian tidak digabung dengan harga paket atau konversi print laser.', 'status' => 400];
         }
 
-        $diskonInput = (int)($data['diskon'] ?? 0);
+        $discountValue = moneyInputDecimal(($data['diskon'] ?? '') === '' ? 0 : $data['diskon']);
+        if ($discountValue === null) return ['error' => 'Diskon harus berupa angka dengan maksimal 2 angka desimal.', 'status' => 400];
+        $diskonInput = (float)$discountValue;
         // Diskon paket dihitung per set; tidak mengubah diskon bahan per meter.
         if ($package || ($laserVariant && $laserVariant['price'] !== null)) {
             $diskon = max(0, $diskonInput);
