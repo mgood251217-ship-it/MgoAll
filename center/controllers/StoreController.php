@@ -99,9 +99,7 @@ class StoreController {
             }
             $productMap = $finishingMap = [];
             foreach (['products', 'finishings'] as $table) {
-                $columns = $table === 'products'
-                    ? ['category_id', 'type', 'unit_type', 'name', 'price', 'reasonable_price', 'failed_price', 'store_id', 'stock']
-                    : ['category_id', 'unit_type', 'name', 'price', 'reasonable_price', 'failed_price', 'store_id', 'stock'];
+                $columns = ['category_id', 'unit_type', 'name', 'price', 'reasonable_price', 'failed_price', 'store_id', 'stock'];
                 foreach ($source[$table] as $row) {
                     $oldId = $row['category_id'];
                     if ($oldId !== null && !isset($categoryMap[$oldId])) {

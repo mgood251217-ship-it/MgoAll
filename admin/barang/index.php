@@ -40,13 +40,7 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="mb-0">Data Barang</h1>
         <div class="d-flex gap-2">
-          <button class="btn btn-outline-primary" id="btn-export" style="display: none;">📤 Export Barang</button>
           <?php if ($administrator) { ?>
-          <form id="importForm" action="import_products.php" method="POST" enctype="multipart/form-data" style="display: none;">
-            <input type="file" id="importFile" name="file" accept=".csv,.xls,.xlsx" onchange="document.getElementById('importForm').submit();">
-          </form>
-          <button class="btn btn-outline-secondary" onclick="document.getElementById('importFile').click();">📥 Import Barang</button>
-          
           <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addProductModal">+ Tambah Barang</button>
           <?php } ?>
         </div>
@@ -134,13 +128,6 @@ $unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
                             ]
                         ]
                     ]
-                ],
-                [
-                    'header'         => '<input class="form-check-input" id="selectAllCheckbox" type="checkbox" title="Pilih Semua">', 
-                    'type'           => 'checkbox',
-                    'id_field'       => 'product_id',
-                    'is_header_cell' => true,
-                    'visible'        => $administrator ?? false
                 ]
             ]
         ]);
@@ -384,7 +371,6 @@ document.addEventListener('DOMContentLoaded', () => {
           oldContainer.innerHTML = newContainer.innerHTML;
       }
 
-      displayExport();
     } catch (error) {
       console.error(error);
     }
@@ -415,69 +401,6 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('edit_finishing_unit_type').value = button.getAttribute('data-unit') || '';
       document.getElementById('edit_finishing_reasonable_price').value = button.getAttribute('data-reasonable') || '';
       document.getElementById('edit_finishing_failed_price').value = button.getAttribute('data-failed') || '';
-    });
-  }
-
-  const btnExport = document.querySelector('#btn-export');
-  
-  function displayExport() {
-    const checked = document.querySelectorAll('.check-barang:checked');
-    if (btnExport) {
-        btnExport.style.display = (checked.length === 0) ? 'none' : 'block';
-    }
-  }
-
-  document.addEventListener('change', function (e) {
-    if (e.target.id === 'selectAllCheckbox') {
-      const checkboxes = document.querySelectorAll('.check-barang');
-      checkboxes.forEach(cb => cb.checked = e.target.checked);
-      displayExport();
-    } 
-    else if (e.target.classList.contains('check-barang')) {
-      const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-      const checkboxes = document.querySelectorAll('.check-barang');
-      
-      if (selectAllCheckbox) {
-        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-        const someChecked = Array.from(checkboxes).some(cb => cb.checked);
-        selectAllCheckbox.checked = allChecked;
-        selectAllCheckbox.indeterminate = someChecked && !allChecked;
-      }
-      displayExport();
-    }
-  });
-
-  if (btnExport) {
-    btnExport.addEventListener('click', () => {
-      const checked = document.querySelectorAll('.check-barang:checked');
-      const barangIds = Array.from(checked).map(cb => cb.dataset.id);
-
-      const formData = new URLSearchParams();
-      barangIds.forEach(id => formData.append('barangIds[]', id));
-
-      fetch('export_products.php', {
-        method: 'POST',
-        body: formData
-      })
-      .then(res => {
-        if (!res.ok) throw new Error('Gagal export');
-        return res.blob();
-      })
-      .then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'export-barang.csv';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-        showAlert('success', 'File berhasil diexport!');
-      })
-      .catch(err => {
-        console.error(err);
-        showAlert('error', 'Gagal export data');
-      });
     });
   }
 

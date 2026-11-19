@@ -77,17 +77,6 @@ class Product{
         return $data;
     }
 
-    public function getProductByTypeAndStoreId($data){
-        $stmt = $this->koneksi->prepare("SELECT * FROM products WHERE type = ? AND store_id = ?");
-        $stmt->bind_param('si', $data->type, $data->store_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $products = $result->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-        
-        return $products;
-    }
-
     public function getFinishingByStoreId($store_id){
         $stmt = $this->koneksi->prepare("
             SELECT
@@ -150,7 +139,7 @@ class Product{
     }
 
     public function getOneValue($id, $column){
-        $columnName = ['price', 'reasonable_price', 'failed_price', 'type', 'name', 'store_id'];
+        $columnName = ['price', 'reasonable_price', 'failed_price', 'name', 'store_id'];
         if (!in_array($column, $columnName)) {
             return ''; 
         }
@@ -202,7 +191,7 @@ class Product{
                 AND NOT p.unit_type = '~' 
                 AND DATE(o.date) BETWEEN ? AND ?
             GROUP BY p.product_id 
-            ORDER BY p.type DESC
+            ORDER BY p.category_id DESC, p.name ASC
 
         ");
         $stmt->bind_param("issss", $store_id, $store_id, $store_id, $start_date, $end_date);

@@ -616,12 +616,11 @@ class ProductController {
                     $existingProducts++;
                 } else {
                     $this->copyProductQuery(
-                        'INSERT INTO products (store_id, category_id, name, type, unit_type, price, reasonable_price, failed_price, stock) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)',
+                        'INSERT INTO products (store_id, category_id, name, unit_type, price, reasonable_price, failed_price, stock) VALUES (?, ?, ?, ?, ?, ?, ?, 0)',
                         [
                             $targetId,
                             $categoryId,
                             $product['name'],
-                            $product['type'],
                             $product['unit_type'],
                             $product['price'],
                             $product['reasonable_price'],
