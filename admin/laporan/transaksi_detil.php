@@ -176,7 +176,7 @@ $notesByOrder = $transactionsDetail['notesByOrder'];
                   foreach ($orderPayments as $payment):
                     $payment_id = (int)$payment['payment_id'];
                     $tanggal = sanitize($payment['date']);
-                    $nominal = (int)$payment['nominal'];
+                    $nominal = $payment['nominal'];
                     $method = sanitize($payment['payment_method']);
                     $status = sanitize($payment['status']);
                     

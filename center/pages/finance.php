@@ -157,7 +157,7 @@ $data = $controller->getIndexData($access);
                                 <td><?= htmlspecialchars($exp['expenditure_category_name'] ?? '-') ?></td>
                                 <td><?= htmlspecialchars($exp['information'] ?? '-') ?></td>
                                 <td class="text-danger migrated-style-11">
-                                    Rp <?= number_format($exp['nominal'] ?? 0, 0, ',', '.') ?>
+                                    <?= format_rupiah($exp['nominal'] ?? 0) ?>
                                 </td>
                                 <td class="migrated-style-12">
                                     <?= date('d/m/Y', strtotime($exp['date'])) ?>
@@ -204,7 +204,7 @@ $data = $controller->getIndexData($access);
                                 <td><strong><?= htmlspecialchars($inc['store_name']) ?></strong></td>
                                 <td><?= htmlspecialchars($inc['information'] ?? '-') ?></td>
                                 <td class="text-success migrated-style-11">
-                                    Rp <?= number_format($inc['nominal'] ?? 0, 0, ',', '.') ?>
+                                    <?= format_rupiah($inc['nominal'] ?? 0) ?>
                                 </td>
                                 <td class="migrated-style-12">
                                     <?= date('d/m/Y', strtotime($inc['date'])) ?>
@@ -254,7 +254,7 @@ $data = $controller->getIndexData($access);
                 </div>
                 <div class="mb-3">
                     <label class="form-label migrated-style-19">Nominal (Rp)</label>
-                    <input type="number" class="form-control migrated-style-20" name="nominal" id="edit_nominal" required>
+                    <input type="number" class="form-control migrated-style-20" name="nominal" step="0.01" min="-9999999999999.99" max="9999999999999.99" id="edit_nominal" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label migrated-style-19">Tanggal & Waktu</label>

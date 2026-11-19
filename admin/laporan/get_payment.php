@@ -29,7 +29,7 @@ if ($result->num_rows > 0) {
     while ($payment = $result->fetch_assoc()) {
         $payment_id = (int)$payment['payment_id'];
         $tanggal = htmlspecialchars($payment['date']);
-        $nominal = number_format((int)$payment['nominal'], 0, ',', '.');
+        $nominal = formatMoneyNumber($payment['nominal']);
         $method = htmlspecialchars($payment['payment_method']);
         $status = htmlspecialchars($payment['status']);
         ?>

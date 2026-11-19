@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/money.php';
 function adminCookieOptions() {
     $host = strtolower((string)parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST));
     $production = $host === 'mgood.my.id' || str_ends_with($host, '.mgood.my.id');
@@ -33,7 +34,7 @@ function formatKeInternasional($nomor) {
 }
 
 function format_rupiah($angka) {
-    return "Rp " . number_format((float)$angka, 0, ',', '.');
+    return "Rp " . formatMoneyNumber($angka);
 }
 
 function title_case($teks) {

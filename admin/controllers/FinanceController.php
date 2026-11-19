@@ -210,12 +210,12 @@ class FinanceController {
 
             if ($exists) {
                 $stmt = $this->koneksi->prepare("UPDATE income SET nominal = ? WHERE income_id = ?");
-                $stmt->bind_param("ii", $saldoPrev, $income_id);
+                $stmt->bind_param("di", $saldoPrev, $income_id);
                 $stmt->execute();
                 $stmt->close();
             } else {
                 $stmt = $this->koneksi->prepare("INSERT INTO income (store_id, information, nominal, date) VALUES (?, ?, ?, ?)");
-                $stmt->bind_param("isis", $store_id, $infoSaldo, $saldoPrev, $date);
+                $stmt->bind_param("isds", $store_id, $infoSaldo, $saldoPrev, $date);
                 $stmt->execute();
                 $stmt->close();
             }
@@ -247,10 +247,10 @@ class FinanceController {
 
             if ($count > 0) {
                 $stmt = $this->koneksi->prepare("UPDATE finance SET omset_offline = ?, omset_online = ?, saldo = ?, transfer = ?, expenditure = ? WHERE store_id = ? AND date = ?");
-                $stmt->bind_param("iiiiiss", $omset_offline, $omset_online, $saldo, $transfer, $pengeluaran, $store_id, $date);
+                $stmt->bind_param("dddddis", $omset_offline, $omset_online, $saldo, $transfer, $pengeluaran, $store_id, $date);
             } else {
                 $stmt = $this->koneksi->prepare("INSERT INTO finance (store_id, omset_offline, omset_online, saldo, transfer, expenditure, date) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param("iiiiiss", $store_id, $omset_offline, $omset_online, $saldo, $transfer, $pengeluaran, $date);
+                $stmt->bind_param("iddddds", $store_id, $omset_offline, $omset_online, $saldo, $transfer, $pengeluaran, $date);
             }
             $stmt->execute();
             $stmt->close();
@@ -293,13 +293,22 @@ class FinanceController {
         send_json_response(true, "Sinkron Berhasil");
     }
 
+    private function requestNominal() {
+        $nominal = moneyInputDecimal($_POST['nominal'] ?? 0);
+        if ($nominal === null) {
+            send_json_response(false, 'Nominal harus berupa angka dengan maksimal 2 angka desimal.');
+            exit;
+        }
+        return $nominal;
+    }
+
     public function createExpenditure(){
         if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         global $store_id;
         global $storeName;
 
         $info    = strtoupper(trim($_POST['information']));
-        $nominal = $_POST['nominal'] ?? 0;
+        $nominal = $this->requestNominal();
         $expenditure_category_id = $_POST['expenditure_category_id'] ?? 0;
         $date = trim($_POST['date']);
 
@@ -356,7 +365,7 @@ class FinanceController {
         if ($this->authMiddleware->isAdminOrManager() == false) { return []; }
         global $store_id;
         $info    = strtoupper(trim($_POST['information']));
-        $nominal = $_POST['nominal'] ?? 0;
+        $nominal = $this->requestNominal();
         $date = trim($_POST['date']);
 
         $data = (object)[

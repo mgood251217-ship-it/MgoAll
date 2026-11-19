@@ -1056,7 +1056,7 @@ nominalInput.addEventListener('input', function(e) {
   let originalLength = nominalInput.value.length;
 
   let numericValue = nominalInput.value.replace(/[^,\d]/g, '');
-  nominalRaw.value = numericValue.replace(/\./g, '');
+  nominalRaw.value = numericValue.replace(',', '.');
 
   nominalInput.value = formatRupiah(numericValue);
 
@@ -1082,7 +1082,7 @@ nominalInput.addEventListener('input', function(e) {
         return;
       }
 
-      if (!isLunas && (!nominal || parseInt(nominal) <= 0)) {
+      if (!isLunas && (!nominal || Number(nominal) <= 0)) {
         feedback.textContent = 'Nominal harus diisi dan lebih dari 0';
         return;
       }
@@ -1259,8 +1259,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const modal = document.getElementById('paymentModal');
 
   function updateLunasButtonState() {
-    const rawValue = nominalInput.value.replace(/[^\d]/g, '');
-    const isPartial = rawValue && parseInt(rawValue) > 0;
+    const rawValue = document.getElementById('payment-nominal-raw').value;
+    const isPartial = Number(rawValue) > 0;
 
     lunasButtons.forEach(button => {
       button.disabled = isPartial;

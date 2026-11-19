@@ -295,7 +295,7 @@ $dataPemasukan = $data['income'];
                 
                 <div class="mb-3">
                   <label class="form-label">Nominal</label>
-                  <input type="number" name="nominal" class="form-control" required placeholder="Contoh: 100000">
+                  <input type="number" name="nominal" step="0.01" min="-9999999999999.99" max="9999999999999.99" class="form-control" required placeholder="Contoh: 100000">
                 </div>
                 
                 <div class="mb-3">
@@ -331,7 +331,7 @@ $dataPemasukan = $data['income'];
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Nominal</label>
-                  <input type="number" name="nominal" class="form-control" required placeholder="Contoh: 200000">
+                  <input type="number" name="nominal" step="0.01" min="-9999999999999.99" max="9999999999999.99" class="form-control" required placeholder="Contoh: 200000">
                 </div>
                 <input type="hidden" name="tanggal" value="<?= date('Y-m-d') ?>">
               </div>
@@ -363,7 +363,7 @@ $dataPemasukan = $data['income'];
 
                 <div class="mb-3">
                   <label class="form-label">Nominal</label>
-                  <input type="number" class="form-control" name="nominal" id="edit-nominal" required>
+                  <input type="number" class="form-control" name="nominal" step="0.01" min="-9999999999999.99" max="9999999999999.99" id="edit-nominal" required>
                 </div>
               </div>
               <div class="modal-footer">
@@ -393,7 +393,7 @@ $dataPemasukan = $data['income'];
 
                 <div class="mb-3">
                   <label class="form-label">Nominal</label>
-                  <input type="number" class="form-control" name="nominal" id="edit-income-nominal" required>
+                  <input type="number" class="form-control" name="nominal" step="0.01" min="-9999999999999.99" max="9999999999999.99" id="edit-income-nominal" required>
                 </div>
               </div>
               <div class="modal-footer">
@@ -757,7 +757,7 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
     if (tds.length >= 4) {
       const no = tds[0].innerText.trim();
       const ket = tds[1].innerText.trim();
-      const nominal = parseInt(tds[2].innerText.replace(/Rp\s?|-|\./g, '').trim()) || 0;
+      const nominal = Number(tds[2].innerText.replace(/[^\d,-]/g, '').replace(',', '.')) || 0;
       const tanggal = tds[4].innerText.trim();
 
       const row = sheet.addRow([no, ket, nominal, tanggal]);
@@ -788,7 +788,7 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
     if (tds.length >= 4) {
       const no = tds[0].innerText.trim();
       const ket = tds[1].innerText.trim();
-      const nominal = parseInt(tds[2].innerText.replace(/Rp\s?|-|\./g, '').trim()) || 0;
+      const nominal = Number(tds[2].innerText.replace(/[^\d,-]/g, '').replace(',', '.')) || 0;
       const tanggal = tds[3].innerText.trim();
 
       const row = sheet.addRow([no, ket, nominal, tanggal]);

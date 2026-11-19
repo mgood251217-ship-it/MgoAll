@@ -257,12 +257,12 @@ class FinanceController {
 
             if ($exists) {
                 $stmt = $this->koneksi->prepare("UPDATE income SET nominal = ? WHERE income_id = ?");
-                $stmt->bind_param("ii", $saldoPrev, $income_id);
+                $stmt->bind_param("di", $saldoPrev, $income_id);
                 $stmt->execute();
                 $stmt->close();
             } else {
                 $stmt = $this->koneksi->prepare("INSERT INTO income (store_id, information, nominal, date) VALUES (?, ?, ?, ?)");
-                $stmt->bind_param("isis", $store_id, $infoSaldo, $saldoPrev, $date);
+                $stmt->bind_param("isds", $store_id, $infoSaldo, $saldoPrev, $date);
                 $stmt->execute();
                 $stmt->close();
             }
@@ -294,10 +294,10 @@ class FinanceController {
 
             if ($count > 0) {
                 $stmt = $this->koneksi->prepare("UPDATE finance SET omset_offline = ?, omset_online = ?, saldo = ?, transfer = ?, expenditure = ? WHERE store_id = ? AND date = ?");
-                $stmt->bind_param("iiiiiss", $omset_offline, $omset_online, $saldo, $transfer, $pengeluaran, $store_id, $date);
+                $stmt->bind_param("dddddis", $omset_offline, $omset_online, $saldo, $transfer, $pengeluaran, $store_id, $date);
             } else {
                 $stmt = $this->koneksi->prepare("INSERT INTO finance (store_id, omset_offline, omset_online, saldo, transfer, expenditure, date) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param("iiiiiss", $store_id, $omset_offline, $omset_online, $saldo, $transfer, $pengeluaran, $date);
+                $stmt->bind_param("iddddds", $store_id, $omset_offline, $omset_online, $saldo, $transfer, $pengeluaran, $date);
             }
             $stmt->execute();
             $stmt->close();
@@ -375,7 +375,7 @@ class FinanceController {
 
         $administrator_id = isset($_SESSION['admin_logged_in']['administrator_id']) ? startEnk('dek', $_SESSION['admin_logged_in']['administrator_id']) : 0;
         $expenditure_id = isset($_POST['expenditure_id']) ? (int)$_POST['expenditure_id'] : 0;
-        $nominal = isset($_POST['nominal']) ? (float)$_POST['nominal'] : 0;
+        $nominal = moneyInputDecimal($_POST['nominal'] ?? 0);
         $information = isset($_POST['information']) ? trim($_POST['information']) : '';
         $datetime = isset($_POST['date']) ? str_replace('T', ' ', $_POST['date']) : '';
         $keterangan = isset($_POST['keterangan']) ? trim($_POST['keterangan']) : '';
@@ -393,6 +393,7 @@ class FinanceController {
         $this->koneksi->begin_transaction();
 
         try {
+            if ($nominal === null) throw new Exception('Nominal harus berupa angka dengan maksimal 2 angka desimal.');
             $stmt = $this->koneksi->prepare("SELECT store_id, nominal, information, date, expenditure_category_id, DATE(date) as old_date FROM expenditures WHERE expenditure_id = ?");
             $stmt->bind_param("i", $expenditure_id);
             $stmt->execute();
@@ -422,7 +423,7 @@ class FinanceController {
             ], $keterangan, $date_now, $order_id, $administrator_id);
 
             $stmtUpd = $this->koneksi->prepare("UPDATE expenditures SET nominal = ?, information = ?, date = ?, expenditure_category_id = ? WHERE expenditure_id = ?");
-            $stmtUpd->bind_param("dssii", $nominal, $information, $datetime, $category_id, $expenditure_id);
+            $stmtUpd->bind_param("sssii", $nominal, $information, $datetime, $category_id, $expenditure_id);
             $stmtUpd->execute();
             $stmtUpd->close();
 
@@ -508,7 +509,7 @@ class FinanceController {
 
         $administrator_id = isset($_SESSION['admin_logged_in']['administrator_id']) ? startEnk('dek', $_SESSION['admin_logged_in']['administrator_id']) : 0;
         $income_id = isset($_POST['income_id']) ? (int)$_POST['income_id'] : 0;
-        $nominal = isset($_POST['nominal']) ? (float)$_POST['nominal'] : 0;
+        $nominal = moneyInputDecimal($_POST['nominal'] ?? 0);
         $information = isset($_POST['information']) ? trim($_POST['information']) : '';
         $datetime = isset($_POST['date']) ? str_replace('T', ' ', $_POST['date']) : '';
         $keterangan = isset($_POST['keterangan']) ? trim($_POST['keterangan']) : '';
@@ -526,6 +527,7 @@ class FinanceController {
         $this->koneksi->begin_transaction();
 
         try {
+            if ($nominal === null) throw new Exception('Nominal harus berupa angka dengan maksimal 2 angka desimal.');
             $stmt = $this->koneksi->prepare("SELECT store_id, nominal, information, date, DATE(date) as old_date FROM income WHERE income_id = ?");
             $stmt->bind_param("i", $income_id);
             $stmt->execute();
@@ -544,7 +546,7 @@ class FinanceController {
             ], $keterangan, $date_now, $order_id, $administrator_id);
 
             $stmtUpd = $this->koneksi->prepare("UPDATE income SET nominal = ?, information = ?, date = ? WHERE income_id = ?");
-            $stmtUpd->bind_param("issi", $nominal, $information, $datetime, $income_id);
+            $stmtUpd->bind_param("sssi", $nominal, $information, $datetime, $income_id);
             $stmtUpd->execute();
             $stmtUpd->close();
 

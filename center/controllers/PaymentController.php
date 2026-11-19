@@ -102,7 +102,7 @@ class PaymentController {
         $stmtOrder->close();
 
         if (!$orderRow) return;
-        $orderTotal = (float)$orderRow['total'];
+        $orderTotal = moneyCents($orderRow['total']);
 
         $stmtPay = $this->koneksi->prepare("SELECT payment_id, nominal FROM payment WHERE order_id = ? ORDER BY date ASC, payment_id ASC");
         $stmtPay->bind_param("i", $order_id);
@@ -113,7 +113,7 @@ class PaymentController {
         $totalPembayaran = 0;
         while ($row = $resPay->fetch_assoc()) {
             $payments[] = $row;
-            $totalPembayaran += (float)$row['nominal'];
+            $totalPembayaran += moneyCents($row['nominal']);
         }
         $stmtPay->close();
 
@@ -137,7 +137,7 @@ class PaymentController {
 
     public function createPayment($data){
         $stmt = $this->koneksi->prepare("INSERT INTO payment (order_id, store_id, nominal, payment_method, status, date) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("iiisss", $data->order_id, $data->store_id, $data->nominal, $data->payment_method, $data->status, $data->date);
+        $stmt->bind_param("iissss", $data->order_id, $data->store_id, $data->nominal, $data->payment_method, $data->status, $data->date);
         $success = $stmt->execute();
         $stmt->close();
         return $success;
@@ -158,15 +158,23 @@ class PaymentController {
         $total = $orderController->getOneValue($order_id, 'total');
         $paid = $this->getPaidByOrderId($order_id);
 
-        $nominal = $isLunas ? ($total - $paid) : ((int)($_POST['nominal'] ?? 0));
+        $totalCents = moneyCents($total);
+        $paidCents = moneyCents($paid);
+        if ($totalCents === null || $paidCents === null) {
+            send_json_response(false, 'Nilai tagihan atau pembayaran tidak valid.');
+            exit;
+        }
+        $nominalCents = $isLunas ? $totalCents - $paidCents : paymentInputCents($_POST['nominal'] ?? 0);
 
-        if ($nominal <= 0) {
+        if ($nominalCents === null || $nominalCents <= 0 || $nominalCents > 999999999999999) {
             send_json_response(false, $isLunas ? 'Sudah Lunas' : 'Nominal Invalid');
             exit;
         }
 
-        $total_paid = $paid + $nominal;
-        $isLunasStatus = ($total_paid >= $total);
+        $nominal = moneyDecimal($nominalCents);
+        $totalPaidCents = $paidCents + $nominalCents;
+        $total_paid = moneyDecimal($totalPaidCents);
+        $isLunasStatus = $totalPaidCents >= $totalCents;
 
         $data = new stdClass();
         $data->order_id = $order_id;
@@ -182,7 +190,7 @@ class PaymentController {
         if ($isLunasStatus) {
             $totalBayar = title_case("LUNAS " . $data->payment_method);
         } else {
-            $totalBayar = "<div style='font-size: 12px; line-height: 12px;'>DP: " . format_rupiah($total_paid) . " | Sisa : " . format_rupiah($total - $total_paid) . "</div>";
+            $totalBayar = "<div style='font-size: 12px; line-height: 12px;'>DP: " . format_rupiah($total_paid) . " | Sisa : " . format_rupiah(moneyDecimal($totalCents - $totalPaidCents)) . "</div>";
         }
         updateStoreCache($store_id, 'orders');
         updateStoreCache($store_id, 'payments');
@@ -301,7 +309,8 @@ class PaymentController {
 
         $payment_id = isset($_POST['payment_id']) ? (int)$_POST['payment_id'] : 0;
         $order_id   = isset($_POST['order_id']) ? (int)$_POST['order_id'] : 0;
-        $nominal    = isset($_POST['nominal']) ? (int)$_POST['nominal'] : 0;
+        $nominalCents = paymentInputCents($_POST['nominal'] ?? 0);
+        $nominal = $nominalCents === null ? null : moneyDecimal($nominalCents);
         $method     = isset($_POST['payment_method']) ? strtoupper(trim($_POST['payment_method'])) : '';
         $tanggal    = isset($_POST['tanggal']) ? trim($_POST['tanggal']) : '';
         $keterangan = isset($_POST['keterangan']) ? trim($_POST['keterangan']) : '';
@@ -314,6 +323,7 @@ class PaymentController {
         $this->koneksi->begin_transaction();
 
         try {
+            if ($nominalCents === null || $nominalCents <= 0) throw new Exception('Nominal pembayaran tidak valid.');
             $payment = $this->paymentForChange($payment_id, $store_id, $order_id, $administrator_id);
             $store_id = (int)$payment['store_id'];
             $order_id = (int)$payment['order_id'];
@@ -333,7 +343,7 @@ class PaymentController {
             ], $keterangan, $date, $order_id, $administrator_id);
 
             $stmtUpd = $this->koneksi->prepare("UPDATE payment SET nominal = ?, payment_method = ?, date = ? WHERE payment_id = ?");
-            $stmtUpd->bind_param("issi", $nominal, $method, $tanggal, $payment_id);
+            $stmtUpd->bind_param("sssi", $nominal, $method, $tanggal, $payment_id);
             $stmtUpd->execute();
             $stmtUpd->close();
 

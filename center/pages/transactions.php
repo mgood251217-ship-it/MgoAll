@@ -112,7 +112,7 @@ $data = $controller->getIndexData($access);
                             </td>
                             <td><strong><?= htmlspecialchars($row['customer_name']) ?></strong></td>
                             <td><strong><?= htmlspecialchars($row['payment_method']) ?></strong></td>
-                            <td>Rp <?= number_format($row['nominal'] ?? 0, 0, ',', '.') ?></td>
+                            <td><?= format_rupiah($row['nominal'] ?? 0) ?></td>
                             <td><span class="badge-pill <?= $paymentBadge ?>"><?= htmlspecialchars($row['status']) ?></span></td>
                             <td><?= $tanggal ?></td>
                             <td class="migrated-style-9">
@@ -217,7 +217,7 @@ $data = $controller->getIndexData($access);
             <div class="modal-body migrated-style-18">
                 <div class="mb-3">
                     <label class="form-label migrated-style-19">Nominal Pembayaran (Rp)</label>
-                    <input type="number" class="form-control migrated-style-20" name="nominal" id="edit_nominal" required>
+                    <input type="number" class="form-control migrated-style-20" name="nominal" step="0.01" min="0.01" max="9999999999999.99" id="edit_nominal" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label migrated-style-19">Metode Pembayaran</label>

@@ -9,7 +9,7 @@ class Payment {
 
     public function createPayment($data){
         $stmt = $this->koneksi->prepare("INSERT INTO payment (order_id, store_id, nominal, payment_method, status, date) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("iiisss", $data->order_id, $data->store_id, $data->nominal, $data->payment_method, $data->status, $data->date);
+        $stmt->bind_param("iissss", $data->order_id, $data->store_id, $data->nominal, $data->payment_method, $data->status, $data->date);
         $success = $stmt->execute();
         if ($success) $data->payment_id = (int)$stmt->insert_id;
         $stmt->close();
@@ -90,7 +90,7 @@ class Payment {
 
     public function updatePayment($data){
         $stmt = $this->koneksi->prepare("UPDATE payment SET nominal = ?, payment_method = ?, date = ?, status = ? WHERE payment_id = ?");
-        $stmt->bind_param("isssi", $data->nominal, $data->payment_method, $data->date, $data->status, $data->payment_id);
+        $stmt->bind_param("ssssi", $data->nominal, $data->payment_method, $data->date, $data->status, $data->payment_id);
         $success = $stmt->execute();
         $stmt->close();
         return $success;

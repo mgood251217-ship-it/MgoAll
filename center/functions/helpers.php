@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../admin/functions/money.php';
 function sanitize($data) {
     return htmlspecialchars(strip_tags(trim($data)), ENT_QUOTES, 'UTF-8');
 }
@@ -13,7 +14,7 @@ function formatKeInternasional($nomor) {
 }
 
 function format_rupiah($angka) {
-    return "Rp " . number_format((float)$angka, 0, ',', '.');
+    return "Rp " . formatMoneyNumber($angka);
 }
 
 function title_case($teks) {

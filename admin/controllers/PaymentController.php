@@ -35,15 +35,23 @@ class PaymentController {
         $total = $this->orderModel->getOneValue($order_id, 'total');
         $paid = $this->paymentModel->getPaidByOrderId($order_id);
 
-        $nominal = $isLunas ? ($total - $paid) : ((int)($_POST['nominal'] ?? 0));
+        $totalCents = moneyCents($total);
+        $paidCents = moneyCents($paid);
+        if ($totalCents === null || $paidCents === null) {
+            send_json_response(false, 'Nilai tagihan atau pembayaran tidak valid.');
+            exit;
+        }
+        $nominalCents = $isLunas ? $totalCents - $paidCents : paymentInputCents($_POST['nominal'] ?? 0);
 
-        if ($nominal <= 0) {
+        if ($nominalCents === null || $nominalCents <= 0 || $nominalCents > 999999999999999) {
             send_json_response(false, $isLunas ? 'Sudah Lunas' : 'Nominal Invalid');
             exit;
         }
 
-        $total_paid = $paid + $nominal;
-        $isLunasStatus = ($total_paid >= $total);
+        $nominal = moneyDecimal($nominalCents);
+        $totalPaidCents = $paidCents + $nominalCents;
+        $total_paid = moneyDecimal($totalPaidCents);
+        $isLunasStatus = $totalPaidCents >= $totalCents;
 
         $data = new stdClass();
         $data->order_id = $order_id;
@@ -69,7 +77,7 @@ class PaymentController {
         if ($isLunasStatus) {
             $totalBayar = title_case("LUNAS " . $data->payment_method);
         } else {
-            $totalBayar = "<div style='font-size: 12px; line-height: 12px;'>DP: " . format_rupiah($total_paid) . " | Sisa : " . format_rupiah($total - $total_paid) . "</div>";
+            $totalBayar = "<div style='font-size: 12px; line-height: 12px;'>DP: " . format_rupiah($total_paid) . " | Sisa : " . format_rupiah(moneyDecimal($totalCents - $totalPaidCents)) . "</div>";
         }
         updateStoreCache($store_id, 'orders');
         updateStoreCache($store_id, 'payments');
@@ -98,7 +106,7 @@ class PaymentController {
         $paid = $this->paymentModel->getPaidByOrderId($order_id);
 
         $is_lunas = false;
-        if ((int)$paid >= $total) {
+        if (moneyCents($total) > 0 && moneyCents($paid) >= moneyCents($total)) {
             $is_lunas = true;
         };
 
