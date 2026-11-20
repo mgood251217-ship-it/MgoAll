@@ -104,7 +104,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
         </div>
         <div class="form-group migrated-style-89">
             <label for="search">Cari Data</label>
-            <input type="text" name="search" id="search" class="form-control" value="<?= htmlspecialchars($data['search']) ?>" placeholder="Ketik nama produk / finishing...">
+            <input type="text" name="search" id="search" class="form-control" value="<?= htmlspecialchars($data['search']) ?>" placeholder="Ketik nama produk, varian, atau finishing...">
         </div>
         
         <div class="form-group migrated-style-4">

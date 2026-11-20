@@ -30,7 +30,7 @@ class ProductController {
 
         $store_id = isset($_GET['store_id']) && $_GET['store_id'] !== '' ? (int)$_GET['store_id'] : null;
         $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-        $search = $_GET['search'] ?? '';
+        $search = is_string($_GET['search'] ?? null) ? trim($_GET['search']) : '';
         $category_id = max(0, (int)($_GET['category_id'] ?? 0));
         $limit = isset($_GET['limit']) ? max(1, (int)$_GET['limit']) : 25;
 
@@ -48,7 +48,8 @@ class ProductController {
         $total = 0;
 
         if ($store_id !== null) {
-            $variantCount = (new ProductVariantController($this->koneksi))->isAvailable()
+            $withVariants = (new ProductVariantController($this->koneksi))->isAvailable();
+            $variantCount = $withVariants
                 ? '(SELECT COUNT(*) FROM product_variants v WHERE v.product_id = p.product_id AND v.store_id = p.store_id)'
                 : '0';
             $migrationStmt = $this->koneksi->prepare("SELECT p.product_id, p.category_id, p.name, p.price, $variantCount AS variant_count FROM products p WHERE p.store_id = ? ORDER BY p.name, p.product_id");
@@ -82,13 +83,15 @@ class ProductController {
             }
 
             $search_param = "%" . $search . "%";
+            [$productFilter, $searchParams] = $this->productSearch($store_id, $search, $withVariants);
+            $productParams = array_merge([$store_id], $searchParams, [$category_id, $category_id]);
             $countStmt = $this->koneksi->prepare("
                 SELECT COUNT(*) 
-                FROM products 
-                WHERE store_id = ? AND name LIKE ?
-                    AND (? = 0 OR category_id = ?)
+                FROM products p
+                WHERE p.store_id = ? AND $productFilter
+                    AND (? = 0 OR p.category_id = ?)
             ");
-            $countStmt->bind_param("isii", $store_id, $search_param, $category_id, $category_id);
+            $countStmt->bind_param(str_repeat('s', count($productParams)), ...$productParams);
             $countStmt->execute();
             $total = $countStmt->get_result()->fetch_row()[0];
             $countStmt->close();
@@ -103,12 +106,13 @@ class ProductController {
                      WHERE oi.product_id = p.product_id AND oi.store_id = p.store_id) AS order_item_count
                 FROM products p
                 LEFT JOIN categories c ON p.category_id = c.category_id
-                WHERE p.store_id = ? AND p.name LIKE ? 
+                WHERE p.store_id = ? AND $productFilter
                     AND (? = 0 OR p.category_id = ?)
                 ORDER BY p.product_id DESC 
                 LIMIT ? OFFSET ?
             ");
-            $stmt->bind_param("isiiii", $store_id, $search_param, $category_id, $category_id, $limit, $offset);
+            $pageParams = array_merge($productParams, [$limit, $offset]);
+            $stmt->bind_param(str_repeat('s', count($pageParams)), ...$pageParams);
             $stmt->execute();
             
             $result = $stmt->get_result();
@@ -154,6 +158,26 @@ class ProductController {
             'search' => $search,
             'limit' => $limit
         ];
+    }
+
+    private function productSearch($store_id, $search, $withVariants) {
+        $words = preg_split('/\s+/u', trim($search), -1, PREG_SPLIT_NO_EMPTY);
+        if (!$words) return ['1 = 1', []];
+        $names = $variants = $nameParams = $variantParams = [];
+        foreach ($words as $word) {
+            $pattern = '%' . $word . '%';
+            $names[] = 'p.name LIKE ?';
+            $nameParams[] = $pattern;
+            $variants[] = "(p.name LIKE ? OR LOWER(JSON_UNQUOTE(JSON_EXTRACT(v.options_json, '$.*'))) LIKE LOWER(?))";
+            array_push($variantParams, $pattern, $pattern);
+        }
+        $filter = '(' . implode(' AND ', $names) . ')';
+        if ($withVariants) {
+            $filter = '(' . $filter . ' OR EXISTS (SELECT 1 FROM product_variants v
+                WHERE v.product_id = p.product_id AND v.store_id = ? AND ' . implode(' AND ', $variants) . '))';
+            $nameParams = array_merge($nameParams, [$store_id], $variantParams);
+        }
+        return [$filter, $nameParams];
     }
 
     private function productReturnUrl() {
