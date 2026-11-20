@@ -641,7 +641,7 @@ class OrderController {
         if ($package && !ProductFinishingPriceController::requiresDimensions($product)) {
             // Ukuran paket LASER A3 memilih harga; pemakaian bahan tetap per pcs.
             $stok_butuh = $quantity;
-        } elseif ($product['category'] === 'DTF' && $panjang > 0) {
+        } elseif (in_array($product['category'], ['DTF', 'DTF UV'], true) && $panjang > 0) {
             $stok_butuh = $panjang * $quantity;
         } elseif ($panjang > 0 && $lebar > 0) {
             $stok_butuh = $panjang * $lebar * $quantity;
@@ -783,7 +783,7 @@ class OrderController {
             $unit_type = $product['unit_type'] ?? '';
 
             if ($unit_type === 'M2') {
-                $unit *= ($category === 'DTF') ? $panjang : ($panjang * $lebar);
+                $unit *= in_array($category, ['DTF', 'DTF UV'], true) ? $panjang : ($panjang * $lebar);
             }
 
             if ($unit_type === 'CM2') {
@@ -1062,6 +1062,7 @@ class OrderController {
         $type = $product['category'] ?? '';
 
         $isAnekaCetak = strtoupper(trim($type)) === 'ANEKA CETAK';
+        $isDtf = in_array($type, ['DTF', 'DTF UV'], true);
 
         $stok_kembali = $quantity;
         $panjang = 0;
@@ -1075,6 +1076,8 @@ class OrderController {
         if ($isAnekaCetak || !empty($item['product_finishing_price_id'])) {
             $stok_kembali = ProductFinishingPriceController::requiresDimensions($product ?? []) && $panjang > 0 && $lebar > 0
                 ? $panjang * $lebar * $quantity : $quantity;
+        } elseif ($isDtf && $panjang > 0) {
+            $stok_kembali = $panjang * $quantity;
         } elseif ($unit_type === 'M2' || $unit_type === 'CM2') {
             $stok_kembali = round(($panjang / 100) * ($lebar / 100) * $quantity, 4);
         }
@@ -1082,13 +1085,18 @@ class OrderController {
             $stok_kembali = round((($panjang + 5) * ($lebar + 5)) / 10000 * $quantity, 4);
         }
 
-        if ($isAnekaCetak || !empty($item['product_finishing_price_id'])) {
+        if ($isAnekaCetak || $isDtf || !empty($item['product_finishing_price_id'])) {
             if ($unit_type !== '~') $this->productController->addStock($stok_kembali, $product_id);
         } else {
             $this->productController->addStock($product_id, $stok_kembali);
         }
 
-        if ($finishing_ids !== '-') {
+        if ($isDtf) {
+            $finishingData = $this->finishingData($finishing_ids, $panjang, $lebar);
+            foreach ($finishingData['stocks'] as $finishing) {
+                $this->productController->addFinishingStock($finishing['qty'] * $quantity, $finishing['finishing_id']);
+            }
+        } elseif ($finishing_ids !== '-') {
             $finishing_array = explode(',', $finishing_ids);
             foreach ($finishing_array as $fid) {
                 $fid = (int)$fid;

@@ -434,7 +434,7 @@ class ProductPriceTierController {
         if ($package && !ProductFinishingPriceController::requiresDimensions($p)) {
             $factor = 1;
         }
-        elseif (strtoupper($p['category'] ?? '') === 'DTF' && $length > 0) $factor = $length;
+        elseif (in_array(strtoupper($p['category'] ?? ''), ['DTF', 'DTF UV'], true) && $length > 0) $factor = $length;
         elseif (preg_match('/^([\d.]+) KG$/i', $row['size'], $m)) $factor = (float)$m[1];
         if ($p['unit_type'] !== '~') {
             $stock['products'][(int)$row['product_id']] = $factor;

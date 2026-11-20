@@ -859,7 +859,7 @@ class OrderController {
             // Ukuran paket LASER A3 memilih harga; pemakaian bahan tetap per pcs.
             return $quantity;
         }
-        if (($product['category'] ?? '') === 'DTF' && $panjang > 0) {
+        if (in_array($product['category'] ?? '', ['DTF', 'DTF UV'], true) && $panjang > 0) {
             return $panjang * $quantity;
         }
         if ($panjang > 0 && $lebar > 0) {

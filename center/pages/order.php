@@ -705,7 +705,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (elLebar) elLebar.placeholder = 'Lbr (m)';
         }
 
-        if (kategori === 'DTF') {
+        if (['DTF', 'DTF UV'].includes(kategori)) {
             if (elLebar) { elLebar.value = '0.58'; elLebar.readOnly = true; }
             if (elPanjang) { elPanjang.value = ''; elPanjang.readOnly = false; }
         } else {
