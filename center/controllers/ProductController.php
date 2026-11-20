@@ -451,11 +451,64 @@ class ProductController {
         return (int) $this->koneksi->insert_id;
     }
 
+    private function copyTargetStores($sourceId) {
+        $targetIds = $this->selectedCatalogIds(
+            $_POST['target_store_ids'] ?? [$_POST['target_store_id'] ?? 0], 'cabang tujuan'
+        );
+        if ($sourceId <= 0 || in_array($sourceId, $targetIds, true)) {
+            throw new InvalidArgumentException('Pilih cabang tujuan yang berbeda dari cabang sumber.');
+        }
+        $adminId = (int) startEnk('dek', $_SESSION['admin_logged_in']['administrator_id'] ?? '');
+        $stmt = $this->copyProductQuery('SELECT access FROM administrator WHERE administrator_id = ?', [$adminId]);
+        $admin = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$admin) throw new InvalidArgumentException('Akun tidak ditemukan. Silakan login kembali.');
+
+        $storeIds = array_merge([$sourceId], $targetIds);
+        sort($storeIds);
+        $placeholders = implode(',', array_fill(0, count($storeIds), '?'));
+        $stmt = $this->copyProductQuery(
+            "SELECT store_id, name, administrator FROM stores WHERE store_id IN ($placeholders) ORDER BY store_id FOR UPDATE",
+            $storeIds
+        );
+        $stores = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        if (count($stores) !== count($storeIds)) {
+            throw new InvalidArgumentException('Cabang sumber atau tujuan tidak ditemukan.');
+        }
+        $targets = [];
+        foreach ($stores as $store) {
+            if ($admin['access'] !== 'ALL' && ($admin['access'] === '' || (string)$store['administrator'] !== (string)$admin['access'])) {
+                throw new InvalidArgumentException('Anda tidak memiliki akses ke cabang sumber atau tujuan.');
+            }
+            if ((int)$store['store_id'] !== $sourceId) $targets[] = $store;
+        }
+        return $targets;
+    }
+
+    private function updateCopiedStoreCaches($targets, $modules, $label) {
+        $failed = [];
+        foreach ($targets as $target) {
+            try {
+                require_once __DIR__ . '/../functions/cacheHelper.php';
+                foreach ($modules as $module) updateStoreCache((int)$target['store_id'], $module);
+            } catch (Throwable $e) {
+                error_log('Copy catalog cache: ' . $e->getMessage());
+                $failed[] = $target['name'];
+            }
+        }
+        if ($failed) {
+            unset($_SESSION['swal_success']);
+            $_SESSION['swal_error'] = $label . ' sudah disalin, tetapi cache gagal diperbarui pada cabang: '
+                . implode(', ', $failed) . '. Gunakan Update Cache pada cabang tersebut.';
+        }
+    }
+
     public function copyFinishings() {
         if (session_status() === PHP_SESSION_NONE) session_start();
         $sourceId = filter_var($_POST['store_id'] ?? '', FILTER_VALIDATE_INT) ?: 0;
-        $targetId = filter_var($_POST['target_store_id'] ?? '', FILTER_VALIDATE_INT) ?: 0;
         $transaction = $saved = false;
+        $targetName = "";
         $driver = new mysqli_driver();
         $report = $driver->report_mode;
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
@@ -469,29 +522,9 @@ class ProductController {
                 throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
             }
             $ids = $this->selectedCatalogIds($_POST['finishing_ids'] ?? [], 'finishing');
-            if ($sourceId <= 0 || $targetId <= 0 || $sourceId === $targetId) {
-                throw new InvalidArgumentException('Pilih cabang tujuan yang berbeda dari cabang sumber.');
-            }
-            $adminId = (int) startEnk('dek', $_SESSION['admin_logged_in']['administrator_id'] ?? '');
-            $stmt = $this->copyProductQuery('SELECT access FROM administrator WHERE administrator_id = ?', [$adminId]);
-            $admin = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
-            if (!$admin) throw new InvalidArgumentException('Akun tidak ditemukan. Silakan login kembali.');
-
             $this->koneksi->begin_transaction();
             $transaction = true;
-            $stmt = $this->copyProductQuery(
-                'SELECT store_id, administrator FROM stores WHERE store_id IN (?, ?) ORDER BY store_id FOR UPDATE',
-                [$sourceId, $targetId]
-            );
-            $stores = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-            $stmt->close();
-            if (count($stores) !== 2) throw new InvalidArgumentException('Cabang sumber atau tujuan tidak ditemukan.');
-            foreach ($stores as $store) {
-                if ($admin['access'] !== 'ALL' && ($admin['access'] === '' || (string)$store['administrator'] !== (string)$admin['access'])) {
-                    throw new InvalidArgumentException('Anda tidak memiliki akses ke cabang sumber atau tujuan.');
-                }
-            }
+            $targets = $this->copyTargetStores($sourceId);
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
             $stmt = $this->copyProductQuery(
                 "SELECT f.*, c.name AS category_name FROM finishings f
@@ -505,68 +538,65 @@ class ProductController {
                 throw new InvalidArgumentException('Ada finishing yang tidak tersedia pada cabang sumber. Penyalinan dibatalkan.');
             }
             $added = $skipped = 0;
-            foreach ($finishings as $finishing) {
-                if (trim($finishing['category_name'] ?? '') === '') {
-                    throw new InvalidArgumentException('Kategori finishing #' . $finishing['finishing_id'] . ' tidak valid.');
-                }
-                $stmt = $this->copyProductQuery(
-                    'SELECT category_id FROM categories WHERE store_id = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?)) FOR UPDATE',
-                    [$targetId, $finishing['category_name']]
-                );
-                $categories = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-                $stmt->close();
-                if (count($categories) > 1) {
-                    throw new InvalidArgumentException('Kategori ' . $finishing['category_name'] . ' duplikat di cabang tujuan.');
-                }
-                if ($categories) {
-                    $categoryId = (int)$categories[0]['category_id'];
-                } else {
-                    $this->copyProductQuery(
-                        'INSERT INTO categories (store_id, name, created_at, updated_at) VALUES (?, ?, NOW(), NOW())',
+            foreach ($targets as $target) {
+                $targetId = (int)$target['store_id'];
+                $targetName = $target['name'];
+                foreach ($finishings as $finishing) {
+                    if (trim($finishing['category_name'] ?? '') === '') {
+                        throw new InvalidArgumentException('Kategori finishing #' . $finishing['finishing_id'] . ' tidak valid.');
+                    }
+                    $stmt = $this->copyProductQuery(
+                        'SELECT category_id FROM categories WHERE store_id = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?)) FOR UPDATE',
                         [$targetId, $finishing['category_name']]
+                    );
+                    $categories = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $stmt->close();
+                    if (count($categories) > 1) {
+                        throw new InvalidArgumentException('Kategori ' . $finishing['category_name'] . ' duplikat di cabang tujuan.');
+                    }
+                    if ($categories) {
+                        $categoryId = (int)$categories[0]['category_id'];
+                    } else {
+                        $this->copyProductQuery(
+                            'INSERT INTO categories (store_id, name, created_at, updated_at) VALUES (?, ?, NOW(), NOW())',
+                            [$targetId, $finishing['category_name']]
+                        )->close();
+                        $categoryId = (int)$this->koneksi->insert_id;
+                    }
+                    $stmt = $this->copyProductQuery(
+                        'SELECT finishing_id FROM finishings WHERE store_id = ? AND category_id = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?)) FOR UPDATE',
+                        [$targetId, $categoryId, $finishing['name']]
+                    );
+                    $exists = $stmt->get_result()->num_rows > 0;
+                    $stmt->close();
+                    if ($exists) {
+                        $skipped++;
+                        continue;
+                    }
+                    $this->copyProductQuery(
+                        'INSERT INTO finishings (category_id, unit_type, name, price, reasonable_price, failed_price, store_id, stock) VALUES (?, ?, ?, ?, ?, ?, ?, 0)',
+                        [$categoryId, $finishing['unit_type'], $finishing['name'], $finishing['price'],
+                            $finishing['reasonable_price'], $finishing['failed_price'], $targetId]
                     )->close();
-                    $categoryId = (int)$this->koneksi->insert_id;
+                    $added++;
                 }
-                $stmt = $this->copyProductQuery(
-                    'SELECT finishing_id FROM finishings WHERE store_id = ? AND category_id = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?)) FOR UPDATE',
-                    [$targetId, $categoryId, $finishing['name']]
-                );
-                $exists = $stmt->get_result()->num_rows > 0;
-                $stmt->close();
-                if ($exists) {
-                    $skipped++;
-                    continue;
-                }
-                $this->copyProductQuery(
-                    'INSERT INTO finishings (category_id, unit_type, name, price, reasonable_price, failed_price, store_id, stock) VALUES (?, ?, ?, ?, ?, ?, ?, 0)',
-                    [$categoryId, $finishing['unit_type'], $finishing['name'], $finishing['price'],
-                        $finishing['reasonable_price'], $finishing['failed_price'], $targetId]
-                )->close();
-                $added++;
             }
             $this->koneksi->commit();
             $transaction = false;
             $saved = $added > 0;
-            $_SESSION['swal_success'] = "$added finishing berhasil disalin. $skipped finishing yang sudah ada dipertahankan.";
+            $targetCount = count($targets);
+            $_SESSION['swal_success'] = "$added finishing berhasil disalin ke $targetCount cabang. $skipped finishing yang sudah ada dipertahankan.";
         } catch (Throwable $e) {
             if ($transaction) $this->koneksi->rollback();
             unset($_SESSION['swal_success']);
             $_SESSION['swal_error'] = $e instanceof InvalidArgumentException
-                ? $e->getMessage() : 'Gagal menyalin finishing. Semua perubahan dibatalkan.';
+                ? ($targetName ? $targetName . ': ' : '') . $e->getMessage() . ' Semua perubahan dibatalkan.'
+                : 'Gagal menyalin finishing. Semua perubahan dibatalkan.';
             error_log('Copy finishings: ' . $e->getMessage());
         } finally {
             mysqli_report($report);
         }
-        if ($saved) {
-            try {
-                require_once __DIR__ . '/../functions/cacheHelper.php';
-                foreach (['categories', 'finishings'] as $module) updateStoreCache($targetId, $module);
-            } catch (Throwable $e) {
-                error_log('Copy finishings cache: ' . $e->getMessage());
-                unset($_SESSION['swal_success']);
-                $_SESSION['swal_error'] = 'Finishing sudah disalin, tetapi cache tujuan gagal diperbarui. Gunakan Update Cache pada cabang tujuan.';
-            }
-        }
+        if ($saved) $this->updateCopiedStoreCaches($targets, ['categories', 'finishings'], 'Finishing');
         header('Location: ' . $this->productReturnUrl());
         exit;
     }
@@ -576,8 +606,8 @@ class ProductController {
             session_start();
         }
         $sourceId = filter_var($_POST['store_id'] ?? '', FILTER_VALIDATE_INT) ?: 0;
-        $targetId = filter_var($_POST['target_store_id'] ?? '', FILTER_VALIDATE_INT) ?: 0;
         $transaction = $saved = false;
+        $targetName = "";
         $driver = new mysqli_driver();
         $report = $driver->report_mode;
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
@@ -593,35 +623,9 @@ class ProductController {
                 throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
             }
             $ids = $this->selectedCatalogIds($_POST['product_ids'] ?? []);
-            if ($sourceId <= 0 || $targetId <= 0 || $sourceId === $targetId) {
-                throw new InvalidArgumentException('Pilih cabang tujuan yang berbeda dari cabang sumber.');
-            }
-            $adminId = (int) startEnk('dek', $_SESSION['admin_logged_in']['administrator_id'] ?? '');
-            $stmt = $this->copyProductQuery('SELECT access FROM administrator WHERE administrator_id = ?', [$adminId]);
-            $admin = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
-            if (!$admin) {
-                throw new InvalidArgumentException('Akun tidak ditemukan. Silakan login kembali.');
-            }
             $this->koneksi->begin_transaction();
             $transaction = true;
-            $stmt = $this->copyProductQuery(
-                'SELECT store_id, administrator FROM stores WHERE store_id IN (?, ?) ORDER BY store_id FOR UPDATE',
-                [$sourceId, $targetId]
-            );
-            $stores = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-            $stmt->close();
-            if (count($stores) !== 2) {
-                throw new InvalidArgumentException('Cabang sumber atau tujuan tidak ditemukan.');
-            }
-            foreach ($stores as $store) {
-                if (
-                    $admin['access'] !== 'ALL' &&
-                    ($admin['access'] === '' || (string) $store['administrator'] !== (string) $admin['access'])
-                ) {
-                    throw new InvalidArgumentException('Anda tidak memiliki akses ke cabang sumber atau tujuan.');
-                }
-            }
+            $targets = $this->copyTargetStores($sourceId);
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
             $stmt = $this->copyProductQuery(
                 "SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON c.category_id = p.category_id AND c.store_id = ? WHERE p.store_id = ? AND p.product_id IN ($placeholders) ORDER BY p.product_id FOR UPDATE",
@@ -679,145 +683,150 @@ class ProductController {
                     throw new InvalidArgumentException('Produk pendukung sumber tidak lengkap. Penyalinan dibatalkan.');
                 }
             }
-            $productMap = $variantMap = $laserMap = $finishingMap = [];
-            $model = new ProductVariantController($this->koneksi);
-            $configured = [];
-            $packageProducts = [];
-            foreach ((new ProductFinishingPriceController($this->koneksi))->getByStore($targetId, 0, false) as $rule) {
-                $configured[(int) $rule['product_id']] = true;
-                $packageProducts[(int) $rule['product_id']] = true;
-            }
-            foreach ((new ProductLaserConversionController($this->koneksi))->getByStore($targetId) as $rule) {
-                $configured[(int) $rule['product_id']] = true;
-            }
             $newProducts = $existingProducts = $newVariants = $skippedVariants = 0;
-            foreach ($products as $product) {
-                if (empty($product['category_name'])) {
-                    throw new InvalidArgumentException('Kategori produk #' . $product['product_id'] . ' tidak valid.');
-                }
-                $stmt = $this->copyProductQuery(
-                    'SELECT category_id FROM categories WHERE store_id = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?)) FOR UPDATE',
-                    [$targetId, $product['category_name']]
-                );
-                $categories = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-                $stmt->close();
-                if (count($categories) > 1) {
-                    throw new InvalidArgumentException(
-                        'Kategori ' . $product['category_name'] . ' muncul lebih dari satu kali di cabang tujuan.'
-                    );
-                }
-                if ($categories) {
-                    $categoryId = (int) $categories[0]['category_id'];
-                } else {
-                    $this->copyProductQuery(
-                        'INSERT INTO categories (store_id, name, created_at, updated_at) VALUES (?, ?, NOW(), NOW())',
-                        [$targetId, $product['category_name']]
-                    )->close();
-                    $categoryId = (int) $this->koneksi->insert_id;
-                }
-                $stmt = $this->copyProductQuery(
-                    'SELECT product_id, unit_type FROM products WHERE store_id = ? AND category_id = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?)) FOR UPDATE',
-                    [$targetId, $categoryId, $product['name']]
-                );
-                $matches = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-                $stmt->close();
-                if (count($matches) > 1) {
-                    throw new InvalidArgumentException(
-                        'Produk ' . $product['name'] . ' muncul lebih dari satu kali pada kategori tujuan.'
-                    );
-                }
-                if ($matches) {
-                    $match = $matches[0];
-                    if (strtoupper(trim($match['unit_type'] ?? '')) !== strtoupper(trim($product['unit_type'] ?? ''))) {
-                        throw new InvalidArgumentException(
-                            'Satuan produk ' . $product['name'] . ' berbeda: sumber '
-                            . $product['unit_type'] . ', tujuan ' . $match['unit_type'] . '.'
-                        );
-                    }
-                    $targetProduct = (int) $match['product_id'];
-                    $existingProducts++;
-                } else {
-                    $this->copyProductQuery(
-                        'INSERT INTO products (store_id, category_id, name, unit_type, price, reasonable_price, failed_price, stock) VALUES (?, ?, ?, ?, ?, ?, ?, 0)',
-                        [
-                            $targetId,
-                            $categoryId,
-                            $product['name'],
-                            $product['unit_type'],
-                            $product['price'],
-                            $product['reasonable_price'],
-                            $product['failed_price']
-                        ]
-                    )->close();
-                    $targetProduct = (int) $this->koneksi->insert_id;
-                    $newProducts++;
-                }
-                $productMap[(int) $product['product_id']] = $targetProduct;
-                $variants = $model->getByProduct($sourceId, (int) $product['product_id']);
-                if ($variants) {
-                    if (isset($configured[$targetProduct]) || $bundleModel->find($targetId, $targetProduct)) {
-                        throw new InvalidArgumentException(
-                            'Produk ' .
-                                $product['name'] .
-                                ' di tujuan memakai paket atau konversi laser. Varian tidak dapat ditambahkan.'
-                        );
-                    }
-                    $count = $this->copyProductVariants($variants, $targetId, $targetProduct);
-                    $newVariants += $count['added'];
-                    $skippedVariants += $count['skipped'];
-                    $variantMap += $count['map'];
-                }
-            }
-            foreach ($laserRulesByProduct as $sourceProduct => $rules) {
-                $targetProduct = $productMap[$sourceProduct];
-                if (
-                    isset($packageProducts[$targetProduct]) ||
-                    $model->getByProduct($targetId, $targetProduct) ||
-                    $bundleModel->find($targetId, $targetProduct)
-                ) {
-                    throw new InvalidArgumentException(
-                        'Produk ' . $rules[0]['product_name'] . ' di tujuan sudah memakai varian atau paket. Konversi laser tidak dapat ditambahkan.'
-                    );
-                }
-                foreach ($rules as $rule) {
-                    $laserMap[(int) $rule['id']] = $this->copyBundleLaser(
-                        $rule,
-                        $sourceId,
-                        $targetId,
-                        $productMap,
-                        $finishingMap
-                    );
-                }
-            }
             $newBundles = $existingBundles = 0;
-            foreach ($bundleDefinitions as $sourceProduct => $bundle) {
-                $targetProduct = $productMap[$sourceProduct];
-                if ($bundleModel->find($targetId, $targetProduct)) {
-                    $existingBundles++;
-                    continue;
+            foreach ($targets as $target) {
+                $targetId = (int)$target['store_id'];
+                $targetName = $target['name'];
+                $productMap = $variantMap = $laserMap = $finishingMap = [];
+                $model = new ProductVariantController($this->koneksi);
+                $configured = [];
+                $packageProducts = [];
+                foreach ((new ProductFinishingPriceController($this->koneksi))->getByStore($targetId, 0, false) as $rule) {
+                    $configured[(int) $rule['product_id']] = true;
+                    $packageProducts[(int) $rule['product_id']] = true;
                 }
-                if (isset($configured[$targetProduct])) {
-                    throw new InvalidArgumentException(
-                        'Produk paket tujuan sudah memakai harga paket atau konversi laser.'
+                foreach ((new ProductLaserConversionController($this->koneksi))->getByStore($targetId) as $rule) {
+                    $configured[(int) $rule['product_id']] = true;
+                }
+                foreach ($products as $product) {
+                    if (empty($product['category_name'])) {
+                        throw new InvalidArgumentException('Kategori produk #' . $product['product_id'] . ' tidak valid.');
+                    }
+                    $stmt = $this->copyProductQuery(
+                        'SELECT category_id FROM categories WHERE store_id = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?)) FOR UPDATE',
+                        [$targetId, $product['category_name']]
                     );
+                    $categories = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $stmt->close();
+                    if (count($categories) > 1) {
+                        throw new InvalidArgumentException(
+                            'Kategori ' . $product['category_name'] . ' muncul lebih dari satu kali di cabang tujuan.'
+                        );
+                    }
+                    if ($categories) {
+                        $categoryId = (int) $categories[0]['category_id'];
+                    } else {
+                        $this->copyProductQuery(
+                            'INSERT INTO categories (store_id, name, created_at, updated_at) VALUES (?, ?, NOW(), NOW())',
+                            [$targetId, $product['category_name']]
+                        )->close();
+                        $categoryId = (int) $this->koneksi->insert_id;
+                    }
+                    $stmt = $this->copyProductQuery(
+                        'SELECT product_id, unit_type FROM products WHERE store_id = ? AND category_id = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?)) FOR UPDATE',
+                        [$targetId, $categoryId, $product['name']]
+                    );
+                    $matches = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $stmt->close();
+                    if (count($matches) > 1) {
+                        throw new InvalidArgumentException(
+                            'Produk ' . $product['name'] . ' muncul lebih dari satu kali pada kategori tujuan.'
+                        );
+                    }
+                    if ($matches) {
+                        $match = $matches[0];
+                        if (strtoupper(trim($match['unit_type'] ?? '')) !== strtoupper(trim($product['unit_type'] ?? ''))) {
+                            throw new InvalidArgumentException(
+                                'Satuan produk ' . $product['name'] . ' berbeda: sumber '
+                                . $product['unit_type'] . ', tujuan ' . $match['unit_type'] . '.'
+                            );
+                        }
+                        $targetProduct = (int) $match['product_id'];
+                        $existingProducts++;
+                    } else {
+                        $this->copyProductQuery(
+                            'INSERT INTO products (store_id, category_id, name, unit_type, price, reasonable_price, failed_price, stock) VALUES (?, ?, ?, ?, ?, ?, ?, 0)',
+                            [
+                                $targetId,
+                                $categoryId,
+                                $product['name'],
+                                $product['unit_type'],
+                                $product['price'],
+                                $product['reasonable_price'],
+                                $product['failed_price']
+                            ]
+                        )->close();
+                        $targetProduct = (int) $this->koneksi->insert_id;
+                        $newProducts++;
+                    }
+                    $productMap[(int) $product['product_id']] = $targetProduct;
+                    $variants = $model->getByProduct($sourceId, (int) $product['product_id']);
+                    if ($variants) {
+                        if (isset($configured[$targetProduct]) || $bundleModel->find($targetId, $targetProduct)) {
+                            throw new InvalidArgumentException(
+                                'Produk ' .
+                                    $product['name'] .
+                                    ' di tujuan memakai paket atau konversi laser. Varian tidak dapat ditambahkan.'
+                            );
+                        }
+                        $count = $this->copyProductVariants($variants, $targetId, $targetProduct);
+                        $newVariants += $count['added'];
+                        $skippedVariants += $count['skipped'];
+                        $variantMap += $count['map'];
+                    }
                 }
-                $bundleModel->copyToStore(
-                    $sourceId,
-                    $sourceProduct,
-                    $targetId,
-                    $targetProduct,
-                    $productMap,
-                    $variantMap,
-                    $laserMap
-                );
-                $newBundles++;
+                foreach ($laserRulesByProduct as $sourceProduct => $rules) {
+                    $targetProduct = $productMap[$sourceProduct];
+                    if (
+                        isset($packageProducts[$targetProduct]) ||
+                        $model->getByProduct($targetId, $targetProduct) ||
+                        $bundleModel->find($targetId, $targetProduct)
+                    ) {
+                        throw new InvalidArgumentException(
+                            'Produk ' . $rules[0]['product_name'] . ' di tujuan sudah memakai varian atau paket. Konversi laser tidak dapat ditambahkan.'
+                        );
+                    }
+                    foreach ($rules as $rule) {
+                        $laserMap[(int) $rule['id']] = $this->copyBundleLaser(
+                            $rule,
+                            $sourceId,
+                            $targetId,
+                            $productMap,
+                            $finishingMap
+                        );
+                    }
+                }
+                foreach ($bundleDefinitions as $sourceProduct => $bundle) {
+                    $targetProduct = $productMap[$sourceProduct];
+                    if ($bundleModel->find($targetId, $targetProduct)) {
+                        $existingBundles++;
+                        continue;
+                    }
+                    if (isset($configured[$targetProduct])) {
+                        throw new InvalidArgumentException(
+                            'Produk paket tujuan sudah memakai harga paket atau konversi laser.'
+                        );
+                    }
+                    $bundleModel->copyToStore(
+                        $sourceId,
+                        $sourceProduct,
+                        $targetId,
+                        $targetProduct,
+                        $productMap,
+                        $variantMap,
+                        $laserMap
+                    );
+                    $newBundles++;
+                }
             }
             $this->koneksi->commit();
             $transaction = false;
             $saved = true;
+            $targetCount = count($targets);
             $_SESSION[
                 'swal_success'
-            ] = "$newProducts produk baru dan $newVariants varian berhasil disalin. $existingProducts produk dan $skippedVariants varian yang sudah ada dipertahankan.";
+            ] = "Disalin ke $targetCount cabang: $newProducts produk baru dan $newVariants varian berhasil disalin. $existingProducts produk dan $skippedVariants varian yang sudah ada dipertahankan.";
             if ($laserRulesByProduct) {
                 $_SESSION['swal_success'] .= ' Konversi print laser ikut disalin.';
             }
@@ -833,37 +842,16 @@ class ProductController {
             unset($_SESSION['swal_success']);
             $_SESSION['swal_error'] =
                 $e instanceof InvalidArgumentException
-                    ? $e->getMessage()
+                    ? ($targetName ? $targetName . ': ' : '') . $e->getMessage() . ' Semua perubahan dibatalkan.'
                     : 'Gagal menyalin produk. Semua perubahan dibatalkan.';
             error_log('Copy products: ' . $e->getMessage());
         } finally {
             mysqli_report($report);
         }
-        if ($saved) {
-            try {
-                require_once __DIR__ . '/../functions/cacheHelper.php';
-                foreach (
-                    [
-                        'categories',
-                        'products',
-                        'finishings',
-                        'product_variants',
-                        'production_components',
-                        'product_price_tiers',
-                        'product_laser_conversion',
-                        'product_bundles'
-                    ]
-                    as $module
-                ) {
-                    updateStoreCache($targetId, $module);
-                }
-            } catch (Throwable $e) {
-                error_log('Copy products cache: ' . $e->getMessage());
-                unset($_SESSION['swal_success']);
-                $_SESSION['swal_error'] =
-                    'Produk sudah disalin, tetapi cache tujuan gagal diperbarui. Gunakan Update Cache pada cabang tujuan.';
-            };
-        }
+        if ($saved) $this->updateCopiedStoreCaches($targets, [
+            'categories', 'products', 'finishings', 'product_variants', 'production_components',
+            'product_price_tiers', 'product_laser_conversion', 'product_bundles'
+        ], 'Produk');
         header('Location: ' . $this->productReturnUrl());
         exit();
     }

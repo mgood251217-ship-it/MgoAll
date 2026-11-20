@@ -662,7 +662,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
             <?= $returnInputs ?>
             <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['product_copy_csrf'], ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="store_id" value="<?= (int)$data['current_store_id'] ?>">
-            <div id="copyProductSources"></div>
+            <div id="copyProductSources" class="copy-sources"></div>
             <div class="modal-header modal-header-custom">
                 <h5 class="modal-title-custom">Salin Produk ke Cabang</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -671,13 +671,22 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                 <p id="copyProductsSummary"></p>
                 <ul id="copyProductsNames" style="max-height:160px;overflow-y:auto"></ul>
                 <div class="mb-3">
-                    <label for="copyProductsTarget" class="form-label-custom">Cabang tujuan</label>
-                    <select id="copyProductsTarget" name="target_store_id" class="form-control-custom form-select" required>
-                        <option value="">-- Pilih Cabang Tujuan --</option>
-                        <?php foreach ($data['stores'] as $store): if ((int)$store['store_id'] === (int)$data['current_store_id']) continue; ?>
-                            <option value="<?= (int)$store['store_id'] ?>"><?= htmlspecialchars($store['name'], ENT_QUOTES, 'UTF-8') ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <fieldset>
+                        <legend class="form-label-custom fs-6">Cabang tujuan</legend>
+                        <label class="d-flex align-items-center gap-2 py-2">
+                            <input id="copyProductsSelectAll" type="checkbox" class="form-check-input m-0" style="width:20px;height:20px">
+                            <span>Pilih semua cabang</span>
+                        </label>
+                        <div id="copyProductsTargets" class="border rounded p-2" style="max-height:220px;overflow-y:auto">
+                            <?php foreach ($data['stores'] as $store): if ((int)$store['store_id'] === (int)$data['current_store_id']) continue; ?>
+                                <label class="d-flex align-items-center gap-2 py-2">
+                                    <input type="checkbox" name="target_store_ids[]" value="<?= (int)$store['store_id'] ?>" class="form-check-input m-0" style="width:20px;height:20px;flex-shrink:0">
+                                    <span><?= htmlspecialchars($store['name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <small id="copyProductsTargetCount" aria-live="polite">0 cabang dipilih.</small>
+                    </fieldset>
                     <small id="copyProductsNoTarget" hidden>Tidak ada cabang tujuan yang tersedia.</small>
                 </div>
                 <p>Varian, konversi print laser, dan isi paket gabungan ikut disalin. Data yang sudah ada dipertahankan. Stok produk baru <strong>0</strong>.</p>
@@ -697,7 +706,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
             <?= $returnInputs ?>
             <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['finishing_copy_csrf'], ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="store_id" value="<?= (int)$data['current_store_id'] ?>">
-            <div id="copyFinishingSources"></div>
+            <div id="copyFinishingSources" class="copy-sources"></div>
             <div class="modal-header modal-header-custom">
                 <h5 class="modal-title-custom">Salin Finishing ke Cabang</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -706,13 +715,22 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                 <p id="copyFinishingsSummary"></p>
                 <ul id="copyFinishingsNames" style="max-height:160px;overflow-y:auto"></ul>
                 <div class="mb-3">
-                    <label for="copyFinishingsTarget" class="form-label-custom">Cabang tujuan</label>
-                    <select id="copyFinishingsTarget" name="target_store_id" class="form-control-custom form-select" required>
-                        <option value="">-- Pilih Cabang Tujuan --</option>
-                        <?php foreach ($data['stores'] as $store): if ((int)$store['store_id'] === (int)$data['current_store_id']) continue; ?>
-                            <option value="<?= (int)$store['store_id'] ?>"><?= htmlspecialchars($store['name'], ENT_QUOTES, 'UTF-8') ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <fieldset>
+                        <legend class="form-label-custom fs-6">Cabang tujuan</legend>
+                        <label class="d-flex align-items-center gap-2 py-2">
+                            <input id="copyFinishingsSelectAll" type="checkbox" class="form-check-input m-0" style="width:20px;height:20px">
+                            <span>Pilih semua cabang</span>
+                        </label>
+                        <div id="copyFinishingsTargets" class="border rounded p-2" style="max-height:220px;overflow-y:auto">
+                            <?php foreach ($data['stores'] as $store): if ((int)$store['store_id'] === (int)$data['current_store_id']) continue; ?>
+                                <label class="d-flex align-items-center gap-2 py-2">
+                                    <input type="checkbox" name="target_store_ids[]" value="<?= (int)$store['store_id'] ?>" class="form-check-input m-0" style="width:20px;height:20px;flex-shrink:0">
+                                    <span><?= htmlspecialchars($store['name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <small id="copyFinishingsTargetCount" aria-live="polite">0 cabang dipilih.</small>
+                    </fieldset>
                     <small id="copyFinishingsNoTarget" hidden>Tidak ada cabang tujuan yang tersedia.</small>
                 </div>
                 <small>Harga dan satuan ikut disalin, stok awal 0. Kategori yang belum ada dibuat. Finishing dengan nama yang sama pada kategori tujuan tidak ditimpa.</small>
@@ -868,9 +886,30 @@ document.addEventListener('DOMContentLoaded', function() {
         button.disabled = true;
         button.textContent = 'Menyimpan...';
     });
+    const setupCopyTargets = (form, prefix) => {
+        const targets = Array.from(document.getElementById(prefix + 'Targets').querySelectorAll('input[name="target_store_ids[]"]'));
+        const selectAll = document.getElementById(prefix + 'SelectAll');
+        const update = () => {
+            const count = targets.filter(checkbox => checkbox.checked).length;
+            selectAll.checked = count > 0 && count === targets.length;
+            selectAll.indeterminate = count > 0 && count < targets.length;
+            selectAll.disabled = targets.length === 0;
+            document.getElementById(prefix + 'TargetCount').textContent = count + ' cabang dipilih.';
+            document.getElementById(prefix + 'NoTarget').hidden = targets.length > 0;
+            if (targets.length) targets[0].setCustomValidity(count ? '' : 'Pilih minimal satu cabang tujuan.');
+            form.querySelector('button[type="submit"]').disabled = !!form.dataset.busy || !count || !form.querySelector('.copy-sources').children.length;
+        };
+        selectAll.addEventListener('change', () => {
+            targets.forEach(checkbox => { checkbox.checked = selectAll.checked; });
+            update();
+        });
+        targets.forEach(checkbox => checkbox.addEventListener('change', update));
+        update();
+        return update;
+    };
     const copyProductsModal = document.getElementById('copyProductsModal');
     const copyProductsForm = document.getElementById('copyProductsForm');
-    const copyProductsTarget = document.getElementById('copyProductsTarget');
+    const updateProductTargets = setupCopyTargets(copyProductsForm, 'copyProducts');
     copyProductsModal.addEventListener('show.bs.modal', event => {
         const button = event.relatedTarget;
         if (!button) return;
@@ -885,9 +924,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const item = document.createElement('li'); item.textContent = '#' + source.id + ' - ' + source.name; names.appendChild(item);
         });
         document.getElementById('copyProductsSummary').textContent = sources.length + ' produk beserta varian, konversi print laser, dan isi paketnya akan disalin.';
-        const hasTarget = copyProductsTarget.options.length > 1;
-        document.getElementById('copyProductsNoTarget').hidden = hasTarget;
-        const submit = copyProductsForm.querySelector('button[type="submit"]'); submit.disabled = !sources.length || !hasTarget; submit.textContent = 'Salin Produk';
+        updateProductTargets();
+        copyProductsForm.querySelector('button[type="submit"]').textContent = 'Salin Produk';
     });
     copyProductsForm.addEventListener('submit', event => {
         if (copyProductsForm.dataset.busy || !copyProductsForm.reportValidity() || !document.getElementById('copyProductSources').children.length) { event.preventDefault(); return; }
@@ -911,7 +949,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateFinishingSelection();
 
     const copyFinishingsForm = document.getElementById('copyFinishingsForm');
-    const copyFinishingsTarget = document.getElementById('copyFinishingsTarget');
+    const updateFinishingTargets = setupCopyTargets(copyFinishingsForm, 'copyFinishings');
     document.getElementById('copyFinishingsModal').addEventListener('show.bs.modal', event => {
         const button = event.relatedTarget;
         if (!button) return;
@@ -933,11 +971,8 @@ document.addEventListener('DOMContentLoaded', function() {
             names.appendChild(item);
         });
         document.getElementById('copyFinishingsSummary').textContent = sources.length + ' finishing akan disalin.';
-        const hasTarget = copyFinishingsTarget.options.length > 1;
-        document.getElementById('copyFinishingsNoTarget').hidden = hasTarget;
-        const submit = copyFinishingsForm.querySelector('button[type="submit"]');
-        submit.disabled = !sources.length || !hasTarget;
-        submit.textContent = 'Salin Finishing';
+        updateFinishingTargets();
+        copyFinishingsForm.querySelector('button[type="submit"]').textContent = 'Salin Finishing';
     });
     copyFinishingsForm.addEventListener('submit', event => {
         if (copyFinishingsForm.dataset.busy || !copyFinishingsForm.reportValidity() || !document.getElementById('copyFinishingSources').children.length) {
