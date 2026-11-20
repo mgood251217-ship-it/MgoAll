@@ -107,21 +107,23 @@ class ProductController {
         global $store_id;
 
         $page = max(1, (int)($_GET['page'] ?? 1));
-        $search = $_GET['search'] ?? '';
+        $search = is_string($_GET['search'] ?? null) ? trim($_GET['search']) : '';
         $limit = max(1, (int)($_GET['limit'] ?? 25));
         $categoryId = max(0, (int)($_GET['category_id'] ?? 0));
 
+        $withVariants = $this->variants->isAvailable();
         $data = $this->productModel->getProductByPagination(
             $store_id,
             $page,
             $search,
             $limit,
-            $categoryId
+            $categoryId,
+            $withVariants
         );
 
         $data = $this->addProductDetails($data, $store_id);
 
-        $total = $this->productModel->countProducts($store_id, $search, $categoryId);
+        $total = $this->productModel->countProducts($store_id, $search, $categoryId, $withVariants);
         $totalPages = ceil($total / $limit);
 
         return [

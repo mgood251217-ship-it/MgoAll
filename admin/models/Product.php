@@ -275,36 +275,54 @@ class Product{
         return $success;
     }
 
-    public function countProducts($store_id, $search, $category_id = 0){
-        $search_param = "%" . $search . "%";
+    private function productSearch($store_id, $search, $withVariants) {
+        $words = preg_split('/\s+/u', trim($search), -1, PREG_SPLIT_NO_EMPTY);
+        if (!$words) return ['1 = 1', []];
+        $names = $variants = $nameParams = $variantParams = [];
+        foreach ($words as $word) {
+            $pattern = '%' . $word . '%';
+            $names[] = 'p.name LIKE ?';
+            $nameParams[] = $pattern;
+            $variants[] = "(p.name LIKE ? OR LOWER(JSON_UNQUOTE(JSON_EXTRACT(v.options_json, '$.*'))) LIKE LOWER(?))";
+            array_push($variantParams, $pattern, $pattern);
+        }
+        $filter = '(' . implode(' AND ', $names) . ')';
+        if ($withVariants) {
+            $filter = '(' . $filter . ' OR EXISTS (SELECT 1 FROM product_variants v
+                WHERE v.product_id = p.product_id AND v.store_id = ? AND ' . implode(' AND ', $variants) . '))';
+            $nameParams = array_merge($nameParams, [$store_id], $variantParams);
+        }
+        return [$filter, $nameParams];
+    }
 
-        $stmt = $this->koneksi->prepare("SELECT COUNT(*) as total FROM products WHERE store_id = ? AND name LIKE ? AND (? = 0 OR category_id = ?)");
-
-        $stmt->bind_param("isii", $store_id, $search_param, $category_id, $category_id);
+    public function countProducts($store_id, $search, $category_id = 0, $withVariants = false){
+        [$filter, $searchParams] = $this->productSearch($store_id, $search, $withVariants);
+        $params = array_merge([$store_id], $searchParams, [$category_id, $category_id]);
+        $stmt = $this->koneksi->prepare("SELECT COUNT(*) as total FROM products p
+            WHERE p.store_id = ? AND $filter AND (? = 0 OR p.category_id = ?)");
+        $stmt->bind_param(str_repeat('s', count($params)), ...$params);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-
         return $result['total'] ?? 0;
     }
 
-    public function getProductByPagination($store_id, $page, $search, $limit, $category_id = 0){
+    public function getProductByPagination($store_id, $page, $search, $limit, $category_id = 0, $withVariants = false){
         $offset = ($page - 1) * $limit;
-        $search_param = "%" . $search . "%";
+        [$filter, $searchParams] = $this->productSearch($store_id, $search, $withVariants);
+        $params = array_merge([$store_id, $store_id], $searchParams, [$category_id, $category_id, $limit, $offset]);
         $stmt = $this->koneksi->prepare("
-            SELECT p.*, c.name AS category 
+            SELECT p.*, c.name AS category
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.category_id AND c.store_id = ?
-            WHERE p.store_id = ? AND p.name LIKE ? AND (? = 0 OR p.category_id = ?)
-            ORDER BY p.product_id DESC 
+            WHERE p.store_id = ? AND $filter AND (? = 0 OR p.category_id = ?)
+            ORDER BY p.product_id DESC
             LIMIT ? OFFSET ?
         ");
-        
-        $stmt->bind_param("iisiiii", $store_id, $store_id, $search_param, $category_id, $category_id, $limit, $offset);
+        $stmt->bind_param(str_repeat('s', count($params)), ...$params);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        
         return $result ?? [];
     }
 
