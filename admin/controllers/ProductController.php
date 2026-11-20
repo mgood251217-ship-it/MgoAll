@@ -133,6 +133,34 @@ class ProductController {
         ];
     }
 
+    public function searchOrderProducts() {
+        global $store_id;
+        $search = is_string($_GET['search'] ?? null) ? trim($_GET['search']) : '';
+        if (strlen($search) < 2) {
+            send_json_response(true, 'Hasil pencarian produk', []);
+            return;
+        }
+        $products = $this->productModel->getProductByPagination($store_id, 1, $search, 10, 0, $this->variants->isAvailable());
+        $variants = $this->variants->getByProducts($store_id, array_column($products, 'product_id'));
+        $words = preg_split('/\s+/u', $search, -1, PREG_SPLIT_NO_EMPTY);
+        $results = [];
+        foreach ($products as $product) {
+            foreach ($variants[(int)$product['product_id']] ?? [null] as $variant) {
+                $text = $product['name'] . ' ' . implode(' ', array_values($variant['options'] ?? []));
+                foreach ($words as $word) {
+                    if (stripos($text, $word) === false) continue 2;
+                }
+                $results[] = [
+                    'product' => $product,
+                    'variant' => $variant ? ['id' => $variant['id'], 'options' => $variant['options'],
+                        'label' => $variant['label'], 'price' => $variant['price']] : null
+                ];
+                if (count($results) === 10) break 2;
+            }
+        }
+        send_json_response(true, 'Hasil pencarian produk', $results);
+    }
+
     public function createProduct() {
         if ($this->authMiddleware->isAdminOrManager() == false) {
             return [];

@@ -39,6 +39,7 @@ $router->add('update_product', ProductController::class, 'updateProduct', ['auth
 $router->add('delete_product', ProductController::class, 'deleteProduct', ['auth']);
 $router->add('update_stock_product', ProductController::class, 'updateStock', ['auth']);
 $router->add('pagination_products', ProductController::class, 'getProductByPagination', ['auth']);
+$router->add('search_order_products', ProductController::class, 'searchOrderProducts', ['auth']);
 // Finishing 
 $router->add('finishings', ProductController::class, 'getFinishing', ['auth']);
 $router->add('finishing_by_category', ProductController::class, 'getFinishingByCategory', ['auth']);
