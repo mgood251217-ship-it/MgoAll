@@ -89,6 +89,7 @@ switch ($action) {
     case 'get_product':
     case 'migrate_product':
     case 'copy_products':
+    case 'copy_finishings':
     case 'refresh_product_cache':
     case 'get_finishing':
         require_once __DIR__ . '/../controllers/ProductController.php';
@@ -106,6 +107,7 @@ switch ($action) {
         if ($action === 'get_product') $productController->getProductByCategoryId();
         if ($action === 'migrate_product') $productController->migrateProduct();
         if ($action === 'copy_products') $productController->copyProducts();
+        if ($action === 'copy_finishings') $productController->copyFinishings();
         if ($action === 'refresh_product_cache') $productController->refreshCache();
         if ($action === 'get_finishing') $productController->getFinishingByCategoryId();
         break;

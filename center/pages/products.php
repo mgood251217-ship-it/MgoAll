@@ -39,6 +39,7 @@ $_SESSION['product_migration_csrf'] = $_SESSION['product_migration_csrf'] ?? bin
 $_SESSION['product_cache_csrf'] = $_SESSION['product_cache_csrf'] ?? bin2hex(random_bytes(32));
 $_SESSION['product_category_csrf'] = $_SESSION['product_category_csrf'] ?? bin2hex(random_bytes(32));
 $_SESSION['product_copy_csrf'] = $_SESSION['product_copy_csrf'] ?? bin2hex(random_bytes(32));
+$_SESSION['finishing_copy_csrf'] = $_SESSION['finishing_copy_csrf'] ?? bin2hex(random_bytes(32));
 $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_bytes(32));
 ?>
 
@@ -279,10 +280,15 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
 
 <div class="table-container">
     <h3 class="table-header-title"><i class="fas fa-layer-group migrated-style-14"></i> Daftar Finishing</h3>
+    <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+        <button <?= !$canProductAction('copy_finishings') ? 'hidden data-center-access="denied"' : '' ?> id="bulkCopyFinishings" type="button" class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#copyFinishingsModal" disabled>Salin ke Cabang</button>
+        <small id="finishingSelectionCount" aria-live="polite">0 finishing dipilih.</small>
+    </div>
     <div class="table-scroll">
         <table class="table-modern">
             <thead>
                 <tr>
+                    <th class="product-selection-cell"><label class="product-selection-hit" title="Pilih semua finishing yang ditampilkan"><input id="selectAllFinishings" type="checkbox" class="form-check-input" aria-label="Pilih semua finishing yang ditampilkan" <?= empty($data['finishings']) ? 'disabled' : '' ?>></label></th>
                     <th class="migrated-style-78">No</th>
                     <th>Kategori</th>
                     <th>Nama Finishing</th>
@@ -294,7 +300,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
             <tbody>
                 <?php if (empty($data['finishings'])): ?>
                     <tr>
-                        <td class="migrated-style-80" colspan="6">Tidak ada finishing ditemukan</td>
+                        <td class="migrated-style-80" colspan="7">Tidak ada finishing ditemukan</td>
                     </tr>
                 <?php else: ?>
                     <?php 
@@ -302,6 +308,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                     foreach ($data['finishings'] as $row): 
                     ?>
                         <tr>
+                            <td class="product-selection-cell"><label class="product-selection-hit"><input type="checkbox" class="form-check-input finishing-copy-checkbox" value="<?= (int)$row['finishing_id'] ?>" data-name="<?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>" aria-label="Pilih finishing <?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>"></label></td>
                             <td><?= $no++ ?></td>
                             <td><span class="badge-category"><?= htmlspecialchars($row['category'] ?? 'Tanpa Kategori') ?></span></td>
                             <td>
@@ -329,6 +336,8 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                                 <button <?= !$canProductAction('delete_finishing') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-danger" onclick="deleteData('finishing', <?= $row['finishing_id'] ?>)">
                                     <i class="fas fa-trash"></i>
                                 </button>
+                                <button <?= !$canProductAction('copy_finishings') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-kelola btn-open" data-bs-toggle="modal" data-bs-target="#copyFinishingsModal"
+                                    data-id="<?= (int)$row['finishing_id'] ?>" data-name="<?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>">Salin</button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -682,6 +691,40 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
     </div>
 </div>
 
+<div class="modal fade" id="copyFinishingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form id="copyFinishingsForm" class="modal-content modal-content-custom" method="post" action="/action?action=copy_finishings">
+            <?= $returnInputs ?>
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['finishing_copy_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="store_id" value="<?= (int)$data['current_store_id'] ?>">
+            <div id="copyFinishingSources"></div>
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title-custom">Salin Finishing ke Cabang</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body modal-body-custom">
+                <p id="copyFinishingsSummary"></p>
+                <ul id="copyFinishingsNames" style="max-height:160px;overflow-y:auto"></ul>
+                <div class="mb-3">
+                    <label for="copyFinishingsTarget" class="form-label-custom">Cabang tujuan</label>
+                    <select id="copyFinishingsTarget" name="target_store_id" class="form-control-custom form-select" required>
+                        <option value="">-- Pilih Cabang Tujuan --</option>
+                        <?php foreach ($data['stores'] as $store): if ((int)$store['store_id'] === (int)$data['current_store_id']) continue; ?>
+                            <option value="<?= (int)$store['store_id'] ?>"><?= htmlspecialchars($store['name'], ENT_QUOTES, 'UTF-8') ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small id="copyFinishingsNoTarget" hidden>Tidak ada cabang tujuan yang tersedia.</small>
+                </div>
+                <small>Harga dan satuan ikut disalin, stok awal 0. Kategori yang belum ada dibuat. Finishing dengan nama yang sama pada kategori tujuan tidak ditimpa.</small>
+            </div>
+            <div class="modal-footer modal-footer-custom">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn-primary-custom">Salin Finishing</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="modal fade" id="migrateProductModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <form id="migrateProductForm" class="modal-content modal-content-custom" method="post" action="/action?action=migrate_product">
@@ -851,6 +894,62 @@ document.addEventListener('DOMContentLoaded', function() {
         copyProductsForm.dataset.busy = '1';
         const submit = copyProductsForm.querySelector('button[type="submit"]'); submit.disabled = true; submit.textContent = 'Menyalin...';
     });
+    const selectAllFinishings = document.getElementById('selectAllFinishings');
+    const finishingCheckboxes = Array.from(document.querySelectorAll('.finishing-copy-checkbox'));
+    const updateFinishingSelection = () => {
+        const count = finishingCheckboxes.filter(checkbox => checkbox.checked).length;
+        selectAllFinishings.checked = count > 0 && count === finishingCheckboxes.length;
+        selectAllFinishings.indeterminate = count > 0 && count < finishingCheckboxes.length;
+        document.getElementById('bulkCopyFinishings').disabled = count === 0;
+        document.getElementById('finishingSelectionCount').textContent = count + ' finishing dipilih.';
+    };
+    selectAllFinishings.addEventListener('change', () => {
+        finishingCheckboxes.forEach(checkbox => { checkbox.checked = selectAllFinishings.checked; });
+        updateFinishingSelection();
+    });
+    finishingCheckboxes.forEach(checkbox => checkbox.addEventListener('change', updateFinishingSelection));
+    updateFinishingSelection();
+
+    const copyFinishingsForm = document.getElementById('copyFinishingsForm');
+    const copyFinishingsTarget = document.getElementById('copyFinishingsTarget');
+    document.getElementById('copyFinishingsModal').addEventListener('show.bs.modal', event => {
+        const button = event.relatedTarget;
+        if (!button) return;
+        copyFinishingsForm.reset();
+        delete copyFinishingsForm.dataset.busy;
+        const sources = button.id === 'bulkCopyFinishings'
+            ? finishingCheckboxes.filter(checkbox => checkbox.checked).map(checkbox => ({ id: checkbox.value, name: checkbox.dataset.name }))
+            : [{ id: button.dataset.id, name: button.dataset.name }];
+        const hidden = document.getElementById('copyFinishingSources');
+        const names = document.getElementById('copyFinishingsNames');
+        hidden.replaceChildren();
+        names.replaceChildren();
+        sources.forEach(source => {
+            const input = document.createElement('input');
+            input.type = 'hidden'; input.name = 'finishing_ids[]'; input.value = source.id;
+            hidden.appendChild(input);
+            const item = document.createElement('li');
+            item.textContent = '#' + source.id + ' - ' + source.name;
+            names.appendChild(item);
+        });
+        document.getElementById('copyFinishingsSummary').textContent = sources.length + ' finishing akan disalin.';
+        const hasTarget = copyFinishingsTarget.options.length > 1;
+        document.getElementById('copyFinishingsNoTarget').hidden = hasTarget;
+        const submit = copyFinishingsForm.querySelector('button[type="submit"]');
+        submit.disabled = !sources.length || !hasTarget;
+        submit.textContent = 'Salin Finishing';
+    });
+    copyFinishingsForm.addEventListener('submit', event => {
+        if (copyFinishingsForm.dataset.busy || !copyFinishingsForm.reportValidity() || !document.getElementById('copyFinishingSources').children.length) {
+            event.preventDefault();
+            return;
+        }
+        copyFinishingsForm.dataset.busy = '1';
+        const submit = copyFinishingsForm.querySelector('button[type="submit"]');
+        submit.disabled = true;
+        submit.textContent = 'Menyalin...';
+    });
+
     const migrationModal = document.getElementById('migrateProductModal');
     const migrationForm = document.getElementById('migrateProductForm');
     const migrationTarget = document.getElementById('migrationTarget');

@@ -203,13 +203,13 @@ class ProductController {
         exit;
     }
 
-    private function selectedProductIds($ids) {
+    private function selectedCatalogIds($ids, $label = 'produk') {
         if (!is_array($ids) || !$ids || count($ids) > 1000) {
-            throw new InvalidArgumentException('Pilih 1 sampai 1.000 produk.');
+            throw new InvalidArgumentException("Pilih 1 sampai 1.000 $label.");
         }
         foreach ($ids as $id) {
             if (!is_scalar($id) || filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]) === false) {
-                throw new InvalidArgumentException('Pilihan produk tidak valid. Muat ulang halaman.');
+                throw new InvalidArgumentException("Pilihan $label tidak valid. Muat ulang halaman.");
             }
         }
         $ids = array_values(array_unique(array_map('intval', $ids)));
@@ -451,6 +451,126 @@ class ProductController {
         return (int) $this->koneksi->insert_id;
     }
 
+    public function copyFinishings() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $sourceId = filter_var($_POST['store_id'] ?? '', FILTER_VALIDATE_INT) ?: 0;
+        $targetId = filter_var($_POST['target_store_id'] ?? '', FILTER_VALIDATE_INT) ?: 0;
+        $transaction = $saved = false;
+        $driver = new mysqli_driver();
+        $report = $driver->report_mode;
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
+        try {
+            if (empty($_SESSION['admin_logged_in']) || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+                throw new InvalidArgumentException('Silakan login kembali.');
+            }
+            if (empty($_SESSION['finishing_copy_csrf']) || !is_string($_POST['csrf'] ?? null)
+                || !hash_equals($_SESSION['finishing_copy_csrf'], $_POST['csrf'])) {
+                throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
+            }
+            $ids = $this->selectedCatalogIds($_POST['finishing_ids'] ?? [], 'finishing');
+            if ($sourceId <= 0 || $targetId <= 0 || $sourceId === $targetId) {
+                throw new InvalidArgumentException('Pilih cabang tujuan yang berbeda dari cabang sumber.');
+            }
+            $adminId = (int) startEnk('dek', $_SESSION['admin_logged_in']['administrator_id'] ?? '');
+            $stmt = $this->copyProductQuery('SELECT access FROM administrator WHERE administrator_id = ?', [$adminId]);
+            $admin = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$admin) throw new InvalidArgumentException('Akun tidak ditemukan. Silakan login kembali.');
+
+            $this->koneksi->begin_transaction();
+            $transaction = true;
+            $stmt = $this->copyProductQuery(
+                'SELECT store_id, administrator FROM stores WHERE store_id IN (?, ?) ORDER BY store_id FOR UPDATE',
+                [$sourceId, $targetId]
+            );
+            $stores = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+            if (count($stores) !== 2) throw new InvalidArgumentException('Cabang sumber atau tujuan tidak ditemukan.');
+            foreach ($stores as $store) {
+                if ($admin['access'] !== 'ALL' && ($admin['access'] === '' || (string)$store['administrator'] !== (string)$admin['access'])) {
+                    throw new InvalidArgumentException('Anda tidak memiliki akses ke cabang sumber atau tujuan.');
+                }
+            }
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $stmt = $this->copyProductQuery(
+                "SELECT f.*, c.name AS category_name FROM finishings f
+                 LEFT JOIN categories c ON c.category_id = f.category_id AND c.store_id = ?
+                 WHERE f.store_id = ? AND f.finishing_id IN ($placeholders) ORDER BY f.finishing_id FOR UPDATE",
+                array_merge([$sourceId, $sourceId], $ids)
+            );
+            $finishings = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+            if (count($finishings) !== count($ids)) {
+                throw new InvalidArgumentException('Ada finishing yang tidak tersedia pada cabang sumber. Penyalinan dibatalkan.');
+            }
+            $added = $skipped = 0;
+            foreach ($finishings as $finishing) {
+                if (trim($finishing['category_name'] ?? '') === '') {
+                    throw new InvalidArgumentException('Kategori finishing #' . $finishing['finishing_id'] . ' tidak valid.');
+                }
+                $stmt = $this->copyProductQuery(
+                    'SELECT category_id FROM categories WHERE store_id = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?)) FOR UPDATE',
+                    [$targetId, $finishing['category_name']]
+                );
+                $categories = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                $stmt->close();
+                if (count($categories) > 1) {
+                    throw new InvalidArgumentException('Kategori ' . $finishing['category_name'] . ' duplikat di cabang tujuan.');
+                }
+                if ($categories) {
+                    $categoryId = (int)$categories[0]['category_id'];
+                } else {
+                    $this->copyProductQuery(
+                        'INSERT INTO categories (store_id, name, created_at, updated_at) VALUES (?, ?, NOW(), NOW())',
+                        [$targetId, $finishing['category_name']]
+                    )->close();
+                    $categoryId = (int)$this->koneksi->insert_id;
+                }
+                $stmt = $this->copyProductQuery(
+                    'SELECT finishing_id FROM finishings WHERE store_id = ? AND category_id = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?)) FOR UPDATE',
+                    [$targetId, $categoryId, $finishing['name']]
+                );
+                $exists = $stmt->get_result()->num_rows > 0;
+                $stmt->close();
+                if ($exists) {
+                    $skipped++;
+                    continue;
+                }
+                $this->copyProductQuery(
+                    'INSERT INTO finishings (category_id, unit_type, name, price, reasonable_price, failed_price, store_id, stock) VALUES (?, ?, ?, ?, ?, ?, ?, 0)',
+                    [$categoryId, $finishing['unit_type'], $finishing['name'], $finishing['price'],
+                        $finishing['reasonable_price'], $finishing['failed_price'], $targetId]
+                )->close();
+                $added++;
+            }
+            $this->koneksi->commit();
+            $transaction = false;
+            $saved = $added > 0;
+            $_SESSION['swal_success'] = "$added finishing berhasil disalin. $skipped finishing yang sudah ada dipertahankan.";
+        } catch (Throwable $e) {
+            if ($transaction) $this->koneksi->rollback();
+            unset($_SESSION['swal_success']);
+            $_SESSION['swal_error'] = $e instanceof InvalidArgumentException
+                ? $e->getMessage() : 'Gagal menyalin finishing. Semua perubahan dibatalkan.';
+            error_log('Copy finishings: ' . $e->getMessage());
+        } finally {
+            mysqli_report($report);
+        }
+        if ($saved) {
+            try {
+                require_once __DIR__ . '/../functions/cacheHelper.php';
+                foreach (['categories', 'finishings'] as $module) updateStoreCache($targetId, $module);
+            } catch (Throwable $e) {
+                error_log('Copy finishings cache: ' . $e->getMessage());
+                unset($_SESSION['swal_success']);
+                $_SESSION['swal_error'] = 'Finishing sudah disalin, tetapi cache tujuan gagal diperbarui. Gunakan Update Cache pada cabang tujuan.';
+            }
+        }
+        header('Location: ' . $this->productReturnUrl());
+        exit;
+    }
+
     public function copyProducts() {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -472,7 +592,7 @@ class ProductController {
             ) {
                 throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
             }
-            $ids = $this->selectedProductIds($_POST['product_ids'] ?? []);
+            $ids = $this->selectedCatalogIds($_POST['product_ids'] ?? []);
             if ($sourceId <= 0 || $targetId <= 0 || $sourceId === $targetId) {
                 throw new InvalidArgumentException('Pilih cabang tujuan yang berbeda dari cabang sumber.');
             }
@@ -764,7 +884,7 @@ class ProductController {
             if (!is_string($_POST['csrf'] ?? null) || empty($_SESSION['product_migration_csrf']) || !hash_equals($_SESSION['product_migration_csrf'], $_POST['csrf'])) {
                 throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
             }
-            $sourceIds = $this->selectedProductIds($_POST['source_product_ids'] ?? [$_POST['source_product_id'] ?? 0]);
+            $sourceIds = $this->selectedCatalogIds($_POST['source_product_ids'] ?? [$_POST['source_product_id'] ?? 0]);
             $deleteSource = $_POST['delete_source_products'] ?? '0';
             if (!is_string($deleteSource) || !in_array($deleteSource, ['0', '1'], true)) throw new InvalidArgumentException('Pilihan hapus produk asal tidak valid.');
             $deleteSource = $deleteSource === '1';
@@ -957,7 +1077,7 @@ class ProductController {
                 || !hash_equals($_SESSION['product_category_csrf'], $_POST['csrf'])) {
                 throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
             }
-            $ids = $this->selectedProductIds($_POST['product_ids'] ?? []);
+            $ids = $this->selectedCatalogIds($_POST['product_ids'] ?? []);
             $access = startEnk('dek', $_SESSION['admin_logged_in']['access'] ?? '');
             $this->koneksi->begin_transaction();
             $transaction = true;

@@ -32,6 +32,7 @@ class AdministratorAccessController {
                 'add_category' => 'Tambah kategori', 'delete_category' => 'Hapus kategori kosong',
                 'add_finishing' => 'Tambah finishing', 'edit_finishing' => 'Ubah finishing',
                 'delete_finishing' => 'Hapus finishing',
+                'copy_finishings' => 'Salin finishing ke cabang lain',
             ],
             'Harga dan varian' => [
                 'save_product_variant' => 'Kelola varian dan jenis pilihan',
@@ -84,6 +85,7 @@ class AdministratorAccessController {
         $required = $permission ? [$permission] : [];
         if ($action === 'migrate_product' && !empty($input['delete_source_products'])) $required[] = 'delete_product';
         if ($action === 'copy_products') $required = array_merge($required, ['add_product', 'add_category']);
+        if ($action === 'copy_finishings') $required = array_merge($required, ['add_finishing', 'add_category']);
         if ($action === 'copy_store_catalog') $required = array_merge($required, [
             'add_product', 'add_category', 'add_finishing', 'save_product_variant',
             'save_production_component', 'save_package_price', 'save_price_tiers', 'save_laser_conversion',
