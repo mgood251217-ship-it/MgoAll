@@ -1,5 +1,4 @@
 <?php
-require_once __DIR__ . '/ProductFinishing.php';
 class Product{
     private $koneksi;
 
@@ -155,7 +154,6 @@ class Product{
         $stmt = $this->koneksi->prepare("DELETE FROM products WHERE product_id = ? LIMIT 1");
         $stmt->bind_param('i', $data->id);
         $success = $stmt->execute();
-        if ($success) (new ProductFinishing($this->koneksi))->cleanupDeleted([(int)$data->id], 'product_id');
         $stmt->close();
         return $success;
     }

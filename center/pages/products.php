@@ -231,9 +231,9 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                                 <button <?= !$canProductAction('copy_products') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-kelola btn-open" data-bs-toggle="modal" data-bs-target="#copyProductsModal"
                                     data-id="<?= (int)$row['product_id'] ?>" data-name="<?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>" title="Salin produk beserta varian ke cabang lain">Salin</button>
                                 <button <?= !$canProductAction('save_product_finishings') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-kelola btn-open"
-                                    data-bs-toggle="modal" data-bs-target="#productFinishingsModal" <?= !$data['finishing_settings_ready'] ? 'disabled title="Jalankan SQL product_finishings.sql terlebih dahulu"' : '' ?>
+                                    data-bs-toggle="modal" data-bs-target="#productFinishingsModal" <?= !$data['finishing_settings_ready'] ? 'disabled title="Jalankan SQL migrate_product_finishing_ids.sql terlebih dahulu"' : '' ?>
                                     data-id="<?= (int)$row['product_id'] ?>" data-name="<?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>"
-                                    data-mode="<?= htmlspecialchars($row['finishing_mode'] ?? 'CATEGORY', ENT_QUOTES, 'UTF-8') ?>">Atur Finishing</button>
+                                    >Atur Finishing</button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -718,10 +718,6 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
             </div>
             <div class="modal-body modal-body-custom">
                 <p id="productFinishingsName"></p>
-                <select name="finishing_mode" id="productFinishingMode" class="form-control-custom form-select mb-3">
-                    <option value="CATEGORY">Ikuti kategori</option>
-                    <option value="PRODUCT">Atur sendiri</option>
-                </select>
                 <fieldset id="productFinishingChoices" style="max-height:280px;overflow-y:auto">
                     <?php foreach ($data['migration_finishings'] as $finishing): ?>
                         <label class="d-flex align-items-center gap-2 py-2">
@@ -730,7 +726,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                         </label>
                     <?php endforeach; ?>
                 </fieldset>
-                <small>Atur sendiri tanpa centang berarti tidak menggunakan finishing. Stok tetap menggunakan master finishing yang sama.</small>
+                <small>Tanpa centang berarti tidak menggunakan finishing. Stok tetap menggunakan master finishing yang sama.</small>
             </div>
             <div class="modal-footer modal-footer-custom">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -947,19 +943,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     const productFinishingLinks = <?= json_encode($data['product_finishing_links'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-    const finishingMode = document.getElementById('productFinishingMode');
     const finishingChoices = document.getElementById('productFinishingChoices');
-    const updateFinishingMode = () => { finishingChoices.disabled = finishingMode.value !== 'PRODUCT'; };
-    finishingMode.addEventListener('change', updateFinishingMode);
     document.getElementById('productFinishingsModal').addEventListener('show.bs.modal', event => {
         const button = event.relatedTarget;
         if (!button) return;
         document.getElementById('productFinishingsId').value = button.dataset.id;
         document.getElementById('productFinishingsName').textContent = button.dataset.name;
-        finishingMode.value = button.dataset.mode;
         const ids = new Set(productFinishingLinks.filter(row => String(row.product_id) === button.dataset.id).map(row => String(row.finishing_id)));
         finishingChoices.querySelectorAll('input').forEach(input => { input.checked = ids.has(input.value); });
-        updateFinishingMode();
     });
 
     const bulkCategoryForm = document.getElementById('bulkProductCategoryForm');

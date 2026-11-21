@@ -90,7 +90,6 @@ class FinishingMigrationController {
                 foreach (['product_package', 'product_finishing_prices'] as $table) {
                     if ($this->model->rows($table, $store, $source, 'finishing_id')) throw new InvalidArgumentException('Finishing ini digunakan harga paket. Pilih pengganti pada kategori yang sama.');
                 }
-                $this->preserveCategoryChoices($store, $rows[$source]['category_id'], $source, $target);
             }
             $counts = [];
             foreach (self::REFERENCES as $table => [$csv, $snapshot]) {
@@ -110,18 +109,6 @@ class FinishingMigrationController {
                     . ' #' . ($row['id'] ?? '-') . ' bertabrakan dengan aturan tujuan. Rapikan aturan tersebut sebelum migrasi.');
             }
             throw $e;
-        }
-    }
-
-    private function preserveCategoryChoices($store, $category, $source, $target) {
-        $model = new ProductFinishing($this->db);
-        if (!$model->isAvailable()) throw new InvalidArgumentException('Jalankan product_finishings.sql sebelum migrasi lintas kategori.');
-        $stmt = $this->model->query("SELECT product_id FROM products WHERE store_id = ? AND category_id = ? AND finishing_mode = 'CATEGORY' ORDER BY product_id FOR UPDATE", [$store, $category]);
-        $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $stmt->close();
-        foreach ($products as $product) {
-            $ids = array_column($model->getByProduct($store, $product['product_id']), 'finishing_id');
-            $ids = ProductLaserConversionController::finishingIds(self::replaceIds(implode(',', $ids), $source, $target));
-            $model->save($store, $product['product_id'], 'PRODUCT', $ids);
         }
     }
 

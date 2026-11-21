@@ -834,12 +834,12 @@ class ProductController {
                         $skippedVariants += $count['skipped'];
                         $variantMap += $count['map'];
                     }
-                    if ($isNewProduct && ($product['finishing_mode'] ?? 'CATEGORY') === 'PRODUCT' && $finishingModel->isAvailable()) {
+                    if ($isNewProduct && $finishingModel->isAvailable()) {
                         $ids = [];
                         foreach ($finishingModel->getByProduct($sourceId, (int)$product['product_id']) as $finishing) {
                             $ids[] = $this->copyBundleFinishing($sourceId, $targetId, (int)$finishing['finishing_id'], $finishingMap);
                         }
-                        $finishingModel->save($targetId, $targetProduct, 'PRODUCT', $ids);
+                        $finishingModel->save($targetId, $targetProduct, $ids);
                     }
                 }
                 foreach ($laserRulesByProduct as $sourceProduct => $rules) {
@@ -1085,7 +1085,6 @@ class ProductController {
                 $params = array_merge([$storeId], $sourceIds);
                 $stmt->bind_param(str_repeat('i', count($params)), ...$params);
                 $stmt->execute(); $deletedCount = $stmt->affected_rows; $stmt->close();
-                (new ProductFinishing($this->koneksi))->cleanupDeleted($sourceIds);
                 if ($deletedCount !== count($sourceIds)) throw new InvalidArgumentException('Produk asal masih dipakai atau datanya berubah. Migrasi dan penghapusan dibatalkan; muat ulang halaman.');
             }
             $this->koneksi->commit();
@@ -1160,7 +1159,6 @@ class ProductController {
             $stmt->execute();
             $count = $stmt->affected_rows;
             $stmt->close();
-            (new ProductFinishing($this->koneksi))->cleanupDeleted($ids);
             $skipped = count($ids) - $count;
             $this->koneksi->commit();
             $transaction = false;
@@ -1317,13 +1315,11 @@ class ProductController {
             $admin = (new ProductHistoryController($this->koneksi))->getAdministrator();
             if (!$admin) throw new InvalidArgumentException('Silakan login kembali.');
             $model = new ProductFinishing($this->koneksi);
-            if (!$model->isAvailable()) throw new InvalidArgumentException('Jalankan SQL product_finishings.sql terlebih dahulu.');
+            if (!$model->isAvailable()) throw new InvalidArgumentException('Jalankan SQL migrate_product_finishing_ids.sql terlebih dahulu.');
             $product = (int)($_POST['product_id'] ?? 0);
-            $mode = $_POST['finishing_mode'] ?? '';
-            if (!in_array($mode, ['CATEGORY', 'PRODUCT'], true)) throw new InvalidArgumentException('Pengaturan finishing tidak valid.');
             $selected = $_POST['finishing_ids'] ?? [];
             if (!is_array($selected)) throw new InvalidArgumentException('Pilihan finishing tidak valid.');
-            $ids = $mode === 'PRODUCT' && $selected ? $this->selectedCatalogIds($selected, 'finishing') : [];
+            $ids = $selected ? $this->selectedCatalogIds($selected, 'finishing') : [];
             $this->koneksi->begin_transaction(); $transaction = true;
             $stmt = $this->copyProductQuery('SELECT administrator FROM stores WHERE store_id = ? FOR UPDATE', [$store]);
             $target = $stmt->get_result()->fetch_assoc(); $stmt->close();
@@ -1334,7 +1330,7 @@ class ProductController {
             $found = $stmt->get_result()->num_rows; $stmt->close();
             if (!$found) throw new InvalidArgumentException('Produk tidak tersedia pada toko ini.');
             if (count($model->finishingsByIds($store, $ids)) !== count($ids)) throw new InvalidArgumentException('Pilih finishing dari toko yang sama.');
-            $model->save($store, $product, $mode, $ids);
+            $model->save($store, $product, $ids);
             $this->koneksi->commit(); $transaction = false;
             $_SESSION['swal_success'] = 'Pengaturan finishing produk disimpan. Nota lama tetap dipertahankan.';
         } catch (Throwable $e) {
@@ -1668,7 +1664,6 @@ class ProductController {
             $stmt->bind_param("i", $id);
             
             if ($stmt->execute()) {
-                (new ProductFinishing($this->koneksi))->cleanupDeleted([(int)$id], $id_column);
                 if ($store_id) {
                     require_once __DIR__ . '/../functions/cacheHelper.php';
                     updateStoreCache($store_id, $table);

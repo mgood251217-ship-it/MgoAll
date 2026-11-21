@@ -157,6 +157,14 @@ class StoreController {
             if (!isset($map[$id])) throw new InvalidArgumentException("Relasi $label #$id di toko sumber tidak valid. Impor dibatalkan.");
             return $map[$id];
         };
+        $finishingModel = new ProductFinishing($this->koneksi);
+        if ($finishingModel->isAvailable()) foreach ($productMap as $sourceProduct => $targetProduct) {
+            $ids = [];
+            foreach ($finishingModel->getByProduct($sourceId, $sourceProduct) as $finishing) {
+                $ids[] = $mapId($finishingMap, $finishing['finishing_id'], 'finishing produk');
+            }
+            $finishingModel->save($targetId, $targetProduct, $ids);
+        }
         $variantModel = new ProductVariantController($this->koneksi);
         $componentModel = new ProductionComponentController($this->koneksi);
         $masters = $componentModel->isAvailable();
@@ -207,16 +215,6 @@ class StoreController {
             if ($bundleModel->copyToStore($sourceId, $sourceProduct, $targetId, $mapId($productMap, $sourceProduct, 'produk paket'), $productMap, $variantMap, $laserMap)) {
                 $counts['product_bundles'] = ($counts['product_bundles'] ?? 0) + 1;
             }
-        }
-        $finishingModel = new ProductFinishing($this->koneksi);
-        if ($finishingModel->isAvailable()) foreach ($productMap as $sourceProduct => $targetProduct) {
-            $product = $finishingModel->product($sourceId, $sourceProduct);
-            if ($product['finishing_mode'] !== 'PRODUCT') continue;
-            $ids = [];
-            foreach ($finishingModel->getByProduct($sourceId, $sourceProduct) as $finishing) {
-                $ids[] = $mapId($finishingMap, $finishing['finishing_id'], 'finishing produk');
-            }
-            $finishingModel->save($targetId, $targetProduct, 'PRODUCT', $ids);
         }
         if (!empty($counts['product_variants']) && $masters) $counts['production_components'] = count($componentModel->getByStore($targetId));
         return $counts;

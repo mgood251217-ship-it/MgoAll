@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ProductFinishing.php';
 class FinishingMigration {
     private $db;
     private $columns = [];
@@ -63,16 +64,23 @@ class FinishingMigration {
         $this->query("UPDATE `$table` SET " . implode(', ', $set) . ' WHERE ' . implode(' AND ', $where), $params)->close();
     }
 
+    private function linkedProducts($store, $source) {
+        if (!(new ProductFinishing($this->db))->isAvailable()) throw new InvalidArgumentException('Jalankan migrasi products.finishing_ids terlebih dahulu.');
+        $stmt = $this->query("SELECT product_id, finishing_ids FROM products WHERE store_id = ?
+            AND (JSON_CONTAINS(finishing_ids, ?, '$') OR JSON_CONTAINS(finishing_ids, JSON_QUOTE(?), '$')) FOR UPDATE", [$store, $source, $source]);
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $stmt->close();
+        return $rows;
+    }
+
     public function linked($store, $source) {
-        if (!$this->columns('product_finishings')) return false;
-        $stmt = $this->query('SELECT 1 FROM product_finishings pf JOIN products p ON p.product_id = pf.product_id WHERE p.store_id = ? AND pf.finishing_id = ? LIMIT 1', [$store, $source]);
-        $found = $stmt->get_result()->num_rows > 0; $stmt->close();
-        return $found;
+        return (bool)$this->linkedProducts($store, $source);
     }
 
     public function moveLinks($store, $source, $target) {
-        if (!$this->columns('product_finishings')) return;
-        $this->query('INSERT IGNORE INTO product_finishings(product_id, finishing_id) SELECT pf.product_id, ? FROM product_finishings pf JOIN products p ON p.product_id = pf.product_id WHERE p.store_id = ? AND pf.finishing_id = ?', [$target, $store, $source])->close();
-        $this->query('DELETE pf FROM product_finishings pf JOIN products p ON p.product_id = pf.product_id WHERE p.store_id = ? AND pf.finishing_id = ?', [$store, $source])->close();
+        $model = new ProductFinishing($this->db);
+        foreach ($this->linkedProducts($store, $source) as $row) {
+            $ids = array_map(function ($id) use ($source, $target) { return $id === $source ? $target : $id; }, ProductFinishing::ids($row['finishing_ids']));
+            $model->save($store, $row['product_id'], $ids);
+        }
     }
 }

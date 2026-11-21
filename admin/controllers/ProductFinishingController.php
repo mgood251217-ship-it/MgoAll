@@ -20,8 +20,7 @@ class ProductFinishingController {
         if (count($this->model->finishingsByIds($store, $ids)) !== count($ids)) {
             throw new InvalidArgumentException('Ada finishing yang sudah dihapus atau tidak tersedia. Muat ulang data produk.');
         }
-        $row = $this->model->product($store, $product);
-        if (!$row || $row['finishing_mode'] !== 'PRODUCT') return;
+        if (!$this->model->isAvailable()) return;
         $allowed = array_merge(array_column($this->model->getByProduct($store, $product), 'finishing_id'), $this->model->previousIds($store, $product, $item));
         if (array_diff(ProductLaserConversionController::finishingIds($finishing), $allowed)) {
             throw new InvalidArgumentException('Finishing tidak tersedia untuk produk ini. Lepas finishing tersebut atau perbarui aplikasi.');
