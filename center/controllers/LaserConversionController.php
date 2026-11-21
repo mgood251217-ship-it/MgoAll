@@ -38,31 +38,32 @@ class LaserConversionController {
         $stores = $this->getStores();
         $store_id = (int)($_GET['store_id'] ?? ($stores[0]['store_id'] ?? 0));
         if ($store_id) $this->checkStore($store_id);
-        $products = $laserProducts = $rules = $finishings = [];
+        $products = $laserProducts = $rules = $finishings = $productFinishings = [];
         $ready = $this->conversions->hasVariants();
         $materialsReady = $this->conversions->hasOrderMaterials();
         if ($store_id) {
             $stmt = $this->koneksi->prepare("SELECT p.product_id, p.name, p.price, c.name AS category
-                FROM products p JOIN categories c ON c.category_id = p.category_id AND c.store_id = p.store_id
+                FROM products p JOIN categories c ON c.category_id = p.category_id AND c.store_id = ?
                 WHERE p.store_id = ? AND p.unit_type IN ('PCS', '~')
                   AND UPPER(TRIM(c.name)) IN ('ANEKA CETAK', 'LASER A3') ORDER BY c.name, p.name, p.product_id");
-            $stmt->bind_param('i', $store_id);
+            $stmt->bind_param('ii', $store_id, $store_id);
             $stmt->execute();
             foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $product) {
                 if (strtoupper(trim($product['category'])) === 'LASER A3') $laserProducts[] = $product;
                 else $products[] = $product;
             }
             $stmt->close();
-            $stmt = $this->koneksi->prepare("SELECT f.finishing_id, f.name, f.price FROM finishings f
-                JOIN categories c ON c.category_id = f.category_id AND c.store_id = f.store_id
-                WHERE f.store_id = ? AND UPPER(TRIM(c.name)) = 'ANEKA CETAK' ORDER BY f.name, f.finishing_id");
-            $stmt->bind_param('i', $store_id);
+            $stmt = $this->koneksi->prepare("SELECT f.finishing_id, f.name, f.price, c.name AS category FROM finishings f
+                LEFT JOIN categories c ON c.category_id = f.category_id AND c.store_id = ?
+                WHERE f.store_id = ? ORDER BY f.name, f.finishing_id");
+            $stmt->bind_param('ii', $store_id, $store_id);
             $stmt->execute();
             $finishings = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             $stmt->close();
+            $productFinishings = (new ProductFinishing($this->koneksi))->allowedIdsByProducts($store_id, array_column($products, 'product_id'));
             $rules = $this->conversions->getByStore($store_id);
         }
-        return compact('stores', 'store_id', 'products', 'laserProducts', 'rules', 'finishings', 'ready', 'materialsReady');
+        return compact('stores', 'store_id', 'products', 'laserProducts', 'rules', 'finishings', 'productFinishings', 'ready', 'materialsReady');
     }
 
     public function getRules() {
@@ -146,29 +147,20 @@ class LaserConversionController {
                 $finishing_ids = implode(',', $ids);
                 if (strlen($finishing_ids) > 255) throw new InvalidArgumentException('Terlalu banyak finishing dipilih.');
                 $stmt = $this->koneksi->prepare("SELECT p.product_id FROM products p
-                    JOIN categories c ON c.category_id = p.category_id AND c.store_id = p.store_id
+                    JOIN categories c ON c.category_id = p.category_id AND c.store_id = ?
                     JOIN products lp ON lp.product_id = ? AND lp.store_id = p.store_id
-                    JOIN categories lc ON lc.category_id = lp.category_id AND lc.store_id = lp.store_id
+                    JOIN categories lc ON lc.category_id = lp.category_id AND lc.store_id = ?
                     WHERE p.product_id = ? AND p.store_id = ? AND UPPER(TRIM(c.name)) = 'ANEKA CETAK'
                       AND p.unit_type IN ('PCS', '~') AND UPPER(TRIM(lc.name)) = 'LASER A3'
                       AND lp.unit_type IN ('PCS', '~') FOR UPDATE");
-                $stmt->bind_param('iii', $laser_product_id, $product_id, $store_id);
+                $stmt->bind_param('iiiii', $store_id, $laser_product_id, $store_id, $product_id, $store_id);
                 $stmt->execute();
                 $valid = $stmt->get_result()->fetch_assoc();
                 $stmt->close();
                 if (!$valid) throw new InvalidArgumentException('Pilih produk satuan dari ANEKA CETAK dan bahan print LASER A3 dari toko yang sama.');
-                if ($ids) {
-                    $placeholders = implode(',', array_fill(0, count($ids), '?'));
-                    $stmt = $this->koneksi->prepare("SELECT f.finishing_id FROM finishings f
-                        JOIN products p ON p.product_id = ? AND p.store_id = f.store_id AND p.category_id = f.category_id
-                        WHERE f.store_id = ? AND f.finishing_id IN ($placeholders) FOR UPDATE");
-                    $params = array_merge([$product_id, $store_id], $ids);
-                    $types = str_repeat('i', count($params));
-                    $stmt->bind_param($types, ...$params);
-                    $stmt->execute();
-                    $found = $stmt->get_result()->num_rows;
-                    $stmt->close();
-                    if ($found !== count($ids)) throw new InvalidArgumentException('Pilih finishing dari kategori dan toko produk yang sama.');
+                $allowed = (new ProductFinishing($this->koneksi))->allowedIdsByProducts($store_id, [$product_id]);
+                if (array_diff($ids, $allowed[$product_id] ?? [])) {
+                    throw new InvalidArgumentException('Finishing tidak diizinkan untuk produk ini. Periksa Atur Finishing pada halaman Produk.');
                 }
                 $materialFilter = $this->conversions->hasOrderMaterials() ? ' AND laser_product_id = ?' : '';
                 $stmt = $this->koneksi->prepare('SELECT id FROM product_laser_conversion WHERE store_id = ? AND product_id = ? AND size = ? AND finishing_ids = ? AND id <> ?' . $materialFilter);

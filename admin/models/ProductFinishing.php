@@ -48,6 +48,33 @@ class ProductFinishing {
         return ProductLaserConversionController::finishingIds($row['finishing'] ?? '');
     }
 
+    public function allowedIdsByProducts($store, $products) {
+        $products = array_values(array_unique(array_map('intval', $products)));
+        if (!$products) return [];
+        $marks = implode(',', array_fill(0, count($products), '?'));
+        $params = array_merge([$store, $store], $products);
+        $custom = $this->isAvailable();
+        $sql = "SELECT p.product_id, f.finishing_id FROM products p
+            JOIN finishings f ON f.store_id = ? AND f.category_id = p.category_id
+            WHERE p.store_id = ? AND p.product_id IN ($marks)";
+        if ($custom) {
+            $sql .= " AND p.finishing_mode = 'CATEGORY'
+                UNION ALL
+                SELECT p.product_id, f.finishing_id FROM products p
+                JOIN product_finishings pf ON pf.product_id = p.product_id
+                JOIN finishings f ON f.finishing_id = pf.finishing_id AND f.store_id = ?
+                WHERE p.store_id = ? AND p.product_id IN ($marks) AND p.finishing_mode = 'PRODUCT'";
+            $params = array_merge($params, $params);
+        }
+        $stmt = $this->query($sql, $params);
+        $allowed = [];
+        foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
+            $allowed[(int)$row['product_id']][] = (int)$row['finishing_id'];
+        }
+        $stmt->close();
+        return $allowed;
+    }
+
     public function linksByStore($store) {
         if (!$this->isAvailable()) return [];
         $stmt = $this->query('SELECT pf.product_id, pf.finishing_id FROM product_finishings pf JOIN products p ON p.product_id = pf.product_id WHERE p.store_id = ?', [$store]);

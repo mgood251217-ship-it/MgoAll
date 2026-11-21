@@ -20,19 +20,20 @@ $laserOptions = function ($selected = 0) use ($data, $escape) {
             . $escape($product['name']) . ' (#' . (int)$product['product_id'] . ')</option>';
     }
 };
-$finishingCheckboxes = function ($selected = '', $formId = '') use ($data, $escape) {
+$finishingCheckboxes = function ($selected = '', $formId = 'laser_new', $productId = 0) use ($data, $escape) {
     $ids = ProductLaserConversionController::finishingIds($selected);
-    $options = $data['finishings'];
-    foreach ($ids as $id) {
-        if (!in_array($id, array_column($options, 'finishing_id'))) $options[] = ['finishing_id' => $id, 'name' => 'Finishing tidak tersedia (#' . $id . ')'];
+    $allowed = $data['productFinishings'][(int)$productId] ?? [];
+    $all = array_column($data['finishings'], null, 'finishing_id');
+    $options = array_values(array_unique(array_merge($allowed, $ids)));
+    echo '<div data-laser-finishings="' . $escape($formId) . '" style="display:flex; gap:8px; flex-wrap:wrap; min-width:180px">';
+    foreach ($options as $id) {
+        $finishing = $all[$id] ?? null;
+        $name = $finishing ? $finishing['name'] . ' / ' . $finishing['category'] : 'Finishing tidak tersedia (#' . $id . ')';
+        if ($finishing && !in_array($id, $allowed, true)) $name .= ' (tidak diizinkan)';
+        echo '<label style="display:flex; align-items:center; gap:4px"><input type="checkbox" name="finishings[]" value="' . (int)$id . '" form="' . $escape($formId) . '"'
+            . (in_array($id, $ids) ? ' checked' : '') . '> ' . $escape($name) . '</label>';
     }
-    echo '<div style="display:flex; gap:8px; flex-wrap:wrap; min-width:180px">';
-    foreach ($options as $finishing) {
-        $id = (int)$finishing['finishing_id'];
-        echo '<label style="display:flex; align-items:center; gap:4px"><input type="checkbox" name="finishings[]" value="' . $id . '"'
-            . ($formId ? ' form="' . $escape($formId) . '"' : '') . (in_array($id, $ids) ? ' checked' : '') . '> ' . $escape($finishing['name']) . '</label>';
-    }
-    if (!$options) echo '<small>Belum ada finishing ANEKA CETAK.</small>';
+    if (!$options) echo '<small>' . ($productId ? 'Tidak ada finishing untuk produk ini.' : 'Pilih produk terlebih dahulu.') . '</small>';
     echo '</div>';
 };
 ?>
@@ -73,7 +74,7 @@ $finishingCheckboxes = function ($selected = '', $formId = '') use ($data, $esca
         <p>Satu produk boleh memakai beberapa bahan, misalnya KARTU NAMA dengan AP260, LINEN, atau CONCORD. Tambahkan baris untuk setiap kombinasi bahan, ukuran, dan finishing.</p>
         <?php if (!$data['laserProducts']): ?><div class="alert alert-warning">Belum ada bahan print satuan di kategori LASER A3 pada toko ini.</div><?php endif; ?>
         <?php if (!$data['products']): ?><div class="alert alert-warning">Belum ada produk satuan di ANEKA CETAK. Tambahkan kategori ANEKA CETAK di halaman Produk, lalu masukkan atau pindahkan produk yang akan dikonversi ke kategori tersebut.</div><?php endif; ?>
-        <form method="post" action="/action?action=save_laser_conversion" class="filter-form">
+        <form id="laser_new" method="post" action="/action?action=save_laser_conversion" class="filter-form">
             <input type="hidden" name="csrf_token" value="<?= $escape($_SESSION['laser_conversion_csrf']) ?>">
             <input type="hidden" name="store_id" value="<?= (int)$data['store_id'] ?>">
             <input type="hidden" name="command" value="save">
@@ -128,10 +129,10 @@ $finishingCheckboxes = function ($selected = '', $formId = '') use ($data, $esca
                                 <option value="<?= (int)$product['product_id'] ?>" <?= (int)$rule['product_id'] === (int)$product['product_id'] ? 'selected' : '' ?>><?= $escape($product['name']) ?> (#<?= (int)$product['product_id'] ?>)</option>
                             <?php endforeach; ?>
                         </select>
-                        <?php if (!$rule['valid']): ?><br><small class="text-danger">Konversi belum berlaku. Pastikan produk satuan berada di ANEKA CETAK dan bahan print di LASER A3.</small><?php endif; ?>
+                        <?php if (!$rule['valid']): ?><br><small class="text-danger">Konversi belum berlaku. Periksa produk ANEKA CETAK, bahan LASER A3, dan finishing yang diizinkan untuk produk.</small><?php endif; ?>
                     </td>
                     <td><input form="<?= $formId ?>" name="size" type="text" maxlength="64" class="form-control" value="<?= $escape($rule['size']) ?>" placeholder="Tanpa ukuran" aria-label="Ukuran varian"></td>
-                    <td><?php $finishingCheckboxes($rule['finishing_ids'], $formId); ?></td>
+                    <td><?php $finishingCheckboxes($rule['finishing_ids'], $formId, $rule['product_id']); ?></td>
                     <td><input form="<?= $formId ?>" name="price" type="number" min="0.01" max="9999999999999.99" step="0.01" class="form-control" value="<?= $escape($rule['price'] ?? $rule['product_price']) ?>" aria-label="Harga final varian" required></td>
                     <td><input form="<?= $formId ?>" name="product_quantity" type="number" min="1" max="1000000" step="1" class="form-control" value="<?= (int)$rule['product_quantity'] ?>" aria-label="Jumlah produk" required></td>
                     <td><select form="<?= $formId ?>" name="laser_product_id" class="form-control" aria-label="Bahan print laser" required><?php $laserOptions($rule['laser_product_id']); ?></select></td>
@@ -151,8 +152,37 @@ $finishingCheckboxes = function ($selected = '', $formId = '') use ($data, $esca
         </table>
     </div></div>
     <script>
-    document.getElementById('conversion_product').addEventListener('change', function () {
-        document.getElementById('conversion_price').value = this.selectedOptions[0]?.dataset.price || '';
-    });
+    (() => {
+        const allowed = <?= json_encode($data['productFinishings'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+        const finishings = <?= json_encode(array_column($data['finishings'], null, 'finishing_id'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+        const productChanged = function () {
+            const formId = this.form?.id;
+            const container = document.querySelector('[data-laser-finishings="' + formId + '"]');
+            if (!container) return;
+            const selected = new Set(Array.from(container.querySelectorAll('input:checked'), input => Number(input.value)));
+            container.replaceChildren();
+            for (const id of allowed[this.value] || []) {
+                const finishing = finishings[id];
+                if (!finishing) continue;
+                const label = document.createElement('label');
+                Object.assign(label.style, { display: 'flex', alignItems: 'center', gap: '4px' });
+                const input = document.createElement('input');
+                input.type = 'checkbox'; input.name = 'finishings[]'; input.value = id;
+                input.setAttribute('form', formId);
+                input.checked = selected.has(Number(id));
+                label.append(input, document.createTextNode(' ' + finishing.name + ' / ' + (finishing.category || '')));
+                container.append(label);
+            }
+            if (!container.childElementCount) {
+                const message = document.createElement('small');
+                message.textContent = this.value ? 'Tidak ada finishing untuk produk ini.' : 'Pilih produk terlebih dahulu.';
+                container.append(message);
+            }
+            if (this.id === 'conversion_product') document.getElementById('conversion_price').value = this.selectedOptions[0]?.dataset.price || '';
+        };
+        const selector = '#laser_new select[name="product_id"], select[form^="laser_rule_"][name="product_id"]';
+        if (window.jQuery) window.jQuery(document).on('change', selector, productChanged);
+        else document.addEventListener('change', event => { if (event.target.matches(selector)) productChanged.call(event.target); });
+    })();
     </script>
 <?php endif; ?>

@@ -94,18 +94,4 @@ class ProductLaserConversion {
         return $rows;
     }
 
-    public function countProductFinishings($store_id, $product_id, $ids) {
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $stmt = $this->koneksi->prepare("SELECT f.finishing_id FROM finishings f
-            JOIN products p ON p.product_id = ? AND p.store_id = f.store_id AND p.category_id = f.category_id
-            WHERE f.store_id = ? AND f.finishing_id IN ($placeholders)");
-        $params = array_merge([(int)$product_id, (int)$store_id], $ids);
-        $types = str_repeat('i', count($params));
-        $stmt->bind_param($types, ...$params);
-        $stmt->execute();
-        $found = $stmt->get_result()->num_rows;
-        $stmt->close();
-
-        return $found;
-    }
 }

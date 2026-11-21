@@ -87,9 +87,8 @@ class FinishingMigrationController {
             }
             $crossCategory = (int)$rows[$source]['category_id'] !== (int)$rows[$target]['category_id'];
             if ($crossCategory) {
-                foreach (['product_package', 'product_finishing_prices', 'product_laser_conversion'] as $table) {
-                    $field = $table === 'product_laser_conversion' ? 'finishing_ids' : 'finishing_id';
-                    if ($this->model->rows($table, $store, $source, $field)) throw new InvalidArgumentException('Finishing ini digunakan harga paket atau konversi laser. Pilih pengganti pada kategori yang sama.');
+                foreach (['product_package', 'product_finishing_prices'] as $table) {
+                    if ($this->model->rows($table, $store, $source, 'finishing_id')) throw new InvalidArgumentException('Finishing ini digunakan harga paket. Pilih pengganti pada kategori yang sama.');
                 }
                 $this->preserveCategoryChoices($store, $rows[$source]['category_id'], $source, $target);
             }

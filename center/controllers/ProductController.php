@@ -1334,7 +1334,7 @@ class ProductController {
             $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : 'Pengaturan finishing gagal disimpan.';
             header('Location: ' . $this->productReturnUrl()); exit;
         }
-        $this->updateCopiedStoreCaches([['store_id' => $store, 'name' => (string)$store]], ['products', 'finishings', 'product_finishings'], 'Pengaturan finishing');
+        $this->updateCopiedStoreCaches([['store_id' => $store, 'name' => (string)$store]], ['products', 'finishings', 'product_finishings', 'product_laser_conversion', 'product_bundles'], 'Pengaturan finishing');
         header('Location: ' . $this->productReturnUrl()); exit;
     }
 

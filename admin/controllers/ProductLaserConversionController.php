@@ -1,11 +1,14 @@
 <?php
 require_once __DIR__ . '/../models/ProductLaserConversion.php';
+require_once __DIR__ . '/../models/ProductFinishing.php';
 
 class ProductLaserConversionController {
     private $conversionModel;
+    private $finishings;
 
     public function __construct($koneksi) {
         $this->conversionModel = new ProductLaserConversion($koneksi);
+        $this->finishings = new ProductFinishing($koneksi);
     }
 
     public function isAvailable() {
@@ -21,6 +24,7 @@ class ProductLaserConversionController {
             return [];
         }
         $rows = $this->conversionModel->getByStore($store_id);
+        $allowed = $this->finishings->allowedIdsByProducts($store_id, array_column($rows, 'product_id'));
         $finishings = [];
         foreach ($this->conversionModel->getFinishings($store_id) as $finishing) {
             $finishings[(int)$finishing['finishing_id']] = $finishing;
@@ -30,7 +34,7 @@ class ProductLaserConversionController {
             $names = [];
             foreach (self::finishingIds($row['finishing_ids']) as $id) {
                 $finishing = $finishings[$id] ?? null;
-                if (!$finishing || (int)$finishing['category_id'] !== (int)$row['category_id']) {
+                if (!$finishing || !in_array($id, $allowed[(int)$row['product_id']] ?? [], true)) {
                     $row['valid'] = 0;
                 }
                 $names[] = $finishing['name'] ?? ('Finishing tidak tersedia (#' . $id . ')');
@@ -106,9 +110,9 @@ class ProductLaserConversionController {
         }
         $ids = self::finishingIds($finishing);
         if ($ids) {
-            $found = $this->conversionModel->countProductFinishings($store_id, $product_id, $ids);
-            if ($found !== count($ids)) {
-                throw new InvalidArgumentException('Finishing bukan milik kategori dan toko produk ini.');
+            $allowed = $this->finishings->allowedIdsByProducts($store_id, [$product_id]);
+            if (array_diff($ids, $allowed[(int)$product_id] ?? [])) {
+                throw new InvalidArgumentException('Finishing tidak diizinkan untuk produk ini. Periksa pengaturan finishing produk.');
             }
         }
         $rules = array_values(array_filter($this->getByStore($store_id), function ($rule) use ($product_id) {
