@@ -70,13 +70,18 @@ class ProductVariant {
         return $row;
     }
 
+    public static function productionSnapshotFilter() {
+        return "COALESCE(JSON_EXTRACT(IF(JSON_VALID(oi.product_variant_data), oi.product_variant_data, '{}'), '$.id'), 0) > 0";
+    }
+
     public function getProductionRows($store, $start, $end, $withUnitType) {
         $unitField = $withUnitType ? ', p.unit_type AS current_unit_type' : '';
         $productJoin = $withUnitType ? ' LEFT JOIN products p ON p.product_id = oi.product_id AND p.store_id = oi.store_id' : '';
+        $hasSnapshot = self::productionSnapshotFilter();
         $stmt = $this->db->prepare("SELECT oi.quantity, oi.product_variant_data$unitField
             FROM order_items oi JOIN orders o ON o.order_id = oi.order_id AND o.store_id = oi.store_id
             $productJoin WHERE oi.store_id = ? AND o.date BETWEEN ? AND ?
-                AND oi.product_variant_data IS NOT NULL");
+                AND $hasSnapshot");
         $stmt->bind_param('iss', $store, $start, $end);
         $stmt->execute();
         $result = $stmt->get_result();

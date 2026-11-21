@@ -287,7 +287,7 @@ class MeterController {
         $product_data_pakaian = [];
         $total_all_qty_pakaian = 0;
         $variantModel = new ProductVariantController($this->koneksi);
-        $legacyOnly = $variantModel->isAvailable() ? ' AND oi.product_variant_data IS NULL' : '';
+        $legacyOnly = $variantModel->isAvailable() ? ' AND NOT (' . ProductVariant::productionSnapshotFilter() . ')' : '';
         if ((new ProductBundleController($this->koneksi))->isAvailable()) {
             $legacyOnly .= " AND JSON_EXTRACT(IF(JSON_VALID(oi.tier_price_data), oi.tier_price_data, '{}'), '$.bundle') IS NULL";
         }
@@ -715,7 +715,7 @@ class MeterController {
         [$start_date_full, $end_date_full] = $this->getDateRange();
 
         $variantModel = new ProductVariantController($this->koneksi);
-        $legacyOnly = $variantModel->isAvailable() ? ' AND oi.product_variant_data IS NULL' : '';
+        $legacyOnly = $variantModel->isAvailable() ? ' AND NOT (' . ProductVariant::productionSnapshotFilter() . ')' : '';
 
         $query = "
             SELECT p.name, COALESCE(SUM(oi_filtered.quantity), 0) AS total_qty
@@ -767,7 +767,7 @@ class MeterController {
         global $store_id;
         [$start, $end] = $this->getDateRange();
         $variants = new ProductVariantController($this->koneksi);
-        $legacyOnly = $variants->isAvailable() ? ' AND oi.product_variant_data IS NULL' : '';
+        $legacyOnly = $variants->isAvailable() ? ' AND NOT (' . ProductVariant::productionSnapshotFilter() . ')' : '';
         if ((new ProductBundleController($this->koneksi))->isAvailable()) {
             $legacyOnly .= " AND JSON_EXTRACT(IF(JSON_VALID(oi.tier_price_data), oi.tier_price_data, '{}'), '$.bundle') IS NULL";
         }
