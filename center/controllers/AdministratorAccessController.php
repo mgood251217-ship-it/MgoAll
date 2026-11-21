@@ -32,6 +32,7 @@ class AdministratorAccessController {
                 'add_category' => 'Tambah kategori', 'delete_category' => 'Hapus kategori kosong',
                 'add_finishing' => 'Tambah finishing', 'edit_finishing' => 'Ubah finishing',
                 'delete_finishing' => 'Hapus finishing',
+                'migrate_finishing' => 'Migrasi finishing',
                 'copy_finishings' => 'Salin finishing ke cabang lain',
             ],
             'Harga dan varian' => [

@@ -38,6 +38,7 @@ foreach ($returnFilters as $key => $value) {
 $_SESSION['product_migration_csrf'] = $_SESSION['product_migration_csrf'] ?? bin2hex(random_bytes(32));
 $_SESSION['product_cache_csrf'] = $_SESSION['product_cache_csrf'] ?? bin2hex(random_bytes(32));
 $_SESSION['product_category_csrf'] = $_SESSION['product_category_csrf'] ?? bin2hex(random_bytes(32));
+$_SESSION['finishing_migration_csrf'] = $_SESSION['finishing_migration_csrf'] ?? bin2hex(random_bytes(32));
 $_SESSION['product_finishing_csrf'] = $_SESSION['product_finishing_csrf'] ?? bin2hex(random_bytes(32));
 $_SESSION['product_copy_csrf'] = $_SESSION['product_copy_csrf'] ?? bin2hex(random_bytes(32));
 $_SESSION['finishing_copy_csrf'] = $_SESSION['finishing_copy_csrf'] ?? bin2hex(random_bytes(32));
@@ -299,13 +300,14 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                     <th>Nama Finishing</th>
                     <th>Harga</th>
                     <th>Stok</th>
+                    <th title="Jumlah baris order_items yang memakai finishing ini, bukan total quantity">Jumlah Item Order</th>
                     <th class="migrated-style-9">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($data['finishings'])): ?>
                     <tr>
-                        <td class="migrated-style-80" colspan="7">Tidak ada finishing ditemukan</td>
+                        <td class="migrated-style-80" colspan="8">Tidak ada finishing ditemukan</td>
                     </tr>
                 <?php else: ?>
                     <?php 
@@ -324,6 +326,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                             </td>
                             <td><?= format_rupiah($row['price'] ?? 0) ?></td>
                             <td><?= format_stock($row['stock'] ?? 0) ?></td>
+                            <td><?= number_format((int)($row['order_item_count'] ?? 0), 0, ',', '.') ?></td>
                             <td class="migrated-style-9">
                                 <button <?= !$canProductAction('edit_finishing') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-warning me-1"
                                     data-bs-toggle="modal" 
@@ -341,6 +344,9 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                                 <button <?= !$canProductAction('delete_finishing') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-danger" onclick="deleteData('finishing', <?= $row['finishing_id'] ?>)">
                                     <i class="fas fa-trash"></i>
                                 </button>
+                                <button <?= !$canProductAction('migrate_finishing') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-kelola btn-open"
+                                    data-bs-toggle="modal" data-bs-target="#migrateFinishingModal" data-id="<?= (int)$row['finishing_id'] ?>"
+                                    data-name="<?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>">Migrasi</button>
                                 <button <?= !$canProductAction('copy_finishings') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-kelola btn-open" data-bs-toggle="modal" data-bs-target="#copyFinishingsModal"
                                     data-id="<?= (int)$row['finishing_id'] ?>" data-name="<?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?>">Salin</button>
                             </td>
@@ -661,6 +667,36 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
     </div>
 </div>
 
+<div class="modal fade" id="migrateFinishingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form id="migrateFinishingForm" class="modal-content modal-content-custom" method="post" action="/action?action=migrate_finishing">
+            <?= $returnInputs ?>
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['finishing_migration_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="store_id" value="<?= (int)$data['current_store_id'] ?>">
+            <input type="hidden" name="source_finishing_id" id="migrationFinishingSource">
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title-custom">Migrasi Finishing</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body modal-body-custom">
+                <p id="migrationFinishingSourceName"></p>
+                <label for="migrationFinishingTarget" class="form-label-custom">Finishing pengganti</label>
+                <select id="migrationFinishingTarget" name="target_finishing_id" class="form-control-custom form-select mb-3" required>
+                    <option value="">Pilih finishing pengganti</option>
+                    <?php foreach ($data['migration_finishings'] as $finishing): ?>
+                        <option value="<?= (int)$finishing['finishing_id'] ?>">#<?= (int)$finishing['finishing_id'] ?> - <?= htmlspecialchars($finishing['name'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars(array_column($data['categories'], 'name', 'category_id')[$finishing['category_id']] ?? 'Tanpa kategori', ENT_QUOTES, 'UTF-8') ?>)</option>
+                    <?php endforeach; ?>
+                </select>
+                <small>Nota, arsip, kegagalan dan pengaturan terkait dialihkan. Harga nota dan stok tujuan tetap. Finishing asal tidak otomatis dihapus.</small>
+            </div>
+            <div class="modal-footer modal-footer-custom">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn-primary-custom">Migrasi</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="modal fade" id="productFinishingsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <form class="modal-content modal-content-custom" method="post" action="/action?action=save_product_finishings">
@@ -882,6 +918,26 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const migrateFinishingForm = document.getElementById('migrateFinishingForm');
+    const migrationFinishingTarget = document.getElementById('migrationFinishingTarget');
+    document.getElementById('migrateFinishingModal').addEventListener('show.bs.modal', event => {
+        const button = event.relatedTarget;
+        if (!button) return;
+        migrateFinishingForm.reset(); delete migrateFinishingForm.dataset.busy;
+        document.getElementById('migrationFinishingSource').value = button.dataset.id;
+        document.getElementById('migrationFinishingSourceName').textContent = 'Finishing asal: #' + button.dataset.id + ' - ' + button.dataset.name;
+        Array.from(migrationFinishingTarget.options).forEach(option => { option.disabled = option.value === button.dataset.id; });
+        const submit = migrateFinishingForm.querySelector('button[type="submit"]');
+        submit.disabled = !Array.from(migrationFinishingTarget.options).some(option => option.value && !option.disabled);
+        submit.textContent = 'Migrasi';
+    });
+    migrateFinishingForm.addEventListener('submit', event => {
+        if (migrateFinishingForm.dataset.busy || !migrateFinishingForm.reportValidity()) { event.preventDefault(); return; }
+        migrateFinishingForm.dataset.busy = '1';
+        const submit = migrateFinishingForm.querySelector('button[type="submit"]');
+        submit.disabled = true; submit.textContent = 'Memigrasikan...';
+    });
+
     const productFinishingLinks = <?= json_encode($data['product_finishing_links'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     const finishingMode = document.getElementById('productFinishingMode');
     const finishingChoices = document.getElementById('productFinishingChoices');

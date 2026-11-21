@@ -160,15 +160,6 @@ class Product{
         return $success;
     }
 
-    public function deleteFinishingById($data){
-        $stmt = $this->koneksi->prepare("DELETE FROM finishings WHERE finishing_id = ? LIMIT 1");
-        $stmt->bind_param('i', $data->id);
-        $success = $stmt->execute();
-        if ($success) (new ProductFinishing($this->koneksi))->cleanupDeleted([(int)$data->id], 'finishing_id');
-        $stmt->close();
-        return $success;
-    }
-
     public function getMaterialUsageByIntervalDate($store_id, $start_date, $end_date){
         $stmt = $this->koneksi->prepare("
             SELECT 

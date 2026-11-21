@@ -16,6 +16,10 @@ class ProductFinishingController {
     }
 
     public function validate($store, $product, $finishing, $item = 0) {
+        $ids = ProductLaserConversionController::finishingIds($finishing);
+        if (count($this->model->finishingsByIds($store, $ids)) !== count($ids)) {
+            throw new InvalidArgumentException('Ada finishing yang sudah dihapus atau tidak tersedia. Muat ulang data produk.');
+        }
         $row = $this->model->product($store, $product);
         if (!$row || $row['finishing_mode'] !== 'PRODUCT') return;
         $allowed = array_merge(array_column($this->model->getByProduct($store, $product), 'finishing_id'), $this->model->previousIds($store, $product, $item));

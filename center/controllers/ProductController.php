@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../admin/functions/productStock.php';
 require_once __DIR__ . '/../../admin/controllers/ProductPriceTierController.php';
 require_once __DIR__ . '/ProductHistoryController.php';
 require_once __DIR__ . '/../../admin/controllers/ProductFinishingController.php';
+require_once __DIR__ . '/../../admin/controllers/FinishingMigrationController.php';
 class ProductController {
     private $koneksi;
 
@@ -137,8 +138,22 @@ class ProductController {
             $fStmt->execute();
             
             $fResult = $fStmt->get_result();
+            $finishingUsage = [];
+            if ($fResult && $fResult->num_rows > 0) {
+                $usageStmt = $this->koneksi->prepare("SELECT finishing, COUNT(*) AS item_count FROM order_items
+                    WHERE store_id = ? AND finishing IS NOT NULL AND finishing NOT IN ('', '-') GROUP BY finishing");
+                $usageStmt->bind_param('i', $store_id); $usageStmt->execute();
+                $usageRows = $usageStmt->get_result();
+                while ($usage = $usageRows->fetch_assoc()) {
+                    foreach (ProductLaserConversionController::finishingIds($usage['finishing']) as $id) {
+                        $finishingUsage[$id] = ($finishingUsage[$id] ?? 0) + (int)$usage['item_count'];
+                    }
+                }
+                $usageStmt->close();
+            }
             if ($fResult) {
                 while ($row = $fResult->fetch_assoc()) {
+                    $row['order_item_count'] = $finishingUsage[(int)$row['finishing_id']] ?? 0;
                     $finishingsData[] = $row;
                 }
             }
@@ -1254,6 +1269,33 @@ class ProductController {
         exit;
     }
 
+    public function migrateFinishing() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $store = filter_var($_POST['store_id'] ?? 0, FILTER_VALIDATE_INT) ?: 0;
+        try {
+            if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !is_string($_POST['csrf'] ?? null)
+                || empty($_SESSION['finishing_migration_csrf']) || !hash_equals($_SESSION['finishing_migration_csrf'], $_POST['csrf'])) {
+                throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
+            }
+            $admin = (new ProductHistoryController($this->koneksi))->getAdministrator();
+            $stmt = $this->copyProductQuery('SELECT administrator FROM stores WHERE store_id = ?', [$store]);
+            $target = $stmt->get_result()->fetch_assoc(); $stmt->close();
+            if (!$admin || !$target || ($admin['access'] !== 'ALL' && ($admin['access'] === '' || (string)$admin['access'] !== (string)$target['administrator']))) {
+                throw new InvalidArgumentException('Anda tidak memiliki akses ke toko ini.');
+            }
+            (new FinishingMigrationController($this->koneksi))->migrate($store, filter_var($_POST['source_finishing_id'] ?? 0, FILTER_VALIDATE_INT) ?: 0, filter_var($_POST['target_finishing_id'] ?? 0, FILTER_VALIDATE_INT) ?: 0);
+            $_SESSION['swal_success'] = 'Migrasi finishing selesai. Referensi finishing sudah dialihkan; harga nota dan stok tujuan tetap. Finishing asal belum dihapus.';
+        } catch (Throwable $e) {
+            error_log('Migrate finishing: ' . $e->getMessage());
+            $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage()
+                : 'Migrasi dibatalkan. Periksa aturan paket atau konversi laser yang duplikat di tujuan. Semua data tetap.';
+            header('Location: ' . $this->productReturnUrl()); exit;
+        }
+        $this->updateCopiedStoreCaches([['store_id' => $store, 'name' => (string)$store]],
+            ['products', 'finishings', 'product_finishings', 'orders', 'product_finishing_prices', 'product_laser_conversion', 'product_bundles', 'failures'], 'Migrasi finishing');
+        header('Location: ' . $this->productReturnUrl()); exit;
+    }
+
     public function saveProductFinishings() {
         if (session_status() === PHP_SESSION_NONE) session_start();
         $transaction = false;
@@ -1588,6 +1630,24 @@ class ProductController {
 
     private function deleteData($table, $id_column) {
         $id = $_POST[$id_column] ?? null;
+        if ($table === 'finishings') {
+            try {
+                $admin = (new ProductHistoryController($this->koneksi))->getAdministrator();
+                $stmt = $this->copyProductQuery('SELECT s.store_id, s.administrator FROM finishings f JOIN stores s ON s.store_id = f.store_id WHERE f.finishing_id = ?', [(int)$id]);
+                $store = $stmt->get_result()->fetch_assoc(); $stmt->close();
+                if (!$admin || !$store || ($admin['access'] !== 'ALL' && ($admin['access'] === '' || (string)$admin['access'] !== (string)$store['administrator']))) {
+                    throw new InvalidArgumentException('Finishing tidak tersedia atau akses toko ditolak.');
+                }
+                (new FinishingMigrationController($this->koneksi))->delete((int)$store['store_id'], (int)$id);
+                require_once __DIR__ . '/../functions/cacheHelper.php';
+                updateStoreCache((int)$store['store_id'], 'finishings');
+                echo 'OK';
+            } catch (Throwable $e) {
+                error_log('Delete finishing: ' . $e->getMessage());
+                echo $e instanceof InvalidArgumentException ? $e->getMessage() : 'Finishing belum dapat dihapus. Periksa referensinya terlebih dahulu.';
+            }
+            exit;
+        }
         if ($id) {
             $stmtGet = $this->koneksi->prepare("SELECT store_id FROM $table WHERE $id_column = ?");
             $stmtGet->bind_param("i", $id);

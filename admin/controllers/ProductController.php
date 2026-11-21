@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/ProductFinishingPriceController.php';
 require_once __DIR__ . '/ProductFinishingController.php';
+require_once __DIR__ . '/FinishingMigrationController.php';
 require_once __DIR__ . '/ProductLaserConversionController.php';
 require_once __DIR__ . '/ProductVariantController.php';
 require_once __DIR__ . '/ProductBundleController.php';
@@ -280,11 +281,13 @@ class ProductController {
             exit;
         }
 
-        if ($this->productModel->deleteFinishingById($data)) {
+        try {
+            (new FinishingMigrationController($this->db))->delete($store_id, (int)$data->id);
             updateStoreCache($store_id, 'finishings');
             send_json_response(true, 'Finishing berhasil dihapus.');
-        } else {
-            send_json_response(false, 'Gagal menghapus finishing.');
+        } catch (Throwable $e) {
+            error_log('Delete finishing: ' . $e->getMessage());
+            send_json_response(false, $e instanceof InvalidArgumentException ? $e->getMessage() : 'Finishing belum dapat dihapus. Periksa referensinya terlebih dahulu.');
         }
         exit;
     }

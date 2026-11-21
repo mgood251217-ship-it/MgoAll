@@ -88,6 +88,7 @@ switch ($action) {
     case 'delete_finishing':
     case 'get_product':
     case 'migrate_product':
+    case 'migrate_finishing':
     case 'copy_products':
     case 'copy_finishings':
     case 'save_product_finishings':
@@ -107,6 +108,7 @@ switch ($action) {
         if ($action === 'delete_finishing') $productController->deleteFinishing();
         if ($action === 'get_product') $productController->getProductByCategoryId();
         if ($action === 'migrate_product') $productController->migrateProduct();
+        if ($action === 'migrate_finishing') $productController->migrateFinishing();
         if ($action === 'copy_products') $productController->copyProducts();
         if ($action === 'copy_finishings') $productController->copyFinishings();
         if ($action === 'save_product_finishings') $productController->saveProductFinishings();
