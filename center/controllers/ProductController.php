@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../admin/functions/productPrices.php';
 require_once __DIR__ . '/../../admin/functions/productStock.php';
 require_once __DIR__ . '/../../admin/controllers/ProductPriceTierController.php';
 require_once __DIR__ . '/ProductHistoryController.php';
+require_once __DIR__ . '/../../admin/controllers/ProductFinishingController.php';
 class ProductController {
     private $koneksi;
 
@@ -39,6 +40,7 @@ class ProductController {
         }
         if (!in_array($store_id, array_column($stores, 'store_id'))) $store_id = null;
 
+        $finishingSettings = new ProductFinishingController($this->koneksi);
         $productsData = [];
         $finishingsData = [];
         $categories = [];
@@ -144,6 +146,8 @@ class ProductController {
         }
 
         return [
+            'finishing_settings_ready' => $finishingSettings->isAvailable(),
+            'product_finishing_links' => $store_id ? $finishingSettings->linksByStore($store_id) : [],
             'stores' => $stores,
             'current_store_id' => $store_id,
             'categories' => $categories,
@@ -374,8 +378,12 @@ class ProductController {
         );
         $categories = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        if (count($categories) !== 1) {
-            throw new InvalidArgumentException('Kategori finishing isi paket tujuan tidak tersedia atau duplikat.');
+        if (count($categories) > 1) {
+            throw new InvalidArgumentException('Kategori finishing tujuan duplikat.');
+        }
+        if (!$categories) {
+            $this->copyProductQuery('INSERT INTO categories(store_id,name,created_at,updated_at) VALUES(?,?,NOW(),NOW())', [$targetId, $source['category_name']])->close();
+            $categories = [['category_id' => (int)$this->koneksi->insert_id]];
         }
         $categoryId = (int) $categories[0]['category_id'];
         $stmt = $this->copyProductQuery(
@@ -723,7 +731,9 @@ class ProductController {
                 foreach ((new ProductLaserConversionController($this->koneksi))->getByStore($targetId) as $rule) {
                     $configured[(int) $rule['product_id']] = true;
                 }
+                $finishingModel = new ProductFinishing($this->koneksi);
                 foreach ($products as $product) {
+                    $isNewProduct = false;
                     if (empty($product['category_name'])) {
                         throw new InvalidArgumentException('Kategori produk #' . $product['product_id'] . ' tidak valid.');
                     }
@@ -783,6 +793,7 @@ class ProductController {
                         )->close();
                         $targetProduct = (int) $this->koneksi->insert_id;
                         $newProducts++;
+                        $isNewProduct = true;
                     }
                     $productMap[(int) $product['product_id']] = $targetProduct;
                     $variants = $model->getByProduct($sourceId, (int) $product['product_id']);
@@ -798,6 +809,13 @@ class ProductController {
                         $newVariants += $count['added'];
                         $skippedVariants += $count['skipped'];
                         $variantMap += $count['map'];
+                    }
+                    if ($isNewProduct && ($product['finishing_mode'] ?? 'CATEGORY') === 'PRODUCT' && $finishingModel->isAvailable()) {
+                        $ids = [];
+                        foreach ($finishingModel->getByProduct($sourceId, (int)$product['product_id']) as $finishing) {
+                            $ids[] = $this->copyBundleFinishing($sourceId, $targetId, (int)$finishing['finishing_id'], $finishingMap);
+                        }
+                        $finishingModel->save($targetId, $targetProduct, 'PRODUCT', $ids);
                     }
                 }
                 foreach ($laserRulesByProduct as $sourceProduct => $rules) {
@@ -1043,6 +1061,7 @@ class ProductController {
                 $params = array_merge([$storeId], $sourceIds);
                 $stmt->bind_param(str_repeat('i', count($params)), ...$params);
                 $stmt->execute(); $deletedCount = $stmt->affected_rows; $stmt->close();
+                (new ProductFinishing($this->koneksi))->cleanupDeleted($sourceIds);
                 if ($deletedCount !== count($sourceIds)) throw new InvalidArgumentException('Produk asal masih dipakai atau datanya berubah. Migrasi dan penghapusan dibatalkan; muat ulang halaman.');
             }
             $this->koneksi->commit();
@@ -1117,6 +1136,7 @@ class ProductController {
             $stmt->execute();
             $count = $stmt->affected_rows;
             $stmt->close();
+            (new ProductFinishing($this->koneksi))->cleanupDeleted($ids);
             $skipped = count($ids) - $count;
             $this->koneksi->commit();
             $transaction = false;
@@ -1232,6 +1252,48 @@ class ProductController {
         }
         header('Location: ' . $this->productReturnUrl());
         exit;
+    }
+
+    public function saveProductFinishings() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $transaction = false;
+        $store = (int)($_POST['store_id'] ?? 0);
+        try {
+            if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !is_string($_POST['csrf'] ?? null)
+                || empty($_SESSION['product_finishing_csrf']) || !hash_equals($_SESSION['product_finishing_csrf'], $_POST['csrf'])) {
+                throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
+            }
+            $admin = (new ProductHistoryController($this->koneksi))->getAdministrator();
+            if (!$admin) throw new InvalidArgumentException('Silakan login kembali.');
+            $model = new ProductFinishing($this->koneksi);
+            if (!$model->isAvailable()) throw new InvalidArgumentException('Jalankan SQL product_finishings.sql terlebih dahulu.');
+            $product = (int)($_POST['product_id'] ?? 0);
+            $mode = $_POST['finishing_mode'] ?? '';
+            if (!in_array($mode, ['CATEGORY', 'PRODUCT'], true)) throw new InvalidArgumentException('Pengaturan finishing tidak valid.');
+            $selected = $_POST['finishing_ids'] ?? [];
+            if (!is_array($selected)) throw new InvalidArgumentException('Pilihan finishing tidak valid.');
+            $ids = $mode === 'PRODUCT' && $selected ? $this->selectedCatalogIds($selected, 'finishing') : [];
+            $this->koneksi->begin_transaction(); $transaction = true;
+            $stmt = $this->copyProductQuery('SELECT administrator FROM stores WHERE store_id = ? FOR UPDATE', [$store]);
+            $target = $stmt->get_result()->fetch_assoc(); $stmt->close();
+            if (!$target || ($admin['access'] !== 'ALL' && ($admin['access'] === '' || (string)$admin['access'] !== (string)$target['administrator']))) {
+                throw new InvalidArgumentException('Anda tidak memiliki akses ke toko ini.');
+            }
+            $stmt = $this->copyProductQuery('SELECT product_id FROM products WHERE store_id = ? AND product_id = ? FOR UPDATE', [$store, $product]);
+            $found = $stmt->get_result()->num_rows; $stmt->close();
+            if (!$found) throw new InvalidArgumentException('Produk tidak tersedia pada toko ini.');
+            if (count($model->finishingsByIds($store, $ids)) !== count($ids)) throw new InvalidArgumentException('Pilih finishing dari toko yang sama.');
+            $model->save($store, $product, $mode, $ids);
+            $this->koneksi->commit(); $transaction = false;
+            $_SESSION['swal_success'] = 'Pengaturan finishing produk disimpan. Nota lama tetap dipertahankan.';
+        } catch (Throwable $e) {
+            if ($transaction) $this->koneksi->rollback();
+            error_log('Product finishings: ' . $e->getMessage());
+            $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : 'Pengaturan finishing gagal disimpan.';
+            header('Location: ' . $this->productReturnUrl()); exit;
+        }
+        $this->updateCopiedStoreCaches([['store_id' => $store, 'name' => (string)$store]], ['products', 'finishings', 'product_finishings'], 'Pengaturan finishing');
+        header('Location: ' . $this->productReturnUrl()); exit;
     }
 
     public function addCategory() {
@@ -1537,6 +1599,7 @@ class ProductController {
             $stmt->bind_param("i", $id);
             
             if ($stmt->execute()) {
+                (new ProductFinishing($this->koneksi))->cleanupDeleted([(int)$id], $id_column);
                 if ($store_id) {
                     require_once __DIR__ . '/../functions/cacheHelper.php';
                     updateStoreCache($store_id, $table);
@@ -1578,6 +1641,19 @@ class ProductController {
     }
 
     public function getFinishingByCategoryId(){
+        $product = max(0, (int)($_GET['product_id'] ?? 0));
+        if ($product) {
+            $store = max(0, (int)($_GET['store_id'] ?? 0));
+            $admin = (new ProductHistoryController($this->koneksi))->getAdministrator();
+            $stmt = $this->copyProductQuery('SELECT administrator FROM stores WHERE store_id = ?', [$store]);
+            $target = $stmt->get_result()->fetch_assoc(); $stmt->close();
+            if (!$admin || !$target || ($admin['access'] !== 'ALL' && ($admin['access'] === '' || (string)$admin['access'] !== (string)$target['administrator']))) {
+                http_response_code(403); send_json_response(false, 'Anda tidak memiliki akses ke toko ini.', []); return;
+            }
+            $rows = (new ProductFinishingController($this->koneksi))->getByProduct($store, $product, max(0, (int)($_GET['order_item_id'] ?? 0)));
+            send_json_response(true, 'success', $rows); return;
+        }
+
         $category_id = $_GET['category_id'] ?? '';
         $stmt = $this->koneksi->prepare("SELECT * FROM finishings WHERE category_id = ?");
         $stmt->bind_param('i', $category_id);

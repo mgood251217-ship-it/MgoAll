@@ -313,6 +313,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const elLebar = document.getElementById('lebar');
     const elQty = document.getElementById('qty');
     const elFinishing = document.getElementById('finishing');
+    let pendingFinishingSelection = null;
     const elBtnTambah = document.getElementById('btnTambah');
     const elEnableDiskon = document.getElementById('enableDiskon');
     const elDiskonInput = document.getElementById('diskonInput');
@@ -637,6 +638,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function loadFinishingOptions(kategori) {
+        const productId = elJudul.value;
+        const itemId = document.getElementById('addItemForm').getAttribute('data-order-item-id') || '';
         packageRules = [];
         laserRules = [];
         laserSize = '';
@@ -651,13 +654,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (kategori) {
             Promise.all([
-                fetch(`/action?action=get_finishing&category_id=${encodeURIComponent(kategori)}`).then(response => response.json()),
+                fetch(`/action?action=get_finishing&category_id=${encodeURIComponent(kategori)}&store_id=${store_id}&product_id=${encodeURIComponent(productId)}&order_item_id=${encodeURIComponent(itemId)}`).then(response => response.json()),
                 fetch(`/action?action=get_product_finishing_prices&category_id=${encodeURIComponent(kategori)}&store_id=${store_id}`)
                     .then(response => response.json()).catch(() => ({ data: [] })),
                 getKategoriName() === 'ANEKA CETAK' ? fetch(`/action?action=get_product_laser_conversions&category_id=${encodeURIComponent(kategori)}&store_id=${store_id}`)
                     .then(response => response.json()).catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
             ]).then(([data, packages, lasers]) => {
-                    if (String(elKategori.value) !== String(kategori)) return;
+                    if (String(elKategori.value) !== String(kategori) || elJudul.value !== productId) return;
                     packageRules = Array.isArray(packages.data) ? packages.data : [];
                     laserRules = Array.isArray(lasers.data) ? lasers.data : [];
                     if (!data.data) return;
@@ -674,6 +677,13 @@ document.addEventListener('DOMContentLoaded', function () {
                             `);
                         }
                     });
+                    if (pendingFinishingSelection?.product === productId) {
+                        document.querySelectorAll('.finishing-checkbox').forEach(input => {
+                            input.checked = pendingFinishingSelection.values.includes(input.value.toLowerCase())
+                                || pendingFinishingSelection.values.includes((input.dataset.name || '').toLowerCase());
+                        });
+                        pendingFinishingSelection = null;
+                    }
                     updatePackageView();
                     updateLaserView(true);
                     updatePricePreview();
@@ -762,6 +772,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (elJudul) {
         elJudul.addEventListener('change', function () {
+            loadFinishingOptions(elKategori.value);
             loadProductVariants();
             const selectedOption = this.options[this.selectedIndex];
             const name = (selectedOption && selectedOption.dataset && selectedOption.dataset.name) ? selectedOption.dataset.name : '';
@@ -967,6 +978,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (btn) {
             const row = btn.closest('tr');
             const orderItemId = row.dataset.orderItemId;
+            pendingFinishingSelection = { product: String(row.sourceProductId || ''), values: String(finishing || '').split(',').map(value => value.trim().toLowerCase()) };
             if (!orderItemId) return;
             const store = '<?= $encrypted_store ?>';
 

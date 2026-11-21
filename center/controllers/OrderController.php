@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../admin/models/Activity.php';
 require_once __DIR__ . '/../../admin/controllers/ProductFinishingPriceController.php';
+require_once __DIR__ . '/../../admin/controllers/ProductFinishingController.php';
 require_once __DIR__ . '/../../admin/controllers/ProductPriceTierController.php';
 require_once __DIR__ . '/../../admin/controllers/ProductLaserConversionController.php';
 require_once __DIR__ . '/../../admin/models/OrderDiscount.php';
@@ -607,6 +608,8 @@ class OrderController {
         catch (InvalidArgumentException $e) { return ['error' => $e->getMessage(), 'status' => 400]; }
         if ($variant) $product['price'] = $variant['price'];
         $finishing = trim($data['finishing'] ?? '-');
+        try { (new ProductFinishingController($this->koneksi))->validate($store_id, $product_id, $finishing, (int)($data['order_item_id'] ?? 0)); }
+        catch (InvalidArgumentException $e) { return ['error' => $e->getMessage(), 'status' => 400]; }
         $laserVariant = null;
         $isAnekaCetak = strtoupper(trim($product['category'])) === 'ANEKA CETAK';
         if ($isAnekaCetak) {

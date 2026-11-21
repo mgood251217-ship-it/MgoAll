@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../admin/controllers/ProductVariantController.php';
 require_once __DIR__ . '/../../admin/controllers/ProductBundleController.php';
+require_once __DIR__ . '/../../admin/models/ProductFinishing.php';
 class StoreController {
     private $koneksi;
 
@@ -206,6 +207,16 @@ class StoreController {
             if ($bundleModel->copyToStore($sourceId, $sourceProduct, $targetId, $mapId($productMap, $sourceProduct, 'produk paket'), $productMap, $variantMap, $laserMap)) {
                 $counts['product_bundles'] = ($counts['product_bundles'] ?? 0) + 1;
             }
+        }
+        $finishingModel = new ProductFinishing($this->koneksi);
+        if ($finishingModel->isAvailable()) foreach ($productMap as $sourceProduct => $targetProduct) {
+            $product = $finishingModel->product($sourceId, $sourceProduct);
+            if ($product['finishing_mode'] !== 'PRODUCT') continue;
+            $ids = [];
+            foreach ($finishingModel->getByProduct($sourceId, $sourceProduct) as $finishing) {
+                $ids[] = $mapId($finishingMap, $finishing['finishing_id'], 'finishing produk');
+            }
+            $finishingModel->save($targetId, $targetProduct, 'PRODUCT', $ids);
         }
         if (!empty($counts['product_variants']) && $masters) $counts['production_components'] = count($componentModel->getByStore($targetId));
         return $counts;

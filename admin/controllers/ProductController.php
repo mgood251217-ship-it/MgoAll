@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/ProductFinishingPriceController.php';
+require_once __DIR__ . '/ProductFinishingController.php';
 require_once __DIR__ . '/ProductLaserConversionController.php';
 require_once __DIR__ . '/ProductVariantController.php';
 require_once __DIR__ . '/ProductBundleController.php';
@@ -41,6 +42,13 @@ class ProductController {
     }
 
     public function getFinishingByCategory() {
+        global $store_id;
+        $product = max(0, (int)($_GET['product_id'] ?? 0));
+        if ($product) {
+            $rows = (new ProductFinishingController($this->db))->getByProduct($store_id, $product, max(0, (int)($_GET['order_item_id'] ?? 0)));
+            send_json_response(true, 'Finishings retrieved successfully.', $rows);
+            return;
+        }
         $category_id = $_GET['category_id'] ?? '';
         $finishings = $this->productModel->getFinishingByCategoryId($category_id);
         send_json_response(true, 'Products retrieved successfully.', $finishings);

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/ProductFinishingPriceController.php';
+require_once __DIR__ . '/ProductFinishingController.php';
 require_once __DIR__ . '/ProductPriceTierController.php';
 require_once __DIR__ . '/ProductLaserConversionController.php';
 require_once __DIR__ . '/../models/OrderDiscount.php';
@@ -949,6 +950,7 @@ class OrderController {
             }
 
             $finishing = trim($data['finishing'] ?? '-');
+            (new ProductFinishingController($this->koneksi))->validate($store_id, $product_id, $finishing, (int)($data['order_item_id'] ?? 0));
             $laserVariant = null;
             $isAnekaCetak = strtoupper(trim($product['category'])) === 'ANEKA CETAK';
             if ($isAnekaCetak) {
