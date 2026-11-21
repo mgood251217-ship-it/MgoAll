@@ -432,134 +432,25 @@ class StoreController {
     }
 
     public function setSession() {
-        if (session_status() === PHP_SESSION_NONE) session_start();
-        
-        session_destroy();
-
-        require_once __DIR__ . '/../functions/helpers.php';
-        
-        $domain = 'mgood.my.id';
-
-        $clearOptions = [
-            'expires'  => time() - 3600,
-            'path'     => '/',
-            'domain'   => $domain,
-            'secure'   => true,
-            'httponly' => true,
-            'samesite' => 'None',
-        ];
-
-        $sessionName = session_name();
-        setcookie($sessionName, '', $clearOptions);
-        if (isset($_COOKIE[$sessionName])) {
-            unset($_COOKIE[$sessionName]); 
+        header('Cache-Control: no-store');
+        try {
+            if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST'
+                || !is_string($_POST['csrf'] ?? null)
+                || empty($_SESSION['store_desktop_csrf'])
+                || !hash_equals($_SESSION['store_desktop_csrf'], $_POST['csrf'])) {
+                throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
+            }
+            $administrator = (new ProductHistoryController($this->koneksi))->getAdministrator();
+            $storeId = filter_var($_POST['store_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            if (!$administrator || !$storeId) throw new InvalidArgumentException('Toko atau sesi administrator tidak valid.');
+            require_once __DIR__ . '/../../admin/functions/DesktopLoginTicket.php';
+            $ticket = (new DesktopLoginTicket($this->koneksi))->issue((int)$administrator['administrator_id'], $storeId);
+            send_json_response(true, 'Buka MgoDesktop untuk mengelola toko.', ['url' => 'mgodesktop://login?ticket=' . $ticket]);
+        } catch (Throwable $e) {
+            error_log('Desktop store login: ' . $e->getMessage());
+            http_response_code($e instanceof InvalidArgumentException ? 400 : 503);
+            send_json_response(false, $e instanceof InvalidArgumentException ? $e->getMessage() : 'Gagal menyiapkan sesi aplikasi. Coba lagi.');
         }
-
-        $cookiesToClear = [
-            'user_user_id', 'user_username', 'user_name', 'user_initial', 
-            'user_store_id', 'user_role', 'user_foto', 'store_name', 
-            'store_address', 'store_logo', 'user_mode', 'user_access'
-        ];
-        
-        foreach ($cookiesToClear as $cookieName) {
-            setcookie($cookieName, '', $clearOptions);
-            if (isset($_COOKIE[$cookieName])) {
-                unset($_COOKIE[$cookieName]);
-            }
-        }
-        
-        $user_id = (int)$_POST['user_id'];
-        $sql = "SELECT user_id, username, name, password, store_id, initial, role, picture FROM users WHERE user_id = ?";
-        $stmt = $this->koneksi->prepare($sql);
-        $stmt->bind_param("s", $user_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        $sesi = '';
-        while ($row = $result->fetch_assoc()) {
-            $sesi = $row;
-        }
-
-        if ($sesi) {
-            $storeName = '';
-            $storeAddress = '';
-            $storeLogo = '';
-            $mode = 0;
-
-            $stmt = $this->koneksi->prepare("SELECT name, logo, address FROM stores WHERE store_id = ?");
-            $stmt->bind_param("i", $sesi['store_id']);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            if ($result && $data = $result->fetch_assoc()) {
-                $storeName = $data['name'];
-                $storeAddress = $data['address'];
-                $storeLogo = $data['logo'];
-            }
-
-            $stmt = $this->koneksi->prepare("SELECT mode FROM user_setting WHERE user_id = ?");
-            $stmt->bind_param("i", $sesi['user_id']);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            if ($result && $row = $result->fetch_assoc()) {
-                $mode = (int)$row['mode'];
-            }
-            $stmt->close();
-
-            $expire = time() + (86400 * 1); 
-
-            $options = [
-                'expires'  => $expire,
-                'path'     => '/',
-                'domain'   => $domain,
-                'secure'   => true,
-                'httponly' => true,
-                'samesite' => 'None',
-            ];
-
-            $encryptedData = [
-                'user_id' => startEnk('enk', $sesi['user_id']),
-                'username' => startEnk('enk', $sesi['username']),
-                'name' => startEnk('enk', $sesi['name']),
-                'initial' => startEnk('enk', $sesi['initial']),
-                'store_id' => startEnk('enk', $sesi['store_id']),
-                'role' => startEnk('enk', $sesi['role']),
-                'foto' => startEnk('enk', $sesi['picture']),
-                'store_name' => startEnk('enk', $storeName),
-                'store_address' => startEnk('enk', $storeAddress),
-                'store_logo' => startEnk('enk', $storeLogo),
-            ];
-
-            $cookieNameMap = [
-                'user_id' => 'user_user_id',
-                'username' => 'user_username',
-                'name' => 'user_name',
-                'initial' => 'user_initial',
-                'store_id' => 'user_store_id',
-                'role' => 'user_role',
-                'foto' => 'user_foto',
-                'store_name' => 'store_name',
-                'store_address' => 'store_address',
-                'store_logo' => 'store_logo',
-            ];
-            foreach ($cookieNameMap as $field => $cookieName) {
-                setcookie($cookieName, $encryptedData[$field], $options);
-            }
-
-            $signature = authCookieSignature($encryptedData);
-            if ($signature !== '') {
-                setcookie('user_auth_sig', $signature, $options);
-            }
-
-            setcookie('user_mode', startEnk('enk', $mode), $options);
-            setcookie('user_access', startEnk('enk', 'all'), $options);
-            
-            http_response_code(200);
-            echo "success";
-        } else {
-            http_response_code(400);
-            echo "failed";
-        }
-        exit;
     }
 
     public function getStores($access){

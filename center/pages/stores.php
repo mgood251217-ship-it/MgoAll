@@ -24,6 +24,7 @@ $controller = new StoreController($koneksi);
 $data = $controller->getIndexData($access);
 $stores = $data['stores'];
 $all_users = $data['all_users'];
+$_SESSION['store_desktop_csrf'] = $_SESSION['store_desktop_csrf'] ?? bin2hex(random_bytes(32));
 $_SESSION['store_copy_csrf'] = $_SESSION['store_copy_csrf'] ?? bin2hex(random_bytes(32));
 ?>
 
@@ -91,7 +92,8 @@ $_SESSION['store_copy_csrf'] = $_SESSION['store_copy_csrf'] ?? bin2hex(random_by
                             </td>
                             <td class="migrated-style-95">
                                 <form <?= !$canStoreAction('set_session') ? 'hidden data-center-access="denied"' : '' ?> class="kelolaForm migrated-style-96">
-                                    <input type="hidden" name="user_id" value="<?= $row['owner_id'] ?>">
+                                    <input type="hidden" name="store_id" value="<?= (int)$row['store_id'] ?>">
+                                    <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['store_desktop_csrf'], ENT_QUOTES, 'UTF-8') ?>">
                                     <button type="submit" class="btn btn-danger">Kelola</button>
                                 </form>
                             </td>
@@ -340,48 +342,32 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-document.addEventListener('submit', function(e) {
-    if (e.target && e.target.classList.contains('kelolaForm')) {
-        e.preventDefault();
-        
-        const form = e.target;
-        const adminWindow = window.open('about:blank', '_blank');
-        if (!adminWindow) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Gagal',
-                text: 'Browser memblokir tab admin. Izinkan pop-up lalu coba lagi.',
-                customClass: { popup: 'rounded-4' }
-            });
-            return;
-        }
-
-        const formData = new URLSearchParams(new FormData(form)).toString();
-
-        fetch('/action?action=set_session', {
+document.addEventListener('submit', async function(e) {
+    if (!e.target?.classList.contains('kelolaForm')) return;
+    e.preventDefault();
+    const form = e.target;
+    const button = form.querySelector('button[type="submit"]');
+    if (button.disabled) return;
+    button.disabled = true;
+    try {
+        const response = await fetch('/action?action=set_session', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: formData
-        })
-        .then(async response => {
-            const result = (await response.text()).trim();
-            if (!response.ok || result !== 'success') {
-                throw new Error('Gagal menyiapkan sesi admin.');
-            }
-            adminWindow.location.href = 'https://mgood.my.id/admin/customer/';
-        })
-        .catch(error => {
-            adminWindow.close();
-            console.error('Fetch Error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Gagal',
-                text: 'Gagal set session!',
-                customClass: { popup: 'rounded-4' }
-            });
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(new FormData(form)).toString()
         });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || 'Gagal menyiapkan sesi aplikasi.');
+        if (!/^mgodesktop:\/\/login\?ticket=[a-f0-9]{64}$/.test(result.data?.url || '')) throw new Error('Tautan aplikasi tidak valid.');
+        window.location.href = result.data.url;
+        Swal.fire({
+            icon: 'info', title: 'Membuka MgoDesktop',
+            html: '<p>Izinkan browser membuka aplikasi. Gunakan MgoDesktop versi terbaru.</p><a class="btn-primary-custom" href="' + result.data.url + '">Buka aplikasi</a>',
+            confirmButtonText: 'Tutup'
+        });
+    } catch (error) {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: error.message || 'Gagal membuka MgoDesktop.' });
+    } finally {
+        button.disabled = false;
     }
 });
 </script>

@@ -236,6 +236,26 @@ class AuthController {
         }
     }
 
+    public function desktopLogin() {
+        header('Cache-Control: no-store');
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') Response::error('Permintaan tidak valid.', 405);
+        try {
+            $ticket = $_POST['ticket'] ?? null;
+            $retryAfter = (new LoginRateLimiter())->consume('desktop-handoff:' . hash('sha256', is_string($ticket) ? $ticket : ''), $_SERVER['REMOTE_ADDR'] ?? 'unknown');
+            if ($retryAfter > 0) Response::error('Terlalu banyak percobaan. Coba lagi nanti.', 429);
+            require_once __DIR__ . '/../functions/DesktopLoginTicket.php';
+            $user = (new DesktopLoginTicket($this->koneksi))->consume($ticket);
+            $store = $this->dataStore($user['store_id']);
+            if (!$store) throw new InvalidArgumentException('Toko tidak tersedia.');
+        } catch (Throwable $e) {
+            error_log('Desktop login: ' . $e->getMessage());
+            Response::error($e instanceof InvalidArgumentException ? $e->getMessage() : 'Gagal menyiapkan sesi aplikasi. Coba lagi.', $e instanceof InvalidArgumentException ? 400 : 503);
+        }
+        $this->insertActivity($user['user_id'], $this->getClientIP(), date('Y-m-d H:i:s'));
+        $this->setInfo($user, $store);
+        $this->session();
+    }
+
     public static function logout() {
         startAdminSession();
         session_unset();
