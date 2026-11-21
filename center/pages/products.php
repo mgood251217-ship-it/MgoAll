@@ -51,6 +51,14 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
 <div class="page-header">
     <h2>Data Produk & Finishing</h2>
     <div class="migrated-style-88">
+        <?php if ($administratorAccess->isAll() && $canProductAction('refresh_product_cache')): ?>
+            <form method="post" action="/action?action=refresh_product_cache" style="display:inline-flex" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = 'Memperbarui semua cabang...';">
+                <input type="hidden" name="scope" value="all">
+                <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['product_cache_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+                <?= $returnInputs ?>
+                <button type="submit" class="btn-secondary-custom"><i class="fas fa-sync-alt"></i> Update Cache Semua Cabang</button>
+            </form>
+        <?php endif; ?>
         <?php if ($data['current_store_id']): ?>
             <form <?= !$canProductAction('refresh_product_cache') ? 'hidden data-center-access="denied"' : '' ?> method="post" action="/action?action=refresh_product_cache" style="display:inline-flex" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = 'Memperbarui...';">
                 <input type="hidden" name="store_id" value="<?= (int)$data['current_store_id'] ?>">

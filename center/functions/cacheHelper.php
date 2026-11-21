@@ -14,8 +14,10 @@ function updateStoreCache($store_id, $module) {
         $data = json_decode($json, true) ?: [];
     }
 
-    $key = $module . '_updated_at';
-    $data[$key] = max(time(), (int)($data[$key] ?? 0) + 1);
+    foreach ((array)$module as $name) {
+        $key = $name . '_updated_at';
+        $data[$key] = max(time(), (int)($data[$key] ?? 0) + 1);
+    }
 
     file_put_contents($filePath, json_encode($data));
 }

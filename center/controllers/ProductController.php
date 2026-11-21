@@ -219,25 +219,32 @@ class ProductController {
                 || !hash_equals($_SESSION['product_cache_csrf'], $_POST['csrf'])) {
                 throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
             }
-            $access = startEnk('dek', $_SESSION['admin_logged_in']['access'] ?? '');
-            $stmt = $this->koneksi->prepare('SELECT name, administrator FROM stores WHERE store_id = ?');
-            $stmt->bind_param('i', $storeId);
-            $stmt->execute();
-            $store = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
-            if (!$storeId || !$store || ($access !== 'ALL' && ((string)$access === '' || (string)$access !== (string)$store['administrator']))) {
-                throw new InvalidArgumentException('Anda tidak memiliki akses ke toko ini.');
-            }
-            require_once __DIR__ . '/../functions/cacheHelper.php';
-            set_error_handler(function ($severity, $message) { throw new RuntimeException($message); });
-            try {
-                foreach (['store_data', 'store_names', 'categories', 'products', 'finishings', 'product_variants', 'production_components', 'product_finishing_prices', 'product_laser_conversion', 'product_price_tiers', 'orders'] as $module) {
-                    updateStoreCache($storeId, $module);
+            $admin = (new ProductHistoryController($this->koneksi))->getAdministrator();
+            if (!$admin) throw new InvalidArgumentException('Silakan login kembali.');
+            $all = ($_POST['scope'] ?? '') === 'all';
+            if ($all) {
+                if ($admin['access'] !== 'ALL') throw new InvalidArgumentException('Update cache semua cabang hanya untuk akses ALL.');
+                $targets = $this->koneksi->query('SELECT store_id, name FROM stores ORDER BY store_id')->fetch_all(MYSQLI_ASSOC);
+            } else {
+                $stmt = $this->koneksi->prepare('SELECT store_id, name, administrator FROM stores WHERE store_id = ?');
+                $stmt->bind_param('i', $storeId);
+                $stmt->execute();
+                $store = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+                if (!$storeId || !$store || ($admin['access'] !== 'ALL' && ($admin['access'] === '' || (string)$admin['access'] !== (string)$store['administrator']))) {
+                    throw new InvalidArgumentException('Anda tidak memiliki akses ke toko ini.');
                 }
-            } finally {
-                restore_error_handler();
+                $targets = [$store];
             }
-            $_SESSION['swal_success'] = 'Cache toko ' . $store['name'] . ' diperbarui: informasi toko, kategori, produk, finishing, harga paket, dan order. Buka ulang halaman terkait di MgoApp untuk mengambil data terbaru.';
+            if (!$targets) throw new InvalidArgumentException('Belum ada cabang untuk diperbarui.');
+            unset($_SESSION['swal_error']);
+            $_SESSION['swal_success'] = $all ? 'Cache ' . count($targets) . ' cabang diperbarui.' : 'Cache toko ' . $targets[0]['name'] . ' diperbarui.';
+            $_SESSION['swal_success'] .= ' Buka ulang halaman terkait di MgoApp untuk mengambil data terbaru.';
+            $this->updateCopiedStoreCaches($targets, [
+                'store_data', 'store_names', 'categories', 'products', 'finishings', 'product_finishings',
+                'product_variants', 'production_components', 'product_finishing_prices', 'product_laser_conversion',
+                'product_price_tiers', 'product_bundles', 'orders'
+            ], 'Pembaruan cache');
         } catch (Throwable $e) {
             error_log('Store cache refresh: ' . $e->getMessage());
             $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : 'Gagal memperbarui cache. Periksa izin folder temp/dataset.';
@@ -538,7 +545,9 @@ class ProductController {
         foreach ($targets as $target) {
             try {
                 require_once __DIR__ . '/../functions/cacheHelper.php';
-                foreach ($modules as $module) updateStoreCache((int)$target['store_id'], $module);
+                set_error_handler(function ($severity, $message) { throw new RuntimeException($message); });
+                try { updateStoreCache((int)$target['store_id'], $modules); }
+                finally { restore_error_handler(); }
             } catch (Throwable $e) {
                 error_log('Copy catalog cache: ' . $e->getMessage());
                 $failed[] = $target['name'];
@@ -546,7 +555,7 @@ class ProductController {
         }
         if ($failed) {
             unset($_SESSION['swal_success']);
-            $_SESSION['swal_error'] = $label . ' sudah disalin, tetapi cache gagal diperbarui pada cabang: '
+            $_SESSION['swal_error'] = $label . ': cache gagal diperbarui pada cabang: '
                 . implode(', ', $failed) . '. Gunakan Update Cache pada cabang tersebut.';
         }
     }
