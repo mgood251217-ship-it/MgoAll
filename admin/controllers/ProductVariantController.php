@@ -207,7 +207,10 @@ class ProductVariantController {
         }, (array)$category);
         while ($row = $result->fetch_assoc()) {
             $saved = self::snapshot($row);
-            if ($categories !== null && !in_array(strtoupper(trim($saved['category'])), $categories, true)) {
+            // Snapshot nota tetap menyimpan nama kategori sebelum diganti menjadi TEKSTIL.
+            $savedCategory = strtoupper(trim($saved['category']));
+            if (in_array($savedCategory, ['JERSEY', 'PAKAIAN'], true)) $savedCategory = 'TEKSTIL';
+            if ($categories !== null && !in_array($savedCategory, $categories, true)) {
                 continue;
             }
             // Nota lama tanpa satuan pada snapshot tetap dihitung per pcs setelah produk dihapus.
