@@ -946,7 +946,14 @@ class ProductController {
             if ($variantId === '') $variantId = '0';
             if (!is_scalar($variantId) || !preg_match('/^\d+$/D', (string)$variantId) || (float)$variantId > 2147483647) throw new InvalidArgumentException('Pilihan varian tujuan tidak valid.');
             $variantId = (int)$variantId;
+            $sourceVariantId = $_POST['source_variant_id'] ?? '0';
+            if (!is_scalar($sourceVariantId) || !preg_match('/^\d+$/D', (string)$sourceVariantId) || (float)$sourceVariantId > 2147483647) throw new InvalidArgumentException('Varian asal tidak valid.');
+            $sourceVariantId = (int)$sourceVariantId;
+            if ($sourceVariantId && (count($sourceIds) !== 1 || $deleteSource)) {
+                throw new InvalidArgumentException('Pilih satu varian asal. Produk asal tidak dihapus pada migrasi varian.');
+            }
             $sourceVariantIds = $_POST['source_variant_ids'] ?? [];
+            if ($sourceVariantId && $sourceVariantIds) throw new InvalidArgumentException('Pilih satu varian tujuan untuk migrasi varian.');
             if (!is_array($sourceVariantIds) || ($sourceVariantIds && count($sourceVariantIds) !== count($sourceIds))) throw new InvalidArgumentException('Pilihan varian tiap produk asal belum lengkap.');
             if ($sourceVariantIds) foreach ($sourceIds as $sourceId) {
                 $id = filter_var($sourceVariantIds[$sourceId] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
@@ -958,7 +965,7 @@ class ProductController {
             if (!is_array($finishingIds) || count($finishingIds) > 1000) throw new InvalidArgumentException('Pilihan finishing tambahan tidak valid.');
             foreach ($finishingIds as $finishingId) if (!is_scalar($finishingId) || filter_var($finishingId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]) === false) throw new InvalidArgumentException('Pilihan finishing tambahan tidak valid.');
             $finishingIds = array_values(array_unique(array_map('intval', $finishingIds))); sort($finishingIds, SORT_NUMERIC);
-            if ($targetId <= 0 || in_array($targetId, $sourceIds, true) || $storeId <= 0) {
+            if ($targetId <= 0 || (!$sourceVariantId && in_array($targetId, $sourceIds, true)) || $storeId <= 0) {
                 throw new InvalidArgumentException('Produk pengganti harus berbeda dari semua produk yang dipilih.');
             }
             $adminId = (int)startEnk('dek', $_SESSION['admin_logged_in']['administrator_id'] ?? '');
@@ -979,17 +986,17 @@ class ProductController {
             if (!$store || ($admin['access'] !== 'ALL' && ((string)$admin['access'] === '' || (string)$store['administrator'] !== (string)$admin['access']))) {
                 throw new InvalidArgumentException('Anda tidak memiliki akses ke toko ini.');
             }
-            $allIds = array_merge($sourceIds, [$targetId]);
+            $allIds = array_values(array_unique(array_merge($sourceIds, [$targetId])));
             sort($allIds);
             $placeholders = implode(',', array_fill(0, count($allIds), '?'));
-            $params = array_merge([$storeId], $allIds);
+            $params = array_merge([$storeId, $storeId], $allIds);
             $types = str_repeat('i', count($params));
-            $stmt = $this->koneksi->prepare("SELECT p.*, c.name AS category FROM products p JOIN categories c ON c.category_id = p.category_id AND c.store_id = p.store_id WHERE p.store_id = ? AND p.product_id IN ($placeholders) ORDER BY p.product_id FOR UPDATE");
+            $stmt = $this->koneksi->prepare("SELECT p.*, c.name AS category FROM products p JOIN categories c ON c.category_id = p.category_id AND c.store_id = ? WHERE p.store_id = ? AND p.product_id IN ($placeholders) ORDER BY p.product_id FOR UPDATE");
             $stmt->bind_param($types, ...$params);
             $stmt->execute();
             $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             $stmt->close();
-            if (count($products) !== count($allIds) || count(array_unique(array_column($products, 'category_id'))) !== 1) {
+            if (count($products) !== count($allIds) || (!$sourceVariantId && count(array_unique(array_column($products, 'category_id'))) !== 1)) {
                 throw new InvalidArgumentException('Produk sumber dan tujuan harus berada di toko dan kategori yang sama.');
             }
             $products = array_column($products, null, 'product_id');
@@ -1006,6 +1013,11 @@ class ProductController {
                 if (count($finishings) !== count($finishingIds)) throw new InvalidArgumentException('Pilih finishing yang tersedia pada toko dan kategori produk tujuan.');
             }
             $variantModel = new ProductVariantController($this->koneksi);
+            if ($sourceVariantId) {
+                $availableSource = array_column($variantModel->getByProduct($storeId, $sourceIds[0]), null, 'id');
+                if (!isset($availableSource[$sourceVariantId])) throw new InvalidArgumentException('Varian asal tidak tersedia pada produk ini.');
+                if ($sourceIds[0] === $targetId && $sourceVariantId === $variantId) throw new InvalidArgumentException('Varian tujuan harus berbeda dari varian asal.');
+            }
             $variants = $variantModel->getByProduct($storeId, $targetId);
             $variantsById = array_column($variants, null, 'id');
             $sourceVariants = [];
@@ -1015,27 +1027,30 @@ class ProductController {
                 if ($selectedId) $sourceVariants[$sourceId] = $variantsById[$selectedId];
             }
             $hasVariant = (bool)$sourceVariants;
+            $updatesVariant = $hasVariant || $sourceVariantId > 0;
             $pricing = new ProductPriceTierController($this->koneksi);
-            if ($hasVariant && !$pricing->isAvailable()) throw new InvalidArgumentException('Pengaturan harga varian belum tersedia.');
+            if ($updatesVariant && !$pricing->isAvailable()) throw new InvalidArgumentException('Pengaturan harga varian belum tersedia.');
 
             // Kunci nota bersama itemnya; migrasi tidak menjalankan perhitungan ulang harga/stok.
             $placeholders = implode(',', array_fill(0, count($sourceIds), '?'));
             $params = array_merge([$storeId], $sourceIds);
+            $itemFilter = $sourceVariantId ? ' AND oi.product_variant_id = ?' : '';
+            if ($sourceVariantId) $params[] = $sourceVariantId;
             $types = str_repeat('i', count($params));
-            $stmt = $this->koneksi->prepare("SELECT DISTINCT o.order_id FROM orders o JOIN order_items oi ON oi.order_id = o.order_id AND oi.store_id = o.store_id WHERE oi.store_id = ? AND oi.product_id IN ($placeholders) ORDER BY o.order_id FOR UPDATE");
+            $stmt = $this->koneksi->prepare("SELECT DISTINCT o.order_id FROM orders o JOIN order_items oi ON oi.order_id = o.order_id AND oi.store_id = o.store_id WHERE oi.store_id = ? AND oi.product_id IN ($placeholders)$itemFilter ORDER BY o.order_id FOR UPDATE");
             $stmt->bind_param($types, ...$params);
             $stmt->execute();
             $orders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             $stmt->close();
-            if ($hasVariant || $finishings) {
+            if ($updatesVariant || $finishings) {
                 $hasPricing = $pricing->isAvailable();
                 $templates = [];
                 foreach ($sourceVariants as $sourceId => $selected) $templates[$sourceId] = ProductVariantController::orderData($selected, $target);
-                $discountField = $hasVariant ? ', COALESCE(d.diskon, 0) AS migration_discount' : '';
-                $discountJoin = $hasVariant ? ' LEFT JOIN diskon_order_items d ON d.order_id = oi.order_id AND d.product_id = oi.product_id' : '';
-                $stmt = $this->koneksi->prepare("SELECT oi.*$discountField FROM order_items oi$discountJoin WHERE oi.store_id = ? AND oi.product_id IN ($placeholders) ORDER BY oi.order_id, oi.order_item_id FOR UPDATE");
+                $discountField = $updatesVariant ? ', COALESCE(d.diskon, 0) AS migration_discount' : '';
+                $discountJoin = $updatesVariant ? ' LEFT JOIN diskon_order_items d ON d.order_id = oi.order_id AND d.product_id = oi.product_id' : '';
+                $stmt = $this->koneksi->prepare("SELECT oi.*$discountField FROM order_items oi$discountJoin WHERE oi.store_id = ? AND oi.product_id IN ($placeholders)$itemFilter ORDER BY oi.order_id, oi.order_item_id FOR UPDATE");
                 $stmt->bind_param($types, ...$params); $stmt->execute(); $items = $stmt->get_result();
-                $variantFields = $hasVariant ? ', product_variant_id = ?, product_variant_data = ?' : '';
+                $variantFields = $updatesVariant ? ', product_variant_id = ?, product_variant_data = ?' : '';
                 $pricingField = $hasPricing ? ', tier_price_data = ?' : '';
                 $update = $this->koneksi->prepare("UPDATE order_items SET product_id = ?, finishing = ?$variantFields$pricingField WHERE order_item_id = ? AND store_id = ?");
                 $count = 0;
@@ -1060,6 +1075,10 @@ class ProductController {
                         $variantJson = json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
                         $pricingData = $pricing->variantMigrationData($row, $target, $snapshot, (float)$row['migration_discount']);
                         array_push($values, $snapshot['id'], $variantJson); $updateTypes .= 'is';
+                    }
+                    if ($updatesVariant && !$hasVariant) {
+                        $pricingData = $pricing->variantMigrationData($row, $target, null, (float)$row['migration_discount']);
+                        array_push($values, null, null); $updateTypes .= 'is';
                     }
                     if ($addedIds && $pricingData) {
                         $factor = 1;
@@ -1111,7 +1130,10 @@ class ProductController {
                 error_log('Product migration cache refresh failed: ' . $e->getMessage());
             }
         }
-        header('Location: ' . $this->productReturnUrl());
+        $return = !empty($_POST['return_variant_page']) ? '/product-variants?' . http_build_query([
+            'store_id' => $storeId, 'category_id' => (int)($_POST['return_category_id'] ?? 0), 'product_id' => (int)($_POST['source_product_id'] ?? 0)
+        ]) : $this->productReturnUrl();
+        header('Location: ' . $return);
         exit;
     }
 

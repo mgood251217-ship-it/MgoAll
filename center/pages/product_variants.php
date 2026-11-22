@@ -4,6 +4,9 @@ if (empty($_SESSION['admin_logged_in'])) { header('Location: /login'); exit; }
 require_once __DIR__ . '/../config/connect.php';
 require_once __DIR__ . '/../controllers/VariantController.php';
 $data = (new VariantController($koneksi))->getData();
+require_once __DIR__ . '/../controllers/AdministratorAccessController.php';
+$canMigrateVariant = (new AdministratorAccessController($koneksi))->can('migrate_product');
+$_SESSION['product_migration_csrf'] = $_SESSION['product_migration_csrf'] ?? bin2hex(random_bytes(32));
 $_SESSION['variant_csrf'] = $_SESSION['variant_csrf'] ?? bin2hex(random_bytes(32));
 $escape = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
 $query = http_build_query(['store_id' => $data['store'], 'category_id' => $data['category'], 'product_id' => $data['selected']]);
@@ -78,13 +81,91 @@ $groupControl = function ($original = '') use ($escape, $choiceControl, $data) {
             <small class="text-muted">Perubahan nama meteran berlaku juga pada nota yang sudah terhubung. Harga dan jumlah pada nota tetap tersimpan.</small>
         </form>
     </div>
-    <div class="table-container"><div class="table-scroll"><table class="table-modern"><thead><tr><th>Varian</th><th>Harga dasar</th><th>Komponen produksi</th><th>Aksi</th></tr></thead><tbody>
-        <?php if (!$data['variants']): ?><tr><td colspan="4">Belum ada varian. Produk ini masih mengikuti harga biasa.</td></tr><?php endif; ?>
-        <?php foreach ($data['variants'] as $v): ?><tr><td><?php foreach ($v['options'] as $name => $value): ?><div><?= $escape($name) ?>: <strong><?= $escape($value) ?></strong></div><?php endforeach; ?></td><td><?= format_rupiah((float)$v['price']) ?></td><td><?php foreach ($v['components'] as $c): ?><div><?= $escape($c['name']) ?>: <?= (float)$c['quantity'] ?></div><?php endforeach; ?><?= !$v['components'] ? '-' : '' ?></td><td><div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div class="table-container"><div class="table-scroll"><table class="table-modern"><thead><tr><th>Varian</th><th>Harga dasar</th><th>Komponen produksi</th><th>Item order</th><th>Aksi</th></tr></thead><tbody>
+        <?php if (!$data['variants']): ?><tr><td colspan="5">Belum ada varian. Produk ini masih mengikuti harga biasa.</td></tr><?php endif; ?>
+        <?php foreach ($data['variants'] as $v): ?><tr><td><?php foreach ($v['options'] as $name => $value): ?><div><?= $escape($name) ?>: <strong><?= $escape($value) ?></strong></div><?php endforeach; ?></td><td><?= format_rupiah((float)$v['price']) ?></td><td><?php foreach ($v['components'] as $c): ?><div><?= $escape($c['name']) ?>: <?= (float)$c['quantity'] ?></div><?php endforeach; ?><?= !$v['components'] ? '-' : '' ?></td><td><?= (int)$v['order_item_count'] ?></td><td><div style="display:flex;gap:8px;flex-wrap:wrap">
             <a class="btn-secondary-custom" href="/product-variants?<?= $escape($query) ?>&amp;variant_id=<?= (int)$v['id'] ?>">Ubah</a>
+            <?php if ($canMigrateVariant): ?><button type="button" class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#migrateVariantModal" data-id="<?= (int)$v['id'] ?>" data-label="<?= $escape($v['label']) ?>" data-price="<?= $escape($v['price']) ?>" data-count="<?= (int)$v['order_item_count'] ?>" <?= !$v['order_item_count'] ? 'disabled' : '' ?>>Migrasi</button><?php endif; ?>
             <form method="post" action="/action?action=save_product_variant"><input type="hidden" name="csrf_token" value="<?= $escape($_SESSION['variant_csrf']) ?>"><input type="hidden" name="store_id" value="<?= $data['store'] ?>"><input type="hidden" name="category_id" value="<?= $data['category'] ?>"><input type="hidden" name="product_id" value="<?= $data['selected'] ?>"><input type="hidden" name="variant_id" value="<?= (int)$v['id'] ?>"><input type="hidden" name="command" value="delete"><button class="btn btn-danger" type="submit">Hapus</button></form>
         </div></td></tr><?php endforeach; ?>
     </tbody></table></div></div>
+    <?php if ($canMigrateVariant): ?>
+    <div class="modal fade" id="migrateVariantModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered" style="max-width:960px">
+            <form id="migrateVariantForm" class="modal-content modal-content-custom" method="post" action="/action?action=migrate_product">
+                <input type="hidden" name="csrf" value="<?= $escape($_SESSION['product_migration_csrf']) ?>">
+                <input type="hidden" name="store_id" value="<?= (int)$data['store'] ?>">
+                <input type="hidden" name="source_product_id" value="<?= (int)$data['selected'] ?>">
+                <input type="hidden" name="source_variant_id" id="migrationSourceVariant">
+                <input type="hidden" name="return_variant_page" value="1">
+                <input type="hidden" name="return_category_id" value="<?= (int)$data['category'] ?>">
+                <div class="modal-header modal-header-custom"><h5>Migrasi Item Order Varian</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body modal-body-custom">
+                    <p><strong><?= $escape($data['product']['name']) ?></strong><br><span id="migrationSourceSummary"></span></p>
+                    <p>Harga, diskon, jumlah, dan stok tidak dihitung ulang. Nama dan komponen meteran mengikuti produk atau varian tujuan.</p>
+                    <label for="migrationTargetProduct" class="form-label">Produk tujuan</label>
+                    <select id="migrationTargetProduct" name="target_product_id" class="form-control mb-3" required>
+                        <?php foreach ($data['migrationProducts'] as $product): ?><option value="<?= (int)$product['product_id'] ?>" data-price="<?= $escape($product['price']) ?>"><?= $escape($product['category'] . ' / ' . $product['name']) ?> (#<?= (int)$product['product_id'] ?>)</option><?php endforeach; ?>
+                    </select>
+                    <label for="migrationTargetVariant" class="form-label">Varian tujuan</label>
+                    <select id="migrationTargetVariant" name="target_variant_id" class="form-control" required disabled><option value="">Pilih varian tujuan</option></select>
+                    <small id="migrationVariantError" class="text-danger" role="alert"></small>
+                </div>
+                <div class="modal-footer modal-footer-custom"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button><button id="migrationVariantSubmit" class="btn-primary-custom" type="submit" disabled>Migrasikan</button></div>
+            </form>
+        </div>
+    </div>
+    <script>
+    (() => {
+        const form = document.getElementById('migrateVariantForm');
+        const product = document.getElementById('migrationTargetProduct');
+        const variant = document.getElementById('migrationTargetVariant');
+        const source = document.getElementById('migrationSourceVariant');
+        const submit = document.getElementById('migrationVariantSubmit');
+        const error = document.getElementById('migrationVariantError');
+        const currency = value => 'Rp ' + Number(value).toLocaleString('id-ID', { maximumFractionDigits: 2 });
+        let request;
+        const loadVariants = async () => {
+            request?.abort();
+            const current = new AbortController(); request = current;
+            variant.replaceChildren(new Option('Memuat varian...', '')); variant.disabled = true; submit.disabled = true; error.textContent = '';
+            try {
+                const params = new URLSearchParams({ action: 'get_product_variants', store_id: <?= json_encode((int)$data['store']) ?>, product_id: product.value });
+                const response = await fetch('/action?' + params, { signal: current.signal });
+                const result = await response.json();
+                if (current !== request) return;
+                if (!response.ok || !result.success) throw new Error(result.message || 'Gagal mengambil varian.');
+                if (!result.data.length) {
+                    variant.replaceChildren(new Option('Tanpa varian - ' + currency(product.selectedOptions[0]?.dataset.price || 0), '0'));
+                    variant.value = '0'; variant.disabled = false; submit.disabled = false;
+                    return;
+                }
+                const options = result.data.filter(row => !(product.value === <?= json_encode((string)$data['selected']) ?> && String(row.id) === source.value));
+                variant.replaceChildren(new Option('Pilih varian tujuan', ''), ...options.map(row => new Option(row.label + ' - ' + currency(row.price), row.id)));
+                variant.disabled = false;
+                if (!options.length) error.textContent = 'Tidak ada varian tujuan yang berbeda pada produk ini.';
+            } catch (e) {
+                if (current !== request || e.name === 'AbortError') return;
+                variant.replaceChildren(new Option('Varian belum tersedia', '')); error.textContent = e.message;
+            }
+        };
+        document.getElementById('migrateVariantModal').addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            source.value = button.dataset.id;
+            document.getElementById('migrationSourceSummary').textContent = button.dataset.label + ' / ' + currency(button.dataset.price) + ' / ' + button.dataset.count + ' item order';
+            product.value = <?= json_encode((string)$data['selected']) ?>;
+            submit.textContent = 'Migrasikan'; delete form.dataset.busy;
+            loadVariants();
+        });
+        product.addEventListener('change', loadVariants);
+        variant.addEventListener('change', () => { submit.disabled = !variant.value; });
+        form.addEventListener('submit', event => {
+            if (form.dataset.busy || !form.reportValidity()) { event.preventDefault(); return; }
+            form.dataset.busy = '1'; submit.disabled = true; submit.textContent = 'Memigrasikan...';
+        });
+    })();
+    </script>
+    <?php endif; ?>
     <script>
     (() => {
         const optionRows = document.getElementById('variantOptions'), components = document.getElementById('variantComponents');

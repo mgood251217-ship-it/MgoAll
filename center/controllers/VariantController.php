@@ -33,12 +33,12 @@ class VariantController {
         if ($store) $this->checkStore($store);
         $category = (int)($_GET['category_id'] ?? 0); $selected = (int)($_GET['product_id'] ?? 0);
         $ready = $this->variants->isAvailable() && (new ProductPriceTierController($this->db))->isAvailable();
-        $categories = $products = $variants = []; $product = $editing = null;
+        $categories = $products = $variants = $migrationProducts = []; $product = $editing = null;
         if ($store) {
             $stmt = $this->db->prepare('SELECT category_id, name FROM categories WHERE store_id = ? ORDER BY name, category_id');
             $stmt->bind_param('i', $store); $stmt->execute(); $categories = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $stmt->close();
-            $stmt = $this->db->prepare('SELECT p.*, c.name AS category FROM products p JOIN categories c ON c.category_id = p.category_id AND c.store_id = p.store_id WHERE p.store_id = ? ORDER BY p.name, p.product_id');
-            $stmt->bind_param('i', $store); $stmt->execute(); $all = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $stmt->close();
+            $stmt = $this->db->prepare('SELECT p.*, c.name AS category FROM products p JOIN categories c ON c.category_id = p.category_id AND c.store_id = ? WHERE p.store_id = ? ORDER BY p.name, p.product_id');
+            $stmt->bind_param('ii', $store, $store); $stmt->execute(); $all = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $stmt->close();
             foreach ($all as $p) if ((int)$p['product_id'] === $selected) $product = $p;
             if (!array_key_exists('category_id', $_GET) && $product) $category = (int)$product['category_id'];
             if (!in_array($category, array_column($categories, 'category_id'))) $category = 0;
@@ -46,13 +46,19 @@ class VariantController {
             if (!$product || (int)$product['category_id'] !== $category) { $selected = 0; $product = null; }
             if ($ready) {
                 $variants = $this->variants->getByProduct($store, $selected);
+                $migrationProducts = $all;
+                $stmt = $this->db->prepare('SELECT product_variant_id, COUNT(*) AS total FROM order_items WHERE store_id = ? AND product_id = ? GROUP BY product_variant_id');
+                $stmt->bind_param('ii', $store, $selected); $stmt->execute(); $usage = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'total', 'product_variant_id'); $stmt->close();
+                foreach ($variants as &$variant) $variant['order_item_count'] = (int)($usage[$variant['id']] ?? 0);
+                unset($variant);
+
                 foreach ($variants as $v) if ((int)$v['id'] === (int)($_GET['variant_id'] ?? 0)) $editing = $v;
             }
         }
         $optionChoices = ['KUALITAS' => ['PREMIUM', 'MEDIUM'], 'PILIHAN' => ['SETELAN', 'ATASAN', 'CELANA'], 'UKURAN' => [], 'BAHAN' => [], 'WARNA' => []];
         if ($store && $ready) {
-            $stmt = $this->db->prepare('SELECT v.options_json FROM product_variants v JOIN products p ON p.product_id = v.product_id AND p.store_id = v.store_id WHERE v.store_id = ? ORDER BY v.id');
-            $stmt->bind_param('i', $store); $stmt->execute(); $result = $stmt->get_result();
+            $stmt = $this->db->prepare('SELECT v.options_json FROM product_variants v JOIN products p ON p.product_id = v.product_id AND p.store_id = ? WHERE v.store_id = ? ORDER BY v.id');
+            $stmt->bind_param('ii', $store, $store); $stmt->execute(); $result = $stmt->get_result();
             while ($row = $result->fetch_assoc()) foreach (json_decode($row['options_json'], true, 512, JSON_THROW_ON_ERROR) as $name => $value) {
                 $name = $this->upper($name); $value = $this->upper($value);
                 if (!isset($optionChoices[$name])) $optionChoices[$name] = [];
@@ -61,7 +67,7 @@ class VariantController {
             $stmt->close();
         }
         $optionsVersion = $this->optionsVersion($variants);
-        return compact('stores', 'store', 'category', 'selected', 'categories', 'products', 'product', 'variants', 'editing', 'ready', 'optionChoices', 'optionsVersion');
+        return compact('stores', 'store', 'category', 'selected', 'categories', 'products', 'product', 'variants', 'editing', 'ready', 'optionChoices', 'optionsVersion', 'migrationProducts');
     }
 
     private function upper($value) { return function_exists('mb_strtoupper') ? mb_strtoupper($value, 'UTF-8') : strtoupper($value); }

@@ -121,10 +121,11 @@ class ProductPriceTierController {
         if (self::isWeightMaterial($target) && ($weight = self::weightFromSize($row['size'])) > 0) {
             $data['factor'] = $weight;
         }
-        $data['variant'] = (int)$variant['id'];
+        if ($variant) $data['variant'] = (int)$variant['id'];
+        else unset($data['variant']);
         unset($data['variant_tiers']);
         $data['normal'] = (float)$row['unit'];
-        $data['base'] = (float)$variant['price'];
+        $data['base'] = (float)($variant['price'] ?? $target['price']);
         $sources = $data['migration_product_ids'] ?? [];
         $sources[] = (int)$row['product_id'];
         $data['migration_product_ids'] = array_values(array_unique($sources));
@@ -381,7 +382,7 @@ class ProductPriceTierController {
             return null;
         }
         $data = json_decode($row['tier_price_data'], true, 512, JSON_THROW_ON_ERROR);
-        if (!is_array($data) || (empty($data['rules']) && empty($data['promotion']) && empty($data['variant']) && empty($data['bundle'])) || !isset($data['factor'], $data['normal'], $data['base'], $data['stock'])) {
+        if (!is_array($data) || (empty($data['rules']) && empty($data['promotion']) && empty($data['variant']) && empty($data['bundle']) && empty($data['migration_product_ids'])) || !isset($data['factor'], $data['normal'], $data['base'], $data['stock'])) {
             throw new RuntimeException('Data aturan harga pada item tidak lengkap.');
         }
         return $data;
