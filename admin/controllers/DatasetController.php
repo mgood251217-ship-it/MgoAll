@@ -8,6 +8,17 @@ class DatasetController {
         $this->koneksi = $koneksi;
     }
 
+    private function readCache($path) {
+        if (!file_exists($path)) return [];
+        $file = fopen($path, 'r');
+        if (!$file) return [];
+        try {
+            if (!flock($file, LOCK_SH)) return [];
+            $data = json_decode(stream_get_contents($file), true);
+            return is_array($data) ? $data : [];
+        } finally { flock($file, LOCK_UN); fclose($file); }
+    }
+
     public function checkUpdate() {
         global $store_id;
 
@@ -25,21 +36,9 @@ class DatasetController {
 
         $data = [];
 
-        if (file_exists($dataset_path)) {
-            $dataset_json = file_get_contents($dataset_path);
-            $dataset_arr = json_decode($dataset_json, true);
-            if (is_array($dataset_arr)) {
-                $data = array_merge($data, $dataset_arr);
-            }
-        }
-
-        if (file_exists($order_trigger_path)) {
-            $order_json = file_get_contents($order_trigger_path);
-            $order_arr = json_decode($order_json, true);
-            if (is_array($order_arr)) {
-                $data['order_trigger'] = $order_arr;
-            }
-        }
+        $data = $this->readCache($dataset_path);
+        $orders = $this->readCache($order_trigger_path);
+        if ($orders) $data['order_trigger'] = $orders;
 
         send_json_response(true, 'success', $data);
     }
