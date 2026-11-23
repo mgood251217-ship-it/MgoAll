@@ -76,6 +76,16 @@ class FinishingMigration {
         return (bool)$this->linkedProducts($store, $source);
     }
 
+    public function removeLinks($store, $source) {
+        $model = new ProductFinishing($this->db);
+        foreach ($this->linkedProducts($store, $source) as $row) {
+            $ids = array_values(array_filter(ProductFinishing::ids($row['finishing_ids']), function ($id) use ($source) {
+                return $id !== $source;
+            }));
+            $model->save($store, $row['product_id'], $ids);
+        }
+    }
+
     public function moveLinks($store, $source, $target) {
         $model = new ProductFinishing($this->db);
         foreach ($this->linkedProducts($store, $source) as $row) {

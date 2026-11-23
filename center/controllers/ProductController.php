@@ -1667,7 +1667,7 @@ class ProductController {
                 }
                 (new FinishingMigrationController($this->koneksi))->delete((int)$store['store_id'], (int)$id);
                 require_once __DIR__ . '/../functions/cacheHelper.php';
-                updateStoreCache((int)$store['store_id'], 'finishings');
+                updateStoreCache((int)$store['store_id'], ['finishings', 'products', 'product_finishings']);
                 echo 'OK';
             } catch (Throwable $e) {
                 error_log('Delete finishing: ' . $e->getMessage());

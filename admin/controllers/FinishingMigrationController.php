@@ -108,12 +108,35 @@ class FinishingMigrationController {
         }
     }
 
+    private function usageDetails($store, $id) {
+        $usage = [];
+        $labels = [
+            'product_package' => 'harga paket',
+            'product_finishing_prices' => 'harga paket lama',
+            'product_laser_conversion' => 'konversi print laser',
+            'order_items' => 'item order',
+            'deleted_order_items' => 'item arsip order',
+            'failure' => 'kegagalan',
+        ];
+        foreach (self::REFERENCES as $table => [$csv, $snapshot]) {
+            $count = 0;
+            foreach ($this->model->rows($table, $store, $id, $csv, $snapshot) as $row) {
+                if ($this->changes($row, $csv, $snapshot, $id, -1)) $count++;
+            }
+            if ($count) $usage[] = $labels[$table] . ' (' . $count . ' baris)';
+        }
+        return $usage;
+    }
+
     public function delete($store, $id) {
         $this->db->begin_transaction();
         try {
             $this->model->lockStore($store);
             if (!$this->model->lockFinishings($store, [$id])) throw new InvalidArgumentException('Finishing tidak ditemukan.');
-            if ($this->hasReferences($store, $id)) throw new InvalidArgumentException('Finishing masih digunakan. Migrasikan ke finishing pengganti sebelum dihapus.');
+            $usage = $this->usageDetails($store, $id);
+            if ($usage) throw new InvalidArgumentException('Finishing belum bisa dihapus: masih dipakai di ' . implode(', ', $usage)
+                . '. Migrasikan referensinya ke finishing pengganti sebelum dihapus. Jumlah Item Order hanya menghitung order aktif.');
+            $this->model->removeLinks($store, $id);
             $this->model->query('DELETE FROM finishings WHERE store_id = ? AND finishing_id = ?', [$store, $id])->close();
             $this->db->commit();
         } catch (Throwable $e) { $this->db->rollback(); throw $e; }
