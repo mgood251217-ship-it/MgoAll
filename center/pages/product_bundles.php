@@ -99,6 +99,12 @@ $jsonFlags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
                         <td>
                             <?php if ($canBundle): ?>
                                 <a class="btn-action btn-kelola" href="/package-prices?tab=bundles&store_id=<?= $bundleData['store'] ?>&amp;product_id=<?= (int) $bundle['product_id'] ?>">Ubah</a>
+                                <form method="post" action="/action?action=delete_product_bundle" style="display:inline-block;margin:0 0 0 var(--space-1);vertical-align:middle">
+                                    <input type="hidden" name="csrf" value="<?= $escape($_SESSION['product_bundle_csrf']) ?>">
+                                    <input type="hidden" name="store_id" value="<?= (int)$bundleData['store'] ?>">
+                                    <input type="hidden" name="bundle_id" value="<?= (int)$bundle['id'] ?>">
+                                    <button type="submit" class="btn-action btn-kelola btn-danger" style="font:inherit" title="Hapus pengaturan paket; produk dan nota lama tetap tersimpan">Hapus</button>
+                                </form>
                             <?php endif; ?>
                         </td>
                     </tr>

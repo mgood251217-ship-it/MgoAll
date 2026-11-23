@@ -91,6 +91,15 @@ class ProductBundle {
         return $row;
     }
 
+    public function delete($store, $id) {
+        $stmt = $this->query('SELECT id FROM product_bundles WHERE store_id=? AND id=? FOR UPDATE', [$store, $id]);
+        $exists = $stmt->get_result()->fetch_assoc(); $stmt->close();
+        if (!$exists) return false;
+        $this->query('DELETE FROM product_bundle_items WHERE bundle_id=?', [$id])->close();
+        $this->query('DELETE FROM product_bundles WHERE store_id=? AND id=?', [$store, $id])->close();
+        return true;
+    }
+
     public function productsByIds($store, $productIds) {
         $placeholders = implode(',', array_fill(0, count($productIds), '?'));
         $stmt = $this->query(

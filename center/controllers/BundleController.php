@@ -229,23 +229,56 @@ class BundleController {
         } finally {
             mysqli_report($reportMode);
         }
-        if ($saved) {
-            set_error_handler(function ($severity, $message) {
-                throw new RuntimeException($message);
-            });
-            try {
-                foreach (['product_bundles', 'products'] as $module) {
-                    updateStoreCache($store, $module);
-                }
-            } catch (Throwable $e) {
-                unset($_SESSION['swal_success']);
-                $_SESSION['swal_error'] = 'Paket tersimpan, tetapi cache belum diperbarui. Gunakan Update Cache.';
-                error_log('Bundle cache: ' . $e->getMessage());
-            } finally {
-                restore_error_handler();
-            }
-        }
+        if ($saved) $this->updateCache($store);
         header('Location: /package-prices?tab=bundles&store_id=' . $store);
         exit();
     }
+    private function updateCache($store) {
+        set_error_handler(function ($severity, $message) { throw new RuntimeException($message); });
+        try { updateStoreCache($store, ['product_bundles', 'products']); }
+        catch (Throwable $e) {
+            $_SESSION['swal_error'] = 'Perubahan paket tersimpan, tetapi cache belum diperbarui. Gunakan Update Cache.';
+            error_log('Bundle cache: ' . $e->getMessage());
+        } finally { restore_error_handler(); }
+    }
+
+    public function delete() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $store = (int)($_POST['store_id'] ?? 0);
+        $transaction = $deleted = false;
+        $driver = new mysqli_driver(); $reportMode = $driver->report_mode;
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+        try {
+            $administrator = $this->administrator();
+            if (!(new AdministratorAccessController($this->db))->can('delete_product_bundle')) {
+                throw new InvalidArgumentException('Anda tidak memiliki izin mengatur harga paket.');
+            }
+            if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !is_string($_POST['csrf'] ?? null)
+                || empty($_SESSION['product_bundle_csrf']) || !hash_equals($_SESSION['product_bundle_csrf'], $_POST['csrf'])) {
+                throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
+            }
+            $id = filter_var($_POST['bundle_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $model = new ProductBundle($this->db);
+            if (!$id || !$model->isAvailable()) throw new InvalidArgumentException('Paket gabungan tidak tersedia.');
+            $this->db->begin_transaction(); $transaction = true;
+            $stmt = $this->db->prepare('SELECT administrator FROM stores WHERE store_id=? FOR UPDATE');
+            $stmt->bind_param('i', $store); $stmt->execute();
+            $owner = $stmt->get_result()->fetch_assoc(); $stmt->close();
+            if (!$owner || ($administrator['access'] !== 'ALL'
+                && ($administrator['access'] === '' || $administrator['access'] !== $owner['administrator']))) {
+                throw new InvalidArgumentException('Anda tidak memiliki akses ke toko ini.');
+            }
+            if (!$model->delete($store, $id)) throw new InvalidArgumentException('Paket gabungan tidak ditemukan pada toko ini.');
+            $this->db->commit(); $transaction = false; $deleted = true;
+            $_SESSION['swal_success'] = 'Pengaturan paket gabungan dihapus. Produk, stok, dan nota lama tetap tersimpan.';
+        } catch (Throwable $e) {
+            if ($transaction) $this->db->rollback();
+            $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : 'Paket gagal dihapus. Perubahan dibatalkan.';
+            error_log('Delete product bundle: ' . $e->getMessage());
+        } finally { mysqli_report($reportMode); }
+        if ($deleted) $this->updateCache($store);
+        header('Location: /package-prices?tab=bundles&store_id=' . $store);
+        exit;
+    }
+
 }

@@ -149,8 +149,11 @@ switch ($action) {
         break;
 
     case 'save_product_bundle':
+    case 'delete_product_bundle':
         require_once __DIR__ . '/../controllers/BundleController.php';
-        (new BundleController($koneksi))->save();
+        $bundleController = new BundleController($koneksi);
+        if ($action === 'delete_product_bundle') $bundleController->delete();
+        else $bundleController->save();
         break;
 
     case 'save_package_price':
