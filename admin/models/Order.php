@@ -172,7 +172,7 @@ class Order {
         $stmt = $this->koneksi->prepare("
             SELECT 
                 oi.*, 
-                p.name AS product_name, 
+                COALESCE(p.name, oi.judul) AS product_name,
                 p.category_id,
                 c.name AS category, 
                 p.unit_type, 
@@ -345,7 +345,7 @@ class Order {
     }
 
     public function getDetailedOrderByIntervalDate($store_id, $start_date, $end_date){
-        $stmt = $this->koneksi->prepare("SELECT i.*, o.nomorator, o.customer_name, o.date, o.order_id, p.price, p.name AS product_name,
+        $stmt = $this->koneksi->prepare("SELECT i.*, o.nomorator, o.customer_name, o.date, o.order_id, p.price, COALESCE(p.name, i.judul) AS product_name,
                 COALESCE(
                     (SELECT GROUP_CONCAT(f.name SEPARATOR ' ') 
                      FROM finishings f

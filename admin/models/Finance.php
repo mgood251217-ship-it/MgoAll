@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ProductPriceTier.php';
 
 class Finance{
     private $koneksi;
@@ -63,6 +64,18 @@ class Finance{
         $stmt->execute();
         $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
+        if (!(new ProductPriceTier($this->koneksi))->isAvailable()) return $result;
+        $stmt = $this->koneksi->prepare("SELECT oi.judul AS nama_barang,
+                JSON_UNQUOTE(JSON_EXTRACT(oi.tier_price_data, '$.standalone_finishing.unit_type')) AS satuan,
+                SUM(oi.quantity * COALESCE(JSON_EXTRACT(oi.tier_price_data, '$.factor'), 1)) AS total_terjual,
+                SUM(oi.amount) AS total_omset
+            FROM order_items oi JOIN orders o ON o.order_id = oi.order_id AND o.store_id = oi.store_id
+            WHERE oi.store_id = ? AND oi.product_id IS NULL AND DATE(o.date) BETWEEN ? AND ?
+                AND JSON_EXTRACT(IF(JSON_VALID(oi.tier_price_data), oi.tier_price_data, '{}'), '$.standalone_finishing') IS NOT NULL
+            GROUP BY oi.finishing, oi.judul, satuan");
+        $stmt->bind_param('iss', $store_id, $start_date, $end_date); $stmt->execute();
+        $result = array_merge($result, $stmt->get_result()->fetch_all(MYSQLI_ASSOC)); $stmt->close();
+        usort($result, function ($a, $b) { return (float)$b['total_omset'] <=> (float)$a['total_omset']; });
         return $result;
     }
 

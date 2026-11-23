@@ -31,6 +31,8 @@ class FinishingMigrationController {
             if ($parent === 'stock' && $key === 'finishings' && is_array($value) && array_key_exists($source, $value)) {
                 $value[$target] = ($value[$target] ?? 0) + $value[$source];
                 unset($value[$source]);
+            } elseif ($parent === 'standalone_finishing' && $key === 'id' && (int)$value === $source) {
+                $value = $target;
             } elseif ($key === 'finishing_id' && (int)$value === $source) {
                 $value = $target;
             } elseif (in_array($key, ['finishing', 'finishing_ids', 'finishing_str'], true) && is_scalar($value)) {

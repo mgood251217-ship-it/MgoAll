@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/ProductFinishingPriceController.php';
 require_once __DIR__ . '/ProductFinishingController.php';
+require_once __DIR__ . '/FinishingSaleController.php';
 require_once __DIR__ . '/ProductPriceTierController.php';
 require_once __DIR__ . '/ProductLaserConversionController.php';
 require_once __DIR__ . '/../models/OrderDiscount.php';
@@ -485,7 +486,7 @@ class OrderController {
             $input = json_decode(file_get_contents('php://input'), true);
             $data = $input ?: $_POST;
 
-            if (empty($data['product_id'])) {
+            if (empty($data['product_id']) && ($data['item_type'] ?? '') !== 'finishing') {
                 send_json_response(false, 'Product ID tidak valid.');
                 exit;
             }
@@ -513,7 +514,7 @@ class OrderController {
             $input = json_decode(file_get_contents('php://input'), true);
             $data = $input ?: $_POST;
 
-            if ((new ProductPriceTierController($this->koneksi))->handles($store_id, $data)) {
+            if (($data['item_type'] ?? '') === 'finishing' || (new ProductPriceTierController($this->koneksi))->handles($store_id, $data)) {
                 $this->saveTierItem($data, $store_id);
                 exit;
             }
@@ -907,6 +908,7 @@ class OrderController {
     }
 
     private function _prepareItemData($data, $store_id, $previewOnly = false) {
+        if (($data['item_type'] ?? '') === 'finishing') return (new FinishingSaleController($this->koneksi))->prepare($store_id, $data);
         $order_id = (int)($data['order_id'] ?? 0);
         $product_id = (int)($data['product_id'] ?? 0);
         $judul = trim($data['judul'] ?? '');

@@ -647,7 +647,7 @@ class ReportController {
                     FROM finishings fp
                     WHERE FIND_IN_SET(fp.finishing_id, REPLACE(oi.finishing, ' ', ''))
                     ) AS finishing_names,
-                    c.name AS category
+                    COALESCE(c.name, CASE WHEN oi.product_id IS NULL THEN 'FINISHING' END) AS category
                 FROM order_items oi
                 LEFT JOIN products p ON oi.product_id = p.product_id
                 LEFT JOIN categories c ON p.category_id = c.category_id
@@ -885,8 +885,8 @@ class ReportController {
                         SELECT
                             oi.order_item_id, oi.judul, oi.product_id, oi.size, oi.quantity, oi.finishing,
                             o.store_id, o.date,
-                            p.name AS product_name, p.unit_type, p.reasonable_price,
-                            c.name AS category,
+                            COALESCE(p.name, oi.judul) AS product_name, p.unit_type, p.reasonable_price,
+                            COALESCE(c.name, CASE WHEN oi.product_id IS NULL THEN 'FINISHING' END) AS category,
                             s.name AS branch_name
                         FROM order_items oi
                         JOIN orders o ON o.order_id = oi.order_id
@@ -904,8 +904,8 @@ class ReportController {
                         SELECT
                             oi.order_item_id, oi.judul, oi.maklun, oi.product_id, oi.size, oi.quantity, oi.finishing,
                             o.date,
-                            p.name AS product_name, p.unit_type, p.reasonable_price,
-                            c.name AS category,
+                            COALESCE(p.name, oi.judul) AS product_name, p.unit_type, p.reasonable_price,
+                            COALESCE(c.name, CASE WHEN oi.product_id IS NULL THEN 'FINISHING' END) AS category,
                             s.name AS branch_name
                         FROM order_items oi
                         JOIN orders o ON o.order_id = oi.order_id

@@ -284,13 +284,13 @@ class ProductPriceTierController {
             if (isset($item['error'])) {
                 throw new InvalidArgumentException($item['error']);
             }
-            if ($item['product_id'] < 1 || trim($item['judul']) === '') {
+            if ((($item['item_type'] ?? '') !== 'finishing' && $item['product_id'] < 1) || trim($item['judul']) === '') {
                 throw new InvalidArgumentException('Data item tidak lengkap.');
             }
             // Promo dihitung per baris. Dua input terpisah tidak digabung untuk mendapat bonus.
             if (!$old && !empty($item['tier_price_data']) && empty(self::snapshot($item)['promotion'])) {
                 $data = self::snapshot($item);
-                foreach ($this->items($store, $order, $item['product_id']) as $row) {
+                foreach ($this->items($store, $order, (int)$item['product_id']) as $row) {
                     if ($row['judul'] === $item['judul'] && $row['size'] === $item['size']
                         && ($row['product_variant_data'] ?? null) === ($item['product_variant_data'] ?? null)
                         && self::finishingKey($row['finishing']) === self::finishingKey($item['finishing_str'])
@@ -367,6 +367,13 @@ class ProductPriceTierController {
                     $row['tier_pricing'] = ['quantity' => $qty, 'measure' => $s['measure'], 'unit_label' => self::unitLabel($s['measure']), 'quantity_above' => $rule['quantity_above'] ?? null, 'price' => $rule['price'] ?? null];
                 }
             }
+            if (!empty($s['standalone_finishing'])) {
+                $finishing = $s['standalone_finishing'];
+                $row['item_type'] = 'finishing'; $row['finishing_id'] = (int)$finishing['id'];
+                $row['judul'] = $row['product_name'] = $finishing['name'];
+                $row['category'] = 'FINISHING'; $row['unit_type'] = $finishing['unit_type'];
+                $row['price'] = $finishing['price']; $row['finishing_names'] = '';
+            }
             unset($row['tier_price_data']);
         }
         unset($row);
@@ -382,7 +389,7 @@ class ProductPriceTierController {
             return null;
         }
         $data = json_decode($row['tier_price_data'], true, 512, JSON_THROW_ON_ERROR);
-        if (!is_array($data) || (empty($data['rules']) && empty($data['promotion']) && empty($data['variant']) && empty($data['bundle']) && empty($data['migration_product_ids'])) || !isset($data['factor'], $data['normal'], $data['base'], $data['stock'])) {
+        if (!is_array($data) || (empty($data['rules']) && empty($data['promotion']) && empty($data['variant']) && empty($data['bundle']) && empty($data['migration_product_ids']) && empty($data['standalone_finishing'])) || !isset($data['factor'], $data['normal'], $data['base'], $data['stock'])) {
             throw new RuntimeException('Data aturan harga pada item tidak lengkap.');
         }
         return $data;
@@ -489,7 +496,7 @@ class ProductPriceTierController {
         $groups = [];
         foreach ($this->items($store, $order) as $row) {
             $data = self::snapshot($row);
-            if (!empty($data['promotion']) || (!empty($data['variant']) && empty($data['variant_tiers']))) {
+            if (!empty($data['standalone_finishing']) || !empty($data['promotion']) || (!empty($data['variant']) && empty($data['variant_tiers']))) {
                 $amount = self::amount($data, $row['unit'], (int)$row['quantity']);
                 $this->tierModel->updateItemAmount($store, $row['order_item_id'], $amount);
             } else $groups[self::tierGroup($row, $data)][] = $row;
