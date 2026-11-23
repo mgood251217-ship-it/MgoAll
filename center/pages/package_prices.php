@@ -20,10 +20,6 @@ if ($isBundleTab) {
 $_SESSION['package_price_csrf'] = $_SESSION['package_price_csrf'] ?? bin2hex(random_bytes(32));
 $escape = function ($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); };
 $rupiah = function ($value) { return format_rupiah($value); };
-$finishingsByCategory = [];
-foreach ($data['finishings'] as $finishing) {
-    $finishingsByCategory[(int)$finishing['category_id']][] = $finishing;
-}
 ?>
 
 <div class="page-header">
@@ -61,7 +57,7 @@ foreach ($data['finishings'] as $finishing) {
 <?php elseif ($data['store_id']): ?>
     <div class="filter-card">
         <h3>Tambah Paket</h3>
-        <p>Pilih bahan, isi nama finishing dan harga paket. Ukuran wajib untuk INDOOR/OUTDOOR dan opsional untuk LASER A3. Meteran dan stok paket LASER A3 tetap dihitung per pcs.</p>
+        <p>Pilih bahan, finishing, dan harga paket. Satu finishing dapat digunakan oleh beberapa bahan. Ukuran wajib untuk INDOOR/OUTDOOR dan opsional untuk LASER A3. Meteran dan stok paket LASER A3 tetap dihitung per pcs.</p>
         <form method="post" action="/action?action=save_package_price" class="filter-form">
             <input type="hidden" name="csrf_token" value="<?= $escape($_SESSION['package_price_csrf']) ?>">
             <input type="hidden" name="store_id" value="<?= $data['store_id'] ?>">
@@ -77,19 +73,13 @@ foreach ($data['finishings'] as $finishing) {
             </div>
             <div class="form-group">
                 <label for="package_finishing">Finishing paket</label>
-                <input id="package_finishing" type="text" class="form-control" name="finishing_name" list="packageFinishingNames" maxlength="100" placeholder="Ketik nama finishing" required>
-                <datalist id="packageFinishingNames">
-                    <?php
-                    $finishingNames = [];
-                    foreach ($data['finishings'] as $finishing) {
-                        $name = trim(preg_replace('/[\s\p{Z}]+/u', ' ', (string)$finishing['name']) ?? '');
-                        $key = function_exists('mb_strtoupper') ? mb_strtoupper($name, 'UTF-8') : strtoupper($name);
-                        if ($name === '' || isset($finishingNames[$key])) continue;
-                        $finishingNames[$key] = true;
-                        echo '<option value="' . $escape($name) . '"></option>';
-                    }
-                    ?>
-                </datalist>
+                <select id="package_finishing" class="form-control" name="finishing_id" required>
+                    <option value="">Pilih finishing</option>
+                    <?php foreach ($data['finishings'] as $finishing): ?>
+                        <option value="<?= (int)$finishing['finishing_id'] ?>"><?= $escape($finishing['name']) ?> (#<?= (int)$finishing['finishing_id'] ?>)</option>
+                    <?php endforeach; ?>
+                </select>
+                <small>Finishing boleh berbeda kategori; otomatis ditambahkan ke produk saat disimpan.</small>
             </div>
             <div class="form-group" data-package-dimension>
                 <label for="package_panjang">Panjang (m)</label>
@@ -122,7 +112,7 @@ foreach ($data['finishings'] as $finishing) {
                     </td>
                     <td>
                         <?php
-                        $options = $finishingsByCategory[(int)$rule['category_id']] ?? [];
+                        $options = $data['finishings'];
                         $hasFinishing = in_array((int)$rule['finishing_id'], array_column($options, 'finishing_id'));
                         ?>
                         <select class="form-control" form="package_price_<?= (int)$rule['id'] ?>" name="finishing_id" aria-label="Finishing paket <?= $escape($rule['product_name']) ?>" required style="min-width:180px">
@@ -162,7 +152,11 @@ foreach ($data['finishings'] as $finishing) {
             if (!supportsSize) field.value = '';
         });
     };
-    document.getElementById('target_product').addEventListener('change', updatePackageDimensions);
+    if (window.jQuery) {
+        window.jQuery('#target_product').on('change', updatePackageDimensions);
+    } else {
+        document.getElementById('target_product').addEventListener('change', updatePackageDimensions);
+    }
     updatePackageDimensions();
     </script>
 <?php endif; ?>

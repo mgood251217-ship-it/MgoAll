@@ -37,7 +37,7 @@ class FinishingMigration {
     public function rows($table, $store, $source, $csv, $snapshot = null) {
         $columns = $this->columns($table);
         if (!isset($columns['store_id'], $columns[$csv])) return [];
-        $condition = "FIND_IN_SET(?, REPLACE(`$csv`, ' ', '')) > 0";
+        $condition = "FIND_IN_SET(CAST(? AS BINARY), CAST(REPLACE(`$csv`, ' ', '') AS BINARY)) > 0";
         $params = [$store, $source];
         if ($snapshot && isset($columns[$snapshot])) {
             $condition .= " OR `$snapshot` LIKE ?";

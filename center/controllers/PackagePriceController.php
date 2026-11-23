@@ -6,10 +6,12 @@ require_once __DIR__ . '/../functions/cacheHelper.php';
 class PackagePriceController {
     private $koneksi;
     private $prices;
+    private $finishings;
 
     public function __construct($koneksi) {
         $this->koneksi = $koneksi;
         $this->prices = new ProductFinishingPriceController($koneksi);
+        $this->finishings = new ProductFinishing($koneksi);
     }
 
     private function getStores() {
@@ -42,12 +44,12 @@ class PackagePriceController {
         $ready = $this->prices->hasCurrentSchema();
         if ($store_id) {
             $stmt = $this->koneksi->prepare("SELECT p.product_id, p.name, p.price, p.unit_type, c.name AS category
-                FROM products p JOIN categories c ON c.category_id = p.category_id AND c.store_id = p.store_id
+                FROM products p JOIN categories c ON c.category_id = p.category_id AND c.store_id = ?
                 WHERE p.store_id = ? AND (
                     (c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type = 'M2')
                     OR (c.name IN ('LASER', 'LASER A3') AND p.unit_type IN ('PCS', '~')))
                 ORDER BY c.name, p.name, p.product_id");
-            $stmt->bind_param('i', $store_id);
+            $stmt->bind_param('ii', $store_id, $store_id);
             $stmt->execute();
             $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             $stmt->close();
@@ -101,6 +103,25 @@ class PackagePriceController {
         return function_exists('mb_strtoupper') ? mb_strtoupper($name, 'UTF-8') : strtoupper($name);
     }
 
+    private function assignFinishing($store, $product, $finishing) {
+        if (!$this->finishings->finishingsByIds($store, [$finishing])) {
+            throw new InvalidArgumentException('Pilih finishing dari toko yang sama.');
+        }
+        $stmt = $this->koneksi->prepare('SELECT product_id FROM products WHERE store_id = ? AND product_id = ? FOR UPDATE');
+        $stmt->bind_param('ii', $store, $product);
+        $stmt->execute();
+        $exists = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$exists) throw new InvalidArgumentException('Produk tidak ditemukan pada toko ini.');
+        $allowed = $this->finishings->allowedIdsByProducts($store, [$product])[$product] ?? [];
+        if (in_array($finishing, $allowed, true)) return;
+        if (!$this->finishings->isAvailable()) {
+            throw new InvalidArgumentException('Perbarui skema finishing produk terlebih dahulu untuk memakai finishing lintas kategori.');
+        }
+        $allowed[] = $finishing;
+        $this->finishings->save($store, $product, $allowed);
+    }
+
     private function decimalInput($field, $label, $scale = 2, $max = 9999999999999.99) {
         $value = $_POST[$field] ?? '';
         if (!is_scalar($value) || !preg_match('/^\d+(?:\.\d{1,' . $scale . '})?$/D', (string)$value)
@@ -130,7 +151,7 @@ class PackagePriceController {
             }
             $this->koneksi->begin_transaction();
             $transaction = true;
-            // Kunci per toko agar dua admin tidak membuat finishing paket bersamaan.
+            // Serialkan perubahan paket pada toko yang sama.
             $stmt = $this->koneksi->prepare('SELECT store_id FROM stores WHERE store_id = ? FOR UPDATE');
             $stmt->bind_param('i', $store_id);
             $stmt->execute();
@@ -138,18 +159,14 @@ class PackagePriceController {
             $command = $_POST['command'] ?? '';
             if ($command === 'add') {
                 $product_id = (int)($_POST['product_id'] ?? 0);
-                $packageType = $this->normalizeFinishingName($_POST['finishing_name'] ?? '');
-                if ($packageType === '' || strlen($packageType) > 100) {
-                    throw new InvalidArgumentException('Isi nama finishing paket, maksimal 100 karakter.');
-                }
                 $price = $this->decimalInput('price', 'Harga paket');
                 $stmt = $this->koneksi->prepare("SELECT p.category_id, p.unit_type, c.name AS category FROM products p
-                    JOIN categories c ON c.category_id = p.category_id AND c.store_id = p.store_id
+                    JOIN categories c ON c.category_id = p.category_id AND c.store_id = ?
                     WHERE p.product_id = ? AND p.store_id = ? AND (
                         (c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type = 'M2')
                         OR (c.name IN ('LASER', 'LASER A3') AND p.unit_type IN ('PCS', '~')))
                     FOR UPDATE");
-                $stmt->bind_param('ii', $product_id, $store_id);
+                $stmt->bind_param('iii', $store_id, $product_id, $store_id);
                 $stmt->execute();
                 $product = $stmt->get_result()->fetch_assoc();
                 $stmt->close();
@@ -159,28 +176,21 @@ class PackagePriceController {
                 $useSize = $requiresSize || (ProductFinishingPriceController::supportsDimensions($product) && $hasSizeInput);
                 $panjang = $useSize ? $this->decimalInput('panjang', 'Panjang', 4, 999999.9999) : 0;
                 $lebar = $useSize ? $this->decimalInput('lebar', 'Lebar', 4, 999999.9999) : 0;
-                $category_id = (int)$product['category_id'];
-                $stmt = $this->koneksi->prepare('SELECT finishing_id, name FROM finishings
-                    WHERE store_id = ? AND category_id = ? FOR UPDATE');
-                $stmt->bind_param('ii', $store_id, $category_id);
+                $stmt = $this->koneksi->prepare('SELECT finishing_id, name FROM finishings WHERE store_id = ?');
+                $stmt->bind_param('i', $store_id);
                 $stmt->execute();
-                $finishings = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                $allowed = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                 $stmt->close();
-                $finishings = array_values(array_filter($finishings, function ($finishing) use ($packageType) {
-                    return $this->normalizeFinishingName($finishing['name']) === $packageType;
-                }));
-                if (count($finishings) > 1) throw new InvalidArgumentException('Ada finishing ' . $packageType . ' ganda pada kategori ini. Rapikan dahulu.');
-                if ($finishings) {
-                    $finishing_id = (int)$finishings[0]['finishing_id'];
-                } else {
-                    $stmt = $this->koneksi->prepare("INSERT INTO finishings
-                        (store_id, category_id, name, unit_type, price, reasonable_price, failed_price, stock, created_at, updated_at)
-                        VALUES (?, ?, ?, '~', 0, 0, 0, 0, NOW(), NOW())");
-                    $stmt->bind_param('iis', $store_id, $category_id, $packageType);
-                    $stmt->execute();
-                    $finishing_id = $this->koneksi->insert_id;
-                    $stmt->close();
+                $finishing_id = (int)($_POST['finishing_id'] ?? 0);
+                // Formulir lama mengirim nama; hanya cocokkan dengan finishing toko yang sudah ada.
+                if (!$finishing_id) {
+                    $name = $this->normalizeFinishingName($_POST['finishing_name'] ?? '');
+                    $matches = array_values(array_filter($allowed, function ($row) use ($name) {
+                        return $this->normalizeFinishingName($row['name']) === $name;
+                    }));
+                    if (count($matches) === 1) $finishing_id = (int)$matches[0]['finishing_id'];
                 }
+                $this->assignFinishing($store_id, $product_id, $finishing_id);
                 $stmt = $this->koneksi->prepare('SELECT id FROM product_package
                     WHERE store_id = ? AND product_id = ? AND finishing_id = ? AND panjang = ? AND lebar = ?');
                 $stmt->bind_param('iiidd', $store_id, $product_id, $finishing_id, $panjang, $lebar);
@@ -216,14 +226,7 @@ class PackagePriceController {
                     if ($command === 'update') {
                         $finishing_id = (int)($_POST['finishing_id'] ?? 0);
                         $product_id = (int)$rule['product_id'];
-                        $stmt = $this->koneksi->prepare('SELECT f.finishing_id FROM finishings f
-                            JOIN products p ON p.product_id = ? AND p.store_id = f.store_id AND p.category_id = f.category_id
-                            WHERE f.finishing_id = ? AND f.store_id = ? FOR UPDATE');
-                        $stmt->bind_param('iii', $product_id, $finishing_id, $store_id);
-                        $stmt->execute();
-                        $finishing = $stmt->get_result()->fetch_assoc();
-                        $stmt->close();
-                        if (!$finishing) throw new InvalidArgumentException('Pilih finishing dari kategori bahan dan toko yang sama.');
+                        $this->assignFinishing($store_id, $product_id, $finishing_id);
                         $stmt = $this->koneksi->prepare('SELECT id FROM product_package
                             WHERE store_id = ? AND product_id = ? AND finishing_id = ? AND panjang = ? AND lebar = ? AND id <> ?');
                         $stmt->bind_param('iiiddi', $store_id, $product_id, $finishing_id, $rule['panjang'], $rule['lebar'], $id);
@@ -255,8 +258,7 @@ class PackagePriceController {
         if ($saved) {
             set_error_handler(function ($severity, $message) { throw new RuntimeException($message); });
             try {
-                updateStoreCache($store_id, 'product_finishing_prices');
-                updateStoreCache($store_id, 'finishings');
+                updateStoreCache($store_id, ['product_finishing_prices', 'finishings', 'products', 'product_finishings']);
             } catch (Throwable $e) {
                 error_log('PackagePrice cache: ' . $e->getMessage());
                 $_SESSION['swal_error'] = 'Perubahan paket sudah tersimpan, tetapi cache gagal diperbarui. Gunakan tombol Update Cache di halaman Produk.';

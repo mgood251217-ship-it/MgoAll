@@ -1,11 +1,14 @@
 <?php
 require_once __DIR__ . '/../models/ProductFinishingPrice.php';
+require_once __DIR__ . '/../models/ProductFinishing.php';
 
 class ProductFinishingPriceController {
     private $priceModel;
+    private $finishings;
 
     public function __construct($koneksi) {
         $this->priceModel = new ProductFinishingPrice($koneksi);
+        $this->finishings = new ProductFinishing($koneksi);
     }
 
     public static function requiresDimensions($product) {
@@ -33,6 +36,12 @@ class ProductFinishingPriceController {
 
     public function getByStore($store_id, $category_id = 0, $validOnly = true) {
         $rows = $this->priceModel->getByStore($store_id, $category_id);
+        $allowed = $this->finishings->allowedIdsByProducts($store_id, array_column($rows, 'product_id'));
+        foreach ($rows as &$row) {
+            $row['valid'] = (int)((int)$row['valid'] === 1
+                && in_array((int)$row['finishing_id'], $allowed[(int)$row['product_id']] ?? [], true));
+        }
+        unset($row);
         if (!$validOnly) {
             return $rows;
         }

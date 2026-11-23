@@ -87,12 +87,6 @@ class FinishingMigrationController {
             if (strtoupper(trim($rows[$source]['unit_type'])) !== strtoupper(trim($rows[$target]['unit_type']))) {
                 throw new InvalidArgumentException('Satuan finishing asal dan tujuan harus sama agar pemakaian stok tetap sesuai.');
             }
-            $crossCategory = (int)$rows[$source]['category_id'] !== (int)$rows[$target]['category_id'];
-            if ($crossCategory) {
-                foreach (['product_package', 'product_finishing_prices'] as $table) {
-                    if ($this->model->rows($table, $store, $source, 'finishing_id')) throw new InvalidArgumentException('Finishing ini digunakan harga paket. Pilih pengganti pada kategori yang sama.');
-                }
-            }
             $counts = [];
             foreach (self::REFERENCES as $table => [$csv, $snapshot]) {
                 foreach ($this->model->rows($table, $store, $source, $csv, $snapshot) as $row) {

@@ -60,7 +60,7 @@ class ProductFinishingPrice {
                 ((c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type = 'M2')
                     OR (c.name = 'LASER A3' AND r.panjang > 0 AND r.lebar > 0)) AS requires_size,
                 (p.product_id IS NOT NULL AND c.category_id IS NOT NULL AND f.finishing_id IS NOT NULL
-                    AND f.category_id = p.category_id AND (
+                    AND (
                         (c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type = 'M2' AND r.panjang > 0 AND r.lebar > 0)
                         OR (c.name = 'LASER' AND p.unit_type IN ('PCS', '~') AND r.panjang = 0 AND r.lebar = 0)
                         OR (c.name = 'LASER A3' AND p.unit_type IN ('PCS', '~')
