@@ -169,9 +169,12 @@ class Order {
     }
 
     public function getOrderItemsWithDetails($order_id) {
+        $hasMaterial = (new ProductLaserConversion($this->koneksi))->hasOrderMaterials();
+        $materialName = $hasMaterial ? 'laser.name AS laser_material_name' : 'NULL AS laser_material_name';
+        $materialJoin = $hasMaterial ? 'LEFT JOIN products laser ON laser.product_id = oi.laser_product_id AND laser.store_id = oi.store_id' : '';
         $stmt = $this->koneksi->prepare("
             SELECT 
-                oi.*, 
+                oi.*, $materialName,
                 COALESCE(p.name, oi.judul) AS product_name,
                 p.category_id,
                 c.name AS category, 
@@ -187,6 +190,7 @@ class Order {
                     ), '-'
                 ) AS finishing_names
             FROM order_items oi
+            $materialJoin
             LEFT JOIN stores s ON oi.maklun = s.store_id
             LEFT JOIN products p ON oi.product_id = p.product_id
             LEFT JOIN categories c ON p.category_id = c.category_id
@@ -234,8 +238,8 @@ class Order {
 
     public function createOrderItem($data){
         if (!empty($data->laser_product_id) && (new ProductLaserConversion($this->koneksi))->hasOrderMaterials()) {
-            $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing, laser_product_id, laser_material_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param('iiississsis', $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str, $data->laser_product_id, $data->laser_material_name);
+            $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing, laser_product_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param('iiississsi', $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str, $data->laser_product_id);
         } elseif (!empty($data->product_finishing_price_id)) {
             $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing, product_finishing_price_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->bind_param("iiississsi", $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str, $data->product_finishing_price_id);
@@ -345,7 +349,10 @@ class Order {
     }
 
     public function getDetailedOrderByIntervalDate($store_id, $start_date, $end_date){
-        $stmt = $this->koneksi->prepare("SELECT i.*, o.nomorator, o.customer_name, o.date, o.order_id, p.price, COALESCE(p.name, i.judul) AS product_name,
+        $hasMaterial = (new ProductLaserConversion($this->koneksi))->hasOrderMaterials();
+        $materialName = $hasMaterial ? 'laser.name AS laser_material_name' : 'NULL AS laser_material_name';
+        $materialJoin = $hasMaterial ? 'LEFT JOIN products laser ON laser.product_id = i.laser_product_id AND laser.store_id = i.store_id' : '';
+        $stmt = $this->koneksi->prepare("SELECT i.*, $materialName, o.nomorator, o.customer_name, o.date, o.order_id, p.price, COALESCE(p.name, i.judul) AS product_name,
                 COALESCE(
                     (SELECT GROUP_CONCAT(f.name SEPARATOR ' ') 
                      FROM finishings f
@@ -353,6 +360,7 @@ class Order {
                     ), '-'
                 ) AS finishing_names
                 FROM order_items i
+                $materialJoin
                 INNER JOIN orders o ON i.order_id = o.order_id
                 LEFT JOIN products p ON i.product_id = p.product_id
                 WHERE o.store_id = ? AND o.date BETWEEN ? AND ?

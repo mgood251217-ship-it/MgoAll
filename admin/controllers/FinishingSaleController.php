@@ -48,6 +48,6 @@ class FinishingSaleController {
             'stok_butuh' => 0, 'finishing_str' => (string)$id,
             'finishing_to_reduce' => $unitType === '~' ? [] : [['finishing_id' => $id, 'qty' => $factor * $qty]],
             'unit' => $unit, 'amount' => $amount, 'product_finishing_price_id' => null,
-            'laser_product_id' => null, 'laser_material_name' => null, 'tier_price_data' => json_encode($snapshot, JSON_THROW_ON_ERROR)];
+            'laser_product_id' => null, 'tier_price_data' => json_encode($snapshot, JSON_THROW_ON_ERROR)];
     }
 }

@@ -359,7 +359,6 @@ class ProductBundleController {
             'product_finishing_price_id' => null,
             'is_laser_variant' => false,
             'laser_product_id' => null,
-            'laser_material_name' => null,
             'bundle_stock' => $snapshot['stock'],
             'tier_price_data' => json_encode($data, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)
         ];

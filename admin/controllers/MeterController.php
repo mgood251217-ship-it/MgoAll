@@ -426,12 +426,15 @@ class MeterController {
         $conversionIds = array_keys($conversions);
         if ($conversionIds) {
             $materialFields = $conversionModel->hasOrderMaterials()
-                ? 'oi.laser_product_id, oi.laser_material_name'
+                ? 'oi.laser_product_id, laser.name AS laser_material_name'
                 : 'NULL AS laser_product_id, NULL AS laser_material_name';
+            $materialJoin = $conversionModel->hasOrderMaterials()
+                ? 'LEFT JOIN products laser ON laser.product_id = oi.laser_product_id AND laser.store_id = oi.store_id' : '';
             $placeholders = implode(',', array_fill(0, count($conversionIds), '?'));
             $query2 = "
                 SELECT p.product_id, oi.quantity AS total_qty, oi.size, oi.finishing, $materialFields
                 FROM order_items oi
+                $materialJoin
                 JOIN orders o ON oi.order_id = o.order_id
                 JOIN products p ON oi.product_id = p.product_id
                 JOIN categories c ON p.category_id = c.category_id AND c.store_id = p.store_id

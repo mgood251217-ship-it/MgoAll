@@ -559,7 +559,6 @@ class OrderController {
                 'product_finishing_price_id' => $itemData['product_finishing_price_id'],
                 'is_laser_variant' => $itemData['is_laser_variant'],
                 'laser_product_id' => $itemData['laser_product_id'],
-                'laser_material_name' => $itemData['laser_material_name'],
             ];
 
             if ($data_item->order_id <= 0 || $data_item->product_id <= 0 || empty($data_item->judul)) {
@@ -1063,7 +1062,6 @@ class OrderController {
             'product_finishing_price_id' => $package ? (int)$package['id'] : null,
             'is_laser_variant' => $isAnekaCetak,
             'laser_product_id' => $laserVariant ? (int)$laserVariant['laser_product_id'] : null,
-            'laser_material_name' => $laserVariant['laser_name'] ?? null,
             'unit' => $unit,
             'amount' => $amount
         ];

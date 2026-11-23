@@ -53,8 +53,8 @@ class ProductLaserConversion {
         if ($this->orderMaterials === null) {
             $result = $this->koneksi->query("SELECT COUNT(*) AS total FROM information_schema.COLUMNS
                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'order_items'
-                  AND COLUMN_NAME IN ('laser_product_id', 'laser_material_name')");
-            $this->orderMaterials = (int)$result->fetch_assoc()['total'] === 2;
+                  AND COLUMN_NAME = 'laser_product_id'");
+            $this->orderMaterials = (int)$result->fetch_assoc()['total'] === 1;
         }
         return $this->orderMaterials;
     }

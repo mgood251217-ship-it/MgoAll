@@ -151,9 +151,9 @@ class ProductPriceTier {
             $types .= 'i';
         }
         if ((new ProductLaserConversion($this->db))->hasOrderMaterials()) {
-            array_push($fields, 'laser_product_id', 'laser_material_name');
-            array_push($values, $item['laser_product_id'], $item['laser_material_name']);
-            $types .= 'is';
+            $fields[] = 'laser_product_id';
+            $values[] = $item['laser_product_id'];
+            $types .= 'i';
         }
         if ($update) {
             $sql = 'UPDATE order_items SET ' . implode(', ', array_map(function ($field) { return "$field = ?"; }, $fields)) . ' WHERE order_item_id = ? AND store_id = ?';

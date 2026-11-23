@@ -388,9 +388,12 @@ class OrderController {
 
         $diskon_per_produk = [];
 
+        $hasMaterial = (new ProductLaserConversion($this->koneksi))->hasOrderMaterials();
+        $materialName = $hasMaterial ? 'laser.name AS laser_material_name' : 'NULL AS laser_material_name';
+        $materialJoin = $hasMaterial ? 'LEFT JOIN products laser ON laser.product_id = oi.laser_product_id AND laser.store_id = oi.store_id' : '';
         $stmt = $this->koneksi->prepare("
             SELECT 
-                oi.*, 
+                oi.*, $materialName,
                 p.name AS product_name, 
                 p.category_id,
                 c.name AS category, 
@@ -406,6 +409,7 @@ class OrderController {
                     ), '-'
                 ) AS finishing_names
             FROM order_items oi
+            $materialJoin
             LEFT JOIN stores s ON oi.maklun = s.store_id
             LEFT JOIN products p ON oi.product_id = p.product_id
             LEFT JOIN categories c ON p.category_id = c.category_id
@@ -704,7 +708,6 @@ class OrderController {
             'product_finishing_price_id' => $package ? (int)$package['id'] : null,
             'is_laser_variant' => $isAnekaCetak,
             'laser_product_id' => $laserVariant ? (int)$laserVariant['laser_product_id'] : null,
-            'laser_material_name' => $laserVariant['laser_name'] ?? null,
             'unit' => $unit,
             'amount' => $amount
         ];
@@ -924,7 +927,6 @@ class OrderController {
                 'product_finishing_price_id' => $itemData['product_finishing_price_id'],
                 'is_laser_variant' => $itemData['is_laser_variant'],
                 'laser_product_id' => $itemData['laser_product_id'],
-                'laser_material_name' => $itemData['laser_material_name'],
             ];
 
             $rowExist = $this->cekOrderItem($itemData['order_id'], $itemData['judul'], $itemData['finishing_str'], $itemData['size'], $itemData['product_finishing_price_id'], $itemData['product_id'], $itemData['unit'], $itemData['is_laser_variant'], $itemData['laser_product_id']);
@@ -1159,9 +1161,12 @@ class OrderController {
     }
 
     public function getOrderItemsWithDetails($order_id) {
+        $hasMaterial = (new ProductLaserConversion($this->koneksi))->hasOrderMaterials();
+        $materialName = $hasMaterial ? 'laser.name AS laser_material_name' : 'NULL AS laser_material_name';
+        $materialJoin = $hasMaterial ? 'LEFT JOIN products laser ON laser.product_id = oi.laser_product_id AND laser.store_id = oi.store_id' : '';
         $stmt = $this->koneksi->prepare("
             SELECT 
-                oi.*, 
+                oi.*, $materialName,
                 p.name AS product_name, 
                 c.name AS category, 
                 p.unit_type, 
@@ -1176,6 +1181,7 @@ class OrderController {
                     ), '-'
                 ) AS finishing_names
             FROM order_items oi
+            $materialJoin
             LEFT JOIN stores s ON oi.maklun = s.store_id
             LEFT JOIN products p ON oi.product_id = p.product_id
             LEFT JOIN categories c ON p.category_id = c.category_id
@@ -1261,8 +1267,8 @@ class OrderController {
 
     public function createOrderItem($data){
         if (!empty($data->laser_product_id) && (new ProductLaserConversionController($this->koneksi))->hasOrderMaterials()) {
-            $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing, laser_product_id, laser_material_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param('iiississsis', $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str, $data->laser_product_id, $data->laser_material_name);
+            $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing, laser_product_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param('iiississsi', $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str, $data->laser_product_id);
         } elseif (!empty($data->product_finishing_price_id)) {
             $stmt = $this->koneksi->prepare("INSERT INTO order_items (store_id, order_id, product_id, judul, size, quantity, unit, amount, finishing, product_finishing_price_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->bind_param("iiississsi", $data->store_id, $data->order_id, $data->product_id, $data->judul, $data->size, $data->quantity, $data->unit, $data->amount, $data->finishing_str, $data->product_finishing_price_id);
