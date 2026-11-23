@@ -1072,7 +1072,7 @@ class ProductController {
                         $snapshot = $templates[$row['product_id']];
                         $oldVariant = ProductVariantController::snapshot($row);
                         $snapshot['price'] = (float)($oldVariant['price'] ?? $pricingData['base'] ?? $products[$row['product_id']]['price']);
-                        $variantJson = json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+                        $variantJson = json_encode(ProductVariantController::productionData($snapshot), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
                         $pricingData = $pricing->variantMigrationData($row, $target, $snapshot, (float)$row['migration_discount']);
                         array_push($values, $snapshot['id'], $variantJson); $updateTypes .= 'is';
                     }

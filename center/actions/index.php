@@ -143,11 +143,9 @@ switch ($action) {
         break;
 
     case 'save_production_component':
-    case 'link_production_components':
         require_once __DIR__ . '/../controllers/VariantController.php';
         $variantController = new VariantController($koneksi);
-        if ($action === 'save_production_component') $variantController->saveComponent();
-        else $variantController->linkComponents();
+        $variantController->saveComponent();
         break;
 
     case 'save_product_bundle':

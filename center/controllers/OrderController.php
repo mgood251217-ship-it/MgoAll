@@ -388,12 +388,15 @@ class OrderController {
 
         $diskon_per_produk = [];
 
+        $variants = new ProductVariant($this->koneksi);
+        $variantFields = $variants->isAvailable() ? ', ' . ProductVariant::orderFields() : '';
+        $variantJoins = $variants->isAvailable() ? ProductVariant::orderJoins() : '';
         $hasMaterial = (new ProductLaserConversion($this->koneksi))->hasOrderMaterials();
         $materialName = $hasMaterial ? 'laser.name AS laser_material_name' : 'NULL AS laser_material_name';
         $materialJoin = $hasMaterial ? 'LEFT JOIN products laser ON laser.product_id = oi.laser_product_id AND laser.store_id = oi.store_id' : '';
         $stmt = $this->koneksi->prepare("
             SELECT 
-                oi.*, $materialName,
+                oi.*, $materialName$variantFields,
                 p.name AS product_name, 
                 p.category_id,
                 c.name AS category, 
@@ -409,7 +412,7 @@ class OrderController {
                     ), '-'
                 ) AS finishing_names
             FROM order_items oi
-            $materialJoin
+            $materialJoin $variantJoins
             LEFT JOIN stores s ON oi.maklun = s.store_id
             LEFT JOIN products p ON oi.product_id = p.product_id
             LEFT JOIN categories c ON p.category_id = c.category_id
@@ -700,7 +703,7 @@ class OrderController {
             'size' => $final_size,
             'quantity' => $quantity,
             'product_variant_id' => $variant['id'] ?? null,
-            'product_variant_data' => $variant ? json_encode($variant, JSON_THROW_ON_ERROR) : null,
+            'product_variant_data' => $variant ? json_encode(ProductVariantController::productionData($variant), JSON_THROW_ON_ERROR) : null,
             'variant' => $variant,
             'stok_butuh' => $stok_butuh,
             'finishing_str' => $finishing_str,
@@ -1161,12 +1164,15 @@ class OrderController {
     }
 
     public function getOrderItemsWithDetails($order_id) {
+        $variants = new ProductVariant($this->koneksi);
+        $variantFields = $variants->isAvailable() ? ', ' . ProductVariant::orderFields() : '';
+        $variantJoins = $variants->isAvailable() ? ProductVariant::orderJoins() : '';
         $hasMaterial = (new ProductLaserConversion($this->koneksi))->hasOrderMaterials();
         $materialName = $hasMaterial ? 'laser.name AS laser_material_name' : 'NULL AS laser_material_name';
         $materialJoin = $hasMaterial ? 'LEFT JOIN products laser ON laser.product_id = oi.laser_product_id AND laser.store_id = oi.store_id' : '';
         $stmt = $this->koneksi->prepare("
             SELECT 
-                oi.*, $materialName,
+                oi.*, $materialName$variantFields,
                 p.name AS product_name, 
                 c.name AS category, 
                 p.unit_type, 
@@ -1181,7 +1187,7 @@ class OrderController {
                     ), '-'
                 ) AS finishing_names
             FROM order_items oi
-            $materialJoin
+            $materialJoin $variantJoins
             LEFT JOIN stores s ON oi.maklun = s.store_id
             LEFT JOIN products p ON oi.product_id = p.product_id
             LEFT JOIN categories c ON p.category_id = c.category_id

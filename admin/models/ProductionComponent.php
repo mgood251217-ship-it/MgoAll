@@ -13,12 +13,12 @@ class ProductionComponent {
             $row = $this->db->query("SELECT
                 (SELECT COUNT(*) FROM information_schema.TABLES
                     WHERE TABLE_SCHEMA = DATABASE()
-                      AND TABLE_NAME IN ('production_components', 'production_component_links')) AS tables_ready,
+                      AND TABLE_NAME = 'production_components') AS tables_ready,
                 EXISTS(SELECT 1 FROM information_schema.COLUMNS
                     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'product_variant_components'
                       AND COLUMN_NAME = 'component_id') AS column_ready
             ")->fetch_assoc();
-            $this->ready = (int)$row['tables_ready'] === 2 && (bool)$row['column_ready'];
+            $this->ready = (int)$row['tables_ready'] === 1 && (bool)$row['column_ready'];
         }
 
         return $this->ready;
@@ -68,20 +68,6 @@ class ProductionComponent {
         $stmt->close();
     }
 
-    public function updateLinks($store, $source, $target) {
-        $stmt = $this->db->prepare('UPDATE production_component_links SET component_id = ? WHERE store_id = ? AND component_id = ?');
-        $stmt->bind_param('iii', $target, $store, $source);
-        $stmt->execute();
-        $stmt->close();
-    }
-
-    public function saveAlias($store, $key, $name, $target) {
-        $stmt = $this->db->prepare('INSERT INTO production_component_links (store_id, product_id, variant_id, legacy_key, legacy_name, component_id) VALUES (?, 0, 0, ?, ?, ?) ON DUPLICATE KEY UPDATE component_id = VALUES(component_id)');
-        $stmt->bind_param('issi', $store, $key, $name, $target);
-        $stmt->execute();
-        $stmt->close();
-    }
-
     public function delete($store, $id) {
         $stmt = $this->db->prepare('DELETE FROM production_components WHERE id = ? AND store_id = ?');
         $stmt->bind_param('ii', $id, $store);
@@ -102,34 +88,37 @@ class ProductionComponent {
         return $rows;
     }
 
-    public function getLinks($store) {
-        if (!$this->isAvailable()) {
-            return [];
+    public function rewriteSnapshots($store, $rewrite, $product = 0) {
+        $changed = 0;
+        foreach (['order_items', 'deleted_order_items', 'failure'] as $table) {
+            $stmt = $this->db->prepare('SELECT COLUMN_NAME, COLUMN_KEY FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?');
+            $stmt->bind_param('s', $table); $stmt->execute();
+            $columns = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'COLUMN_KEY', 'COLUMN_NAME'); $stmt->close();
+            if (!isset($columns['store_id'])) continue;
+            $fields = array_values(array_intersect(['product_variant_data', 'tier_price_data'], array_keys($columns)));
+            if (!$fields) continue;
+            $keys = array_keys(array_filter($columns, function ($key) { return $key === 'PRI'; }));
+            if (!$keys) foreach (['order_item_id', 'failure_id', 'id'] as $key) if (isset($columns[$key])) { $keys = [$key]; break; }
+            if (!$keys) throw new RuntimeException('Identitas baris ' . $table . ' tidak ditemukan.');
+            $where = 'store_id = ?'; $params = [$store];
+            if ($product && isset($columns['product_id'])) { $where .= ' AND product_id = ?'; $params[] = $product; }
+            $conditions = array_map(function ($field) { return "`$field` LIKE '%components%'"; }, $fields);
+            $stmt = $this->db->prepare("SELECT * FROM `$table` WHERE $where AND (" . implode(' OR ', $conditions) . ') FOR UPDATE');
+            $stmt->bind_param(str_repeat('i', count($params)), ...$params); $stmt->execute();
+            $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $stmt->close();
+            foreach ($rows as $row) foreach ($fields as $field) {
+                if (empty($row[$field])) continue;
+                $data = json_decode($row[$field], true, 512, JSON_THROW_ON_ERROR);
+                $updated = $rewrite($data, $row);
+                if ($updated === $data) continue;
+                $json = json_encode($updated, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+                $match = array_unique(array_merge($keys, ['store_id', $field]));
+                $params = [$json]; $where = [];
+                foreach ($match as $key) { $where[] = "`$key` <=> ?"; $params[] = $row[$key]; }
+                $stmt = $this->db->prepare("UPDATE `$table` SET `$field` = ? WHERE " . implode(' AND ', $where));
+                $stmt->bind_param(str_repeat('s', count($params)), ...$params); $stmt->execute(); $changed += $stmt->affected_rows; $stmt->close();
+            }
         }
-        $stmt = $this->db->prepare('SELECT legacy_key, component_id FROM production_component_links WHERE store_id = ?');
-        $stmt->bind_param('i', $store);
-        $stmt->execute();
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-
-        return $rows;
-    }
-
-    public function saveLink($store, $product, $variant, $key, $name, $component, $onlyMissing) {
-        $update = $onlyMissing ? 'component_id = production_component_links.component_id' : 'component_id = VALUES(component_id)';
-        $stmt = $this->db->prepare("INSERT INTO production_component_links (store_id, product_id, variant_id, legacy_key, legacy_name, component_id) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE $update");
-        $stmt->bind_param('iiissi', $store, $product, $variant, $key, $name, $component);
-        $stmt->execute();
-        $stmt->close();
-    }
-
-    public function getLegacyRows($store, $product) {
-        $stmt = $this->db->prepare('SELECT product_id, quantity, product_variant_data FROM order_items WHERE store_id = ? AND (? = 0 OR product_id = ?) AND product_variant_data IS NOT NULL ORDER BY order_item_id');
-        $stmt->bind_param('iii', $store, $product, $product);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $stmt->close();
-
-        return $result;
+        return $changed;
     }
 }

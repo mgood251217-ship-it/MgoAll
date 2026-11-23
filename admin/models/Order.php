@@ -169,12 +169,15 @@ class Order {
     }
 
     public function getOrderItemsWithDetails($order_id) {
+        $variants = new ProductVariant($this->koneksi);
+        $variantFields = $variants->isAvailable() ? ', ' . ProductVariant::orderFields() : '';
+        $variantJoins = $variants->isAvailable() ? ProductVariant::orderJoins() : '';
         $hasMaterial = (new ProductLaserConversion($this->koneksi))->hasOrderMaterials();
         $materialName = $hasMaterial ? 'laser.name AS laser_material_name' : 'NULL AS laser_material_name';
         $materialJoin = $hasMaterial ? 'LEFT JOIN products laser ON laser.product_id = oi.laser_product_id AND laser.store_id = oi.store_id' : '';
         $stmt = $this->koneksi->prepare("
             SELECT 
-                oi.*, $materialName,
+                oi.*, $materialName$variantFields,
                 COALESCE(p.name, oi.judul) AS product_name,
                 p.category_id,
                 c.name AS category, 
@@ -190,7 +193,7 @@ class Order {
                     ), '-'
                 ) AS finishing_names
             FROM order_items oi
-            $materialJoin
+            $materialJoin $variantJoins
             LEFT JOIN stores s ON oi.maklun = s.store_id
             LEFT JOIN products p ON oi.product_id = p.product_id
             LEFT JOIN categories c ON p.category_id = c.category_id
@@ -349,10 +352,13 @@ class Order {
     }
 
     public function getDetailedOrderByIntervalDate($store_id, $start_date, $end_date){
+        $variants = new ProductVariant($this->koneksi);
+        $variantFields = $variants->isAvailable() ? ', ' . ProductVariant::orderFields() : '';
+        $variantJoins = $variants->isAvailable() ? ProductVariant::orderJoins('i') : '';
         $hasMaterial = (new ProductLaserConversion($this->koneksi))->hasOrderMaterials();
         $materialName = $hasMaterial ? 'laser.name AS laser_material_name' : 'NULL AS laser_material_name';
         $materialJoin = $hasMaterial ? 'LEFT JOIN products laser ON laser.product_id = i.laser_product_id AND laser.store_id = i.store_id' : '';
-        $stmt = $this->koneksi->prepare("SELECT i.*, $materialName, o.nomorator, o.customer_name, o.date, o.order_id, p.price, COALESCE(p.name, i.judul) AS product_name,
+        $stmt = $this->koneksi->prepare("SELECT i.*, $materialName$variantFields, o.nomorator, o.customer_name, o.date, o.order_id, p.price, COALESCE(p.name, i.judul) AS product_name,
                 COALESCE(
                     (SELECT GROUP_CONCAT(f.name SEPARATOR ' ') 
                      FROM finishings f
@@ -360,7 +366,7 @@ class Order {
                     ), '-'
                 ) AS finishing_names
                 FROM order_items i
-                $materialJoin
+                $materialJoin $variantJoins
                 INNER JOIN orders o ON i.order_id = o.order_id
                 LEFT JOIN products p ON i.product_id = p.product_id
                 WHERE o.store_id = ? AND o.date BETWEEN ? AND ?

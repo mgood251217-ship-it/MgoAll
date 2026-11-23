@@ -108,7 +108,7 @@ class VariantController {
             $options = ProductVariantController::options(array_column($groups, 'name'), $values);
             $updates[] = ['id' => (int)$v['id'], 'json' => json_encode($options, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), 'key' => json_encode(array_values($options), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)];
         }
-        // Simpan penghubung nama meteran lama sebelum nama/urutan pilihan berubah.
+        // Hubungkan langsung komponen nota lama sebelum pilihan varian diubah.
         if ($this->components->isAvailable()) foreach ($current as $v) foreach ($v['components'] as $c) {
             if (!empty($c['component_id'])) $this->components->link($store, $product, $v, $c['name'], $c['component_id'], true);
         }
@@ -143,7 +143,6 @@ class VariantController {
         if ($saved) try { updateStoreCache($store, 'production_components'); updateStoreCache($store, 'product_variants'); } catch (Throwable $e) { error_log('Component cache: ' . $e->getMessage()); }
         $filters = ['store_id' => $store, 'category_id' => (int)($_POST['category_id'] ?? 0), 'product_id' => (int)($_POST['product_id'] ?? 0)];
         if (!empty($_POST['variant_id'])) $filters['variant_id'] = (int)$_POST['variant_id'];
-        if (!empty($_POST['show_legacy'])) $filters['legacy'] = 1;
         header('Location: /product-variants?' . http_build_query($filters)); exit;
     }
 
@@ -161,26 +160,6 @@ class VariantController {
                 $stmt->execute(); $stmt->close();
             }
             return $id ? 'Nama komponen diperbarui untuk meteran lama dan baru. Harga dan jumlah pada nota tetap.' : 'Komponen ditambahkan. Pilih komponen ini pada varian yang menggunakannya.';
-        });
-    }
-
-    public function linkComponents() {
-        $this->componentAction(function ($store) {
-            $keys = $_POST['legacy_key'] ?? []; $ids = $_POST['legacy_component_id'] ?? [];
-            if (!is_array($keys) || !is_array($ids) || count($keys) !== count($ids) || count($keys) > 1000) throw new InvalidArgumentException('Daftar pemetaan tidak valid.');
-            $groups = $this->components->legacyGroups($store, (int)($_POST['product_id'] ?? 0));
-            $masters = array_column($this->components->getByStore($store), 'name', 'id'); $count = 0;
-            foreach (array_values($keys) as $i => $key) {
-                $id = array_values($ids)[$i];
-                if (!is_string($key) || !isset($groups[$key]) || !is_scalar($id) || !preg_match('/^\d*$/D', (string)$id)) throw new InvalidArgumentException('Pemetaan sudah berubah atau tidak tersedia di toko ini. Muat ulang halaman.');
-                if ($id === '' || (int)$id === 0) continue;
-                $id = (int)$id;
-                if (!isset($masters[$id])) throw new InvalidArgumentException('Pilih komponen dari toko yang sama.');
-                $g = $groups[$key];
-                $this->components->link($store, $g['product_id'], $g['snapshot'], $g['name'], $id); $count++;
-            }
-            if (!$count) throw new InvalidArgumentException('Pilih minimal satu komponen tujuan.');
-            return "$count pemetaan disimpan. Nama di meteran mengikuti master; harga dan jumlah pada nota tidak diubah.";
         });
     }
 
@@ -298,12 +277,10 @@ class VariantController {
                     $old = $oldRecipes[$c['recipe_id']] ?? null;
                     if ($old && empty($old['component_id'])) $this->components->link($store, $product, $oldVariant, $old['name'], $c['component_id'], true);
                 }
-                $links = $componentsReady ? $this->components->links($store) : [];
                 $masterNames = $componentsReady ? array_column($this->components->getByStore($store), 'name', 'id') : [];
                 $combined = [];
                 foreach ($components as $c) {
                     if ($componentsReady) {
-                        $c['component_id'] = ProductionComponentController::resolveId($c['component_id'], $links);
                         $c['name'] = $masterNames[$c['component_id']];
                     }
                     $componentKey = $componentsReady ? 'id:' . $c['component_id'] : 'name:' . $c['name'];

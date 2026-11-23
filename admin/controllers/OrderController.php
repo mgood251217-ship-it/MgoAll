@@ -1054,7 +1054,7 @@ class OrderController {
             'size' => $final_size,
             'quantity' => $quantity,
             'product_variant_id' => $variant['id'] ?? null,
-            'product_variant_data' => $variant ? json_encode($variant, JSON_THROW_ON_ERROR) : null,
+            'product_variant_data' => $variant ? json_encode(ProductVariantController::productionData($variant), JSON_THROW_ON_ERROR) : null,
             'variant' => $variant,
             'stok_butuh' => $stok_butuh,
             'finishing_str' => $finishing_str,

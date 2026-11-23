@@ -411,7 +411,6 @@ class ProductBundleController {
         $totals = [];
         $masters = new ProductionComponentController($this->db);
         $names = array_column($masters->getByStore($store), 'name', 'id');
-        $links = $masters->links($store);
         foreach ($this->orderItems($store, $start, $end) as $item) {
             if (
                 $categories !== null &&
@@ -431,10 +430,6 @@ class ProductBundleController {
             }
             foreach ($recipe as $component) {
                 $id = (int) ($component['component_id'] ?? 0);
-                if (!$id && $variant) {
-                    $id = (int) ($links[ProductionComponentController::legacyKey($variant, $component['name'])] ?? 0);
-                }
-                $id = ProductionComponentController::resolveId($id, $links);
                 $name = $names[$id] ?? $component['name'];
                 $totals[$name] = ($totals[$name] ?? 0) + (float) $component['quantity'] * $item['quantity'];
             }

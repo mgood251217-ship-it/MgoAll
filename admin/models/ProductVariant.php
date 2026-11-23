@@ -60,8 +60,21 @@ class ProductVariant {
         return $rows;
     }
 
+    public static function orderFields() {
+        return 'variant_master.options_json AS variant_options_json, variant_master.price AS variant_master_price,
+            variant_product.name AS variant_product_name, variant_category.name AS variant_category_name';
+    }
+
+    public static function orderJoins($alias = 'oi') {
+        return "LEFT JOIN product_variants variant_master ON variant_master.id = $alias.product_variant_id
+                AND variant_master.product_id = $alias.product_id AND variant_master.store_id = $alias.store_id
+            LEFT JOIN products variant_product ON variant_product.product_id = $alias.product_id AND variant_product.store_id = $alias.store_id
+            LEFT JOIN categories variant_category ON variant_category.category_id = variant_product.category_id AND variant_category.store_id = $alias.store_id";
+    }
+
     public function getOrderItem($store, $product, $order, $item) {
-        $stmt = $this->db->prepare('SELECT product_variant_id, product_variant_data FROM order_items WHERE order_item_id = ? AND order_id = ? AND store_id = ? AND product_id = ?');
+        $fields = self::orderFields(); $joins = self::orderJoins();
+        $stmt = $this->db->prepare("SELECT oi.*, $fields FROM order_items oi $joins WHERE oi.order_item_id = ? AND oi.order_id = ? AND oi.store_id = ? AND oi.product_id = ?");
         $stmt->bind_param('iiii', $item, $order, $store, $product);
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
@@ -71,16 +84,17 @@ class ProductVariant {
     }
 
     public static function productionSnapshotFilter() {
-        return "COALESCE(JSON_EXTRACT(IF(JSON_VALID(oi.product_variant_data), oi.product_variant_data, '{}'), '$.id'), 0) > 0";
+        return "oi.product_variant_data IS NOT NULL AND COALESCE(oi.product_variant_id, JSON_EXTRACT(IF(JSON_VALID(oi.product_variant_data), oi.product_variant_data, '{}'), '$.id'), 0) > 0";
     }
 
     public function getProductionRows($store, $start, $end, $withUnitType) {
         $unitField = $withUnitType ? ', p.unit_type AS current_unit_type' : '';
         $productJoin = $withUnitType ? ' LEFT JOIN products p ON p.product_id = oi.product_id AND p.store_id = oi.store_id' : '';
         $hasSnapshot = self::productionSnapshotFilter();
-        $stmt = $this->db->prepare("SELECT oi.quantity, oi.product_variant_data$unitField
+        $fields = self::orderFields(); $joins = self::orderJoins();
+        $stmt = $this->db->prepare("SELECT oi.product_id, oi.product_variant_id, oi.quantity, oi.product_variant_data, $fields$unitField
             FROM order_items oi JOIN orders o ON o.order_id = oi.order_id AND o.store_id = oi.store_id
-            $productJoin WHERE oi.store_id = ? AND o.date BETWEEN ? AND ?
+            $productJoin $joins WHERE oi.store_id = ? AND o.date BETWEEN ? AND ?
                 AND $hasSnapshot");
         $stmt->bind_param('iss', $store, $start, $end);
         $stmt->execute();

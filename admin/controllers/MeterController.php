@@ -810,8 +810,10 @@ class MeterController {
     public function getBahanSublim() {
         global $store_id;
         [$start, $end] = $this->getDateRange();
-        $stmt = $this->koneksi->prepare("SELECT oi.size, oi.quantity, oi.product_variant_data
+        $variantFields = ProductVariant::orderFields(); $variantJoins = ProductVariant::orderJoins();
+        $stmt = $this->koneksi->prepare("SELECT oi.product_id, oi.product_variant_id, oi.size, oi.quantity, oi.product_variant_data, $variantFields
             FROM order_items oi
+            $variantJoins
             JOIN orders o ON o.order_id = oi.order_id AND o.store_id = oi.store_id
             WHERE oi.store_id = ? AND o.date BETWEEN ? AND ?
                 AND oi.product_variant_data IS NOT NULL
@@ -822,7 +824,6 @@ class MeterController {
         $stmt->close();
         $masters = new ProductionComponentController($this->koneksi);
         $masterNames = array_column($masters->getByStore($store_id), 'name', 'id');
-        $links = $masters->links($store_id);
         $meteran = $kiloan = [];
         foreach ($rows as $row) {
             $saved = ProductVariantController::snapshot($row);
@@ -860,10 +861,6 @@ class MeterController {
                     continue;
                 }
                 $id = (int)($component['component_id'] ?? 0);
-                if (!$id) {
-                    $id = (int)($links[ProductionComponentController::legacyKey($saved, $component['name'])] ?? 0);
-                }
-                $id = ProductionComponentController::resolveId($id, $links);
                 $name = $masterNames[$id] ?? $component['name'];
                 if ($weight) {
                     if (!isset($kiloan[$name])) {

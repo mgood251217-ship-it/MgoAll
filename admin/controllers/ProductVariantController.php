@@ -51,13 +51,37 @@ class ProductVariantController {
             return null;
         }
         $data = json_decode($row['product_variant_data'], true, 512, JSON_THROW_ON_ERROR);
-        if (
-            !is_array($data) || empty($data['id']) || empty($data['options']) ||
-            !isset($data['price'], $data['components'], $data['product_name'], $data['category'])
-        ) {
-            throw new RuntimeException('Data varian pada nota tidak lengkap.');
+        if (!is_array($data) || !isset($data['components']) || !is_array($data['components'])) {
+            throw new RuntimeException('Data komponen varian pada nota tidak lengkap.');
         }
+        $id = (int)($row['product_variant_id'] ?? $data['id'] ?? 0);
+        if (!$id) return null;
+        $options = isset($row['variant_options_json'])
+            ? json_decode($row['variant_options_json'], true, 512, JSON_THROW_ON_ERROR)
+            : ($data['options'] ?? $data['legacy_options'] ?? []);
+        $pricing = !empty($row['tier_price_data']) ? json_decode($row['tier_price_data'], true, 512, JSON_THROW_ON_ERROR) : [];
+        return [
+            'id' => $id,
+            'options' => $options,
+            'label' => $options ? implode(' / ', array_values($options)) : ($data['label'] ?? 'Varian #' . $id),
+            'price' => (float)($pricing['base'] ?? $data['price'] ?? $row['variant_master_price'] ?? $row['price'] ?? $row['unit'] ?? 0),
+            'components' => $data['components'],
+            'product_name' => $row['variant_product_name'] ?? $data['product_name'] ?? $row['product_name'] ?? 'Produk #' . ($row['product_id'] ?? 0),
+            'category' => $data['category'] ?? $row['variant_category_name'] ?? $row['category'] ?? '',
+            'unit_type' => $data['unit_type'] ?? $row['current_unit_type'] ?? $row['unit_type'] ?? 'PCS',
+            '_legacy_options' => $data['legacy_options'] ?? $data['options'] ?? $options,
+        ];
+    }
 
+    public static function productionData($variant) {
+        $data = ['components' => $variant['components'], 'category' => $variant['category'],
+            'unit_type' => $variant['unit_type'] ?? 'PCS'];
+        foreach ($data['components'] as $component) {
+            if (empty($component['component_id'])) {
+                $data['legacy_options'] = $variant['_legacy_options'] ?? $variant['options'];
+                break;
+            }
+        }
         return $data;
     }
 
@@ -77,7 +101,6 @@ class ProductVariantController {
         $componentModel = new ProductionComponentController($this->db);
         $hasMasters = $componentModel->isAvailable();
         $masterNames = $hasMasters ? array_column($componentModel->getByStore($store), 'name', 'id') : [];
-        $links = $hasMasters ? $componentModel->links($store) : [];
         $components = $this->getComponentsByVariant($store, $productIds, $hasMasters);
 
         foreach ($rows as &$row) {
@@ -85,12 +108,7 @@ class ProductVariantController {
             $row['label'] = implode(' / ', array_values($row['options']));
             $row['components'] = $components[(int)$row['id']] ?? [];
             foreach ($row['components'] as &$component) {
-                $componentId = $component['component_id'] ?? null;
-                if ($componentId === null) {
-                    $legacyKey = ProductionComponentController::legacyKey($row, $component['name']);
-                    $componentId = $links[$legacyKey] ?? 0;
-                }
-                $linkedId = ProductionComponentController::resolveId($componentId, $links);
+                $linkedId = (int)($component['component_id'] ?? 0);
                 if (isset($masterNames[$linkedId])) {
                     $component['component_id'] = (int)$linkedId;
                     $component['name'] = $masterNames[$linkedId];
@@ -123,7 +141,8 @@ class ProductVariantController {
             'price' => (float)$variant['price'],
             'components' => $variant['components'],
             'product_name' => $product['name'],
-            'category' => $product['category']
+            'category' => $product['category'],
+            'unit_type' => $product['unit_type'] ?? 'PCS'
         ];
     }
 
@@ -180,7 +199,8 @@ class ProductVariantController {
         foreach ($items as &$row) {
             $row['variant'] = self::snapshot($row);
             $row['product_variant_id'] = $row['product_variant_id'] ?? null;
-            unset($row['product_variant_data']);
+            if ($row['variant']) unset($row['variant']['_legacy_options']);
+            unset($row['product_variant_data'], $row['variant_options_json'], $row['variant_master_price'], $row['variant_product_name'], $row['variant_category_name']);
         }
         unset($row);
 
@@ -195,7 +215,6 @@ class ProductVariantController {
         $masterModel = new ProductionComponentController($this->db);
         $hasMasters = $masterModel->isAvailable();
         $masters = array_column($masterModel->getByStore($store), 'name', 'id');
-        $links = $masterModel->links($store);
         $units = $unitTypes === null ? null : array_map(function ($unit) {
             return strtoupper(trim($unit));
         }, (array)$unitTypes);
@@ -228,8 +247,7 @@ class ProductVariantController {
             }
             foreach ($components as $component) {
                 $legacyKey = ProductionComponentController::legacyKey($saved, $component['name']);
-                $componentId = !empty($component['component_id']) ? $component['component_id'] : ($links[$legacyKey] ?? 0);
-                $id = ProductionComponentController::resolveId($componentId, $links);
+                $id = (int)($component['component_id'] ?? 0);
                 if ($id) {
                     $key = 'component:' . $id;
                 } elseif ($hasMasters) {
