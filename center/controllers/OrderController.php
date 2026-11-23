@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../admin/models/Activity.php';
+require_once __DIR__ . '/../../admin/models/Order.php';
 require_once __DIR__ . '/../../admin/controllers/ProductFinishingPriceController.php';
 require_once __DIR__ . '/../../admin/controllers/ProductFinishingController.php';
 require_once __DIR__ . '/../../admin/controllers/ProductPriceTierController.php';
@@ -211,7 +212,7 @@ class OrderController {
         $this->koneksi->begin_transaction();
 
         try {
-            $stmt = $this->koneksi->prepare("SELECT * FROM orders WHERE order_id = ?");
+            $stmt = $this->koneksi->prepare("SELECT * FROM orders WHERE order_id = ? FOR UPDATE");
             $stmt->bind_param("i", $order_id);
             $stmt->execute();
             $order = $stmt->get_result()->fetch_assoc();
@@ -231,18 +232,7 @@ class OrderController {
             $stmt->execute();
             $stmt->close();
 
-            $stmtItems = $this->koneksi->prepare("SELECT * FROM order_items WHERE order_id = ?");
-            $stmtItems->bind_param("i", $order_id);
-            $stmtItems->execute();
-            $resultItems = $stmtItems->get_result();
-            $stmtItems->close();
-
-            $stmtInsert = $this->koneksi->prepare("INSERT INTO deleted_order_items (order_item_id, store_id, order_id, product_id, judul, finishing, size, quantity, unit, amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            while ($item = $resultItems->fetch_assoc()) {
-                $stmtInsert->bind_param("iiiisssiss", $item['order_item_id'], $item['store_id'], $item['order_id'], $item['product_id'], $item['judul'], $item['finishing'], $item['size'], $item['quantity'], $item['unit'], $item['amount']);
-                $stmtInsert->execute();
-            }
-            $stmtInsert->close();
+            (new Order($this->koneksi))->archiveOrderItems($order_id, (int)$order['store_id']);
 
             $this->koneksi->query("DELETE FROM order_items WHERE order_id = $order_id");
             $this->koneksi->query("DELETE FROM orders WHERE order_id = $order_id");

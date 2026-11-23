@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/ProductHistoryController.php';
 require_once __DIR__ . '/../../admin/models/Activity.php';
+require_once __DIR__ . '/../../admin/models/Order.php';
+require_once __DIR__ . '/../../admin/controllers/ProductPriceTierController.php';
 
 class ActivityController {
     private $db;
@@ -28,11 +30,7 @@ class ActivityController {
         $archives = $this->query("SELECT r.*, a.name AS deleted_by_name FROM deleted_orders r
             LEFT JOIN administrator a ON a.administrator_id = r.deleted_by
             WHERE r.store_id = ? AND r.order_id IN ($placeholders)", array_merge([$store], $ids));
-        $archivedItems = $this->query("SELECT i.*,
-            (SELECT GROUP_CONCAT(f.name ORDER BY f.finishing_id SEPARATOR ', ') FROM finishings f
-                WHERE f.store_id = i.store_id AND FIND_IN_SET(f.finishing_id, REPLACE(i.finishing, ' ', ''))) AS finishing_names
-            FROM deleted_order_items i WHERE i.store_id = ? AND i.order_id IN ($placeholders)
-            ORDER BY i.deleted_order_item_id", array_merge([$store], $ids));
+        $archivedItems = ProductPriceTierController::describe((new Order($this->db))->getArchivedItems($store, $ids));
         $items = [];
         foreach ($archivedItems as $item) $items[$item['order_id']][] = $item;
         foreach ($archives as &$archive) $archive['items'] = $items[$archive['order_id']] ?? [];

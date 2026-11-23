@@ -73,7 +73,11 @@ $money = function ($value) { return format_rupiah($value); };
         <div class="table-scroll"><table class="table-modern">
             <thead><tr><th>Produk</th><th>Finishing</th><th>Ukuran</th><th>Qty</th><th>Harga</th><th>Jumlah</th></tr></thead>
             <tbody><?php foreach ($row['items'] as $item): ?><tr>
-                <td><?= $escape($item['judul']) ?><br><small>Produk #<?= (int)$item['product_id'] ?></small></td><td><?= $escape($item['finishing_names'] ?? ($item['finishing'] ?: '-')) ?></td><td><?= $escape($item['size']) ?></td><td><?= $escape($item['quantity']) ?></td><td><?= $money($item['unit']) ?></td><td><?= $money($item['amount']) ?></td>
+                <td><?= $escape($item['judul']) ?>
+                    <?php if (!empty($item['variant'])): ?><br><small>Varian: <?= $escape($item['variant']['label']) ?></small><?php endif; ?>
+                    <?php if (!empty($item['laser_material_name'])): ?><br><small>Bahan: <?= $escape($item['laser_material_name']) ?></small><?php endif; ?>
+                    <?php if (!empty($item['product_id'])): ?><br><small>Produk #<?= (int)$item['product_id'] ?></small><?php endif; ?>
+                </td><td><?= $escape($item['finishing_names'] ?? ($item['finishing'] ?: '-')) ?></td><td><?= $escape($item['size']) ?></td><td><?= $escape($item['quantity']) ?></td><td><?= $money($item['unit']) ?></td><td><?= $money($item['amount']) ?></td>
             </tr><?php endforeach; ?></tbody>
         </table></div>
         <?php endif; ?>

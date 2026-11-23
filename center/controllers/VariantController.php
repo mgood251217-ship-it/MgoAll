@@ -121,6 +121,15 @@ class VariantController {
         return (int)$p['category_id'];
     }
 
+    private function updateVariantCaches($store, $modules) {
+        set_error_handler(function ($severity, $message) { throw new RuntimeException($message); });
+        try { updateStoreCache($store, $modules); }
+        catch (Throwable $e) {
+            error_log('Variant cache: ' . $e->getMessage());
+            $_SESSION['swal_error'] = 'Perubahan sudah tersimpan, tetapi cache gagal diperbarui. Gunakan tombol Update Cache di halaman Produk.';
+        } finally { restore_error_handler(); }
+    }
+
     private function componentAction($action) {
         $store = (int)($_POST['store_id'] ?? 0); $transaction = false; $saved = false;
         $driver = new mysqli_driver(); $report = $driver->report_mode;
@@ -140,7 +149,7 @@ class VariantController {
             $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : ($e instanceof mysqli_sql_exception && $e->getCode() === 1062 ? 'Nama komponen sudah dipakai di toko ini. Pilih komponen yang tersedia.' : 'Gagal menyimpan komponen produksi.');
             error_log('Production component: ' . $e->getMessage());
         } finally { mysqli_report($report); }
-        if ($saved) try { updateStoreCache($store, 'production_components'); updateStoreCache($store, 'product_variants'); } catch (Throwable $e) { error_log('Component cache: ' . $e->getMessage()); }
+        if ($saved) $this->updateVariantCaches($store, ['production_components', 'product_variants', 'orders']);
         $filters = ['store_id' => $store, 'category_id' => (int)($_POST['category_id'] ?? 0), 'product_id' => (int)($_POST['product_id'] ?? 0)];
         if (!empty($_POST['variant_id'])) $filters['variant_id'] = (int)$_POST['variant_id'];
         header('Location: /product-variants?' . http_build_query($filters)); exit;
@@ -306,7 +315,7 @@ class VariantController {
             $_SESSION['swal_error'] = $e instanceof InvalidArgumentException ? $e->getMessage() : ($e instanceof mysqli_sql_exception && $e->getCode() === 1062 ? (($command ?? '') === 'configure_options' ? 'Perubahan membuat beberapa kombinasi varian menjadi sama. Pertahankan jenis yang membedakannya. Semua perubahan dibatalkan.' : 'Kombinasi varian yang sama sudah ada.') : 'Gagal menyimpan varian.');
             error_log('Product variant: ' . $e->getMessage());
         } finally { mysqli_report($report); }
-        if ($saved) try { updateStoreCache($store, 'product_variants'); updateStoreCache($store, 'products'); updateStoreCache($store, 'production_components'); updateStoreCache($store, 'product_price_tiers'); } catch (Throwable $e) { error_log('Variant cache: ' . $e->getMessage()); }
+        if ($saved) $this->updateVariantCaches($store, ['product_variants', 'products', 'production_components', 'product_price_tiers', 'orders']);
         header('Location: /product-variants?' . http_build_query(['store_id' => $store, 'category_id' => $category, 'product_id' => $product])); exit;
     }
 }

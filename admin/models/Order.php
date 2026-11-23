@@ -49,19 +49,52 @@ class Order {
         $stmt->close();
     }
 
-    public function archiveOrderItems($order_id) {
-        $stmtItems = $this->koneksi->prepare("SELECT * FROM order_items WHERE order_id = ?");
-        $stmtItems->bind_param("i", $order_id);
-        $stmtItems->execute();
-        $resultItems = $stmtItems->get_result();
-        $stmtItems->close();
+    private function itemColumns($table) {
+        $stmt = $this->koneksi->prepare('SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?');
+        $stmt->bind_param('s', $table); $stmt->execute();
+        $columns = array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'COLUMN_NAME'); $stmt->close();
+        return $columns;
+    }
 
-        $stmtInsert = $this->koneksi->prepare("INSERT INTO deleted_order_items (order_item_id, store_id, order_id, product_id, judul, finishing, size, quantity, unit, amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        while ($item = $resultItems->fetch_assoc()) {
-            $stmtInsert->bind_param("iiiisssiss", $item['order_item_id'], $item['store_id'], $item['order_id'], $item['product_id'], $item['judul'], $item['finishing'], $item['size'], $item['quantity'], $item['unit'], $item['amount']);
-            $stmtInsert->execute();
+    public function archiveOrderItems($order_id, $store = 0) {
+        $fields = ['order_item_id', 'store_id', 'order_id', 'product_id', 'judul', 'finishing', 'size', 'quantity', 'unit', 'amount'];
+        $source = $this->itemColumns('order_items');
+        foreach (['maklun', 'product_variant_id', 'product_variant_data', 'tier_price_data', 'product_finishing_price_id', 'laser_product_id'] as $field) {
+            if (in_array($field, $source, true)) $fields[] = $field;
         }
-        $stmtInsert->close();
+        if (array_diff($fields, $this->itemColumns('deleted_order_items'))) {
+            throw new RuntimeException('Skema arsip item belum lengkap. Jalankan SQL archive_order_item_details.sql sebelum menghapus order.');
+        }
+        $columns = implode(', ', array_map(function ($field) { return "`$field`"; }, $fields));
+        $where = 'order_id = ?' . ($store ? ' AND store_id = ?' : '');
+        $stmt = $this->koneksi->prepare("INSERT INTO deleted_order_items ($columns) SELECT $columns FROM order_items WHERE $where");
+        if ($store) $stmt->bind_param('ii', $order_id, $store);
+        else $stmt->bind_param('i', $order_id);
+        $stmt->execute(); $stmt->close();
+    }
+
+    public function getArchivedItems($store, $ids) {
+        if (!$ids) return [];
+        $columns = $this->itemColumns('deleted_order_items');
+        $fields = ''; $joins = '';
+        if (in_array('product_variant_id', $columns, true) && (new ProductVariant($this->koneksi))->isAvailable()) {
+            $fields .= ', ' . ProductVariant::orderFields();
+            $joins .= ProductVariant::orderJoins('i');
+        }
+        if (in_array('laser_product_id', $columns, true)) {
+            $fields .= ', laser.name AS laser_material_name';
+            $joins .= ' LEFT JOIN products laser ON laser.product_id = i.laser_product_id AND laser.store_id = i.store_id';
+        } else $fields .= ', NULL AS laser_material_name';
+        $marks = implode(',', array_fill(0, count($ids), '?'));
+        $order = in_array('deleted_order_item_id', $columns, true) ? 'i.deleted_order_item_id' : 'i.order_item_id';
+        $stmt = $this->koneksi->prepare("SELECT i.*, i.judul AS product_name $fields,
+            (SELECT GROUP_CONCAT(f.name ORDER BY f.finishing_id SEPARATOR ', ') FROM finishings f
+                WHERE f.store_id = ? AND FIND_IN_SET(f.finishing_id, REPLACE(i.finishing, ' ', ''))) AS finishing_names
+            FROM deleted_order_items i $joins WHERE i.store_id = ? AND i.order_id IN ($marks) ORDER BY $order");
+        $params = array_merge([$store, $store], array_map('intval', $ids));
+        $stmt->bind_param(str_repeat('i', count($params)), ...$params); $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC); $stmt->close();
+        return $rows;
     }
 
     public function deleteOrderAndItems($order_id) {
