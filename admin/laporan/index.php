@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../functions/productStock.php';
 require_once __DIR__ . '/../connect.php';
 require_once __DIR__ . '/../middleware/init_auth.php';
 
@@ -48,7 +49,7 @@ $stmt = $koneksi->prepare("
         p.product_id,
         p.name, 
         SUM(oi.quantity) AS total_qty,
-        SUM(CASE WHEN p.unit_type <> '~' THEN oi.amount ELSE 0 END) AS total_omset
+        SUM(CASE WHEN (" . stockTrackingSql($koneksi, 'products', 'p') . ") THEN oi.amount ELSE 0 END) AS total_omset
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.order_id
     JOIN products p ON p.product_id = oi.product_id

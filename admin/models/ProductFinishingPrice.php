@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../functions/productStock.php';
 
 class ProductFinishingPrice {
     private $koneksi;
@@ -53,9 +54,10 @@ class ProductFinishingPrice {
         if (!$this->isAvailable()) {
             return [];
         }
+        $finishingTracking = stockTrackingSql($this->koneksi, 'finishings', 'f');
         $stmt = $this->koneksi->prepare("SELECT r.*, p.name AS product_name,
                 p.category_id, c.name AS category, f.name AS finishing_name,
-                f.unit_type AS finishing_unit_type,
+                f.unit_type AS finishing_unit_type, ($finishingTracking) AS finishing_track_stock,
                 (c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type = 'M2') AS uses_area,
                 ((c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type = 'M2')
                     OR (c.name = 'LASER A3' AND r.panjang > 0 AND r.lebar > 0)) AS requires_size,

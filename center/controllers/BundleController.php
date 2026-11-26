@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../admin/functions/productStock.php';
 require_once __DIR__ . '/../../admin/controllers/ProductBundleController.php';
 require_once __DIR__ . '/ProductHistoryController.php';
 require_once __DIR__ . '/AdministratorAccessController.php';
@@ -47,7 +48,7 @@ class BundleController {
         if ($store && $ready) {
             // Batasi tiap tabel ke toko yang sama, tanpa membandingkan store_id teks antar-collation.
             $stmt = $this->db->prepare(
-                "SELECT p.product_id,p.name,p.unit_type,c.name AS category FROM products p JOIN categories c ON c.category_id=p.category_id AND c.store_id=? WHERE p.store_id=? AND p.unit_type IN ('PCS','~') AND UPPER(TRIM(c.name)) IN ('TEKSTIL','PAKAIAN','JERSEY','PELENGKAP','ANEKA CETAK') ORDER BY c.name,p.name"
+                "SELECT p.*,c.name AS category FROM products p JOIN categories c ON c.category_id=p.category_id AND c.store_id=? WHERE p.store_id=? AND p.unit_type IN ('PCS','~') AND UPPER(TRIM(c.name)) IN ('TEKSTIL','PAKAIAN','JERSEY','PELENGKAP','ANEKA CETAK') ORDER BY c.name,p.name"
             );
             $stmt->bind_param('ii', $store, $store);
             $stmt->execute();
@@ -168,14 +169,14 @@ class BundleController {
                 throw new InvalidArgumentException('Anda tidak memiliki akses ke toko ini.');
             }
             $stmt = $this->db->prepare(
-                'SELECT p.unit_type,c.name AS category FROM products p JOIN categories c ON c.category_id=p.category_id AND c.store_id=? WHERE p.store_id=? AND p.product_id=? FOR UPDATE'
+                'SELECT p.*,c.name AS category FROM products p JOIN categories c ON c.category_id=p.category_id AND c.store_id=? WHERE p.store_id=? AND p.product_id=? FOR UPDATE'
             );
             $stmt->bind_param('iii', $store, $store, $productId);
             $stmt->execute();
             $product = $stmt->get_result()->fetch_assoc();
             $stmt->close();
-            if (!$product || $product['unit_type'] !== '~' || strtoupper(trim($product['category'])) !== 'PELENGKAP') {
-                throw new InvalidArgumentException('Buat/pilih produk induk paket dari PELENGKAP dengan satuan ~.');
+            if (!$product || (!in_array($product['unit_type'], ['PCS', '~'], true) || tracksStock($product)) || strtoupper(trim($product['category'])) !== 'PELENGKAP') {
+                throw new InvalidArgumentException('Buat/pilih produk induk paket dari PELENGKAP dengan satuan PCS dan Kelola stok dimatikan.');
             }
             if ((new ProductVariantController($this->db))->getByProduct($store, $productId)) {
                 throw new InvalidArgumentException(

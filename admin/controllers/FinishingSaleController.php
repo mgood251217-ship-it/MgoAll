@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../functions/productStock.php';
 require_once __DIR__ . '/../models/ProductFinishing.php';
 require_once __DIR__ . '/../models/Order.php';
 
@@ -41,12 +42,12 @@ class FinishingSaleController {
         $amount = round($unit * $qty, 2);
         if (!is_finite($amount) || $amount > 9999999999999.99) throw new InvalidArgumentException('Jumlah atau ukuran terlalu besar.');
         $snapshot = ['rules' => [], 'factor' => $factor, 'normal' => $unit, 'base' => $price, 'discount' => (float)$discount,
-            'stock' => ['products' => [], 'finishings' => $unitType === '~' ? [] : [$id => $factor]],
+            'stock' => ['products' => [], 'finishings' => !tracksStock($finishing) ? [] : [$id => $factor]],
             'standalone_finishing' => ['id' => $id, 'name' => $finishing['name'], 'unit_type' => $unitType, 'price' => $price]];
         return ['item_type' => 'finishing', 'order_id' => (int)($input['order_id'] ?? 0), 'product_id' => null,
-            'product' => ['unit_type' => '~'], 'judul' => $finishing['name'], 'size' => $size, 'quantity' => $qty,
+            'product' => ['unit_type' => 'PCS', 'track_stock' => 0], 'judul' => $finishing['name'], 'size' => $size, 'quantity' => $qty,
             'stok_butuh' => 0, 'finishing_str' => (string)$id,
-            'finishing_to_reduce' => $unitType === '~' ? [] : [['finishing_id' => $id, 'qty' => $factor * $qty]],
+            'finishing_to_reduce' => !tracksStock($finishing) ? [] : [['finishing_id' => $id, 'qty' => $factor * $qty]],
             'unit' => $unit, 'amount' => $amount, 'product_finishing_price_id' => null,
             'laser_product_id' => null, 'tier_price_data' => json_encode($snapshot, JSON_THROW_ON_ERROR)];
     }

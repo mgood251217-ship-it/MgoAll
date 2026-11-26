@@ -113,7 +113,7 @@ class ProductBundle {
 
     public function parentProduct($targetStore, $targetProduct) {
         $stmt = $this->query(
-            'SELECT p.unit_type,c.name AS category FROM products p JOIN categories c ON c.category_id=p.category_id AND c.store_id=? WHERE p.store_id=? AND p.product_id=?',
+            'SELECT p.*,c.name AS category FROM products p JOIN categories c ON c.category_id=p.category_id AND c.store_id=? WHERE p.store_id=? AND p.product_id=?',
             [$targetStore, $targetStore, $targetProduct]
         );
         $parent = $stmt->get_result()->fetch_assoc();

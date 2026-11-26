@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../functions/productStock.php';
 class Product{
     private $koneksi;
 
@@ -10,6 +11,7 @@ class Product{
         $stmt = $this->koneksi->prepare("INSERT INTO products (store_id, category_id, name, price, unit_type, reasonable_price, failed_price) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param("iisssss", $data->store_id, $data->category_id, $data->name, $data->price, $data->unit, $data->reasonable_price, $data->failed_price);
         $success = $stmt->execute();
+        if ($success) saveStockTracking($this->koneksi, 'products', (int)($this->koneksi->insert_id), (array)$data);
         $stmt->close();
         return $success;
     }
@@ -18,6 +20,7 @@ class Product{
         $stmt = $this->koneksi->prepare("INSERT INTO finishings (store_id, category_id, name, price, unit_type, reasonable_price, failed_price) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param("iisssss", $data->store_id, $data->category_id, $data->name, $data->price, $data->unit, $data->reasonable_price, $data->failed_price);
         $success = $stmt->execute();
+        if ($success) saveStockTracking($this->koneksi, 'finishings', (int)($this->koneksi->insert_id), (array)$data);
         $stmt->close();
         return $success;
     }
@@ -26,6 +29,7 @@ class Product{
         $stmt = $this->koneksi->prepare("UPDATE products SET category_id = ?, name = ?, price = ?, unit_type = ?, reasonable_price = ?, failed_price = ? WHERE product_id = ? LIMIT 1");
         $stmt->bind_param("isssssi", $data->category_id, $data->name, $data->price, $data->unit, $data->reasonable_price, $data->failed_price, $data->id);
         $success = $stmt->execute();
+        if ($success) saveStockTracking($this->koneksi, 'products', (int)($data->id), (array)$data);
         $stmt->close();
         return $success;
     }
@@ -34,6 +38,7 @@ class Product{
         $stmt = $this->koneksi->prepare("UPDATE finishings SET category_id = ?, name = ?, price = ?, unit_type = ?, reasonable_price = ?, failed_price = ? WHERE finishing_id = ? LIMIT 1");
         $stmt->bind_param("isssssi", $data->category_id, $data->name, $data->price, $data->unit, $data->reasonable_price, $data->failed_price, $data->finishing_id);
         $success = $stmt->execute();
+        if ($success) saveStockTracking($this->koneksi, 'finishings', (int)($data->finishing_id), (array)$data);
         $stmt->close();
         return $success;
     }
@@ -180,7 +185,7 @@ class Product{
             INNER JOIN orders o ON o.order_id = oi.order_id AND o.store_id = ? 
             WHERE 
                 p.store_id = ? 
-                AND NOT p.unit_type = '~' 
+                AND (" . stockTrackingSql($this->koneksi, 'products', 'p') . ")
                 AND DATE(o.date) BETWEEN ? AND ?
             GROUP BY p.product_id 
             ORDER BY p.category_id DESC, p.name ASC
@@ -236,7 +241,7 @@ class Product{
     }
 
     public function reduceStock($quantity, $product_id) {
-        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock - CAST(? AS DECIMAL(30,12)) WHERE product_id = ?");
+        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock - CAST(? AS DECIMAL(30,12)) WHERE product_id = ? AND (" . stockTrackingSql($this->koneksi, 'products') . ")");
         $stmt->bind_param("si", $quantity, $product_id);
         $success = $stmt->execute();
         $stmt->close();
@@ -244,7 +249,7 @@ class Product{
     }
 
     public function reduceFinishingStock($quantity, $finishing_id) {
-        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock - CAST(? AS DECIMAL(30,12)) WHERE finishing_id = ?");
+        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock - CAST(? AS DECIMAL(30,12)) WHERE finishing_id = ? AND (" . stockTrackingSql($this->koneksi, 'finishings') . ")");
         $stmt->bind_param("si", $quantity, $finishing_id);
         $success = $stmt->execute();
         $stmt->close();
@@ -252,7 +257,7 @@ class Product{
     }
 
     public function addStock($quantity, $product_id) {
-        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock + CAST(? AS DECIMAL(30,12)) WHERE product_id = ?");
+        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock + CAST(? AS DECIMAL(30,12)) WHERE product_id = ? AND (" . stockTrackingSql($this->koneksi, 'products') . ")");
         $stmt->bind_param("si", $quantity, $product_id);
         $success = $stmt->execute();
         $stmt->close();
@@ -260,7 +265,7 @@ class Product{
     }
 
     public function addFinishingStock($quantity, $finishing_id) {
-        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock + CAST(? AS DECIMAL(30,12)) WHERE finishing_id = ?");
+        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock + CAST(? AS DECIMAL(30,12)) WHERE finishing_id = ? AND (" . stockTrackingSql($this->koneksi, 'finishings') . ")");
         $stmt->bind_param("si", $quantity, $finishing_id);
         $success = $stmt->execute();
         $stmt->close();

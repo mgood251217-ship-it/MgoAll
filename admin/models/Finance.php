@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../functions/productStock.php';
 require_once __DIR__ . '/ProductPriceTier.php';
 
 class Finance{
@@ -55,7 +56,7 @@ class Finance{
             INNER JOIN order_items oi ON oi.product_id = p.product_id AND oi.store_id = ?
             INNER JOIN orders o ON oi.order_id = o.order_id AND o.store_id = ?
             WHERE p.store_id = ?
-            AND NOT p.unit_type = '~'
+            AND (" . stockTrackingSql($this->koneksi, 'products', 'p') . ")
             AND DATE(o.date) BETWEEN ? AND ?
             GROUP BY p.product_id
             ORDER BY total_omset DESC

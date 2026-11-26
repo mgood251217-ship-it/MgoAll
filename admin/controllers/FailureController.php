@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../functions/productStock.php';
 require_once __DIR__ . '/../models/Failure.php';
 require_once __DIR__ . '/FailureReasonController.php';
 require_once __DIR__ . '/../models/Product.php';
@@ -97,7 +98,7 @@ class FailureController {
             if (!$failureId) {
                 throw new RuntimeException('Gagal menyimpan kegagalan.');
             }
-            if ($product['unit_type'] !== '~') {
+            if (tracksStock($product)) {
                 if ((float)$product['stock'] < $item['stock']) {
                     throw new InvalidArgumentException('Stok produk tidak mencukupi.');
                 }
@@ -258,7 +259,7 @@ class FailureController {
         }
         sort($ids, SORT_NUMERIC);
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $sql = "SELECT finishing_id, name, unit_type, failed_price, stock FROM finishings
+        $sql = "SELECT * FROM finishings
             WHERE store_id = ? AND finishing_id IN ($placeholders) ORDER BY finishing_id";
         if ($lock) {
             $sql .= ' FOR UPDATE';
@@ -324,7 +325,7 @@ class FailureController {
         $finishingUsage = $panjang > 0 && $lebar > 0 && !$package ? $panjang * $lebar : 1;
         foreach ($finishings as $id => $finishing) {
             $finishingPrice += (float)$finishing['failed_price'];
-            if ($finishing['unit_type'] === '~') {
+            if (!tracksStock($finishing)) {
                 continue;
             }
             $quantity = $finishingUsage * $data['quantity'];

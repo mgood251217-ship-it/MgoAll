@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../functions/productStock.php';
 require_once __DIR__ . '/../models/ProductPriceTier.php';
 require_once __DIR__ . '/ProductFinishingPriceController.php';
 require_once __DIR__ . '/ProductLaserConversionController.php';
@@ -96,7 +97,7 @@ class ProductPriceTierController {
         }
         $qty = max(1, (int)$item['quantity']);
         $stock = ['products' => [], 'finishings' => []];
-        if ($item['product']['unit_type'] !== '~') {
+        if (tracksStock($item['product'])) {
             $stock['products'][(int)$item['product_id']] = round((float)$item['stok_butuh'] / $qty, 8);
         }
         foreach ($item['finishing_to_reduce'] as $f) {
@@ -130,7 +131,7 @@ class ProductPriceTierController {
         $sources[] = (int)$row['product_id'];
         $data['migration_product_ids'] = array_values(array_unique($sources));
         unset($data['stock']['products'][$row['product_id']]);
-        if ($target['unit_type'] !== '~') {
+        if (tracksStock($target)) {
             $targetRow = array_replace($row, ['product_id' => (int)$target['product_id']]);
             $data['stock']['products'][(int)$target['product_id']] = $this->legacyStock($targetRow)['products'][$target['product_id']] ?? 1;
         }
@@ -444,12 +445,12 @@ class ProductPriceTierController {
         }
         elseif (in_array(strtoupper($p['category'] ?? ''), ['DTF', 'DTF UV'], true) && $length > 0) $factor = $length;
         elseif (preg_match('/^([\d.]+) KG$/i', $row['size'], $m)) $factor = (float)$m[1];
-        if ($p['unit_type'] !== '~') {
+        if (tracksStock($p)) {
             $stock['products'][(int)$row['product_id']] = $factor;
         }
         foreach (ProductLaserConversionController::finishingIds($row['finishing']) as $id) {
             $f = $this->tierModel->getFinishing($row['store_id'], $id);
-            if ($f && $f['unit_type'] !== '~') {
+            if ($f && tracksStock($f)) {
                 $stock['finishings'][$id] = $package ? 1 : ($area > 0 ? $area : 1);
             }
         }
@@ -484,6 +485,7 @@ class ProductPriceTierController {
                 if (!$row && $value > 0) {
                     continue;
                 }
+                if ($row && !tracksStock($row)) continue;
                 if (!$row || ($value < 0 && (float)$row['stock'] + $value < -0.00001)) {
                     throw new InvalidArgumentException('Stok bahan atau finishing tidak mencukupi.');
                 }

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../functions/productStock.php';
 require_once __DIR__ . '/../models/ProductBundle.php';
 require_once __DIR__ . '/ProductPriceTierController.php';
 require_once __DIR__ . '/ProductVariantController.php';
@@ -123,11 +124,11 @@ class ProductBundleController {
         $parent = $this->bundleModel->parentProduct($targetStore, $targetProduct);
         if (
             !$parent ||
-            $parent['unit_type'] !== '~' ||
+            (!in_array($parent['unit_type'], ['PCS', '~'], true) || tracksStock($parent)) ||
             strtoupper(trim($parent['category'])) !== 'PELENGKAP' ||
             (new ProductVariantController($this->db))->getByProduct($targetStore, $targetProduct)
         ) {
-            throw new InvalidArgumentException('Produk paket tujuan harus PELENGKAP, satuan ~, tanpa varian sendiri.');
+            throw new InvalidArgumentException('Produk paket tujuan harus PELENGKAP, satuan PCS tanpa Kelola stok, tanpa varian sendiri.');
         }
         $this->compile($targetStore, ['product_id' => $targetProduct, 'items' => $items]);
         $this->bundleModel->insert($targetStore, $targetProduct, $source['price'], $items);
@@ -291,8 +292,8 @@ class ProductBundleController {
         if ($old) {
             $snapshot = $old;
         } else {
-            if ($product['unit_type'] !== '~' || strtoupper(trim($product['category'])) !== 'PELENGKAP') {
-                throw new InvalidArgumentException('Produk induk paket harus kategori PELENGKAP, satuan ~.');
+            if ((!in_array($product['unit_type'], ['PCS', '~'], true) || tracksStock($product)) || strtoupper(trim($product['category'])) !== 'PELENGKAP') {
+                throw new InvalidArgumentException('Produk induk paket harus kategori PELENGKAP, satuan PCS, dan Kelola stok dimatikan.');
             }
             $compiled = $this->compile($store, $definition);
             $stock = ['products' => [], 'finishings' => []];

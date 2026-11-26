@@ -19,7 +19,7 @@ $products = $products_data['data'];
 $categories = $productModel->getCategoryByStoreId($store_id);
 $finishing = $productModel->getFinishingByStoreId($store_id);
 
-$unitList = ['M2', 'CM2', 'PCS', 'RIM', '~'];
+$unitList = ['PCS', 'M2', 'CM2', 'RIM'];
 ?>
 <!DOCTYPE html>
 <html lang="id">

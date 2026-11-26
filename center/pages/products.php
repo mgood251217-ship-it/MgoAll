@@ -195,7 +195,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                                 <?php endif; ?>
                             </td>
                             <td><?= format_rupiah($row['price'] ?? 0) ?></td>
-                            <td><?= format_stock($row['stock'] ?? 0) ?></td>
+                            <td><?= tracksStock($row) ? format_stock($row['stock'] ?? 0) : 'Tanpa batas' ?></td>
                             <td><?= number_format($row['variant_count'] ?? 0, 0, ',', '.') ?></td>
                             <td><?= number_format($row['order_item_count'] ?? 0, 0, ',', '.') ?></td>
                             <td class="migrated-style-9">
@@ -209,7 +209,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                                     data-reasonable-price="<?= $row['reasonable_price'] ?? 0 ?>"
                                     data-failed-price="<?= $row['failed_price'] ?? 0 ?>"
                                     data-stock="<?= $row['stock'] ?>"
-                                    data-unit-type="<?= htmlspecialchars($row['unit_type'] ?? '~') ?>">
+                                    data-track-stock="<?= tracksStock($row) ? '1' : '0' ?>" data-unit-type="<?= htmlspecialchars($row['unit_type'] === '~' ? 'PCS' : ($row['unit_type'] ?? 'PCS')) ?>">
                                     <i class="fas fa-pen"></i>
                                 </button>
                                 <a <?= !$canProductAction('save_product_variant') ? 'hidden data-center-access="denied"' : '' ?>
@@ -333,7 +333,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                                 <?php endif; ?>
                             </td>
                             <td><?= format_rupiah($row['price'] ?? 0) ?></td>
-                            <td><?= format_stock($row['stock'] ?? 0) ?></td>
+                            <td><?= tracksStock($row) ? format_stock($row['stock'] ?? 0) : 'Tanpa batas' ?></td>
                             <td><?= number_format((int)($row['order_item_count'] ?? 0), 0, ',', '.') ?></td>
                             <td class="migrated-style-9">
                                 <button <?= !$canProductAction('edit_finishing') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-warning me-1"
@@ -346,7 +346,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                                     data-reasonable-price="<?= $row['reasonable_price'] ?? 0 ?>"
                                     data-failed-price="<?= $row['failed_price'] ?? 0 ?>"
                                     data-stock="<?= $row['stock'] ?>"
-                                    data-unit-type="<?= htmlspecialchars($row['unit_type'] ?? '~') ?>">
+                                    data-track-stock="<?= tracksStock($row) ? '1' : '0' ?>" data-unit-type="<?= htmlspecialchars($row['unit_type'] === '~' ? 'PCS' : ($row['unit_type'] ?? 'PCS')) ?>">
                                     <i class="fas fa-pen"></i>
                                 </button>
                                 <button <?= !$canProductAction('delete_finishing') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-danger" onclick="deleteData('finishing', <?= $row['finishing_id'] ?>)">
@@ -473,11 +473,15 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                 <div class="mb-3">
                     <label class="form-label-custom">Satuan</label>
                     <select name="unit_type" class="form-control-custom form-select">
-                        <option value="~">~</option>
+                        <option value="PCS">PCS</option>
                         <option value="M2">M2</option>
                         <option value="CM2">CM2</option>
-                        <option value="PCS">PCS</option>
                     </select>
+                    <label class="d-flex align-items-center gap-2 mt-2">
+                        <input type="hidden" name="track_stock" value="0">
+                        <input type="checkbox" name="track_stock" id="add_product_track_stock" value="1" checked>
+                        Kelola stok
+                    </label>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Harga Jual (Rp)</label>
@@ -530,11 +534,15 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                 <div class="mb-3">
                     <label class="form-label-custom">Satuan</label>
                     <select name="unit_type" id="edit_product_unit_type" class="form-control-custom form-select">
-                        <option value="~">~</option>
+                        <option value="PCS">PCS</option>
                         <option value="M2">M2</option>
                         <option value="CM2">CM2</option>
-                        <option value="PCS">PCS</option>
                     </select>
+                    <label class="d-flex align-items-center gap-2 mt-2">
+                        <input type="hidden" name="track_stock" value="0">
+                        <input type="checkbox" name="track_stock" id="edit_product_track_stock" value="1" checked>
+                        Kelola stok
+                    </label>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Harga Jual (Rp)</label>
@@ -587,11 +595,15 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                 <div class="mb-3">
                     <label class="form-label-custom">Satuan</label>
                     <select name="unit_type" class="form-control-custom form-select">
-                        <option value="~">~</option>
+                        <option value="PCS">PCS</option>
                         <option value="M2">M2</option>
                         <option value="CM2">CM2</option>
-                        <option value="PCS">PCS</option>
                     </select>
+                    <label class="d-flex align-items-center gap-2 mt-2">
+                        <input type="hidden" name="track_stock" value="0">
+                        <input type="checkbox" name="track_stock" id="add_finishing_track_stock" value="1" checked>
+                        Kelola stok
+                    </label>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Harga Jual (Rp)</label>
@@ -644,11 +656,15 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                 <div class="mb-3">
                     <label class="form-label-custom">Satuan</label>
                     <select name="unit_type" id="edit_finishing_unit_type" class="form-control-custom form-select">
-                        <option value="~">~</option>
+                        <option value="PCS">PCS</option>
                         <option value="M2">M2</option>
                         <option value="CM2">CM2</option>
-                        <option value="PCS">PCS</option>
                     </select>
+                    <label class="d-flex align-items-center gap-2 mt-2">
+                        <input type="hidden" name="track_stock" value="0">
+                        <input type="checkbox" name="track_stock" id="edit_finishing_track_stock" value="1" checked>
+                        Kelola stok
+                    </label>
                 </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Harga Jual (Rp)</label>
@@ -1307,7 +1323,8 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('edit_product_reasonable_price').value = button.getAttribute('data-reasonable-price');
             document.getElementById('edit_product_failed_price').value = button.getAttribute('data-failed-price');
             document.getElementById('edit_product_stock').value = button.getAttribute('data-stock');
-            document.getElementById('edit_product_unit_type').value = button.getAttribute('data-unit-type') || '~';
+            document.getElementById('edit_product_unit_type').value = button.getAttribute('data-unit-type') || 'PCS';
+            document.getElementById('edit_product_track_stock').checked = button.getAttribute('data-track-stock') !== '0';
         });
     }
 
@@ -1322,7 +1339,8 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('edit_finishing_reasonable_price').value = button.getAttribute('data-reasonable-price');
             document.getElementById('edit_finishing_failed_price').value = button.getAttribute('data-failed-price');
             document.getElementById('edit_finishing_stock').value = button.getAttribute('data-stock');
-            document.getElementById('edit_finishing_unit_type').value = button.getAttribute('data-unit-type') || '~';
+            document.getElementById('edit_finishing_unit_type').value = button.getAttribute('data-unit-type') || 'PCS';
+            document.getElementById('edit_finishing_track_stock').checked = button.getAttribute('data-track-stock') !== '0';
         });
     }
 });

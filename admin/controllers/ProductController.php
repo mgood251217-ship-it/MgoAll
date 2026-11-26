@@ -351,6 +351,7 @@ class ProductController {
         $data->name             = $_POST['name'] ?? '';
         $data->price            = $_POST['price'] ?? '';
         $data->unit             = $_POST['unit_type'] ?? '';
+        if (isset($_POST['track_stock'])) $data->track_stock = $_POST['track_stock'];
         $data->reasonable_price = $_POST['reasonable_price'] ?? '';
         $data->failed_price     = $_POST['failed_price'] ?? '';
 

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../admin/functions/productStock.php';
 require_once __DIR__ . '/../../admin/controllers/ProductVariantController.php';
 require_once __DIR__ . '/../../admin/controllers/ProductBundleController.php';
 require_once __DIR__ . '/../../admin/models/ProductFinishing.php';
@@ -118,6 +119,8 @@ class StoreController {
                     $stmt = $this->catalogQuery("INSERT INTO $table ($names) VALUES ($values)", $params);
                     if ($table === 'products') $productMap[$row['product_id']] = (int)$this->koneksi->insert_id;
                     else $finishingMap[$row['finishing_id']] = (int)$this->koneksi->insert_id;
+                    $newId = $table === 'products' ? $productMap[$row['product_id']] : $finishingMap[$row['finishing_id']];
+                    saveStockTracking($this->koneksi, $table, $newId, ['track_stock' => (int)tracksStock($row)]);
                     $stmt->close();
                 }
             }

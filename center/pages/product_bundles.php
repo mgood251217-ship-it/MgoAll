@@ -48,7 +48,7 @@ $jsonFlags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
                         <select id="bundleProduct" name="product_id" class="form-control" required>
                             <option value="">Pilih produk paket</option>
                             <?php foreach ($bundleData['products'] as $product): ?>
-                                <?php if ($product['unit_type'] !== '~' || strtoupper(trim($product['category'])) !== 'PELENGKAP') continue; ?>
+                                <?php if ((!in_array($product['unit_type'], ['PCS', '~'], true) || tracksStock($product)) || strtoupper(trim($product['category'])) !== 'PELENGKAP') continue; ?>
                                 <option value="<?= (int) $product['product_id'] ?>" <?= (int) $product['product_id'] === (int) ($editing['product_id'] ?? 0) ? 'selected' : '' ?>>
                                     #<?= (int) $product['product_id'] ?> <?= $escape($product['name']) ?>
                                 </option>

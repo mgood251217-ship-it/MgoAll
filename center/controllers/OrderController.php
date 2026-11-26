@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../admin/functions/productStock.php';
 require_once __DIR__ . '/../../admin/models/Activity.php';
 require_once __DIR__ . '/../../admin/models/Order.php';
 require_once __DIR__ . '/../../admin/controllers/ProductFinishingPriceController.php';
@@ -654,7 +655,7 @@ class OrderController {
         $fData = $package ? [
             'ids' => [(int)$package['finishing_id']],
             'price' => 0,
-            'stocks' => $package['finishing_unit_type'] === '~' ? [] : [[
+            'stocks' => !tracksStock(['track_stock' => $package['finishing_track_stock']]) ? [] : [[
                 'finishing_id' => (int)$package['finishing_id'], 'qty' => 1
             ]],
         ] : $this->finishingData($finishing, $panjang, $lebar);
@@ -728,7 +729,7 @@ class OrderController {
                 $placeholders = implode(',', array_fill(0, count($unique_ids), '?'));
                 $types = str_repeat('i', count($unique_ids));
                 
-                $stmt = $this->koneksi->prepare("SELECT finishing_id, name, unit_type, price FROM finishings WHERE finishing_id IN ($placeholders)");
+                $stmt = $this->koneksi->prepare("SELECT * FROM finishings WHERE finishing_id IN ($placeholders)");
                 
                 if (!$stmt) {
                     throw new Exception("Query Prepare Error: " . $this->koneksi->error);
@@ -753,7 +754,7 @@ class OrderController {
 
                     $total_price += $price;
 
-                    if ($row['unit_type'] !== '~') {
+                    if (tracksStock($row)) {
                         $required_stocks[] = [
                             'finishing_id' => $pid,
                             'qty' => $qty
@@ -892,7 +893,7 @@ class OrderController {
             $stok_butuh = $itemData['stok_butuh'];
 
             $existing_stock = $this->productController->getStockByProductId($product['product_id']);
-            if ($product['unit_type'] !== '~' && $existing_stock < $stok_butuh) {
+            if (tracksStock($product) && $existing_stock < $stok_butuh) {
                 http_response_code(400);
                 send_json_response(false, 'Stock Barang Utama tidak mencukupi');
                 exit;
@@ -930,7 +931,7 @@ class OrderController {
                 $data_item->id = $rowExist['order_item_id'];
 
                 if ($this->updateOrderItem($data_item)) {
-                    if ($product['unit_type'] !== '~') {
+                    if (tracksStock($product)) {
                         $this->productController->reduceStock($stok_butuh, $itemData['product_id']);
                     }
                     foreach ($itemData['finishing_to_reduce'] as $f_reduce) {
@@ -949,7 +950,7 @@ class OrderController {
                 }
             } else {
                 if ($this->createOrderItem($data_item)) {
-                    if ($product['unit_type'] !== '~') {
+                    if (tracksStock($product)) {
                         $this->productController->reduceStock($stok_butuh, $itemData['product_id']);
                     }
                     foreach ($itemData['finishing_to_reduce'] as $f_reduce) {
@@ -1083,11 +1084,7 @@ class OrderController {
             $stok_kembali = round((($panjang + 5) * ($lebar + 5)) / 10000 * $quantity, 4);
         }
 
-        if ($isAnekaCetak || $isDtf || !empty($item['product_finishing_price_id'])) {
-            if ($unit_type !== '~') $this->productController->addStock($stok_kembali, $product_id);
-        } else {
-            $this->productController->addStock($product_id, $stok_kembali);
-        }
+        if (tracksStock($product)) $this->productController->addStock($stok_kembali, $product_id);
 
         if ($isDtf) {
             $finishingData = $this->finishingData($finishing_ids, $panjang, $lebar);
@@ -1100,12 +1097,12 @@ class OrderController {
                 $fid = (int)$fid;
                 if ($fid === 0) continue;
                 if ($isAnekaCetak || !empty($item['product_finishing_price_id'])) {
-                    $stmt = $this->koneksi->prepare("SELECT unit_type FROM finishings WHERE finishing_id = ? AND store_id = ?");
+                    $stmt = $this->koneksi->prepare("SELECT * FROM finishings WHERE finishing_id = ? AND store_id = ?");
                     $stmt->bind_param("ii", $fid, $store_id);
                     $stmt->execute();
                     $f = $stmt->get_result()->fetch_assoc();
                     $stmt->close();
-                    if ($f && $f['unit_type'] !== '~') {
+                    if ($f && tracksStock($f)) {
                         $this->productController->addFinishingStock($quantity, $fid);
                     }
                     continue;

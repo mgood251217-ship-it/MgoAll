@@ -437,7 +437,9 @@ class ProductController {
                 $targetId
             ]
         )->close();
-        return $finishingMap[$finishingId] = (int) $this->koneksi->insert_id;
+        $newId = (int)$this->koneksi->insert_id;
+        saveStockTracking($this->koneksi, 'finishings', $newId, ['track_stock' => (int)tracksStock($source)]);
+        return $finishingMap[$finishingId] = $newId;
     }
 
     private function copyBundleLaser($source, $sourceId, $targetId, $productMap, &$finishingMap) {
@@ -634,6 +636,7 @@ class ProductController {
                         [$categoryId, $finishing['unit_type'], $finishing['name'], $finishing['price'],
                             $finishing['reasonable_price'], $finishing['failed_price'], $targetId]
                     )->close();
+                    saveStockTracking($this->koneksi, 'finishings', (int)$this->koneksi->insert_id, ['track_stock' => (int)tracksStock($finishing)]);
                     $added++;
                 }
             }
@@ -816,6 +819,7 @@ class ProductController {
                             ]
                         )->close();
                         $targetProduct = (int) $this->koneksi->insert_id;
+                        saveStockTracking($this->koneksi, 'products', $targetProduct, ['track_stock' => (int)tracksStock($product)]);
                         $newProducts++;
                         $isNewProduct = true;
                     }
@@ -1083,7 +1087,7 @@ class ProductController {
                     if ($addedIds && $pricingData) {
                         $factor = 1;
                         if (strtoupper(trim($target['category'])) !== 'ANEKA CETAK' && preg_match('/^([\d.]+)x([\d.]+)$/i', $row['size'], $size)) $factor = max(0, (float)$size[1] * (float)$size[2]) ?: 1;
-                        foreach ($addedIds as $finishingId) if ($finishings[$finishingId]['unit_type'] !== '~') $pricingData['stock']['finishings'][$finishingId] = $factor;
+                        foreach ($addedIds as $finishingId) if (tracksStock($finishings[$finishingId])) $pricingData['stock']['finishings'][$finishingId] = $factor;
                     }
                     if ($hasPricing) { $values[] = $pricingData ? json_encode($pricingData, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) : null; $updateTypes .= 's'; }
                     $itemId = (int)$row['order_item_id'];
@@ -1512,7 +1516,7 @@ class ProductController {
             $name = is_string($_POST['name'] ?? null) ? trim($_POST['name']) : '';
             $categoryId = $_POST['category_id'] ?? '';
             $categoryId = $categoryId === '' ? null : filter_var($categoryId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-            $unit = $_POST['unit_type'] ?? '~';
+            $unit = $_POST['unit_type'] ?? 'PCS';
             if ($storeId <= 0 || $name === '' || $categoryId === false || !in_array($unit, ['~', 'PCS', 'M2', 'CM2'], true)) throw new InvalidArgumentException('Periksa toko, nama, kategori, dan satuan produk.');
             [$price, $reasonablePrice, $failedPrice] = $this->requestPrices();
             $stock = $this->requestStock();
@@ -1528,6 +1532,7 @@ class ProductController {
             $stmt = $this->koneksi->prepare('INSERT INTO products (store_id, category_id, name, price, reasonable_price, failed_price, stock, unit_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
             $stmt->bind_param('iissssss', $storeId, $categoryId, $name, $price, $reasonablePrice, $failedPrice, $stock, $unit);
             $stmt->execute(); $productId = (int)$this->koneksi->insert_id; $stmt->close();
+            saveStockTracking($this->koneksi, 'products', $productId, $_POST);
             $history->record($productId, (int)$admin['administrator_id']);
             $this->koneksi->commit(); $transaction = false; $saved = true;
             $_SESSION['swal_success'] = 'Produk berhasil ditambahkan.';
@@ -1602,6 +1607,7 @@ class ProductController {
             $stmt->bind_param("iissssss", $store_id, $category_id, $name, $price, $reasonable_price, $failed_price, $stock, $unit_type);
 
             if ($stmt->execute()) {
+                saveStockTracking($this->koneksi, $table, (int)$this->koneksi->insert_id, $_POST);
                 require_once __DIR__ . '/../functions/cacheHelper.php';
                 updateStoreCache($store_id, $table);
                 
@@ -1639,7 +1645,8 @@ class ProductController {
             if ($stmt->execute()) {
                 if ($store_id) {
                     require_once __DIR__ . '/../functions/cacheHelper.php';
-                    updateStoreCache($store_id, $table);
+                    saveStockTracking($this->koneksi, $table, (int)$id, $_POST);
+                    updateStoreCache($store_id, [$table, 'orders']);
                 }
                 
                 $_SESSION['swal_success'] = ucfirst($label) . " berhasil diperbarui.";
@@ -1789,7 +1796,7 @@ class ProductController {
     }
 
     public function addStock($quantity, $product_id) {
-        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock + CAST(? AS DECIMAL(30,12)) WHERE product_id = ?");
+        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock + CAST(? AS DECIMAL(30,12)) WHERE product_id = ? AND (" . stockTrackingSql($this->koneksi, 'products') . ")");
         $stmt->bind_param("si", $quantity, $product_id);
         $success = $stmt->execute();
         $stmt->close();
@@ -1797,7 +1804,7 @@ class ProductController {
     }
 
     public function addFinishingStock($quantity, $finishing_id) {
-        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock + CAST(? AS DECIMAL(30,12)) WHERE finishing_id = ?");
+        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock + CAST(? AS DECIMAL(30,12)) WHERE finishing_id = ? AND (" . stockTrackingSql($this->koneksi, 'finishings') . ")");
         $stmt->bind_param("si", $quantity, $finishing_id);
         $success = $stmt->execute();
         $stmt->close();
@@ -1814,7 +1821,7 @@ class ProductController {
     }
 
     public function reduceStock($quantity, $product_id) {
-        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock - CAST(? AS DECIMAL(30,12)) WHERE product_id = ?");
+        $stmt = $this->koneksi->prepare("UPDATE products SET stock = stock - CAST(? AS DECIMAL(30,12)) WHERE product_id = ? AND (" . stockTrackingSql($this->koneksi, 'products') . ")");
         $stmt->bind_param("si", $quantity, $product_id);
         $success = $stmt->execute();
         $stmt->close();
@@ -1822,7 +1829,7 @@ class ProductController {
     }
 
     public function reduceFinishingStock($quantity, $finishing_id) {
-        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock - CAST(? AS DECIMAL(30,12)) WHERE finishing_id = ?");
+        $stmt = $this->koneksi->prepare("UPDATE finishings SET stock = stock - CAST(? AS DECIMAL(30,12)) WHERE finishing_id = ? AND (" . stockTrackingSql($this->koneksi, 'finishings') . ")");
         $stmt->bind_param("si", $quantity, $finishing_id);
         $success = $stmt->execute();
         $stmt->close();

@@ -104,7 +104,7 @@ class ProductPriceTier {
     }
 
     public function getFinishing($store, $id) {
-        $stmt = $this->query('SELECT unit_type FROM finishings WHERE finishing_id = ? AND store_id = ?', 'ii', [$id, $store]);
+        $stmt = $this->query('SELECT * FROM finishings WHERE finishing_id = ? AND store_id = ?', 'ii', [$id, $store]);
         $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
@@ -113,7 +113,7 @@ class ProductPriceTier {
 
     public function getStock($store, $table, $id) {
         $column = $table === 'products' ? 'product_id' : 'finishing_id';
-        $stmt = $this->query("SELECT stock FROM $table WHERE $column = ? AND store_id = ? FOR UPDATE", 'ii', [$id, $store]);
+        $stmt = $this->query("SELECT * FROM $table WHERE $column = ? AND store_id = ? FOR UPDATE", 'ii', [$id, $store]);
         $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 

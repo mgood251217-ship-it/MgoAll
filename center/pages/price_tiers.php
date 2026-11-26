@@ -59,7 +59,7 @@ $unitLabel = ProductPriceTierController::unitLabel($unit);
         <?php elseif (ProductPriceTierController::usesTime($data['product'])): ?>
             <?= $escape($data['product']['name']) ?> dihitung berdasarkan waktu di OrderController, meskipun satuan produknya tertulis PCS. Harga bertingkat berdasarkan waktu belum tersedia.
         <?php else: ?>
-            Perhitungan produk ini (<?= $escape($data['product']['unit_type']) ?>) belum didukung harga bertingkat. Saat ini tersedia untuk PCS, ~ (seperti pcs tanpa batas stok), M2, dan CM2.
+            Perhitungan produk ini (<?= $escape($data['product']['unit_type']) ?>) belum didukung harga bertingkat. Saat ini tersedia untuk PCS, M2, dan CM2.
         <?php endif; ?>
     </div>
 <?php elseif ($data['product']): ?>
@@ -75,7 +75,7 @@ $unitLabel = ProductPriceTierController::unitLabel($unit);
         <?php endif; ?>
         <p>Harga dasar normal: <strong><?= format_rupiah((float)($data['variant']['price'] ?? $data['product']['price'])) ?>/<?= $unitLabel ?></strong>.</p>
         <p>Jumlah dikumpulkan per <?= $data['variant'] ? 'varian' : 'produk tanpa varian' ?> dalam satu nota. Jumlah antar varian tidak digabung. <?= $unit === 'pcs' ? 'Batas 10 berlaku setelah 10, yaitu mulai 11 pcs.' : 'Luas dihitung dari panjang × lebar × quantity dalam ' . $unitLabel . '. Batas 500 berlaku saat total luas lebih dari 500 ' . $unitLabel . '.' ?> Tingkat dengan batas tertinggi yang terpenuhi berlaku untuk seluruh jumlah.</p>
-        <?php if (trim($data['product']['unit_type']) === '~'): ?><p>Satuan ~ dihitung seperti pcs. Stok bahan tidak dibatasi dan tidak dikurangi.</p><?php endif; ?>
+        <?php if (!tracksStock($data['product'])): ?><p>Stok produk tidak dibatasi dan tidak dikurangi. Harga tetap dihitung sesuai satuannya.</p><?php endif; ?>
         <?php if (ProductPriceTierController::minimumAmount($data['product'])): ?><p>Minimum tagihan item PRINT UV tetap Rp7.500.</p><?php endif; ?>
         <p>Harga di bawah menggantikan harga dasar <?= $data['variant'] ? 'varian' : 'bahan' ?>; biaya finishing tetap ditambahkan. Harga paket dan konversi print laser mengikuti pengaturannya masing-masing.</p>
         <form method="post" action="/action?action=save_price_tiers" id="tierForm">

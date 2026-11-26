@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../functions/productStock.php';
 require_once __DIR__ . '/ProductFinishingPriceController.php';
 require_once __DIR__ . '/ProductFinishingController.php';
 require_once __DIR__ . '/FinishingSaleController.php';
@@ -379,7 +380,7 @@ class OrderController {
             $placeholders = implode(',', array_fill(0, count($unique_ids), '?'));
             $types = str_repeat('i', count($unique_ids));
 
-            $stmt = $this->koneksi->prepare("SELECT finishing_id, name, unit_type, price FROM finishings WHERE finishing_id IN ($placeholders)");
+            $stmt = $this->koneksi->prepare("SELECT * FROM finishings WHERE finishing_id IN ($placeholders)");
 
             if (!$stmt) {
                 throw new Exception("Query Prepare Error: " . $this->koneksi->error);
@@ -404,7 +405,7 @@ class OrderController {
 
                 $total_price += $price;
 
-                if ($row['unit_type'] !== '~') {
+                if (tracksStock($row)) {
                     $required_stocks[] = [
                         'finishing_id' => $pid,
                         'qty' => $qty
@@ -531,7 +532,7 @@ class OrderController {
             $stok_butuh = $itemData['stok_butuh'];
 
             $existing_stock = $this->productModel->getStockByProductId($product['product_id']);
-            if ($product['unit_type'] !== '~' && $existing_stock < $stok_butuh) {
+            if (tracksStock($product) && $existing_stock < $stok_butuh) {
                 http_response_code(400);
                 send_json_response(false, 'Stock Barang Utama tidak mencukupi');
                 exit;
@@ -681,7 +682,7 @@ class OrderController {
 
         $kiloan = $isAnekaCetak || $isPackage ? 0 : ProductPriceTierController::weightFromSize($size);
         $stok_kembali = $this->requiredProductStock($product ?? [], $quantity, $panjang, $lebar, $kiloan, $isPackage);
-        if ($unit_type !== '~') {
+        if (tracksStock($product)) {
             $this->productModel->addStock($stok_kembali, $product_id);
         }
 
@@ -1006,7 +1007,7 @@ class OrderController {
             $fData = [
                 'ids' => [(int)$package['finishing_id']],
                 'price' => 0,
-                'stocks' => $package['finishing_unit_type'] === '~' ? [] : [[
+                'stocks' => !tracksStock(['track_stock' => $package['finishing_track_stock']]) ? [] : [[
                     'finishing_id' => (int)$package['finishing_id'],
                     'qty' => 1
                 ]],
@@ -1070,7 +1071,7 @@ class OrderController {
     }
 
     private function reduceItemStock($itemData) {
-        if ($itemData['product']['unit_type'] !== '~') {
+        if (tracksStock($itemData['product'])) {
             $this->productModel->reduceStock($itemData['stok_butuh'], $itemData['product_id']);
         }
         foreach ($itemData['finishing_to_reduce'] as $finishing) {

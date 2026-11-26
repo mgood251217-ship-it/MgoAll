@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../admin/functions/productStock.php';
 class ProductionController {
     private $koneksi;
 
@@ -52,7 +53,7 @@ class ProductionController {
                 FROM products p
                 INNER JOIN order_items oi ON oi.product_id = p.product_id 
                 INNER JOIN orders o ON oi.order_id = o.order_id 
-                WHERE NOT p.unit_type = '~'
+                WHERE (" . stockTrackingSql($this->koneksi, 'products', 'p') . ")
                 AND DATE(o.date) BETWEEN ? AND ?
             ";
 
