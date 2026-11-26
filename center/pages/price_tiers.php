@@ -57,7 +57,7 @@ $unitLabel = ProductPriceTierController::unitLabel($unit);
         <?php if (in_array(strtoupper(trim($data['product']['category'])), ['DTF', 'DTF UV'], true)): ?>
             DTF/DTF UV memakai perhitungan khusus. Harga bertingkat untuk perhitungan ini belum tersedia.
         <?php elseif (ProductPriceTierController::usesTime($data['product'])): ?>
-            <?= $escape($data['product']['name']) ?> dihitung berdasarkan waktu di OrderController, meskipun satuan produknya tertulis PCS. Harga bertingkat berdasarkan waktu belum tersedia.
+            <?= $escape($data['product']['name']) ?> dihitung berdasarkan durasi pengerjaan. Harga bertingkat berdasarkan waktu belum tersedia.
         <?php else: ?>
             Perhitungan produk ini (<?= $escape($data['product']['unit_type']) ?>) belum didukung harga bertingkat. Saat ini tersedia untuk PCS, M2, dan CM2.
         <?php endif; ?>

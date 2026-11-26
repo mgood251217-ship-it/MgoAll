@@ -60,17 +60,28 @@ class ProductVariantController {
             ? json_decode($row['variant_options_json'], true, 512, JSON_THROW_ON_ERROR)
             : ($data['options'] ?? $data['legacy_options'] ?? []);
         $pricing = !empty($row['tier_price_data']) ? json_decode($row['tier_price_data'], true, 512, JSON_THROW_ON_ERROR) : [];
+        $price = (float)($pricing['base'] ?? $data['price'] ?? $row['variant_master_price'] ?? $row['price'] ?? $row['unit'] ?? 0);
+        $minuteRate = self::usesLegacyHourlyRate($row, $data);
+        if ($minuteRate && (isset($pricing['base']) || isset($data['price']))) $price = round($price / 60, 2);
         return [
             'id' => $id,
             'options' => $options,
             'label' => $options ? implode(' / ', array_values($options)) : ($data['label'] ?? 'Varian #' . $id),
-            'price' => (float)($pricing['base'] ?? $data['price'] ?? $row['variant_master_price'] ?? $row['price'] ?? $row['unit'] ?? 0),
+            'price' => $price,
             'components' => $data['components'],
             'product_name' => $row['variant_product_name'] ?? $data['product_name'] ?? $row['product_name'] ?? 'Produk #' . ($row['product_id'] ?? 0),
             'category' => $data['category'] ?? $row['variant_category_name'] ?? $row['category'] ?? '',
-            'unit_type' => $data['unit_type'] ?? $row['current_unit_type'] ?? $row['unit_type'] ?? 'PCS',
+            'unit_type' => $minuteRate ? 'MENIT' : ($data['unit_type'] ?? $row['current_unit_type'] ?? $row['unit_type'] ?? 'PCS'),
             '_legacy_options' => $data['legacy_options'] ?? $data['options'] ?? $options,
         ];
+    }
+
+    public static function usesLegacyHourlyRate($row, $data = null) {
+        $data = $data ?? json_decode($row['product_variant_data'] ?? 'null', true);
+        return ($row['variant_unit_type'] ?? $row['unit_type'] ?? '') === 'MENIT'
+            && in_array($data['unit_type'] ?? '', ['PCS', '~'], true)
+            && strtoupper(trim($data['category'] ?? '')) === 'JASA'
+            && strtoupper(trim($row['variant_product_name'] ?? $row['product_name'] ?? $row['judul'] ?? '')) === 'SETTING';
     }
 
     public static function productionData($variant) {
@@ -200,7 +211,7 @@ class ProductVariantController {
             $row['variant'] = self::snapshot($row);
             $row['product_variant_id'] = $row['product_variant_id'] ?? null;
             if ($row['variant']) unset($row['variant']['_legacy_options']);
-            unset($row['product_variant_data'], $row['variant_options_json'], $row['variant_master_price'], $row['variant_product_name'], $row['variant_category_name']);
+            unset($row['product_variant_data'], $row['variant_options_json'], $row['variant_master_price'], $row['variant_product_name'], $row['variant_unit_type'], $row['variant_category_name']);
         }
         unset($row);
 

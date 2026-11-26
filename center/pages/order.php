@@ -149,7 +149,7 @@ if (isset($_GET['ajax_payment'])) {
 
                 <div class="form-group migrated-style-36" id="settingDesain">
                     <label>Waktu Pengerjaan</label>
-                    <input type="number" min="00:00" max="23:59" id="waktu" class="form-control" placeholder="Menit">
+                    <input type="number" min="0.01" step="any" id="waktu" class="form-control" placeholder="Menit">
                 </div>
 
                 <div class="form-group migrated-style-36" id="ukuranDropdownRow">
@@ -740,7 +740,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (el) el.style.display = 'none';
         });
 
-        if (nameStr.includes('TRANSFERPAPER') || nameStr.includes('PRINT PRES')) {
+        if (unit === 'MENIT' || (kategori === 'JASA' && ['PCS', '~'].includes(unit) && (judul === 'SETTING' || judul === 'POTONG AKRILIK'))) {
+            const setRow = document.getElementById('settingDesain');
+            if (setRow) setRow.style.display = 'flex';
+        } else if (nameStr.includes('TRANSFERPAPER') || nameStr.includes('PRINT PRES')) {
             const subRow = document.getElementById('ukuranSublimRow');
             if (subRow) subRow.style.display = 'flex';
         } else if (['TEKSTIL', 'PAKAIAN', 'JERSEY'].includes(kategori)) {
@@ -749,9 +752,6 @@ document.addEventListener('DOMContentLoaded', function () {
         } else if (unit === 'M2' || unit === 'CM2') {
             const inpRow = document.getElementById('ukuranInputs');
             if (inpRow) inpRow.style.display = 'flex';
-        } else if (kategori === 'JASA' && (judul === 'SETTING' || judul === 'POTONG AKRILIK')) {
-            const setRow = document.getElementById('settingDesain');
-            if (setRow) setRow.style.display = 'flex';
         }
 
         if (judul.includes('BAHAN') && unit === 'PCS') {

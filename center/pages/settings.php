@@ -270,6 +270,7 @@ $data = $controller->getIndexData($access);
                     <label class="form-label-custom">Satuan</label>
                     <select name="unit_type" class="form-control-custom form-select">
                         <option value="PCS">PCS</option>
+                        <option value="MENIT">MENIT</option>
                         <option value="M2">M2</option>
                         <option value="CM2">CM2</option>
                     </select>
@@ -330,6 +331,7 @@ $data = $controller->getIndexData($access);
                     <label class="form-label-custom">Satuan</label>
                     <select name="unit_type" id="edit_product_unit_type" class="form-control-custom form-select">
                         <option value="PCS">PCS</option>
+                        <option value="MENIT">MENIT</option>
                         <option value="M2">M2</option>
                         <option value="CM2">CM2</option>
                     </select>

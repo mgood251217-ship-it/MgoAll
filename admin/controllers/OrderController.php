@@ -442,19 +442,16 @@ class OrderController {
             $size = "{$kiloan} KG";
         }
 
-        if ($category === 'JASA') {
-            if ($name === 'SETTING') {
-                $waktu = max(15, $waktu);
-                $jam = floor($waktu / 60);
-                $sisa_menit = $waktu % 60;
-                $size = ($waktu >= 60) ? "{$jam} Jam {$sisa_menit} Menit" : "{$waktu} Menit";
-                $unit *= ($waktu / 60);
+        if (ProductPriceTierController::usesTime($product)) {
+            $perMinute = strtoupper(trim($unit_type)) === 'MENIT';
+            $waktu = $waktu > 0 ? $waktu : ProductPriceTierController::timeFromSize($size);
+            if ($perMinute && (!is_finite($waktu) || $waktu <= 0)) {
+                throw new InvalidArgumentException('Waktu pengerjaan harus lebih dari 0 menit.');
             }
-
-            if ($name === 'POTONG AKRILIK') {
-                $unit *= $waktu;
-                $size = "{$waktu} MENIT";
-            }
+            $isSetting = strtoupper(trim($category)) === 'JASA' && strtoupper(trim($name)) === 'SETTING';
+            if ($isSetting) $waktu = max(15, $waktu);
+            $unit *= $isSetting && !$perMinute ? $waktu / 60 : $waktu;
+            $size = "{$waktu} MENIT";
         }
 
         if ($category === 'TEKSTIL') {
@@ -954,7 +951,7 @@ class OrderController {
             $finishing = trim($data['finishing'] ?? '-');
             (new ProductFinishingController($this->koneksi))->validate($store_id, $product_id, $finishing, (int)($data['order_item_id'] ?? 0));
             $laserVariant = null;
-            $isAnekaCetak = strtoupper(trim($product['category'])) === 'ANEKA CETAK';
+            $isAnekaCetak = strtoupper(trim($product['category'])) === 'ANEKA CETAK' && !ProductPriceTierController::usesTime($product);
             if ($isAnekaCetak) {
                 $panjang = $lebar = 0;
                 $size = ProductLaserConversionController::normalizeSize($data['size'] ?? '') ?: '-';

@@ -62,7 +62,7 @@ class ProductVariant {
 
     public static function orderFields() {
         return 'variant_master.options_json AS variant_options_json, variant_master.price AS variant_master_price,
-            variant_product.name AS variant_product_name, variant_category.name AS variant_category_name';
+            variant_product.name AS variant_product_name, variant_product.unit_type AS variant_unit_type, variant_category.name AS variant_category_name';
     }
 
     public static function orderJoins($alias = 'oi') {

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../functions/productStock.php';
+require_once __DIR__ . '/ProductPriceTierController.php';
 require_once __DIR__ . '/../models/Order.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/Product.php';
@@ -989,7 +990,9 @@ class ReportController {
                     
                     $base_price_plus_finishing = $reasonable_price + $finishing_price;
 
-                    if ($unit_type === 'M2') {
+                    if ($unit_type === 'MENIT') {
+                        $hargaSatuan = $base_price_plus_finishing * ProductPriceTierController::timeFromSize($size);
+                    } elseif ($unit_type === 'M2') {
                         if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $size, $match)) {
                             $p = floatval($match[1]);
                             $l = floatval($match[2]);

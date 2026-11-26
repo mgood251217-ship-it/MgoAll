@@ -1517,7 +1517,7 @@ class ProductController {
             $categoryId = $_POST['category_id'] ?? '';
             $categoryId = $categoryId === '' ? null : filter_var($categoryId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             $unit = $_POST['unit_type'] ?? 'PCS';
-            if ($storeId <= 0 || $name === '' || $categoryId === false || !in_array($unit, ['~', 'PCS', 'M2', 'CM2'], true)) throw new InvalidArgumentException('Periksa toko, nama, kategori, dan satuan produk.');
+            if ($storeId <= 0 || $name === '' || $categoryId === false || !in_array($unit, ['~', 'PCS', 'M2', 'CM2', 'MENIT'], true)) throw new InvalidArgumentException('Periksa toko, nama, kategori, dan satuan produk.');
             [$price, $reasonablePrice, $failedPrice] = $this->requestPrices();
             $stock = $this->requestStock();
             $this->koneksi->begin_transaction(); $transaction = true;

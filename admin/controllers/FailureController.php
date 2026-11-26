@@ -298,7 +298,7 @@ class FailureController {
         } elseif ($kiloan > 0) {
             $size = "{$kiloan} KG";
         }
-        $isAnekaCetak = strtoupper(trim($product['category'] ?? '')) === 'ANEKA CETAK';
+        $isAnekaCetak = strtoupper(trim($product['category'] ?? '')) === 'ANEKA CETAK' && !ProductPriceTierController::usesTime($product);
         $package = null;
         if ($isAnekaCetak) {
             $panjang = $lebar = $kiloan = $waktu = 0;
@@ -370,11 +370,7 @@ class FailureController {
                 $kiloan = (float)$matches[1];
             }
         }
-        if (preg_match('/^(\d+) Jam (\d+) Menit$/i', $size, $matches)) {
-            $waktu = (int)$matches[1] * 60 + (int)$matches[2];
-        } elseif (preg_match('/^([\d.]+)\s*Menit$/i', $size, $matches)) {
-            $waktu = (float)$matches[1];
-        }
+        $waktu = ProductPriceTierController::timeFromSize($size);
 
         return [$panjang, $lebar, $waktu, $kiloan];
     }

@@ -30,8 +30,17 @@ class ProductPriceTierController {
     }
 
     public static function usesTime($product) {
-        return strtoupper(trim($product['category'] ?? '')) === 'JASA'
-            && in_array(strtoupper(trim($product['name'] ?? '')), ['SETTING', 'POTONG AKRILIK'], true);
+        $unit = strtoupper(trim($product['unit_type'] ?? ''));
+        return $unit === 'MENIT' || (in_array($unit, ['PCS', '~'], true)
+            && strtoupper(trim($product['category'] ?? '')) === 'JASA'
+            && in_array(strtoupper(trim($product['name'] ?? $product['product_name'] ?? $product['judul'] ?? '')), ['SETTING', 'POTONG AKRILIK'], true));
+    }
+
+    public static function timeFromSize($size) {
+        if (preg_match('/^(\d+(?:\.\d+)?)\s*Jam\s+(\d+(?:\.\d+)?)\s*Menit$/iD', trim((string)$size), $match)) {
+            return (float)$match[1] * 60 + (float)$match[2];
+        }
+        return preg_match('/^(\d+(?:\.\d+)?)\s*Menit$/iD', trim((string)$size), $match) ? (float)$match[1] : 0;
     }
 
     public static function measure($product) {
@@ -355,11 +364,13 @@ class ProductPriceTierController {
             $group = self::tierGroup($row, $s); $totals[$group] = ($totals[$group] ?? 0) + $s['factor'] * (int)$row['quantity'];
         }
         foreach ($items as &$row) {
+            if (self::usesTime($row)) $row['waktu'] = self::timeFromSize($row['size'] ?? '');
             $row['bundle'] = !empty($row['tier_price_data']) ? (self::snapshot($row)['bundle'] ?? null) : null;
             $row['tier_pricing'] = null;
             $row['promotion'] = null;
             if ($s = self::snapshot($row)) {
                 $row['diskon'] = $s['discount'] ?? 0;
+                if (ProductVariantController::usesLegacyHourlyRate($row)) $row['diskon'] = round($row['diskon'] / 60, 2);
                 if (!empty($s['promotion'])) {
                     $row['promotion'] = ProductPromotion::calculate($s['promotion'], (int)$row['quantity']);
                 }
