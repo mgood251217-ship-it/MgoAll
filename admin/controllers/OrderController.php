@@ -437,9 +437,12 @@ class OrderController {
             $unit *= ($panjang * $lebar);
         }
 
-        if (ProductPriceTierController::isWeightMaterial($product) && $kiloan != 0) {
-            $unit *= $kiloan;
-            $size = "{$kiloan} KG";
+        if (ProductPriceTierController::isWeightMaterial($product)) {
+            $kiloan = ProductPriceTierController::weightInput($product, $kiloan, $size);
+            if ($kiloan > 0) {
+                $unit *= $kiloan;
+                $size = "{$kiloan} KG";
+            }
         }
 
         if (ProductPriceTierController::usesTime($product)) {
@@ -951,7 +954,7 @@ class OrderController {
             $finishing = trim($data['finishing'] ?? '-');
             (new ProductFinishingController($this->koneksi))->validate($store_id, $product_id, $finishing, (int)($data['order_item_id'] ?? 0));
             $laserVariant = null;
-            $isAnekaCetak = strtoupper(trim($product['category'])) === 'ANEKA CETAK' && !ProductPriceTierController::usesTime($product);
+            $isAnekaCetak = strtoupper(trim($product['category'])) === 'ANEKA CETAK' && !ProductPriceTierController::usesTime($product) && !ProductPriceTierController::isWeightMaterial($product);
             if ($isAnekaCetak) {
                 $panjang = $lebar = 0;
                 $size = ProductLaserConversionController::normalizeSize($data['size'] ?? '') ?: '-';
@@ -987,6 +990,13 @@ class OrderController {
 
         $waktu = (float)($data['waktu'] ?? 0);
         $kiloan = (float)($data['kiloan'] ?? 0);
+        if (ProductPriceTierController::isWeightMaterial($product)) {
+            $kiloan = ProductPriceTierController::weightInput($product, $kiloan, $size);
+            if ($kiloan > 0) {
+                $panjang = $lebar = $waktu = 0;
+                $size = "{$kiloan} KG";
+            }
+        }
         if ($isAnekaCetak) {
             $kiloan = $waktu = 0;
         }

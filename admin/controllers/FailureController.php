@@ -298,7 +298,7 @@ class FailureController {
         } elseif ($kiloan > 0) {
             $size = "{$kiloan} KG";
         }
-        $isAnekaCetak = strtoupper(trim($product['category'] ?? '')) === 'ANEKA CETAK' && !ProductPriceTierController::usesTime($product);
+        $isAnekaCetak = strtoupper(trim($product['category'] ?? '')) === 'ANEKA CETAK' && !ProductPriceTierController::usesTime($product) && !ProductPriceTierController::isWeightMaterial($product);
         $package = null;
         if ($isAnekaCetak) {
             $panjang = $lebar = $kiloan = $waktu = 0;

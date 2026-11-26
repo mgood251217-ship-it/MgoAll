@@ -816,7 +816,7 @@ class MeterController {
             $variantJoins
             JOIN orders o ON o.order_id = oi.order_id AND o.store_id = oi.store_id
             WHERE oi.store_id = ? AND o.date BETWEEN ? AND ?
-                AND oi.product_variant_data IS NOT NULL
+                AND (oi.product_variant_data IS NOT NULL OR variant_product.unit_type = 'KG')
             ORDER BY oi.order_item_id");
         $stmt->bind_param('iss', $store_id, $start, $end);
         $stmt->execute();
@@ -827,12 +827,17 @@ class MeterController {
         $meteran = $kiloan = [];
         foreach ($rows as $row) {
             $saved = ProductVariantController::snapshot($row);
+            if (!$saved && ($row['variant_unit_type'] ?? '') === 'KG') {
+                $saved = ['category' => $row['variant_category_name'], 'product_name' => $row['variant_product_name'],
+                    'unit_type' => 'KG', 'components' => [], 'label' => ''];
+            }
             if (!$saved) {
                 continue;
             }
             $category = strtoupper(trim($saved['category'] ?? ''));
             $productName = $saved['product_name'] ?? '';
-            if ($category !== 'SUBLIM' || !str_contains(strtoupper($productName), 'BAHAN')) {
+            $unit = strtoupper(trim($row['variant_unit_type'] ?? $saved['unit_type'] ?? ''));
+            if ($category !== 'SUBLIM' || ($unit !== 'KG' && !str_contains(strtoupper($productName), 'BAHAN'))) {
                 continue;
             }
             $qty = (int)$row['quantity'];
@@ -851,7 +856,7 @@ class MeterController {
             $components = $saved['components'];
             if (!$components) {
                 $components = [[
-                    'name' => $productName . ' - ' . $saved['label'],
+                    'name' => $productName . ($saved['label'] ? ' - ' . $saved['label'] : ''),
                     'quantity' => 1
                 ]];
             }

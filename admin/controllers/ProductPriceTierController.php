@@ -21,12 +21,22 @@ class ProductPriceTierController {
     }
 
     public static function isWeightMaterial($product) {
-        return strtoupper(trim($product['unit_type'] ?? '')) === 'PCS'
-            && str_contains(strtoupper($product['name'] ?? ''), 'BAHAN');
+        $unit = strtoupper(trim($product['unit_type'] ?? ''));
+        return $unit === 'KG' || ($unit === 'PCS'
+            && str_contains(strtoupper($product['name'] ?? $product['product_name'] ?? $product['judul'] ?? ''), 'BAHAN'));
     }
 
     public static function weightFromSize($size) {
         return preg_match('/^(\d+(?:\.\d+)?)\s*KG$/iD', trim((string)$size), $match) ? (float)$match[1] : 0;
+    }
+
+    public static function weightInput($product, $value, $size) {
+        $weight = (float)$value;
+        if ($weight <= 0) $weight = self::weightFromSize($size);
+        if (strtoupper(trim($product['unit_type'] ?? '')) === 'KG' && (!is_finite($weight) || $weight <= 0)) {
+            throw new InvalidArgumentException('Berat harus lebih dari 0 kg.');
+        }
+        return $weight;
     }
 
     public static function usesTime($product) {
@@ -153,7 +163,8 @@ class ProductPriceTierController {
         if (!$this->isAvailable()) {
             return;
         }
-        $weightBased = self::isWeightMaterial($product) && (float)($input['kiloan'] ?? 0) > 0;
+        $weight = (float)($input['kiloan'] ?? 0) ?: self::weightFromSize($item['size']);
+        $weightBased = self::isWeightMaterial($product) && $weight > 0;
         $rows = $this->items($store, $item['order_id'], $item['product_id']);
         $migrated = null;
         $migrationSources = [];
@@ -202,7 +213,7 @@ class ProductPriceTierController {
         $variantRules = !empty($item['variant']) ? ($first ? ($first['rules'] ?? []) : $this->rules($store, $item['product_id'], (int)$item['variant']['id'])) : null;
         $useVariantTiers = $variantRules && (!$first || !empty($first['variant_tiers'])) && $measure && !$special && !$weightBased;
         if (!empty($item['variant']) && !$useVariantTiers) {
-            $data = ['rules' => [], 'variant' => (int)$item['variant']['id'], 'measure' => $measure, 'factor' => $weightBased ? (float)$input['kiloan'] : 1,
+            $data = ['rules' => [], 'variant' => (int)$item['variant']['id'], 'measure' => $measure, 'factor' => $weightBased ? $weight : 1,
                 'normal' => round($item['unit'], 2), 'base' => (float)$product['price'],
                 'discount' => (float)$discount, 'stock' => self::stock($item)];
             if ($minimum = self::minimumAmount($product)) {
@@ -365,6 +376,7 @@ class ProductPriceTierController {
         }
         foreach ($items as &$row) {
             if (self::usesTime($row)) $row['waktu'] = self::timeFromSize($row['size'] ?? '');
+            if (self::isWeightMaterial($row)) $row['kiloan'] = self::weightFromSize($row['size'] ?? '');
             $row['bundle'] = !empty($row['tier_price_data']) ? (self::snapshot($row)['bundle'] ?? null) : null;
             $row['tier_pricing'] = null;
             $row['promotion'] = null;

@@ -743,6 +743,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (unit === 'MENIT' || (kategori === 'JASA' && ['PCS', '~'].includes(unit) && (judul === 'SETTING' || judul === 'POTONG AKRILIK'))) {
             const setRow = document.getElementById('settingDesain');
             if (setRow) setRow.style.display = 'flex';
+        } else if (unit === 'KG' || (judul.includes('BAHAN') && unit === 'PCS')) {
+            if (bahanSublim) bahanSublim.style.display = 'flex';
+            if (finishingRow) finishingRow.style.display = 'none';
         } else if (nameStr.includes('TRANSFERPAPER') || nameStr.includes('PRINT PRES')) {
             const subRow = document.getElementById('ukuranSublimRow');
             if (subRow) subRow.style.display = 'flex';
@@ -754,11 +757,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (inpRow) inpRow.style.display = 'flex';
         }
 
-        if (judul.includes('BAHAN') && unit === 'PCS') {
-            if (bahanSublim) bahanSublim.style.display = 'flex';
-            if (ukuranInputs) ukuranInputs.style.display = 'none';
-            if (finishingRow) finishingRow.style.display = 'none';
-        }
     }
 
     if (elKategori) {

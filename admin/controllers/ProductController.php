@@ -31,15 +31,25 @@ class ProductController {
         $this->authMiddleware = new AuthMiddleware($koneksi);
     }
 
+    // Aplikasi lama mengenali kiloan sebagai BAHAN/PCS. Perhitungan tetap memakai satuan database.
+    private function clientProductUnits($products) {
+        if (in_array($_GET['unit_schema'] ?? null, ['2', 2], true)) return $products;
+        foreach ($products as &$product) {
+            if (($product['unit_type'] ?? '') === 'KG') $product['unit_type'] = 'PCS';
+        }
+        unset($product);
+        return $products;
+    }
+
     public function index() {
         global $store_id;
-        return $this->productModel->getProductByStoreId($store_id);
+        return $this->clientProductUnits($this->productModel->getProductByStoreId($store_id));
     }
 
     public function getProductByCategory() {
         $category_id = $_GET['category_id'] ?? '';
         $products = $this->productModel->getProductByCategoryId($category_id);
-        send_json_response(true, 'Products retrieved successfully.', $products);
+        send_json_response(true, 'Products retrieved successfully.', $this->clientProductUnits($products));
     }
 
     public function getFinishingByCategory() {
@@ -136,7 +146,7 @@ class ProductController {
         $totalPages = ceil($total / $limit);
 
         return [
-            "data" => $data,
+            "data" => $this->clientProductUnits($data),
             "total_pages" => $totalPages,
             "total" => $total
         ];
@@ -149,7 +159,7 @@ class ProductController {
             send_json_response(true, 'Hasil pencarian produk', []);
             return;
         }
-        $products = $this->productModel->getProductByPagination($store_id, 1, $search, 10, 0, $this->variants->isAvailable());
+        $products = $this->clientProductUnits($this->productModel->getProductByPagination($store_id, 1, $search, 10, 0, $this->variants->isAvailable()));
         $variants = $this->variants->getByProducts($store_id, array_column($products, 'product_id'));
         $words = preg_split('/\s+/u', $search, -1, PREG_SPLIT_NO_EMPTY);
         $results = [];

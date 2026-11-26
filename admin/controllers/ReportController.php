@@ -992,6 +992,8 @@ class ReportController {
 
                     if ($unit_type === 'MENIT') {
                         $hargaSatuan = $base_price_plus_finishing * ProductPriceTierController::timeFromSize($size);
+                    } elseif ($unit_type === 'KG') {
+                        $hargaSatuan = $base_price_plus_finishing * ProductPriceTierController::weightFromSize($size);
                     } elseif ($unit_type === 'M2') {
                         if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $size, $match)) {
                             $p = floatval($match[1]);
