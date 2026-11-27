@@ -418,7 +418,7 @@ class ProductController {
             throw new InvalidArgumentException('Finishing ' . $source['name'] . ' duplikat di cabang tujuan.');
         }
         if ($matches) {
-            if (strtoupper(trim($matches[0]['unit_type'])) !== strtoupper(trim($source['unit_type']))) {
+            if (productUnitType($matches[0]) !== productUnitType($source)) {
                 throw new InvalidArgumentException(
                     'Satuan finishing ' . $source['name'] . ' berbeda di cabang tujuan.'
                 );
@@ -797,7 +797,7 @@ class ProductController {
                     }
                     if ($matches) {
                         $match = $matches[0];
-                        if (strtoupper(trim($match['unit_type'] ?? '')) !== strtoupper(trim($product['unit_type'] ?? ''))) {
+                        if (productUnitType($match) !== productUnitType($product)) {
                             throw new InvalidArgumentException(
                                 'Satuan produk ' . $product['name'] . ' berbeda: sumber '
                                 . $product['unit_type'] . ', tujuan ' . $match['unit_type'] . '.'
@@ -1517,7 +1517,7 @@ class ProductController {
             $categoryId = $_POST['category_id'] ?? '';
             $categoryId = $categoryId === '' ? null : filter_var($categoryId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             $unit = $_POST['unit_type'] ?? 'PCS';
-            if ($storeId <= 0 || $name === '' || $categoryId === false || !in_array($unit, ['~', 'PCS', 'M2', 'CM2', 'MENIT', 'KG'], true)) throw new InvalidArgumentException('Periksa toko, nama, kategori, dan satuan produk.');
+            if ($storeId <= 0 || $name === '' || $categoryId === false || !in_array($unit, ['~', 'PCS', 'M', 'M2', 'CM', 'CM2', 'MENIT', 'KG'], true)) throw new InvalidArgumentException('Periksa toko, nama, kategori, dan satuan produk.');
             [$price, $reasonablePrice, $failedPrice] = $this->requestPrices();
             $stock = $this->requestStock();
             $this->koneksi->begin_transaction(); $transaction = true;

@@ -293,7 +293,7 @@ class OrderController {
 
         foreach ($result as $row) {
             $type = $row['category'];
-            $unit_type = $row['unit_type'] ?? '';
+            $unit_type = productUnitType($row);
             $product_name = $row['product_name'];
 
             $is_outdoor = (($type === 'OUTDOOR' || ($type === 'SUBLIM' && $unit_type == 'M2')) && $product_name != 'ONEWAY');
@@ -427,7 +427,7 @@ class OrderController {
 
         $name = $product['name'] ?? '';
         $category = $product['category'] ?? '';
-        $unit_type = $product['unit_type'] ?? '';
+        $unit_type = productUnitType($product);
 
         if ($unit_type === 'M2') {
             $unit *= ($category === 'DTF' || $category === 'DTF UV') ? $panjang : ($panjang * $lebar);
@@ -666,7 +666,7 @@ class OrderController {
         $order_id = $item['order_id'];
 
         $product = $this->productModel->getProductById($product_id);
-        $unit_type = $product['unit_type'] ?? '';
+        $unit_type = productUnitType($product);
         $type = $product['category'] ?? '';
 
         $isAnekaCetak = strtoupper(trim($type)) === 'ANEKA CETAK';

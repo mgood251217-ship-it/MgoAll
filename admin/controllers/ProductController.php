@@ -31,14 +31,23 @@ class ProductController {
         $this->authMiddleware = new AuthMiddleware($koneksi);
     }
 
-    // Aplikasi lama mengenali kiloan sebagai BAHAN/PCS. Perhitungan tetap memakai satuan database.
+    // Bentuk lama tetap dipakai sampai klien menyatakan dukungan nama satuan baru.
     private function clientProductUnits($products) {
-        if (in_array($_GET['unit_schema'] ?? null, ['2', 2], true)) return $products;
+        $schema = filter_var($_GET['unit_schema'] ?? 0, FILTER_VALIDATE_INT) ?: 0;
         foreach ($products as &$product) {
-            if (($product['unit_type'] ?? '') === 'KG') $product['unit_type'] = 'PCS';
+            if ($schema < 2 && ($product['unit_type'] ?? '') === 'KG') $product['unit_type'] = 'PCS';
+            if ($schema < 3) $product['unit_type'] = productUnitType($product);
         }
         unset($product);
         return $products;
+    }
+
+    private function clientFinishingUnits($finishings) {
+        $schema = filter_var($_GET['unit_schema'] ?? 0, FILTER_VALIDATE_INT) ?: 0;
+        if ($schema >= 4) return $finishings;
+        foreach ($finishings as &$finishing) $finishing['unit_type'] = productUnitType($finishing);
+        unset($finishing);
+        return $finishings;
     }
 
     public function index() {
@@ -57,18 +66,18 @@ class ProductController {
         $product = max(0, (int)($_GET['product_id'] ?? 0));
         if ($product) {
             $rows = (new ProductFinishingController($this->db))->getByProduct($store_id, $product, max(0, (int)($_GET['order_item_id'] ?? 0)));
-            send_json_response(true, 'Finishings retrieved successfully.', $rows);
+            send_json_response(true, 'Finishings retrieved successfully.', $this->clientFinishingUnits($rows));
             return;
         }
         $category_id = $_GET['category_id'] ?? '';
         $finishings = $this->productModel->getFinishingByCategoryId($category_id);
-        send_json_response(true, 'Products retrieved successfully.', $finishings);
+        send_json_response(true, 'Products retrieved successfully.', $this->clientFinishingUnits($finishings));
     }
 
     public function getFinishing() {
         global $store_id;
         $finishings = $this->productModel->getFinishingByStoreId($store_id);
-        send_json_response(true, 'Finishings retrieved successfully.', $finishings);
+        send_json_response(true, 'Finishings retrieved successfully.', $this->clientFinishingUnits($finishings));
     }
 
     public function getProductFinishingPrices() {

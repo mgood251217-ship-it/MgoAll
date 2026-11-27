@@ -18,23 +18,31 @@ class FinishingSaleController {
         if (!$rows) throw new InvalidArgumentException('Finishing tidak tersedia pada toko ini.');
         $finishing = $rows[0];
         $unitType = strtoupper(trim($finishing['unit_type']));
+        $old = !empty($input['order_item_id']) ? (new Order($this->db))->getOrderItem((int)$input['order_item_id'], $store) : null;
+        $previous = [];
+        if ($old && (int)$old['order_id'] === (int)($input['order_id'] ?? 0)) {
+            $saved = json_decode($old['tier_price_data'] ?? '', true);
+            $previous = $saved['standalone_finishing'] ?? [];
+            if ((int)($previous['id'] ?? 0) !== $id) $previous = [];
+        }
+        $legacyLength = $previous && finishingUsesLegacyLength($previous, $old['size']);
+        $calculationUnit = productUnitType($finishing);
         $factor = 1; $size = '-';
         $length = (float)($input['panjang'] ?? 0); $width = (float)($input['lebar'] ?? 0);
-        if (in_array($unitType, ['M2', 'CM2'], true)) {
+        if ($legacyLength) {
+            if (!is_finite($length) || $length <= 0) throw new InvalidArgumentException('Isi panjang lebih dari 0.');
+            $factor = $length;
+            $unitType = $previous['unit_type'];
+            $size = $length . ' ' . $unitType;
+        } elseif (in_array($calculationUnit, ['M2', 'CM2'], true)) {
             if (!is_finite($length) || !is_finite($width) || $length <= 0 || $width <= 0) throw new InvalidArgumentException('Isi panjang dan lebar lebih dari 0.');
             $factor = $length * $width; $size = $length . 'x' . $width;
-        } elseif (in_array($unitType, ['M', 'CM'], true)) {
-            if (!is_finite($length) || $length <= 0) throw new InvalidArgumentException('Isi panjang lebih dari 0.');
-            $factor = $length; $size = $length . ' ' . $unitType;
         } elseif (!in_array($unitType, ['PCS', '~'], true)) {
             throw new InvalidArgumentException('Satuan finishing ini belum mendukung penjualan terpisah.');
         }
         $price = (float)$finishing['price'];
-        $old = !empty($input['order_item_id']) ? (new Order($this->db))->getOrderItem((int)$input['order_item_id'], $store) : null;
-        if ($old && (int)$old['order_id'] === (int)($input['order_id'] ?? 0) && $old['size'] === $size) {
-            $saved = json_decode($old['tier_price_data'] ?? '', true);
-            $previous = $saved['standalone_finishing'] ?? [];
-            if ((int)($previous['id'] ?? 0) === $id && ($previous['unit_type'] ?? '') === $unitType) $price = (float)$previous['price'];
+        if ($previous && $old['size'] === $size && productUnitType($previous) === $calculationUnit) {
+            $price = (float)$previous['price'];
         }
         $discount = moneyInputDecimal(($input['diskon'] ?? '') === '' ? 0 : ($input['diskon'] ?? 0));
         if ($discount === null || (float)$discount < 0) throw new InvalidArgumentException('Diskon tidak valid.');

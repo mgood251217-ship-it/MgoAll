@@ -59,7 +59,7 @@ $unitLabel = ProductPriceTierController::unitLabel($unit);
         <?php elseif (ProductPriceTierController::usesTime($data['product'])): ?>
             <?= $escape($data['product']['name']) ?> dihitung berdasarkan durasi pengerjaan. Harga bertingkat berdasarkan waktu belum tersedia.
         <?php else: ?>
-            Perhitungan produk ini (<?= $escape($data['product']['unit_type']) ?>) belum didukung harga bertingkat. Saat ini tersedia untuk PCS, M2, dan CM2.
+            Perhitungan produk ini (<?= $escape($data['product']['unit_type']) ?>) belum didukung harga bertingkat. Saat ini tersedia untuk PCS, M/M2, dan CM/CM2.
         <?php endif; ?>
     </div>
 <?php elseif ($data['product']): ?>

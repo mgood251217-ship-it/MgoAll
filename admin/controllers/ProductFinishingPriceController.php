@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../functions/productStock.php';
 require_once __DIR__ . '/../models/ProductFinishingPrice.php';
 require_once __DIR__ . '/../models/ProductFinishing.php';
 
@@ -13,7 +14,7 @@ class ProductFinishingPriceController {
 
     public static function requiresDimensions($product) {
         return in_array(strtoupper(trim($product['category'] ?? '')), ['INDOOR', 'OUTDOOR'], true)
-            && strtoupper($product['unit_type'] ?? '') === 'M2';
+            && productUnitType($product) === 'M2';
     }
 
     public static function supportsDimensions($product) {

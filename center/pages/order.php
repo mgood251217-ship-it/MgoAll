@@ -729,7 +729,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const kategori = getKategoriName();
         const selectedOption = elJudul ? elJudul.options[elJudul.selectedIndex] : null;
         const unit = (selectedOption && selectedOption.dataset.unit) ? selectedOption.dataset.unit : '';
-        const sizeUnit = unit === 'CM2' || kategori === 'AKRILIK' ? 'cm' : 'm';
+        const sizeUnit = ['CM', 'CM2'].includes(unit) || kategori === 'AKRILIK' ? 'cm' : 'm';
         if (elPanjang) elPanjang.placeholder = `Pjg (${sizeUnit})`;
         if (elLebar) elLebar.placeholder = `Lbr (${sizeUnit})`;
         const judul = (selectedOption && selectedOption.dataset.name) ? selectedOption.dataset.name : '';
@@ -752,7 +752,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else if (['TEKSTIL', 'PAKAIAN', 'JERSEY'].includes(kategori)) {
             const jerRow = document.getElementById('ukuranJerseyRow');
             if (jerRow) jerRow.style.display = 'flex';
-        } else if (unit === 'M2' || unit === 'CM2') {
+        } else if (['M', 'M2', 'CM', 'CM2'].includes(unit)) {
             const inpRow = document.getElementById('ukuranInputs');
             if (inpRow) inpRow.style.display = 'flex';
         }

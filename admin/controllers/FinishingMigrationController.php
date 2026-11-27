@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../functions/productStock.php';
 require_once __DIR__ . '/../models/FinishingMigration.php';
 require_once __DIR__ . '/ProductLaserConversionController.php';
 require_once __DIR__ . '/ProductFinishingController.php';
@@ -84,7 +85,7 @@ class FinishingMigrationController {
             if (!$this->model->lockStore($store)) throw new InvalidArgumentException('Toko tidak ditemukan.');
             $rows = $this->model->lockFinishings($store, [$source, $target]);
             if (count($rows) !== 2) throw new InvalidArgumentException('Finishing asal dan tujuan harus tersedia pada toko yang sama.');
-            if (strtoupper(trim($rows[$source]['unit_type'])) !== strtoupper(trim($rows[$target]['unit_type']))) {
+            if (productUnitType($rows[$source]) !== productUnitType($rows[$target])) {
                 throw new InvalidArgumentException('Satuan finishing asal dan tujuan harus sama agar pemakaian stok tetap sesuai.');
             }
             $counts = [];

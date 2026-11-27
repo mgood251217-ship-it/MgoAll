@@ -209,7 +209,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                                     data-reasonable-price="<?= $row['reasonable_price'] ?? 0 ?>"
                                     data-failed-price="<?= $row['failed_price'] ?? 0 ?>"
                                     data-stock="<?= $row['stock'] ?>"
-                                    data-track-stock="<?= tracksStock($row) ? '1' : '0' ?>" data-unit-type="<?= htmlspecialchars($row['unit_type'] === '~' ? 'PCS' : ($row['unit_type'] ?? 'PCS')) ?>">
+                                    data-track-stock="<?= tracksStock($row) ? '1' : '0' ?>" data-unit-type="<?= htmlspecialchars(strtr($row['unit_type'] ?? 'PCS', ['M2' => 'M', 'CM2' => 'CM', '~' => 'PCS'])) ?>">
                                     <i class="fas fa-pen"></i>
                                 </button>
                                 <a <?= !$canProductAction('save_product_variant') ? 'hidden data-center-access="denied"' : '' ?>
@@ -346,7 +346,7 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                                     data-reasonable-price="<?= $row['reasonable_price'] ?? 0 ?>"
                                     data-failed-price="<?= $row['failed_price'] ?? 0 ?>"
                                     data-stock="<?= $row['stock'] ?>"
-                                    data-track-stock="<?= tracksStock($row) ? '1' : '0' ?>" data-unit-type="<?= htmlspecialchars($row['unit_type'] === '~' ? 'PCS' : ($row['unit_type'] ?? 'PCS')) ?>">
+                                    data-track-stock="<?= tracksStock($row) ? '1' : '0' ?>" data-unit-type="<?= htmlspecialchars(strtr($row['unit_type'] ?? 'PCS', ['M2' => 'M', 'CM2' => 'CM', '~' => 'PCS'])) ?>">
                                     <i class="fas fa-pen"></i>
                                 </button>
                                 <button <?= !$canProductAction('delete_finishing') ? 'hidden data-center-access="denied"' : '' ?> type="button" class="btn-action btn-danger" onclick="deleteData('finishing', <?= $row['finishing_id'] ?>)">
@@ -476,8 +476,8 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                         <option value="PCS">PCS</option>
                         <option value="MENIT">MENIT</option>
                         <option value="KG">KG</option>
-                        <option value="M2">M2</option>
-                        <option value="CM2">CM2</option>
+                        <option value="M">M</option>
+                        <option value="CM">CM</option>
                     </select>
                     <label class="d-flex align-items-center gap-2 mt-2">
                         <input type="hidden" name="track_stock" value="0">
@@ -539,8 +539,8 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                         <option value="PCS">PCS</option>
                         <option value="MENIT">MENIT</option>
                         <option value="KG">KG</option>
-                        <option value="M2">M2</option>
-                        <option value="CM2">CM2</option>
+                        <option value="M">M</option>
+                        <option value="CM">CM</option>
                     </select>
                     <label class="d-flex align-items-center gap-2 mt-2">
                         <input type="hidden" name="track_stock" value="0">
@@ -600,8 +600,8 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                     <label class="form-label-custom">Satuan</label>
                     <select name="unit_type" class="form-control-custom form-select">
                         <option value="PCS">PCS</option>
-                        <option value="M2">M2</option>
-                        <option value="CM2">CM2</option>
+                        <option value="M">M</option>
+                        <option value="CM">CM</option>
                     </select>
                     <label class="d-flex align-items-center gap-2 mt-2">
                         <input type="hidden" name="track_stock" value="0">
@@ -661,8 +661,8 @@ $_SESSION['product_add_csrf'] = $_SESSION['product_add_csrf'] ?? bin2hex(random_
                     <label class="form-label-custom">Satuan</label>
                     <select name="unit_type" id="edit_finishing_unit_type" class="form-control-custom form-select">
                         <option value="PCS">PCS</option>
-                        <option value="M2">M2</option>
-                        <option value="CM2">CM2</option>
+                        <option value="M">M</option>
+                        <option value="CM">CM</option>
                     </select>
                     <label class="d-flex align-items-center gap-2 mt-2">
                         <input type="hidden" name="track_stock" value="0">

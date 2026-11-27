@@ -46,7 +46,7 @@ class PackagePriceController {
             $stmt = $this->koneksi->prepare("SELECT p.product_id, p.name, p.price, p.unit_type, c.name AS category
                 FROM products p JOIN categories c ON c.category_id = p.category_id AND c.store_id = ?
                 WHERE p.store_id = ? AND (
-                    (c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type = 'M2')
+                    (c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type IN ('M', 'M2'))
                     OR (c.name IN ('LASER', 'LASER A3') AND p.unit_type IN ('PCS', '~')))
                 ORDER BY c.name, p.name, p.product_id");
             $stmt->bind_param('ii', $store_id, $store_id);
@@ -163,7 +163,7 @@ class PackagePriceController {
                 $stmt = $this->koneksi->prepare("SELECT p.category_id, p.unit_type, c.name AS category FROM products p
                     JOIN categories c ON c.category_id = p.category_id AND c.store_id = ?
                     WHERE p.product_id = ? AND p.store_id = ? AND (
-                        (c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type = 'M2')
+                        (c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type IN ('M', 'M2'))
                         OR (c.name IN ('LASER', 'LASER A3') AND p.unit_type IN ('PCS', '~')))
                     FOR UPDATE");
                 $stmt->bind_param('iii', $store_id, $product_id, $store_id);

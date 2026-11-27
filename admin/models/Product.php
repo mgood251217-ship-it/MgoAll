@@ -172,9 +172,9 @@ class Product{
                 COALESCE(
                     SUM(
                         CASE 
-                            WHEN p.unit_type = 'M2' AND oi.size LIKE '%x%' 
+                            WHEN p.unit_type IN ('M', 'M2') AND oi.size LIKE '%x%'
                             THEN oi.quantity * CAST(SUBSTRING_INDEX(oi.size, 'x', 1) AS DECIMAL(10,4)) * CAST(SUBSTRING_INDEX(oi.size, 'x', -1) AS DECIMAL(10,4)) 
-                            WHEN p.unit_type = 'M2' 
+                            WHEN p.unit_type IN ('M', 'M2')
                             THEN oi.quantity 
                             ELSE oi.quantity 
                         END

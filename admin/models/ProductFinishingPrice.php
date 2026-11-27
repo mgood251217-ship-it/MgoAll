@@ -58,12 +58,12 @@ class ProductFinishingPrice {
         $stmt = $this->koneksi->prepare("SELECT r.*, p.name AS product_name,
                 p.category_id, c.name AS category, f.name AS finishing_name,
                 f.unit_type AS finishing_unit_type, ($finishingTracking) AS finishing_track_stock,
-                (c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type = 'M2') AS uses_area,
-                ((c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type = 'M2')
+                (c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type IN ('M', 'M2')) AS uses_area,
+                ((c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type IN ('M', 'M2'))
                     OR (c.name = 'LASER A3' AND r.panjang > 0 AND r.lebar > 0)) AS requires_size,
                 (p.product_id IS NOT NULL AND c.category_id IS NOT NULL AND f.finishing_id IS NOT NULL
                     AND (
-                        (c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type = 'M2' AND r.panjang > 0 AND r.lebar > 0)
+                        (c.name IN ('INDOOR', 'OUTDOOR') AND p.unit_type IN ('M', 'M2') AND r.panjang > 0 AND r.lebar > 0)
                         OR (c.name = 'LASER' AND p.unit_type IN ('PCS', '~') AND r.panjang = 0 AND r.lebar = 0)
                         OR (c.name = 'LASER A3' AND p.unit_type IN ('PCS', '~')
                             AND ((r.panjang = 0 AND r.lebar = 0) OR (r.panjang > 0 AND r.lebar > 0)))

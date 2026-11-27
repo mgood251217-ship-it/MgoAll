@@ -110,7 +110,7 @@ class PriceTierController {
                     if (!$variant) throw new InvalidArgumentException('Pilih varian pada produk dan toko yang sama.');
                 }
                 $measure = $product ? ProductPriceTierController::measure($product) : null;
-                if (!$measure) throw new InvalidArgumentException('Pilih produk satuan PCS, ~, M2, atau CM2 yang tersedia di toko ini dengan perhitungan jumlah atau luas.');
+                if (!$measure) throw new InvalidArgumentException('Pilih produk satuan PCS, ~, M/M2, atau CM/CM2 yang tersedia di toko ini dengan perhitungan jumlah atau luas.');
                 $category = (int)$product['category_id'];
                 $quantities = $_POST['quantity_above'] ?? []; $prices = $_POST['price'] ?? [];
                 if (!is_array($quantities) || !is_array($prices) || count($quantities) !== count($prices) || count($prices) > 500) throw new InvalidArgumentException('Daftar tingkatan tidak valid.');

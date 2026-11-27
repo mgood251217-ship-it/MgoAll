@@ -6,6 +6,18 @@ function productStockValue($value) {
     return preg_match('/^-?[0-9]{1,11}(?:\.[0-9]{1,4})?$/D', $value) ? $value : null;
 }
 
+// M dan CM adalah nama baru satuan luas; rumus M2/CM2 tetap dipakai.
+function productUnitType($product) {
+    $unit = strtoupper(trim($product['unit_type'] ?? ''));
+    return ['M' => 'M2', 'CM' => 'CM2'][$unit] ?? $unit;
+}
+
+// Nota finishing lama pernah menyimpan panjang tunggal, misalnya "2 M".
+function finishingUsesLegacyLength($finishing, $size) {
+    return in_array(strtoupper(trim($finishing['unit_type'] ?? '')), ['M', 'CM'], true)
+        && preg_match('/^\d+(?:\.\d+)?\s*(?:M|CM)$/iD', trim((string)$size)) === 1;
+}
+
 // Satuan menentukan perhitungan; track_stock menentukan pemeriksaan dan mutasi stok.
 function tracksStock($row) {
     return isset($row['track_stock']) ? (int)$row['track_stock'] === 1 : ($row['unit_type'] ?? '') !== '~';

@@ -44,9 +44,9 @@ class Finance{
                         CASE
                             WHEN p.unit_type = 'KG' AND UPPER(TRIM(oi.size)) REGEXP '^[0-9]+([.][0-9]+)?[[:space:]]*KG$' THEN
                                 oi.quantity * CAST(TRIM(SUBSTRING_INDEX(UPPER(oi.size), 'KG', 1)) AS DECIMAL(15,4))
-                            WHEN p.unit_type = 'M2' AND oi.size LIKE '%x%' THEN 
+                            WHEN p.unit_type IN ('M', 'M2') AND oi.size LIKE '%x%' THEN
                                 oi.quantity * CAST(SUBSTRING_INDEX(oi.size, 'x', 1) AS DECIMAL(10,4)) * CAST(SUBSTRING_INDEX(oi.size, 'x', -1) AS DECIMAL(10,4))
-                            WHEN p.unit_type = 'M2' THEN 
+                            WHEN p.unit_type IN ('M', 'M2') THEN
                                 oi.quantity
                             ELSE 
                                 oi.quantity

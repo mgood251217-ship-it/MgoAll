@@ -982,7 +982,7 @@ class ReportController {
 
                 $hargaSatuan = 0;
                 if (!empty($row['product_id']) && $row['product_id'] != 0) {
-                    $unit_type = $row['unit_type'] ?? '';
+                    $unit_type = productUnitType($row);
                     $type = $row['category'] ?? '';
                     $product_name = $row['product_name'] ?? '';
                     $reasonable_price = (float)($row['reasonable_price'] ?? 0);

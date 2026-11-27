@@ -197,7 +197,7 @@ class MeterController {
             FROM products p
             JOIN categories c ON p.category_id = c.category_id
             WHERE UPPER(TRIM(c.name)) = 'AKRILIK' AND p.store_id = ?
-                AND UPPER(TRIM(p.unit_type)) IN ('CM2', 'M2')
+                AND UPPER(TRIM(p.unit_type)) IN ('CM', 'CM2', 'M', 'M2')
         ");
         $stmt->bind_param("i", $store_id);
         $stmt->execute();
@@ -210,7 +210,7 @@ class MeterController {
 
         foreach ($products as $akrilik) {
             $productId_to_name[$akrilik['product_id']] = $akrilik['name'];
-            $productUnits[$akrilik['product_id']] = strtoupper(trim($akrilik['unit_type']));
+            $productUnits[$akrilik['product_id']] = productUnitType($akrilik);
             $product_data_assoc[$akrilik['name']] = [
                 'name' => $akrilik['name'],
                 'rows' => []

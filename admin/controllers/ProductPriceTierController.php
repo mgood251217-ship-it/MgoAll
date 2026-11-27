@@ -21,7 +21,7 @@ class ProductPriceTierController {
     }
 
     public static function isWeightMaterial($product) {
-        $unit = strtoupper(trim($product['unit_type'] ?? ''));
+        $unit = productUnitType($product);
         return $unit === 'KG' || ($unit === 'PCS'
             && str_contains(strtoupper($product['name'] ?? $product['product_name'] ?? $product['judul'] ?? ''), 'BAHAN'));
     }
@@ -40,7 +40,7 @@ class ProductPriceTierController {
     }
 
     public static function usesTime($product) {
-        $unit = strtoupper(trim($product['unit_type'] ?? ''));
+        $unit = productUnitType($product);
         return $unit === 'MENIT' || (in_array($unit, ['PCS', '~'], true)
             && strtoupper(trim($product['category'] ?? '')) === 'JASA'
             && in_array(strtoupper(trim($product['name'] ?? $product['product_name'] ?? $product['judul'] ?? '')), ['SETTING', 'POTONG AKRILIK'], true));
@@ -58,7 +58,7 @@ class ProductPriceTierController {
         if (self::usesTime($product)) {
             return null;
         }
-        $unit = strtoupper(trim($product['unit_type'] ?? ''));
+        $unit = productUnitType($product);
         if (in_array($unit, ['PCS', '~'], true)) {
             return 'pcs';
         }
@@ -395,7 +395,14 @@ class ProductPriceTierController {
                 $finishing = $s['standalone_finishing'];
                 $row['item_type'] = 'finishing'; $row['finishing_id'] = (int)$finishing['id'];
                 $row['judul'] = $row['product_name'] = $finishing['name'];
-                $row['category'] = 'FINISHING'; $row['unit_type'] = $finishing['unit_type'];
+                $row['category'] = 'FINISHING';
+                $legacyLength = finishingUsesLegacyLength($finishing, $row['size'] ?? '');
+                $row['finishing_measure'] = $legacyLength ? 'length'
+                    : (in_array(productUnitType($finishing), ['M2', 'CM2'], true) ? 'area' : 'pcs');
+                $schema = filter_var($_GET['unit_schema'] ?? 0, FILTER_VALIDATE_INT) ?: 0;
+                $row['unit_type'] = $schema >= 4 || $legacyLength ? $finishing['unit_type'] : productUnitType($finishing);
+                // Klien lama membaca katalog sebagai luas; lebar 1 mempertahankan nilai nota panjang lama.
+                if ($legacyLength && $schema < 4) $row['lebar'] = 1;
                 $row['price'] = $finishing['price']; $row['finishing_names'] = '';
             }
             unset($row['tier_price_data']);
