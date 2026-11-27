@@ -193,10 +193,11 @@ class MeterController {
         $total_m2_product = [];
 
         $stmt = $this->koneksi->prepare("
-            SELECT p.product_id, p.name
+            SELECT p.product_id, p.name, p.unit_type
             FROM products p
             JOIN categories c ON p.category_id = c.category_id
-            WHERE c.name = 'AKRILIK' AND p.store_id = ?
+            WHERE UPPER(TRIM(c.name)) = 'AKRILIK' AND p.store_id = ?
+                AND UPPER(TRIM(p.unit_type)) IN ('CM2', 'M2')
         ");
         $stmt->bind_param("i", $store_id);
         $stmt->execute();
@@ -204,10 +205,12 @@ class MeterController {
         $stmt->close();
 
         $productId_to_name = [];
+        $productUnits = [];
         $product_data_assoc = [];
 
         foreach ($products as $akrilik) {
             $productId_to_name[$akrilik['product_id']] = $akrilik['name'];
+            $productUnits[$akrilik['product_id']] = strtoupper(trim($akrilik['unit_type']));
             $product_data_assoc[$akrilik['name']] = [
                 'name' => $akrilik['name'],
                 'rows' => []
@@ -223,7 +226,7 @@ class MeterController {
             $queryStr = "
                 SELECT oi.product_id, oi.size, oi.quantity
                 FROM order_items oi
-                JOIN orders o ON oi.order_id = o.order_id
+                JOIN orders o ON oi.order_id = o.order_id AND oi.store_id = o.store_id
                 WHERE o.store_id = ?
                   AND o.date BETWEEN ? AND ?
                   AND oi.product_id IN ($in_products)
@@ -254,12 +257,12 @@ class MeterController {
                 if (preg_match('/^([\d.]+)[xX]([\d.]+)$/', $size, $match)) {
                     $p = floatval($match[1]);
                     $l = floatval($match[2]);
-                    $m2 = $p * $l * $qty;
+                    $m2 = round($p * $l * $qty / ($productUnits[$pid] === 'CM2' ? 10000 : 1), 8);
 
                     $product_data_assoc[$display_name]['rows'][] = ['p' => $p, 'l' => $l, 'qty' => $qty, 'm2' => $m2];
 
-                    $total_all_m2_akrilik += $m2;
-                    $total_m2_product[$display_name] += $m2;
+                    $total_all_m2_akrilik = round($total_all_m2_akrilik + $m2, 8);
+                    $total_m2_product[$display_name] = round($total_m2_product[$display_name] + $m2, 8);
                 }
             }
         }
@@ -587,10 +590,11 @@ class MeterController {
             LEFT JOIN (
                 SELECT oi.product_id, oi.quantity
                 FROM order_items oi
-                JOIN orders o ON oi.order_id = o.order_id
+                JOIN orders o ON oi.order_id = o.order_id AND oi.store_id = o.store_id
                 WHERE o.store_id = ? AND o.date BETWEEN ? AND ?
             ) oi_filtered ON p.product_id = oi_filtered.product_id
-            WHERE c.name = 'MERCENDISE AKRILIK' AND p.store_id = ?
+            WHERE UPPER(TRIM(c.name)) = 'AKRILIK' AND p.store_id = ?
+                AND UPPER(TRIM(p.unit_type)) = 'PCS'
             GROUP BY p.product_id, p.name
         ";
 
