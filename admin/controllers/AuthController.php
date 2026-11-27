@@ -52,6 +52,7 @@ class AuthController {
             'Session aktif.',
             [
                 'user' => [
+                    'user_id' => (int)$user_id,
                     'role' => $role,
                     'username' => $username,
                     'initial' => $initial,
@@ -60,6 +61,7 @@ class AuthController {
                     'foto_link' => $fotoLink
                 ],
                 'store' => [
+                    'store_id' => (int)$store_id,
                     'name' => $storeName,
                     'address' => $storeAddress,
                     'logo' => $storeLogo,
