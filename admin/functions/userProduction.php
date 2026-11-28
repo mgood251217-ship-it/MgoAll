@@ -29,3 +29,14 @@ function requestedProductionSections($input, $role, $previous, $available) {
     if (!$available && $sections) throw new InvalidArgumentException('Jalankan SQL pengaturan bagian produksi terlebih dahulu.');
     return implode(',', $available ? effectiveProductionSections($sections, $role) : []);
 }
+
+function productionOrderCategories($sections) {
+    $section = effectiveProductionSections($sections, 'PRODUKSI')[0];
+    return [
+        'OUTDOOR' => ['OUTDOOR'],
+        'INDOOR' => ['INDOOR', 'DTF UV', 'ANEKA CETAK', 'LASER A3'],
+        'DTF' => ['DTF'],
+        'SUBLIM' => ['TEKSTIL', 'SUBLIM'],
+        'ENGRAVE' => ['AKRILIK'],
+    ][$section];
+}

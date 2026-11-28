@@ -337,50 +337,56 @@ class Order {
         return $result ? $result['diskon'] : 0;
     }
 
-    public function getFilteredOrders($is_all_access, $search_text, $store_id, $customerLimit, $start_date, $end_date, $system) {
-        if ($is_all_access) {
-            if ($search_text !== '') {
-                $query = "SELECT * FROM orders WHERE store_id = ? AND (customer_name LIKE ? OR nomorator LIKE ?) AND date BETWEEN ? AND ? ORDER BY order_id DESC";
-                $params = [$store_id, "%$search_text%", "%$search_text%", $start_date, $end_date];
-                $types = "issss";
+    public function getFilteredOrders($is_all_access, $search_text, $store_id, $customerLimit, $start_date, $end_date, $system, $categories = []) {
+        $where = 'store_id = ? AND date BETWEEN ? AND ?';
+        $params = [$store_id, $start_date, $end_date];
+        $types = 'iss';
+
+        if (!$is_all_access) {
+            $where .= ' AND system = ?';
+            $params[] = $system;
+            $types .= 's';
+        }
+        if ($search_text !== '') {
+            $where .= ' AND (customer_name LIKE ? OR nomorator LIKE ?)';
+            $params[] = "%$search_text%";
+            $params[] = "%$search_text%";
+            $types .= 'ss';
+        }
+        if ($categories) {
+            $marks = implode(',', array_fill(0, count($categories), '?'));
+            // Pilih order yang memiliki minimal satu item cocok; detail item tetap utuh.
+            $where .= " AND EXISTS (
+                SELECT 1 FROM order_items oi
+                JOIN products p ON p.product_id = oi.product_id AND p.store_id = oi.store_id
+                JOIN categories c ON c.category_id = p.category_id AND c.store_id = p.store_id
+                WHERE oi.order_id = orders.order_id AND oi.store_id = orders.store_id
+                    AND UPPER(TRIM(c.name)) IN ($marks)
+            )";
+            $params = array_merge($params, $categories);
+            $types .= str_repeat('s', count($categories));
+        }
+
+        $query = "SELECT * FROM orders WHERE $where ORDER BY order_id DESC";
+        if ($search_text === '' && $customerLimit > 0) {
+            if ($is_all_access) {
+                $query = "(SELECT * FROM orders WHERE $where AND system = 'OFFLINE' ORDER BY order_id DESC LIMIT ?)
+                          UNION ALL
+                          (SELECT * FROM orders WHERE $where AND system = 'ONLINE' ORDER BY order_id DESC LIMIT ?)";
+                $params = array_merge($params, [$customerLimit], $params, [$customerLimit]);
+                $types = $types . 'i' . $types . 'i';
             } else {
-                if ($customerLimit > 0) {
-                    $query = "(SELECT * FROM orders WHERE store_id = ? AND system = 'OFFLINE' AND date BETWEEN ? AND ? ORDER BY order_id DESC LIMIT ?)
-                              UNION ALL
-                              (SELECT * FROM orders WHERE store_id = ? AND system = 'ONLINE' AND date BETWEEN ? AND ? ORDER BY order_id DESC LIMIT ?)";
-                    $params = [$store_id, $start_date, $end_date, $customerLimit, $store_id, $start_date, $end_date, $customerLimit];
-                    $types = "issiissi";
-                } else {
-                    $query = "SELECT * FROM orders WHERE store_id = ? AND date BETWEEN ? AND ? ORDER BY order_id DESC";
-                    $params = [$store_id, $start_date, $end_date];
-                    $types = "iss";
-                }
-            }
-        } else {
-            if ($search_text !== '') {
-                $query = "SELECT * FROM orders WHERE store_id = ? AND system = ? AND (customer_name LIKE ? OR nomorator LIKE ?) AND date BETWEEN ? AND ? ORDER BY order_id DESC";
-                $params = [$store_id, $system, "%$search_text%", "%$search_text%", $start_date, $end_date];
-                $types = "isssss";
-            } else {
-                if ($customerLimit > 0) {
-                    $query = "SELECT * FROM orders WHERE store_id = ? AND system = ? AND date BETWEEN ? AND ? ORDER BY order_id DESC LIMIT ?";
-                    $params = [$store_id, $system, $start_date, $end_date, $customerLimit];
-                    $types = "isssi"; 
-                } else {
-                    $query = "SELECT * FROM orders WHERE store_id = ? AND system = ? AND date BETWEEN ? AND ? ORDER BY order_id DESC";
-                    $params = [$store_id, $system, $start_date, $end_date];
-                    $types = "isss";
-                }
+                $query .= ' LIMIT ?';
+                $params[] = $customerLimit;
+                $types .= 'i';
             }
         }
 
         $stmt = $this->koneksi->prepare($query);
         $stmt->bind_param($types, ...$params);
         $stmt->execute();
-        
         $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-
         return $result;
     }
 

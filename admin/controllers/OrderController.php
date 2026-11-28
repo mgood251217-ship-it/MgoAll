@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../functions/productStock.php';
+require_once __DIR__ . '/../functions/userProduction.php';
 require_once __DIR__ . '/ProductFinishingPriceController.php';
 require_once __DIR__ . '/ProductFinishingController.php';
 require_once __DIR__ . '/FinishingSaleController.php';
@@ -51,8 +52,14 @@ class OrderController {
         $userModel = new User($koneksi);
         $usersInitial = $userModel->getUsersInitial($store_id);
 
+        $productionCategories = [];
+        if ($role === 'PRODUKSI') {
+            $productionUser = $this->userModel->getProductionSettings($user_id, $store_id);
+            $productionCategories = productionOrderCategories($productionUser['production_sections'] ?? null);
+        }
+
         $all_orders = $this->orderModel->getFilteredOrders(
-            $is_all_access, $search_text, $store_id, $customerLimit, $start_date, $end_date, $system
+            $is_all_access, $search_text, $store_id, $customerLimit, $start_date, $end_date, $system, $productionCategories
         );
 
         $paymentData = [];
