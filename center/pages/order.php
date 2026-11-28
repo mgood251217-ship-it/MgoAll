@@ -127,7 +127,7 @@ if (isset($_GET['ajax_payment'])) {
                 </div>
 
                 <div class="form-group migrated-style-36" id="ukuranJerseyRow">
-                    <label for="ukuranJersey">Ukuran Tekstil</label>
+                    <label for="ukuranJersey">Ukuran</label>
                     <select id="ukuranJersey" name="ukuran_jersey" class="form-control select2">
                         <option value="">-- Pilih Ukuran --</option>
                         <option value="XS">XS</option>
@@ -466,6 +466,21 @@ document.addEventListener('DOMContentLoaded', function () {
         return opt ? (opt.dataset.name || '') : '';
     }
 
+    function usesClothingSize() {
+        const kategori = getKategoriName();
+        const option = elJudul?.options[elJudul.selectedIndex];
+        const name = String(option?.dataset.name || '').trim().toUpperCase();
+        const unit = String(option?.dataset.unit || '').trim().toUpperCase();
+        return ['TEKSTIL', 'PAKAIAN', 'JERSEY'].includes(kategori)
+            || (kategori === 'DTF' && name.includes('KAOS') && unit === 'PCS');
+    }
+
+    function getSelectedSize() {
+        if (getKategoriName() === 'ANEKA CETAK') return laserSize;
+        if (usesClothingSize()) return elUkuranJersey?.value || '';
+        return size?.value || elUkuranJersey?.value || '';
+    }
+
     function loadOrderItems() {
         fetch(`/action?action=get_order_items&order_id=<?= (int)$order_id ?>`)
             .then(res => res.json())
@@ -749,7 +764,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else if (nameStr.includes('TRANSFERPAPER') || nameStr.includes('PRINT PRES')) {
             const subRow = document.getElementById('ukuranSublimRow');
             if (subRow) subRow.style.display = 'flex';
-        } else if (['TEKSTIL', 'PAKAIAN', 'JERSEY'].includes(kategori)) {
+        } else if (usesClothingSize()) {
             const jerRow = document.getElementById('ukuranJerseyRow');
             if (jerRow) jerRow.style.display = 'flex';
         } else if (['M', 'M2', 'CM', 'CM2'].includes(unit)) {
@@ -815,6 +830,7 @@ document.addEventListener('DOMContentLoaded', function () {
             lebarAsli = parseFloat(document.getElementById('panjangSublim')?.value) || 0;
         }
 
+        if (usesClothingSize()) panjangAsli = lebarAsli = 0;
         const finishingIds = Array.from(document.querySelectorAll('.finishing-checkbox:checked')).map(cb => cb.value);
 
         const formData = new FormData();
@@ -831,7 +847,7 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('kiloan', parseFloat(elKiloan?.value) || 0);
         formData.append('waktu', parseFloat(elWaktu?.value) || 0);
         formData.append('ukuranJersey', elUkuranJersey?.value || '');
-        formData.append('size', getKategoriName() === 'ANEKA CETAK' ? laserSize : (size?.value || elUkuranJersey?.value || ''));
+        formData.append('size', getSelectedSize());
         formData.append('diskon', elEnableDiskon?.checked ? (parseFloat(elDiskonInput?.value) || 0) : 0);
         formData.append('store', '<?= $encrypted_store ?>');
 
@@ -920,6 +936,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 panjang = parseFloat(document.getElementById('panjangSublim')?.value) || 0;
                 lebar = parseFloat(document.getElementById('lebarSublim')?.value) || 0;
             }
+            if (usesClothingSize()) panjang = lebar = 0;
             const finishingIds = Array.from(document.querySelectorAll('.finishing-checkbox:checked')).map(cb => cb.value);
 
             const formData = new FormData();
@@ -934,7 +951,7 @@ document.addEventListener('DOMContentLoaded', function () {
             formData.append('lebar', lebar);
             formData.append('kiloan', parseFloat(elKiloan?.value) || 0);
             formData.append('waktu', parseFloat(elWaktu?.value) || 0);
-            formData.append('size', getKategoriName() === 'ANEKA CETAK' ? laserSize : (size?.value || elUkuranJersey?.value || ''));
+            formData.append('size', getSelectedSize());
             formData.append('store', '<?= $encrypted_store ?>');
             if (elEnableDiskon?.checked) formData.append('diskon', parseFloat(elDiskonInput?.value) || 0);
 
@@ -1046,6 +1063,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (getKategoriName() === 'ANEKA CETAK') {
                     laserMaterialId = Number(row.dataset.laserProductId) > 0 ? row.dataset.laserProductId : '';
                     laserSize = sizeData === '-' ? '' : (sizeData || '');
+                }
+                else if (usesClothingSize()) {
+                    setValueAndDispatch(elUkuranJersey, sizeData || '');
                 }
                 else if (sizeData && sizeData.includes('x')) {
                     const sizeParts = sizeData.split('x').map(s => parseFloat(s.trim()));
