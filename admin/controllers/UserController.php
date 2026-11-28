@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../functions/userProduction.php';
 require_once __DIR__ . '/../functions/helpers.php';
 require_once __DIR__ . '/../functions/imageHelpers.php';
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
@@ -19,7 +20,8 @@ class UserController {
         
         $users = $this->userModel->getUsersByStoreId($store_id); 
         
-        foreach ($users as $key => $user) { 
+        foreach ($users as $key => $user) {
+            $users[$key]['production_sections'] = $user['production_sections'] === null ? null : effectiveProductionSections($user['production_sections'], $user['role']);
             $basePath = $_ENV['BASE_URL_UPLOAD'] . '/image/user/';
             if ($users[$key]['picture'] == '') {
                 $users[$key]['picture_link'] = $basePath . 'default.png'; 
@@ -57,6 +59,18 @@ class UserController {
 
         if (empty($data->id)) {
             send_json_response(false, 'ID user tidak ditemukan.');
+            exit;
+        }
+
+        $previous = $this->userModel->getProductionSettings($data->id, $data->store_id);
+        if (!$previous) {
+            send_json_response(false, 'User tidak ditemukan pada toko ini.');
+            exit;
+        }
+        try {
+            $data->production_sections = requestedProductionSections($_POST, $data->role, $previous['production_sections'], $this->userModel->hasProductionSections());
+        } catch (InvalidArgumentException $error) {
+            send_json_response(false, $error->getMessage());
             exit;
         }
 

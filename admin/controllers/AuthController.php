@@ -54,6 +54,8 @@ class AuthController {
                 'user' => [
                     'user_id' => (int)$user_id,
                     'role' => $role,
+                    'production_sections' => $role === 'PRODUKSI'
+                        ? effectiveProductionSections($this->userModel->getProductionSettings($user_id, $store_id)['production_sections'] ?? null, $role) : [],
                     'username' => $username,
                     'initial' => $initial,
                     'name' => $name,

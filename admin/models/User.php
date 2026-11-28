@@ -2,22 +2,43 @@
 
 class User{
     private $koneksi;
+    private $productionSectionsAvailable;
 
     public function __construct($koneksi){
         $this->koneksi = $koneksi;
     }
 
-    public function updateUser ($data){
-        if (!empty($data->password)) {
-            $passwordHash = password_hash($data->password, PASSWORD_DEFAULT);
-            $stmt = $this->koneksi->prepare("UPDATE users SET name = ?, username = ?, password = ?, role = ?, initial = ?, picture = ? WHERE user_id = ? AND store_id = ?");
-            $stmt->bind_param("ssssssii", $data->name, $data->username, $passwordHash, $data->role, $data->initial, $data->picture, $data->id, $data->store_id);
-        } else {
-            $stmt = $this->koneksi->prepare("UPDATE users SET name = ?, username = ?, role = ?, initial = ?, picture = ? WHERE user_id = ? AND store_id = ?");
-            $stmt->bind_param("ssssssi", $data->name, $data->username, $data->role, $data->initial, $data->picture, $data->id, $data->store_id);
+    public function hasProductionSections() {
+        if ($this->productionSectionsAvailable === null) {
+            $row = $this->koneksi->query("SELECT EXISTS(SELECT 1 FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'production_sections') AS ready")->fetch_assoc();
+            $this->productionSectionsAvailable = (bool)$row['ready'];
         }
-        $success = $stmt->execute();
-        $stmt->close();
+        return $this->productionSectionsAvailable;
+    }
+
+    public function getProductionSettings($id, $store) {
+        $field = $this->hasProductionSections() ? 'production_sections' : 'NULL AS production_sections';
+        $stmt = $this->koneksi->prepare("SELECT user_id, role, $field FROM users WHERE user_id = ? AND store_id = ? AND is_deleted = 0");
+        $stmt->bind_param('ii', $id, $store); $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc(); $stmt->close();
+        return $row;
+    }
+
+    public function updateUser($data) {
+        $sql = 'UPDATE users SET name=?, username=?, role=?, initial=?, picture=?';
+        $params = [$data->name, $data->username, $data->role, $data->initial, $data->picture];
+        $types = 'sssss';
+        if (!empty($data->password)) {
+            $sql .= ', password=?'; $params[] = password_hash($data->password, PASSWORD_DEFAULT); $types .= 's';
+        }
+        if (isset($data->production_sections) && $this->hasProductionSections()) {
+            $sql .= ', production_sections=?'; $params[] = $data->production_sections; $types .= 's';
+        }
+        $sql .= ' WHERE user_id=? AND store_id=?';
+        $params[] = $data->id; $params[] = $data->store_id; $types .= 'ii';
+        $stmt = $this->koneksi->prepare($sql); $stmt->bind_param($types, ...$params);
+        $success = $stmt->execute(); $stmt->close();
         return $success;
     }
 
@@ -47,7 +68,8 @@ class User{
     }
 
     public function getUsersByStoreId($id){
-        $stmt = $this->koneksi->prepare("SELECT user_id, name, username, role, initial, picture, store_id FROM users WHERE store_id = ? AND is_deleted = 0");
+        $field = $this->hasProductionSections() ? 'production_sections' : 'NULL AS production_sections';
+        $stmt = $this->koneksi->prepare("SELECT user_id, name, username, role, initial, picture, store_id, $field FROM users WHERE store_id = ? AND is_deleted = 0");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -97,7 +119,7 @@ class User{
 
     public function checkDuplicateUser ($data) {
         $stmt = $this->koneksi->prepare("SELECT 1 FROM users WHERE username = ? AND user_id != ? ");
-        $stmt->bind_param("si", $data->username, $data->user_id);
+        $stmt->bind_param("si", $data->username, $data->id);
         $stmt->execute();
         $stmt->store_result();
         $exists = $stmt->num_rows > 0;
