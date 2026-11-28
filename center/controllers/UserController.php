@@ -1,10 +1,14 @@
 <?php
 require_once __DIR__ . '/AdministratorAccessController.php';
+require_once __DIR__ . '/../../admin/models/User.php';
+require_once __DIR__ . '/../../admin/functions/userProduction.php';
 class UserController {
     private $koneksi;
+    private $userModel;
 
     public function __construct($db) {
         $this->koneksi = $db;
+        $this->userModel = new User($db);
     }
 
     public function getIndexData() {
@@ -12,13 +16,16 @@ class UserController {
         $deletedUsers = [];
         $stores = [];
 
+        $productionAvailable = $this->userModel->hasProductionSections();
+        $productionField = $productionAvailable ? 'u.production_sections' : 'NULL AS production_sections';
         $queryActive = "
             SELECT 
                 u.user_id, 
                 u.name,
                 u.username,
                 u.initial,
-                u.role, 
+                u.role,
+                $productionField,
                 u.picture, 
                 s.store_id,
                 s.name AS store_name,
@@ -32,6 +39,7 @@ class UserController {
         if ($resultActive = $this->koneksi->query($queryActive)) {
             while ($row = $resultActive->fetch_assoc()) {
                 $storeName = !empty($row['store_name']) ? $row['store_name'] : 'Tanpa Toko';
+                $row['production_sections'] = effectiveProductionSections($row['production_sections'], $row['role']);
                 $groupedUsers[$storeName][] = $row;
             }
             $resultActive->free();
@@ -69,7 +77,8 @@ class UserController {
         return [
             'groupedUsers' => $groupedUsers,
             'deletedUsers' => $deletedUsers,
-            'stores' => $stores
+            'stores' => $stores,
+            'productionSectionsAvailable' => $productionAvailable
         ];
     }
 
@@ -134,8 +143,16 @@ class UserController {
         $username = $_POST['username'] ?? '';
         $password = $_POST['password'] ?? '';
         $initial  = $_POST['initial'] ?? '';
-        $role     = $_POST['role'] ?? '';
+        $role     = strtoupper(trim($_POST['role'] ?? ''));
         $store_id = $_POST['store_id'] ?? null;
+
+        $productionAvailable = $this->userModel->hasProductionSections();
+        try {
+            $productionSections = requestedProductionSections($_POST, $role, [], $productionAvailable);
+        } catch (InvalidArgumentException $error) {
+            $_SESSION['swal_error'] = $error->getMessage();
+            header('Location: /users'); exit;
+        }
 
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
         $pictureName = '';
@@ -153,8 +170,13 @@ class UserController {
         }
 
         if ($name && $username && $password && $role && $store_id) {
-            $stmt = $this->koneksi->prepare("INSERT INTO users (name, username, password, initial, role, store_id, picture) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssssis", $name, $username, $hashedPassword, $initial, $role, $store_id, $pictureName);
+            $columns = 'name, username, password, initial, role, store_id, picture';
+            $params = [$name, $username, $hashedPassword, $initial, $role, $store_id, $pictureName];
+            $types = 'sssssis';
+            if ($productionAvailable) { $columns .= ', production_sections'; $params[] = $productionSections; $types .= 's'; }
+            $placeholders = implode(',', array_fill(0, count($params), '?'));
+            $stmt = $this->koneksi->prepare("INSERT INTO users ($columns) VALUES ($placeholders)");
+            $stmt->bind_param($types, ...$params);
 
             if ($stmt->execute()) {
                 updateStoreCache($store_id, 'users');
@@ -181,19 +203,31 @@ class UserController {
         $username = $_POST['username'] ?? '';
         $password = $_POST['password'] ?? '';
         $initial  = $_POST['initial'] ?? '';
-        $role     = $_POST['role'] ?? '';
+        $role     = strtoupper(trim($_POST['role'] ?? ''));
         $store_id = $_POST['store_id'] ?? null;
 
         if ($user_id && $name && $username && $role && $store_id) {
-            $stmtGet = $this->koneksi->prepare("SELECT store_id FROM users WHERE user_id = ?");
+            $productionAvailable = $this->userModel->hasProductionSections();
+            $productionField = $productionAvailable ? 'production_sections' : 'NULL AS production_sections';
+            $stmtGet = $this->koneksi->prepare("SELECT store_id, $productionField FROM users WHERE user_id = ?");
             $stmtGet->bind_param("i", $user_id);
             $stmtGet->execute();
-            $old_store_id = $stmtGet->get_result()->fetch_assoc()['store_id'] ?? null;
+            $previous = $stmtGet->get_result()->fetch_assoc();
+            $old_store_id = $previous['store_id'] ?? null;
             $stmtGet->close();
 
             $updateSql = "UPDATE users SET name=?, username=?, initial=?, role=?, store_id=?";
             $params = [$name, $username, $initial, $role, $store_id];
             $types = "ssssi";
+            try {
+                $productionSections = requestedProductionSections($_POST, $role, $previous['production_sections'] ?? null, $productionAvailable);
+            } catch (InvalidArgumentException $error) {
+                $_SESSION['swal_error'] = $error->getMessage();
+                header('Location: /users'); exit;
+            }
+            if ($productionAvailable) {
+                $updateSql .= ', production_sections=?'; $params[] = $productionSections; $types .= 's';
+            }
 
             if (!empty($password)) {
                 $updateSql .= ", password=?";

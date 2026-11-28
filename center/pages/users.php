@@ -19,6 +19,7 @@ $data = $controller->getIndexData();
 $groupedUsers = $data['groupedUsers'];
 $deletedUsers = $data['deletedUsers'];
 $stores = $data['stores'];
+$productionSectionsAvailable = $data['productionSectionsAvailable'];
 $migrationAccess = new AdministratorAccessController($koneksi);
 $canMigrateUsers = $migrationAccess->can('migrate_user');
 $migrationAdministrator = (new ProductHistoryController($koneksi))->getAdministrator();
@@ -91,7 +92,11 @@ $renderUserMigration = function ($user) use ($migrationStoreIds) {
                                 </td>
                                 <td><strong><?= htmlspecialchars($row['name']) ?></strong></td>
                                 <td><?= htmlspecialchars($row['username']) ?></td>
-                                <td><span class="badge-role"><?= htmlspecialchars($row['role']) ?></span></td>
+                                <td><span class="badge-role"><?= htmlspecialchars($row['role']) ?></span>
+                                    <?php if ($row['role'] === 'PRODUKSI'): ?>
+                                        <small class="d-block mt-1"><?= htmlspecialchars(implode(', ', $row['production_sections'] ?? []) ?: 'OUTDOOR') ?></small>
+                                    <?php endif; ?>
+                                </td>
                             <td><?= number_format((int)$row['order_count'], 0, ',', '.') ?></td>
                                 <td class="migrated-style-9">
                                     <?php $renderUserMigration($row); ?>
@@ -103,6 +108,7 @@ $renderUserMigration = function ($user) use ($migrationStoreIds) {
                                         data-username="<?= htmlspecialchars($row['username']) ?>"
                                         data-initial="<?= htmlspecialchars($row['initial']) ?>"
                                         data-role="<?= htmlspecialchars($row['role']) ?>"
+                                        data-production-sections="<?= htmlspecialchars(implode(',', $row['production_sections'])) ?>"
                                         data-store-id="<?= $row['store_id'] ?>"
                                         title="Edit User">
                                         <i class="fas fa-pen"></i>
@@ -200,6 +206,23 @@ $renderUserMigration = function ($user) use ($migrationStoreIds) {
     </div>
 </div>
 <script>
+function updateProductionFields(form, selected) {
+    const fieldset = form?.querySelector('fieldset[data-production-sections]');
+    if (!fieldset) return;
+    if (Array.isArray(selected)) fieldset.querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = selected.includes(input.value); });
+    fieldset.hidden = form.querySelector('[name="role"]').value !== 'PRODUKSI';
+    if (!fieldset.hidden && !fieldset.querySelector('input[type="checkbox"]:checked')) fieldset.querySelector('input[value="OUTDOOR"]').checked = true;
+    fieldset.disabled = fieldset.hidden || fieldset.dataset.available !== '1';
+}
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('fieldset[data-production-sections]').forEach(fieldset => {
+        const form = fieldset.closest('form');
+        form.querySelector('[name="role"]').addEventListener('change', () => updateProductionFields(form));
+        form.addEventListener('reset', () => queueMicrotask(() => updateProductionFields(form)));
+        updateProductionFields(form);
+    });
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     const users = <?= json_encode($migrationUsers, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     const modal = document.getElementById('migrateUserModal');
@@ -261,6 +284,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         <option value="PRODUKSI">PRODUKSI</option>
                     </select>
                 </div>
+                <fieldset class="mb-3" data-production-sections data-available="<?= $productionSectionsAvailable ? '1' : '0' ?>" hidden disabled>
+                    <legend class="form-label-custom fs-6">Bagian Produksi</legend>
+                    <input type="hidden" name="production_sections_present" value="1">
+                    <div class="d-flex flex-wrap gap-2">
+                        <?php foreach (PRODUCTION_SECTIONS as $section): ?>
+                            <label class="d-flex align-items-center gap-2 border rounded px-2 py-1" style="cursor:pointer">
+                                <input type="checkbox" name="production_sections[]" value="<?= $section ?>" style="width:18px;height:18px" <?= $section === 'OUTDOOR' ? 'checked' : '' ?>>
+                                <?= $section ?>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php if (!$productionSectionsAvailable): ?><small>Pengaturan bagian produksi belum tersedia.</small><?php endif; ?>
+                </fieldset>
                 <div class="mb-3">
                     <label class="form-label-custom">Toko</label>
                     <select name="store_id" class="form-control-custom form-select" required>
@@ -318,6 +354,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         <option value="PRODUKSI">PRODUKSI</option>
                     </select>
                 </div>
+                <fieldset class="mb-3" data-production-sections data-available="<?= $productionSectionsAvailable ? '1' : '0' ?>" hidden disabled>
+                    <legend class="form-label-custom fs-6">Bagian Produksi</legend>
+                    <input type="hidden" name="production_sections_present" value="1">
+                    <div class="d-flex flex-wrap gap-2">
+                        <?php foreach (PRODUCTION_SECTIONS as $section): ?>
+                            <label class="d-flex align-items-center gap-2 border rounded px-2 py-1" style="cursor:pointer">
+                                <input type="checkbox" name="production_sections[]" value="<?= $section ?>" style="width:18px;height:18px" <?= $section === 'OUTDOOR' ? 'checked' : '' ?>>
+                                <?= $section ?>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php if (!$productionSectionsAvailable): ?><small>Pengaturan bagian produksi belum tersedia.</small><?php endif; ?>
+                </fieldset>
                 <div class="mb-3">
                     <label class="form-label-custom">Toko</label>
                     <select name="store_id" id="edit_store_id" class="form-control-custom form-select" required>
@@ -379,6 +428,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('edit_username').value = button.getAttribute('data-username');
             document.getElementById('edit_initial').value = button.getAttribute('data-initial');
             document.getElementById('edit_role').value = button.getAttribute('data-role');
+            updateProductionFields(event.target.querySelector('form'), (button.getAttribute('data-production-sections') || '').split(',').filter(Boolean));
             document.getElementById('edit_store_id').value = button.getAttribute('data-store-id');
         });
     }
