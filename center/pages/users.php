@@ -206,23 +206,6 @@ $renderUserMigration = function ($user) use ($migrationStoreIds) {
     </div>
 </div>
 <script>
-function updateProductionFields(form, selected) {
-    const fieldset = form?.querySelector('fieldset[data-production-sections]');
-    if (!fieldset) return;
-    if (Array.isArray(selected)) fieldset.querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = selected.includes(input.value); });
-    fieldset.hidden = form.querySelector('[name="role"]').value !== 'PRODUKSI';
-    if (!fieldset.hidden && !fieldset.querySelector('input[type="checkbox"]:checked')) fieldset.querySelector('input[value="OUTDOOR"]').checked = true;
-    fieldset.disabled = fieldset.hidden || fieldset.dataset.available !== '1';
-}
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('fieldset[data-production-sections]').forEach(fieldset => {
-        const form = fieldset.closest('form');
-        form.querySelector('[name="role"]').addEventListener('change', () => updateProductionFields(form));
-        form.addEventListener('reset', () => queueMicrotask(() => updateProductionFields(form)));
-        updateProductionFields(form);
-    });
-});
-
 document.addEventListener('DOMContentLoaded', () => {
     const users = <?= json_encode($migrationUsers, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     const modal = document.getElementById('migrateUserModal');
@@ -251,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
 <?php endif; ?>
 
 <div class="modal fade" id="modalTambahUser" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <form class="modal-content modal-content-custom" method="post" action="/action?action=add_user" enctype="multipart/form-data">
             <div class="modal-header modal-header-custom">
                 <h5 class="modal-title-custom">Tambah User Baru</h5>
@@ -284,19 +267,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         <option value="PRODUKSI">PRODUKSI</option>
                     </select>
                 </div>
-                <fieldset class="mb-3" data-production-sections data-available="<?= $productionSectionsAvailable ? '1' : '0' ?>" hidden disabled>
-                    <legend class="form-label-custom fs-6">Bagian Produksi</legend>
-                    <input type="hidden" name="production_sections_present" value="1">
-                    <div class="d-flex flex-wrap gap-2">
+                <div class="mb-3" data-production-field data-available="<?= $productionSectionsAvailable ? '1' : '0' ?>" hidden>
+                    <label for="add_production_section" class="form-label-custom">Bagian Produksi</label>
+                    <input type="hidden" name="production_sections_present" value="1" disabled>
+                    <select name="production_sections" id="add_production_section" class="form-control-custom form-select" disabled>
                         <?php foreach (PRODUCTION_SECTIONS as $section): ?>
-                            <label class="d-flex align-items-center gap-2 border rounded px-2 py-1" style="cursor:pointer">
-                                <input type="checkbox" name="production_sections[]" value="<?= $section ?>" style="width:18px;height:18px" <?= $section === 'OUTDOOR' ? 'checked' : '' ?>>
-                                <?= $section ?>
-                            </label>
+                            <option value="<?= $section ?>" <?= $section === 'OUTDOOR' ? 'selected' : '' ?>><?= $section ?></option>
                         <?php endforeach; ?>
-                    </div>
+                    </select>
                     <?php if (!$productionSectionsAvailable): ?><small>Pengaturan bagian produksi belum tersedia.</small><?php endif; ?>
-                </fieldset>
+                </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Toko</label>
                     <select name="store_id" class="form-control-custom form-select" required>
@@ -320,7 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
 </div>
 
 <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <form class="modal-content modal-content-custom" method="post" action="/action?action=edit_user" enctype="multipart/form-data">
             <input type="hidden" name="user_id" id="edit_user_id">
             <div class="modal-header modal-header-custom">
@@ -354,19 +334,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         <option value="PRODUKSI">PRODUKSI</option>
                     </select>
                 </div>
-                <fieldset class="mb-3" data-production-sections data-available="<?= $productionSectionsAvailable ? '1' : '0' ?>" hidden disabled>
-                    <legend class="form-label-custom fs-6">Bagian Produksi</legend>
-                    <input type="hidden" name="production_sections_present" value="1">
-                    <div class="d-flex flex-wrap gap-2">
+                <div class="mb-3" data-production-field data-available="<?= $productionSectionsAvailable ? '1' : '0' ?>" hidden>
+                    <label for="edit_production_section" class="form-label-custom">Bagian Produksi</label>
+                    <input type="hidden" name="production_sections_present" value="1" disabled>
+                    <select name="production_sections" id="edit_production_section" class="form-control-custom form-select" disabled>
                         <?php foreach (PRODUCTION_SECTIONS as $section): ?>
-                            <label class="d-flex align-items-center gap-2 border rounded px-2 py-1" style="cursor:pointer">
-                                <input type="checkbox" name="production_sections[]" value="<?= $section ?>" style="width:18px;height:18px" <?= $section === 'OUTDOOR' ? 'checked' : '' ?>>
-                                <?= $section ?>
-                            </label>
+                            <option value="<?= $section ?>" <?= $section === 'OUTDOOR' ? 'selected' : '' ?>><?= $section ?></option>
                         <?php endforeach; ?>
-                    </div>
+                    </select>
                     <?php if (!$productionSectionsAvailable): ?><small>Pengaturan bagian produksi belum tersedia.</small><?php endif; ?>
-                </fieldset>
+                </div>
                 <div class="mb-3">
                     <label class="form-label-custom">Toko</label>
                     <select name="store_id" id="edit_store_id" class="form-control-custom form-select" required>
@@ -418,17 +395,43 @@ document.addEventListener('DOMContentLoaded', () => {
 <?php endif; ?>
 
 <script>
+function updateProductionFields(form, selected) {
+    const field = form?.querySelector('[data-production-field]');
+    if (!field) return;
+    const select = field.querySelector('select');
+    if (selected !== undefined) select.value = selected || 'OUTDOOR';
+    if (!select.value) select.value = 'OUTDOOR';
+    field.hidden = form.querySelector('[name="role"]').value !== 'PRODUKSI';
+    const disabled = field.hidden || field.dataset.available !== '1';
+    field.querySelectorAll('input, select').forEach(input => { input.disabled = disabled; });
+    select.required = !disabled;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-production-field]').forEach(field => {
+        const form = field.closest('form');
+        form.querySelector('[name="role"]').addEventListener('change', () => updateProductionFields(form));
+        form.addEventListener('reset', () => queueMicrotask(() => updateProductionFields(form)));
+        updateProductionFields(form);
+    });
+    document.getElementById('modalTambahUser').addEventListener('show.bs.modal', event => {
+        const form = event.target.querySelector('form');
+        form.reset();
+        updateProductionFields(form, 'OUTDOOR');
+    });
     const editModal = document.getElementById('editModal');
     if (editModal) {
         editModal.addEventListener('show.bs.modal', function(event) {
             const button = event.relatedTarget;
+            if (!button) return;
+            const form = event.target.querySelector('form');
+            form.reset();
             document.getElementById('edit_user_id').value = button.getAttribute('data-user-id');
             document.getElementById('edit_name').value = button.getAttribute('data-name');
             document.getElementById('edit_username').value = button.getAttribute('data-username');
             document.getElementById('edit_initial').value = button.getAttribute('data-initial');
             document.getElementById('edit_role').value = button.getAttribute('data-role');
-            updateProductionFields(event.target.querySelector('form'), (button.getAttribute('data-production-sections') || '').split(',').filter(Boolean));
+            updateProductionFields(form, (button.getAttribute('data-production-sections') || '').split(',')[0]);
             document.getElementById('edit_store_id').value = button.getAttribute('data-store-id');
         });
     }
