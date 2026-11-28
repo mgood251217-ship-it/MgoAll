@@ -43,6 +43,7 @@ switch ($action) {
     case 'restore_user':
     case 'change_user_store':
     case 'migrate_user':
+    case 'set_user_session':
         require_once __DIR__ . '/../controllers/UserController.php';
         $userController = new UserController($koneksi);
         if ($action === 'add_user') $userController->addUser();
@@ -51,6 +52,7 @@ switch ($action) {
         if ($action === 'restore_user') $userController->restoreUser();
         if ($action === 'change_user_store') $userController->changeStore();
         if ($action === 'migrate_user') $userController->migrateUser();
+        if ($action === 'set_user_session') $userController->setSession();
         break;
 
     case 'update_help_answer':

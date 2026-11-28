@@ -82,6 +82,29 @@ class UserController {
         ];
     }
 
+    public function setSession() {
+        header('Cache-Control: no-store');
+        try {
+            if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST'
+                || !is_string($_POST['csrf'] ?? null)
+                || empty($_SESSION['user_desktop_csrf'])
+                || !hash_equals($_SESSION['user_desktop_csrf'], $_POST['csrf'])) {
+                throw new InvalidArgumentException('Sesi formulir tidak valid. Muat ulang halaman.');
+            }
+            $administrator = (new ProductHistoryController($this->koneksi))->getAdministrator();
+            $storeId = filter_var($_POST['store_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $userId = filter_var($_POST['user_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            if (!$administrator || !$storeId || !$userId) throw new InvalidArgumentException('User, toko, atau sesi administrator tidak valid.');
+            require_once __DIR__ . '/../../admin/functions/DesktopLoginTicket.php';
+            $ticket = (new DesktopLoginTicket($this->koneksi))->issue((int)$administrator['administrator_id'], $storeId, $userId);
+            send_json_response(true, 'Buka MgoDesktop untuk mengelola user.', ['url' => 'mgodesktop://login?ticket=' . $ticket]);
+        } catch (Throwable $e) {
+            error_log('Desktop user login: ' . $e->getMessage());
+            http_response_code($e instanceof InvalidArgumentException ? 400 : 503);
+            send_json_response(false, $e instanceof InvalidArgumentException ? $e->getMessage() : 'Gagal menyiapkan sesi aplikasi. Coba lagi.');
+        }
+    }
+
     public function migrateUser() {
         if (session_status() === PHP_SESSION_NONE) session_start();
         $transaction = $migrated = false;

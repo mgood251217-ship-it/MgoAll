@@ -22,12 +22,17 @@ $stores = $data['stores'];
 $productionSectionsAvailable = $data['productionSectionsAvailable'];
 $migrationAccess = new AdministratorAccessController($koneksi);
 $canMigrateUsers = $migrationAccess->can('migrate_user');
+$canManageUsers = $migrationAccess->can('set_user_session');
 $migrationAdministrator = (new ProductHistoryController($koneksi))->getAdministrator();
 $migrationStoreIds = [];
+$manageableStoreIds = [];
 foreach ($stores as $store) {
-    if ($canMigrateUsers && $migrationAdministrator && ($migrationAdministrator['access'] === 'ALL'
-        || ((string)$migrationAdministrator['access'] !== '' && (string)$migrationAdministrator['access'] === (string)$store['administrator']))) $migrationStoreIds[] = (int)$store['store_id'];
+    $canAccessStore = $migrationAdministrator && ($migrationAdministrator['access'] === 'ALL'
+        || ((string)$migrationAdministrator['access'] !== '' && (string)$migrationAdministrator['access'] === (string)$store['administrator']));
+    if ($canAccessStore && $canMigrateUsers) $migrationStoreIds[] = (int)$store['store_id'];
+    if ($canAccessStore && $canManageUsers) $manageableStoreIds[] = (int)$store['store_id'];
 }
+$_SESSION['user_desktop_csrf'] = $_SESSION['user_desktop_csrf'] ?? bin2hex(random_bytes(32));
 $_SESSION['user_migration_csrf'] = $_SESSION['user_migration_csrf'] ?? bin2hex(random_bytes(32));
 $migrationUsers = [];
 foreach ($groupedUsers as $group) foreach ($group as $user) {
@@ -77,6 +82,7 @@ $renderUserMigration = function ($user) use ($migrationStoreIds) {
                             <th>Peran</th>
                         <th title="Jumlah order pada toko user ini">Jumlah Order</th>
                             <th class="migrated-style-9">Aksi & Pindah Toko</th>
+                            <?php if ($canManageUsers): ?><th class="migrated-style-9">Kelola</th><?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
@@ -135,6 +141,18 @@ $renderUserMigration = function ($user) use ($migrationStoreIds) {
                                         </ul>
                                     </div>
                                 </td>
+                                <?php if ($canManageUsers): ?>
+                                    <td class="migrated-style-9">
+                                        <?php if (in_array((int)$row['store_id'], $manageableStoreIds, true)): ?>
+                                            <form class="userDesktopForm d-inline-block" method="post" action="/action?action=set_user_session">
+                                                <input type="hidden" name="user_id" value="<?= (int)$row['user_id'] ?>">
+                                                <input type="hidden" name="store_id" value="<?= (int)$row['store_id'] ?>">
+                                                <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['user_desktop_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+                                                <button type="submit" class="btn-action btn-kelola btn-danger" style="font:inherit">Kelola</button>
+                                            </form>
+                                        <?php endif; ?>
+                                    </td>
+                                <?php endif; ?>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -395,6 +413,35 @@ document.addEventListener('DOMContentLoaded', () => {
 <?php endif; ?>
 
 <script>
+document.addEventListener('submit', async function(e) {
+    if (!e.target?.classList.contains('userDesktopForm')) return;
+    e.preventDefault();
+    const form = e.target;
+    const button = form.querySelector('button[type="submit"]');
+    if (button.disabled) return;
+    button.disabled = true;
+    try {
+        const response = await fetch('/action?action=set_user_session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(new FormData(form)).toString()
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || 'Gagal menyiapkan sesi aplikasi.');
+        if (!/^mgodesktop:\/\/login\?ticket=[a-f0-9]{64}$/.test(result.data?.url || '')) throw new Error('Tautan aplikasi tidak valid.');
+        window.location.href = result.data.url;
+        Swal.fire({
+            icon: 'info', title: 'Membuka MgoDesktop',
+            html: '<p>Izinkan browser membuka aplikasi. Gunakan MgoDesktop versi terbaru.</p><a class="btn-primary-custom" href="' + result.data.url + '">Buka aplikasi</a>',
+            confirmButtonText: 'Tutup'
+        });
+    } catch (error) {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: error.message || 'Gagal membuka MgoDesktop.' });
+    } finally {
+        button.disabled = false;
+    }
+});
+
 function updateProductionFields(form, selected) {
     const field = form?.querySelector('[data-production-field]');
     if (!field) return;

@@ -14,6 +14,7 @@ class AdministratorAccessController {
     public static function definitions() {
         return [
             'Pengguna' => [
+                'set_user_session' => 'Kelola user',
                 'migrate_user' => 'Migrasi order antaruser',
             ],
             'Toko' => [
